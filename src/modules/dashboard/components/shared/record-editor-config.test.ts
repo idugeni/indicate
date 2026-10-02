@@ -192,6 +192,7 @@ describe('buildUpdatePayload', () => {
       },
     );
     expect(articlePayload).toMatchObject({ regionId: 'r1', publisherId: null, authorId: null, slug: 'judul-utama', title: 'Judul Utama' });
+    expect(articlePayload).not.toHaveProperty('body');
     expect(
       buildUpdatePayload('articles', { id: 'a1', version: 3 }, { regionId: '', title: 'T', slug: 's', body: 'B', source: '', status: 'draft' }),
     ).toMatchObject({ regionId: null });

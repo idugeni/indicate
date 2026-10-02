@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 
+import { clearEndpointCache } from '@/modules/dashboard/components/shared/endpoint-cache';
 import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastructure/policy-overview-section';
 
 const SUMMARY = {
@@ -33,6 +34,7 @@ const SUMMARY = {
 
 afterEach(() => {
   cleanup();
+  clearEndpointCache();
   vi.unstubAllGlobals();
 });
 

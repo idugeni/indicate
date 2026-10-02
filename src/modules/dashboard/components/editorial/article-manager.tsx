@@ -188,11 +188,9 @@ function useArticleLayout(): ArticleLayout {
 export function ArticleManager({
   data,
   command,
-  onRefresh,
 }: {
   readonly data: unknown;
   readonly command?: ((action: string, payload: unknown) => Promise<unknown>) | undefined;
-  readonly onRefresh?: (() => void) | undefined;
 }) {
   const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
@@ -341,8 +339,8 @@ export function ArticleManager({
     const action = article.status === 'archived' ? 'article.restore' : 'article.archive';
     setBusyId(article.id);
     try {
-      const result = await command(action, { id: article.id, expectedVersion: article.version });
-      if (result !== null) onRefresh?.();
+      // Workspace `command` already refetches the articles view on success.
+      await command(action, { id: article.id, expectedVersion: article.version });
     } finally {
       setBusyId(null);
     }
@@ -355,7 +353,6 @@ export function ArticleManager({
       const result = await command('article.delete', { id: deleting.id, expectedVersion: deleting.version });
       if (result !== null) {
         setDeleting(null);
-        onRefresh?.();
       }
     } finally {
       setBusyId(null);
@@ -829,7 +826,6 @@ export function ArticleManager({
                         lookups={lookups}
                         onSaved={() => {
                           setEditingId(null);
-                          onRefresh?.();
                         }}
                         onCancel={() => setEditingId(null)}
                         onSubmit={async (act, payload) => (command === undefined ? null : command(act, payload))}

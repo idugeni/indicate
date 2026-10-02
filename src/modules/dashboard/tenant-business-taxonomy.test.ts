@@ -43,10 +43,25 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   const state = stateWith(collections);
   const appendAudit = vi.fn();
   const repository = {
-    read: vi.fn(async () => state),
+    readTaxonomyScope: vi.fn(async () => ({
+      articles: (state.articles as readonly Record<string, unknown>[]).map((article) => ({
+        id: article.id,
+        organizationId: article.organizationId,
+        regionId: (article.regionId ?? null) as string | null,
+        categoryId: (article.categoryId ?? null) as string | null,
+        categoryIds: [...((article.categoryIds ?? []) as readonly string[])],
+        tags: [...((article.tags ?? []) as readonly string[])],
+      })),
+      categories: state.categories,
+      regions: (state.regions as readonly Record<string, unknown>[]).map((region) => ({
+        id: region.id,
+        kind: (region.kind ?? 'region') as 'region' | 'city',
+        parentRegionId: (region.parentRegionId ?? null) as string | null,
+      })),
+    })),
     execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
-      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit });
+      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
     recordDenied: vi.fn(async () => undefined),
     enqueueCachePurge: vi.fn(async () => []),
@@ -189,10 +204,10 @@ describe('TenantBusinessService category cache invalidation', () => {
     const state = stateWith(collections);
     const appendAudit = vi.fn();
     const repository = {
-      read: vi.fn(async () => state),
+      readTaxonomyScope: vi.fn(async () => ({ articles: [], categories: [], regions: [] })),
       execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
         const op = operation as (transaction: unknown) => unknown;
-        return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit });
+        return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
       }),
       recordDenied: vi.fn(async () => undefined),
       enqueueCachePurge: vi.fn(async () => []),

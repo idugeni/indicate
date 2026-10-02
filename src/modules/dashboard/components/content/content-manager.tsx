@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ImageIcon, Info, LayoutTemplate, Phone, RefreshCw, Search, Star, Trash2 } from 'lucide-react';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
@@ -124,17 +124,21 @@ export function ContentManager() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const requestSeq = useRef(0);
   const reload = useCallback(async () => {
+    const seq = ++requestSeq.current;
     setBusy(true); setError(null);
     try {
-      const response = await fetch('/api/dashboard/content', { cache: 'no-store' });
+      const response = await fetch('/api/dashboard/content');
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const body = (await response.json()) as ContentBundle;
+      if (seq !== requestSeq.current) return;
       setBundle(body); setDrafts({});
     } catch {
+      if (seq !== requestSeq.current) return;
       setError('Gagal memuat konten website.');
     } finally {
-      setBusy(false);
+      if (seq === requestSeq.current) setBusy(false);
     }
   }, []);
 

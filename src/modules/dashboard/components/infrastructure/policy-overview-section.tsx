@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
+import { cachedJsonGet } from '@/modules/dashboard/components/shared/endpoint-cache';
 
 interface DeploymentOverview {
   readonly supabaseProjectRef: string;
@@ -87,22 +88,24 @@ export function PolicyOverviewSection() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, startLoadingTransition] = useTransition();
 
+  const loadSeq = useRef(0);
   const reload = useCallback(() => {
+    const seq = ++loadSeq.current;
     startLoadingTransition(async () => {
       setError(null);
       try {
-        const response = await fetch('/api/dashboard/runtime-config', { cache: 'no-store' });
-        if (response.status === 404) {
+        const body = (await cachedJsonGet('runtime-config', '/api/dashboard/runtime-config')) as { policies?: PoliciesOverview };
+        if (seq !== loadSeq.current) return;
+        if (body.policies === undefined) throw new Error('missing policies');
+        setPolicies(body.policies);
+        setForbidden(false);
+      } catch (loadError) {
+        if (seq !== loadSeq.current) return;
+        if ((loadError as { readonly status?: number }).status === 404) {
           setForbidden(true);
           setPolicies(null);
           return;
         }
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const body = (await response.json()) as { policies?: PoliciesOverview };
-        if (body.policies === undefined) throw new Error('missing policies');
-        setPolicies(body.policies);
-        setForbidden(false);
-      } catch {
         setError('Gagal memuat ringkasan kebijakan platform.');
       }
     });

@@ -179,6 +179,7 @@ vi.mock('@/data/repos/publishing/repository', async () => {
     ...actual,
     DrizzlePublishingRepository: class {
       snapshot = async () => ({ articles: [], sites: [], domains: [], articleSites: [] });
+      mediaOwnerCounts = async () => [];
     },
   };
 });

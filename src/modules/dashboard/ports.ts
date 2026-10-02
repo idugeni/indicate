@@ -1,13 +1,22 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, OperationsProjection, RetentionRunRecord } from '@/modules/dashboard/models';
+import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, ConfigurationScope, DashboardProjection, DashboardTenantState, EditorialScope, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, NetworkArticlesScope, OperationsProjection, PublisherClaimScope, PublisherScope, RetentionRunRecord, TaxonomyScope } from '@/modules/dashboard/models';
 
 export type MutableTenantState = {
   -readonly [Key in keyof DashboardTenantState]: DashboardTenantState[Key] extends readonly (infer Item)[] ? Item[] : DashboardTenantState[Key];
 };
 
+/** Collections `load()` can hydrate; `execute()` loads only the scoped subset per mutation. */
+export type DashboardCollectionName =
+  | 'domains' | 'regions' | 'sites' | 'siteSettings' | 'roles' | 'memberships'
+  | 'publishers' | 'affiliations' | 'categories' | 'authors' | 'articles' | 'articleCategories'
+  | 'articleSites' | 'media' | 'publishingJobs' | 'publishingJobTargets';
+
 export interface DashboardTransaction {
   readonly state: MutableTenantState;
+  readonly articleContentTouched: Set<string>;
   resolveUserDisplayName(userId: string): Promise<string | null>;
+  /** Re-read one article's body/bodyJson into state; false when the row no longer exists. */
+  refreshArticleContent(articleId: string): Promise<boolean>;
   appendAudit(event: Omit<AuditRecord, 'id' | 'organizationId' | 'actorType' | 'actorId' | 'entryPoint' | 'requestId' | 'occurredAt'>): void;
 }
 
@@ -17,7 +26,18 @@ export interface CachePurgeTarget {
 }
 
 export interface DashboardRepository {
-  read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState>;
+  /** Scoped configuration read (identity, geography, access); no articles, assignments, media, or jobs. */
+  readConfigurationScope(actor: AuthorizedTenantActorContext, permission: string): Promise<ConfigurationScope>;
+  /** Scoped publisher read (publishers, claims, mini geography). */
+  readPublisherScope(actor: AuthorizedTenantActorContext, permission: string): Promise<PublisherScope>;
+  /** Scoped editorial read (SQL-filtered bodyless articles plus board lookups). */
+  readEditorialScope(actor: AuthorizedTenantActorContext, permission: string, filter: { readonly regionId?: string; readonly siteId?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly publicationState?: string; readonly search?: string }): Promise<EditorialScope>;
+  /** Scoped taxonomy read (narrow article facets for counting, never bodies). */
+  readTaxonomyScope(actor: AuthorizedTenantActorContext, permission: string): Promise<TaxonomyScope>;
+  /** Scoped publisher-claim read (one publisher plus its claim rows). */
+  readPublisherClaimScope(actor: AuthorizedTenantActorContext, permission: string, publisherId: string, siteId: string): Promise<PublisherClaimScope>;
+  /** Scoped network-article read (one site plus its published articles and attribution inputs). */
+  readNetworkArticlesScope(actor: AuthorizedTenantActorContext, permission: string, siteId: string, filter: { readonly regionId?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly search?: string }): Promise<NetworkArticlesScope>;
   /** Bodyless editorial summary (title + sites + in-scope regions); without loading the full tenant state. */
   listEditorialSummaries(actor: AuthorizedTenantActorContext, permission: string): Promise<EditorialSummaries>;
   /** Search articles by title/body on the database side (desc, bounded); without loading the full tenant state. */
@@ -51,6 +71,7 @@ export interface DashboardRepository {
     actor: AuthorizedTenantActorContext,
     permission: string,
     operation: (transaction: DashboardTransaction) => T | Promise<T>,
+    scope?: readonly DashboardCollectionName[],
   ): Promise<T>;
 }
 

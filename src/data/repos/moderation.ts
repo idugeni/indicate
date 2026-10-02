@@ -4,6 +4,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { ActorContext } from '@/core/operation-context';
 import type { ContentReportRecord, ErasureRequestRecord, LitigationHoldRecord, PrivacyRequestRecord } from '@/modules/moderation/models';
 import { ModerationAccessDeniedError, ModerationConflictError, type ModerationRepository, type PrivacySubmitInput, type ReportSubmitInput } from '@/modules/moderation/ports';
+import { clampLimit, parseCursor } from '@/data/repos/shared/list-page';
 import type * as schema from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -18,6 +19,8 @@ function iso(value: Date | string): string {
   if (typeof value !== 'string' || !POSTGRES_TIMESTAMP.test(value)) throw new TypeError('Invalid moderation timestamp.');
   return new Date(value).toISOString();
 }
+const MODERATION_LIST_MAX_ROWS = 500;
+
 function deniedViolation(error: unknown): boolean {
   const code = (error as { code?: unknown })?.code;
   return code === '42501' || code === 'P0001' || (error instanceof Error && /permission required|not found|membership required|organization required|active user required|unknown target|report fields invalid|request fields invalid|request status invalid|decision note invalid/i.test(error.message));
@@ -50,12 +53,13 @@ export class DrizzleModerationRepository implements ModerationRepository {
     }
   }
 
-  async listReports(actor: ActorContext): Promise<readonly ContentReportRecord[]> {
+  async listReports(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly ContentReportRecord[]> {
     const { id } = userActor(actor);
     try {
       return await this.database.transaction(async (tx) => {
         await this.moderationContext(tx, actor);
-        const rows = await tx.execute<{ id: string; org_id: string; site_id: string | null; article_id: string | null; reporter_contact: string; reason_category: string; details: string; article_url: string | null; status: ContentReportRecord['status']; created_at: Date | string }>(sql`SELECT * FROM indicate_private.content_report_list(${id}::uuid)`);
+        const cursor = parseCursor(page?.cursor);
+        const rows = await tx.execute<{ id: string; org_id: string; site_id: string | null; article_id: string | null; reporter_contact: string; reason_category: string; details: string; article_url: string | null; status: ContentReportRecord['status']; created_at: Date | string }>(sql`SELECT * FROM indicate_private.content_report_list(${id}::uuid, ${clampLimit(page?.limit, 100, MODERATION_LIST_MAX_ROWS)}, ${cursor?.createdAt ?? null}::timestamptz, ${cursor?.id ?? null}::uuid)`);
         return rows.map((row) => Object.freeze({
           id: row.id, orgId: row.org_id, siteId: row.site_id, articleId: row.article_id,
           reporterContact: row.reporter_contact, reasonCategory: row.reason_category as ContentReportRecord['reasonCategory'],
@@ -100,12 +104,14 @@ export class DrizzleModerationRepository implements ModerationRepository {
     }
   }
 
-  async listPrivacyRequests(actor: ActorContext): Promise<readonly PrivacyRequestRecord[]> {
+  async listPrivacyRequests(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly PrivacyRequestRecord[]> {
     const { id } = userActor(actor);
     try {
       return await this.database.transaction(async (tx) => {
         await this.moderationContext(tx, actor);
-        const rows = await tx.execute<{ id: string; ticket_number: string; org_id: string; request_type: string; details: string; status: PrivacyRequestRecord['status']; created_at: Date | string }>(sql`SELECT * FROM indicate_private.privacy_request_list(${id}::uuid)`);
+        const lim = clampLimit(page?.limit, 100, MODERATION_LIST_MAX_ROWS);
+        const cursor = parseCursor(page?.cursor);
+        const rows = await tx.execute<{ id: string; ticket_number: string; org_id: string; request_type: string; details: string; status: PrivacyRequestRecord['status']; created_at: Date | string }>(sql`SELECT * FROM indicate_private.privacy_request_list(${id}::uuid, ${lim}, ${cursor?.createdAt ?? null}::timestamptz, ${cursor?.id ?? null}::uuid)`);
         return rows.map((row) => Object.freeze({
           id: row.id, ticketNumber: row.ticket_number, orgId: row.org_id,
           requestType: row.request_type as PrivacyRequestRecord['requestType'],
@@ -133,12 +139,14 @@ export class DrizzleModerationRepository implements ModerationRepository {
     }
   }
 
-  async listHolds(actor: ActorContext): Promise<readonly LitigationHoldRecord[]> {
+  async listHolds(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly LitigationHoldRecord[]> {
     const { id } = userActor(actor);
     try {
       return await this.database.transaction(async (tx) => {
         await this.moderationContext(tx, actor);
-        const rows = await tx.execute<{ id: string; organization_id: string; reason: string; held_by: string; created_at: Date | string; released_at: Date | string | null; released_by: string | null }>(sql`SELECT * FROM indicate_private.hold_list(${id}::uuid)`);
+        const lim = clampLimit(page?.limit, 100, MODERATION_LIST_MAX_ROWS);
+        const cursor = parseCursor(page?.cursor);
+        const rows = await tx.execute<{ id: string; organization_id: string; reason: string; held_by: string; created_at: Date | string; released_at: Date | string | null; released_by: string | null }>(sql`SELECT * FROM indicate_private.hold_list(${id}::uuid, ${lim}, ${cursor?.createdAt ?? null}::timestamptz, ${cursor?.id ?? null}::uuid)`);
         return rows.map((row) => Object.freeze({
           id: row.id, orgId: row.organization_id, reason: row.reason, heldBy: row.held_by,
           createdAt: iso(row.created_at),
@@ -186,12 +194,14 @@ export class DrizzleModerationRepository implements ModerationRepository {
     }
   }
 
-  async listErasureRequests(actor: ActorContext): Promise<readonly ErasureRequestRecord[]> {
+  async listErasureRequests(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly ErasureRequestRecord[]> {
     const { id } = userActor(actor);
     try {
       return await this.database.transaction(async (tx) => {
         await this.moderationContext(tx, actor);
-        const rows = await tx.execute<{ id: string; organization_id: string; requested_by: string; reason: string; status: ErasureRequestRecord['status']; scheduled_for: Date | string; attempts: number; completed_at: Date | string | null; created_at: Date | string }>(sql`SELECT * FROM indicate_private.erasure_request_list(${id}::uuid)`);
+        const lim = clampLimit(page?.limit, 100, MODERATION_LIST_MAX_ROWS);
+        const cursor = parseCursor(page?.cursor);
+        const rows = await tx.execute<{ id: string; organization_id: string; requested_by: string; reason: string; status: ErasureRequestRecord['status']; scheduled_for: Date | string; attempts: number; completed_at: Date | string | null; created_at: Date | string }>(sql`SELECT * FROM indicate_private.erasure_request_list(${id}::uuid, ${lim}, ${cursor?.createdAt ?? null}::timestamptz, ${cursor?.id ?? null}::uuid)`);
         return rows.map((row) => Object.freeze({
           id: row.id, orgId: row.organization_id, requestedBy: row.requested_by, reason: row.reason,
           status: row.status, scheduledFor: iso(row.scheduled_for), attempts: row.attempts,

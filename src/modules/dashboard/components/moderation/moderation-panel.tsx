@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, Flag, Hourglass, Lock, Ticket, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +64,7 @@ interface ErasureRow {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const response = await fetch(path, { cache: 'no-store', ...init });
+  const response = await fetch(path, init);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as unknown;
 }
@@ -108,11 +108,13 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
   const [privacyType, setPrivacyType] = useState('access');
   const [privacyDetails, setPrivacyDetails] = useState('');
 
+  const requestSeq = useRef(0);
   const reload = useCallback(async () => {
+    const seq = ++requestSeq.current;
     setBusy(true);
     setError(null);
     const load = async <T,>(scope: string): Promise<T> => {
-      const response = await fetch(`/api/dashboard/moderation?scope=${encodeURIComponent(scope)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/dashboard/moderation?scope=${encodeURIComponent(scope)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return (await response.json()) as T;
     };
@@ -123,14 +125,16 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
         load<readonly HoldRow[]>('holds'),
         load<readonly ErasureRow[]>('erasure-requests'),
       ]);
+      if (seq !== requestSeq.current) return;
       setReports(reportBody);
       setPrivacy(privacyBody);
       setHolds(holdsBody);
       setErasures(erasureBody);
     } catch {
+      if (seq !== requestSeq.current) return;
       setError('Gagal memuat data moderasi.');
     } finally {
-      setBusy(false);
+      if (seq === requestSeq.current) setBusy(false);
     }
   }, []);
 

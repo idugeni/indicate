@@ -34,12 +34,21 @@ const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
  * ones can only be removed, never grown. Lower an entry as its owner fixes it.
  */
 const BUDGET = new Map([
-  // Whole-tenant diff state. `load()` feeds `execute()`, which persists by
-  // comparing the loaded state to the mutated one, so a row ceiling here would
-  // silently truncate the diff and delete live records. It is deliberately left
-  // unbounded until the diff moves into SQL; see AGENTS.md §"Database access
-  // & egress" and docs/architecture-rules.md §5.
-  ['src/data/repos/dashboard.ts', 24],
+  // Dashboard tenant reads. The old whole-tenant `load()` hydration (17
+  // tables per GET and per mutation) was split per operation in the 2026-10
+  // remediation: six scoped read models (`readConfigurationScope`,
+  // `readPublisherScope`, `readEditorialScope`, `readTaxonomyScope`,
+  // `readPublisherClaimScope`, `readNetworkArticlesScope`) plus scoped
+  // `execute()` that hydrates only the mutation's collections and trips on
+  // out-of-scope access. Every chain below carries an `organization_id`
+  // predicate and a narrow projection (article bodies are matched in `WHERE`
+  // but never selected); growth tables use raw-SQL filters or keyset
+  // pagination instead. The chain count rose because reads are now explicit
+  // per operation; per-request rows collapsed. Recorded reason for the
+  // higher count: hydration split, enforced by
+  // `src/data/repos/dashboard-scopes.test.ts`. Lower it again only by
+  // deleting chains, never by adding `.limit()` truncation.
+  ['src/data/repos/dashboard.ts', 54],
   // Job-scoped fan-out. A job targets at most the publication batch size, so
   // these read one job's targets, never a growing collection.
   ['src/data/repos/publishing/repository.ts', 19],

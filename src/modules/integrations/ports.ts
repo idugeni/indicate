@@ -48,7 +48,7 @@ export interface IntegrationsRepository {
   completeReplay(source: string, replayId: string, bodyDigest: string, claimToken: string, outcome: Readonly<Record<string, unknown>>, now: string): Promise<WebhookReplayClaim>;
   rejectReplay(source: string, replayId: string, bodyDigest: string, claimToken: string, outcome: Readonly<Record<string, unknown>>, now: string): Promise<WebhookReplayClaim>;
 
-  listCustomers(platformActor: AuthorizedTenantActorContext): Promise<readonly CustomerProjection[]>;
+  listCustomers(platformActor: AuthorizedTenantActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly CustomerProjection[]>;
   readCustomer(platformActor: AuthorizedTenantActorContext, organizationId: string): Promise<CustomerProjection | null>;
   createCustomer(platformActor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly subscriptionId?: never; readonly name: string; readonly slug: string; readonly customerMetadata: Readonly<Record<string, unknown>>; readonly subscription?: Omit<SubscriptionRecord, 'organizationId' | 'version' | 'createdAt' | 'updatedAt'>; readonly now: string }): Promise<CustomerProjection>;
   updateCustomer(platformActor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly expectedVersion: number; readonly name: string; readonly slug: string; readonly status: 'active' | 'inactive' | 'archived'; readonly customerMetadata: Readonly<Record<string, unknown>>; readonly now: string }): Promise<CustomerProjection>;

@@ -4,7 +4,9 @@ import type { MediaPurpose } from '@/modules/publishing/object-key';
 import { INLINE_COMPRESS, formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 import { normalizeImageSource } from '@/modules/publishing/heic-source';
 
-type CommandFn = (action: string, payload: unknown) => Promise<unknown>;
+import type { DashboardCommand } from '@/modules/dashboard/command';
+
+type CommandFn = DashboardCommand;
 type PrepareFn = typeof prepareImageUpload;
 type FetchFn = typeof fetch;
 
@@ -83,7 +85,7 @@ export async function uploadEditorImage(
     purpose: options.purpose ?? 'article-inline',
     owner,
     ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
-  })) as ReservationResponse | null;
+  }, { quiet: true })) as ReservationResponse | null;
   if (reserved?.reservationId === undefined || reserved.authorization?.url === undefined || reserved.authorization.requiredHeaders === undefined) {
     throw new Error('Gagal menyiapkan penyimpanan. Coba lagi.');
   }

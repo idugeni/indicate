@@ -11,6 +11,7 @@ import { SearchCombobox } from '@/modules/dashboard/components/shared/search-com
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { createInviteSecret, formatInviteCode, hashInviteCode } from '@/modules/dashboard/components/shared/invite-code';
+import { cachedJsonGet, invalidateEndpoint } from '@/modules/dashboard/components/shared/endpoint-cache';
 import { slugify } from '@/modules/site/slugify';
 
 interface CustomerOption {
@@ -130,12 +131,11 @@ export function CustomerManagement({
     let cancelled = false;
     void (async () => {
       try {
-        const response = await fetch(
-          `/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=customers`,
-          { cache: 'no-store' },
+        const body = await cachedJsonGet(
+          `integrations:customers:${organizationId}`,
+          `/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=customers`
         );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        if (!cancelled) setCustomers(selectCustomerOptions(await response.json()));
+        if (!cancelled) setCustomers(selectCustomerOptions(body));
       } catch {
         if (!cancelled) setCustomers([]);
       } finally {
@@ -186,6 +186,7 @@ export function CustomerManagement({
           body: JSON.stringify({ action: 'invite.create', payload: { orgId, roleId, email, tokenHash } }),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        invalidateEndpoint('integrations:customers:' + organizationId);
         setInviteCode(formatInviteCode(orgId, email, secret));
         setInviteNotice('Undangan aktif 24 jam, sekali pakai. Salin kode di bawah untuk penerima.');
       } catch {

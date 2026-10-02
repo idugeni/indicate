@@ -111,13 +111,13 @@ async function handleGET(request: Request) {
       });
       if (!listed.ok) return NextResponse.json(listed.error, { status: statusFor(listed.error) });
       const counts = await context.repository.mediaOwnerCounts(context.actor).catch(() => []);
-      return NextResponse.json({ media: listed.value.items, nextCursor: listed.value.nextCursor, mediaCounts: counts, articles: snapshot.articles, sites: snapshot.sites });
+      return NextResponse.json({ media: listed.value.items, nextCursor: listed.value.nextCursor, mediaCounts: counts, articles: snapshot.articles, sites: snapshot.sites, truncated: snapshot.truncated });
     }
     if (!context.actor.permissionSet.has(PUBLISHING_PERMISSIONS.publishingRead)) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (parsed.data.jobId !== undefined) { const result = await context.publication.status(context.actor, { jobId: parsed.data.jobId }); return result.ok ? NextResponse.json(result.value) : NextResponse.json(result.error, { status: statusFor(result.error) }); }
     const snapshot = await context.repository.snapshot(context.actor.organizationId, context.actor.regionScopeId ?? null, PUBLISHING_SNAPSHOT_COLLECTIONS);
     if (snapshot === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    return NextResponse.json({ articles: snapshot.articles, domains: snapshot.domains, sites: snapshot.sites, articleSites: snapshot.articleSites });
+    return NextResponse.json({ articles: snapshot.articles, domains: snapshot.domains, sites: snapshot.sites, articleSites: snapshot.articleSites, truncated: snapshot.truncated });
   }
 }
 

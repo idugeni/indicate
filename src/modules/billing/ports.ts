@@ -8,7 +8,7 @@ export interface BillingRepository {
   readSubscriptionState(actor: ActorContext, organizationId: string): Promise<string>;
   createInvitation(actor: ActorContext, input: { readonly orgId: string; readonly roleId: string; readonly email: string; readonly tokenHash: string; readonly requestId: string; readonly now: string }): Promise<string>;
   redeemInvitation(actor: ActorContext, input: { readonly tokenHash: string; readonly requestId: string; readonly now: string }): Promise<string>;
-  listInvoices(actor: ActorContext, organizationId: string): Promise<readonly InvoiceRecord[]>;
+  listInvoices(actor: ActorContext, organizationId: string, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly InvoiceRecord[]>;
   createInvoice(actor: ActorContext, input: { readonly organizationId: string; readonly amountIdr: number; readonly paidAt: string; readonly billingNote: string | null; readonly paymentMethod: string; readonly requestId: string; readonly now: string }): Promise<InvoiceRecord>;
   issueInvoice(actor: ActorContext, input: { readonly organizationId: string; readonly amountIdr: number; readonly dueAt: string; readonly billingNote: string | null; readonly requestId: string; readonly now: string }): Promise<InvoiceRecord>;
   payInvoice(actor: ActorContext, input: { readonly invoiceId: string; readonly expectedVersion: number; readonly paidAt: string; readonly paymentMethod: string; readonly requestId: string; readonly now: string }): Promise<InvoiceRecord>;

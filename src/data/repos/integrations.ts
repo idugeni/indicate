@@ -2,13 +2,14 @@ import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import { publicApiKeyRecord, type CustomerProjection, type StoredApiKey, type SubscriptionRecord, type WebhookReplayClaim } from '@/modules/integrations/models';
+import { publicApiKeyRecord, type ApiKeyRecord, type CustomerProjection, type StoredApiKey, type SubscriptionRecord, type WebhookReplayClaim } from '@/modules/integrations/models';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { SOLO_ADMIN_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { IntegrationsAccessDeniedError, IntegrationsConflictError, IntegrationsSubscriptionInactiveError, type NewStoredApiKey, type ReplayClaimInput, type ReplayClaimResult, type IntegrationsRepository } from '@/modules/integrations/ports';
 import { redact } from '@/core/security/redaction';
 import { apiKeys, auditLogs, memberships, permissions, regions, rolePermissions, roles, subscriptions } from '@/data/schema';
 import type * as schema from '@/data/schema';
+import { clampLimit, parseCursor } from '@/data/repos/shared/list-page';
 
 type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -23,6 +24,7 @@ const POSTGRES_TIMESTAMP = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(
  * §"Database access & egress".
  */
 const API_KEY_LIST_MAX_ROWS = 500;
+const CUSTOMER_LIST_MAX_ROWS = 500;
 
 export function normalizeIntegrationsTimestamp(value: RawTimestamp): string {
   if (value instanceof Date) {
@@ -49,6 +51,26 @@ function deniedViolation(error: unknown): boolean { return typeof error === 'obj
 
 function mapKey(row: typeof apiKeys.$inferSelect): StoredApiKey {
   return { id: row.id, organizationId: row.organizationId, lookupId: row.lookupId, name: row.name, salt: row.salt, verificationHash: row.verificationHash, scopes: row.scopes, status: row.status, predecessorId: row.predecessorId, expiresAt: optionalIso(row.expiresAt), lastUsedAt: optionalIso(row.lastUsedAt), version: row.version, regionId: row.regionId, createdAt: normalizeIntegrationsTimestamp(row.createdAt), updatedAt: normalizeIntegrationsTimestamp(row.updatedAt) };
+}
+/** Public list projection: secrets (`salt`, `verificationHash`) never leave the database on list/read paths. */
+const apiKeyPublicProjection = {
+  id: apiKeys.id, organizationId: apiKeys.organizationId, lookupId: apiKeys.lookupId, name: apiKeys.name,
+  scopes: apiKeys.scopes, status: apiKeys.status, predecessorId: apiKeys.predecessorId, expiresAt: apiKeys.expiresAt,
+  lastUsedAt: apiKeys.lastUsedAt, version: apiKeys.version, regionId: apiKeys.regionId,
+  createdAt: apiKeys.createdAt, updatedAt: apiKeys.updatedAt,
+};
+function mapProjectedKey(row: {
+  readonly id: string; readonly organizationId: string; readonly lookupId: string; readonly name: string;
+  readonly scopes: readonly string[]; readonly status: StoredApiKey['status']; readonly predecessorId: string | null;
+  readonly expiresAt: RawTimestamp | null; readonly lastUsedAt: RawTimestamp | null; readonly version: number;
+  readonly regionId: string | null; readonly createdAt: RawTimestamp; readonly updatedAt: RawTimestamp;
+}): ApiKeyRecord {
+  return {
+    id: row.id, organizationId: row.organizationId, lookupId: row.lookupId, name: row.name,
+    scopes: [...row.scopes], status: row.status, predecessorId: row.predecessorId,
+    expiresAt: optionalIso(row.expiresAt), lastUsedAt: optionalIso(row.lastUsedAt), version: row.version,
+    regionId: row.regionId, createdAt: normalizeIntegrationsTimestamp(row.createdAt), updatedAt: normalizeIntegrationsTimestamp(row.updatedAt),
+  };
 }
 type RawApiKeyRow = {
   organization_id: string; id: string; lookup_id: string; name: string; salt: string;
@@ -128,12 +150,12 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
     try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.apiKeyManage); await this.enforceWritableSubscription(tx, actor); await this.authorizeApiKeyScopes(tx, actor, input.scopes); await this.requireOwnRegion(tx, actor, input.regionId); const rows = await tx.insert(apiKeys).values(this.keyValues(input)).returning(); await this.audit(tx, actor, actor.organizationId, 'api_key.issue', 'api_key', input.id, { name: input.name, scopes: input.scopes, expiresAt: input.expiresAt }, new Date(input.now)); return publicApiKeyRecord(mapKey(rows[0]!)); }); } catch (error) { if (uniqueViolation(error)) throw new IntegrationsConflictError(); throw error; }
   }
   async rotateApiKey(actor: AuthorizedTenantActorContext, priorId: string, expectedVersion: number, input: NewStoredApiKey) {
-    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.apiKeyManage); await this.enforceWritableSubscription(tx, actor); await this.authorizeApiKeyScopes(tx, actor, input.scopes); await this.requireOwnRegion(tx, actor, input.regionId); const priorRows = await tx.select().from(apiKeys).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, priorId), eq(apiKeys.status, 'active'))).limit(1).for('update'); const prior = priorRows[0]; if (prior === undefined) throw new IntegrationsAccessDeniedError(); if (prior.version !== expectedVersion) throw new IntegrationsConflictError(); const revoked = await tx.update(apiKeys).set({ status: 'revoked', version: prior.version + 1, updatedAt: new Date(input.now) }).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, prior.id), eq(apiKeys.version, expectedVersion), eq(apiKeys.status, 'active'))).returning({ id: apiKeys.id }); if (revoked.length !== 1) throw new IntegrationsConflictError(); const rows = await tx.insert(apiKeys).values(this.keyValues(input)).returning(); await this.audit(tx, actor, actor.organizationId, 'api_key.rotate', 'api_key', input.id, { predecessorId: prior.id, name: input.name, scopes: input.scopes }, new Date(input.now)); return publicApiKeyRecord(mapKey(rows[0]!)); }); } catch (error) { if (uniqueViolation(error)) throw new IntegrationsConflictError(); throw error; }
+    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.apiKeyManage); await this.enforceWritableSubscription(tx, actor); await this.authorizeApiKeyScopes(tx, actor, input.scopes); await this.requireOwnRegion(tx, actor, input.regionId); const priorRows = await tx.select(apiKeyPublicProjection).from(apiKeys).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, priorId), eq(apiKeys.status, 'active'))).limit(1).for('update'); const prior = priorRows[0]; if (prior === undefined) throw new IntegrationsAccessDeniedError(); if (prior.version !== expectedVersion) throw new IntegrationsConflictError(); const revoked = await tx.update(apiKeys).set({ status: 'revoked', version: prior.version + 1, updatedAt: new Date(input.now) }).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, prior.id), eq(apiKeys.version, expectedVersion), eq(apiKeys.status, 'active'))).returning({ id: apiKeys.id }); if (revoked.length !== 1) throw new IntegrationsConflictError(); const rows = await tx.insert(apiKeys).values(this.keyValues(input)).returning(); await this.audit(tx, actor, actor.organizationId, 'api_key.rotate', 'api_key', input.id, { predecessorId: prior.id, name: input.name, scopes: input.scopes }, new Date(input.now)); return publicApiKeyRecord(mapKey(rows[0]!)); }); } catch (error) { if (uniqueViolation(error)) throw new IntegrationsConflictError(); throw error; }
   }
   async revokeApiKey(actor: AuthorizedTenantActorContext, id: string, expectedVersion: number, now: string) {
-    return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.apiKeyManage); const rows = await tx.select().from(apiKeys).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, id))).limit(1).for('update'); const prior = rows[0]; if (prior === undefined) throw new IntegrationsAccessDeniedError(); if (prior.version !== expectedVersion) throw new IntegrationsConflictError(); if (prior.status !== 'active') return publicApiKeyRecord(mapKey(prior)); const changed = await tx.update(apiKeys).set({ status: 'revoked', version: prior.version + 1, updatedAt: new Date(now) }).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, id), eq(apiKeys.version, expectedVersion))).returning(); if (changed.length !== 1) throw new IntegrationsConflictError(); await this.audit(tx, actor, actor.organizationId, 'api_key.revoke', 'api_key', id, { status: 'revoked' }, new Date(now)); return publicApiKeyRecord(mapKey(changed[0]!)); });
+    return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorize(tx, actor, INTEGRATIONS_PERMISSIONS.apiKeyManage); const rows = await tx.select(apiKeyPublicProjection).from(apiKeys).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, id))).limit(1).for('update'); const prior = rows[0]; if (prior === undefined) throw new IntegrationsAccessDeniedError(); if (prior.version !== expectedVersion) throw new IntegrationsConflictError(); if (prior.status !== 'active') return mapProjectedKey(prior); const changed = await tx.update(apiKeys).set({ status: 'revoked', version: prior.version + 1, updatedAt: new Date(now) }).where(and(eq(apiKeys.organizationId, actor.organizationId), eq(apiKeys.id, id), eq(apiKeys.version, expectedVersion))).returning(); if (changed.length !== 1) throw new IntegrationsConflictError(); await this.audit(tx, actor, actor.organizationId, 'api_key.revoke', 'api_key', id, { status: 'revoked' }, new Date(now)); return publicApiKeyRecord(mapKey(changed[0]!)); });
   }
-  async listApiKeys(actor: AuthorizedTenantActorContext) { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [INTEGRATIONS_PERMISSIONS.apiKeyRead, INTEGRATIONS_PERMISSIONS.apiKeyManage]); const rows = await tx.select().from(apiKeys).where(eq(apiKeys.organizationId, actor.organizationId)).orderBy(desc(apiKeys.createdAt)).limit(API_KEY_LIST_MAX_ROWS); return rows.map((row) => publicApiKeyRecord(mapKey(row))); }); }
+  async listApiKeys(actor: AuthorizedTenantActorContext) { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [INTEGRATIONS_PERMISSIONS.apiKeyRead, INTEGRATIONS_PERMISSIONS.apiKeyManage]); const rows = await tx.select(apiKeyPublicProjection).from(apiKeys).where(eq(apiKeys.organizationId, actor.organizationId)).orderBy(desc(apiKeys.createdAt)).limit(API_KEY_LIST_MAX_ROWS); return rows.map((row) => mapProjectedKey(row)); }); }
   async findApiKeyByLookupId(lookupId: string): Promise<StoredApiKey | null> { const rows = await this.database.execute<RawApiKeyRow>(sql`SELECT * FROM indicate_private.resolve_api_key_lookup(${lookupId})`); return rows[0] === undefined ? null : mapRawKey(rows[0]); }
   async recordApiKeyUse(organizationId: string, id: string, now: string): Promise<void> { await this.database.transaction(async (tx) => { await this.context(tx, organizationId, id, 'api-key-authentication'); await tx.update(apiKeys).set({ lastUsedAt: new Date(now), updatedAt: new Date(now) }).where(and(eq(apiKeys.organizationId, organizationId), eq(apiKeys.id, id), eq(apiKeys.status, 'active'), or(isNull(apiKeys.expiresAt), gt(apiKeys.expiresAt, new Date(now))))); }); }
 
@@ -164,13 +186,13 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
     await this.prepareReplayOutcome(source, replayId, bodyDigest, claimToken, 'rejected', outcome, now); return this.finalizeReplay(source, replayId, bodyDigest, claimToken, now);
   }
 
-  private async platformRows(executor: Database | Transaction, actor: AuthorizedTenantActorContext): Promise<CustomerRow[]> { return executor.execute<CustomerRow>(sql`SELECT * FROM indicate_private.customer_list(${actor.actorId}::uuid)`); }
-  async listCustomers(actor: AuthorizedTenantActorContext): Promise<readonly CustomerProjection[]> {
-    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); return (await this.platformRows(tx, actor)).map(mapCustomer); }); }
+  private async platformRows(executor: Database | Transaction, actor: AuthorizedTenantActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<CustomerRow[]> { const cursor = parseCursor(page?.cursor); return executor.execute<CustomerRow>(sql`SELECT * FROM indicate_private.customer_list(${actor.actorId}::uuid, ${clampLimit(page?.limit, 100, CUSTOMER_LIST_MAX_ROWS)}, ${cursor?.createdAt ?? null}::timestamptz, ${cursor?.id ?? null}::uuid)`); }
+  async listCustomers(actor: AuthorizedTenantActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly CustomerProjection[]> {
+    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); return (await this.platformRows(tx, actor, page)).map(mapCustomer); }); }
     catch (error) { if (deniedViolation(error)) throw new IntegrationsAccessDeniedError(); throw error; }
   }
   async readCustomer(actor: AuthorizedTenantActorContext, organizationId: string): Promise<CustomerProjection | null> {
-    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); const value = (await this.platformRows(tx, actor)).find(({ id }) => id === organizationId); return value === undefined ? null : mapCustomer(value); }); }
+    try { return await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); const value = (await this.platformRows(tx, actor, { limit: CUSTOMER_LIST_MAX_ROWS })).find(({ id }) => id === organizationId); return value === undefined ? null : mapCustomer(value); }); }
     catch (error) { if (deniedViolation(error)) throw new IntegrationsAccessDeniedError(); throw error; }
   }
   async createCustomer(actor: AuthorizedTenantActorContext, input: { readonly organizationId: string; readonly name: string; readonly slug: string; readonly customerMetadata: Readonly<Record<string, unknown>>; readonly subscription?: { readonly status: SubscriptionRecord['status'] }; readonly now: string }) {
@@ -255,7 +277,7 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
         await this.actorContext(tx, actor);
         const changed = await command(tx);
         if (!changed[0]?.updated) throw new IntegrationsConflictError();
-        const rows = await tx.select().from(subscriptions).where(eq(subscriptions.organizationId, input.organizationId)).limit(1);
+        const rows = await tx.select({ organizationId: subscriptions.organizationId, status: subscriptions.status, version: subscriptions.version, createdAt: subscriptions.createdAt, updatedAt: subscriptions.updatedAt }).from(subscriptions).where(eq(subscriptions.organizationId, input.organizationId)).limit(1);
         const row = rows[0];
         if (row === undefined) throw new IntegrationsConflictError();
         return { organizationId: row.organizationId, status: row.status, version: row.version, createdAt: normalizeIntegrationsTimestamp(row.createdAt), updatedAt: normalizeIntegrationsTimestamp(row.updatedAt) };
@@ -265,6 +287,6 @@ export class DrizzleIntegrationsRepository implements IntegrationsRepository {
       throw error;
     }
   }
-  async readSubscription(actor: AuthorizedTenantActorContext): Promise<SubscriptionRecord | null> { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [INTEGRATIONS_PERMISSIONS.subscriptionRead, INTEGRATIONS_PERMISSIONS.subscriptionManage]); const rows = await tx.select().from(subscriptions).where(eq(subscriptions.organizationId, actor.organizationId)).limit(1); const row = rows[0]; return row === undefined ? null : { organizationId: row.organizationId, status: row.status, version: row.version, createdAt: normalizeIntegrationsTimestamp(row.createdAt), updatedAt: normalizeIntegrationsTimestamp(row.updatedAt) }; }); }
+  async readSubscription(actor: AuthorizedTenantActorContext): Promise<SubscriptionRecord | null> { return this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await this.authorizeAny(tx, actor, [INTEGRATIONS_PERMISSIONS.subscriptionRead, INTEGRATIONS_PERMISSIONS.subscriptionManage]); const rows = await tx.select({ organizationId: subscriptions.organizationId, status: subscriptions.status, version: subscriptions.version, createdAt: subscriptions.createdAt, updatedAt: subscriptions.updatedAt }).from(subscriptions).where(eq(subscriptions.organizationId, actor.organizationId)).limit(1); const row = rows[0]; return row === undefined ? null : { organizationId: row.organizationId, status: row.status, version: row.version, createdAt: normalizeIntegrationsTimestamp(row.createdAt), updatedAt: normalizeIntegrationsTimestamp(row.updatedAt) }; }); }
   async recordDenial(actor: AuthorizedTenantActorContext, action: string, targetType: string, now: string): Promise<void> { await this.database.transaction(async (tx) => { await this.actorContext(tx, actor); await tx.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action, targetType, targetId: null, outcome: 'denied', changedFields: [], requestId: actor.requestId, occurredAt: new Date(now) }); }); }
 }

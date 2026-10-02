@@ -90,6 +90,13 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
   return 'workspace';
 }
 
+/**
+ * Views whose panels fetch and own their own data; the workspace payload is
+ * discarded for them (see the loading effect below), so a post-mutation
+ * refetch here would only waste one GET per mutation. Panels own refresh.
+ */
+const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['content', 'billing', 'moderation', 'ai']);
+
 const CLOCK_FORMAT = new Intl.DateTimeFormat('id-ID', {
   weekday: 'short',
   day: 'numeric',
@@ -98,6 +105,17 @@ const CLOCK_FORMAT = new Intl.DateTimeFormat('id-ID', {
   minute: '2-digit',
   second: '2-digit',
 });
+
+/**
+ * Command yang berjalan diam: baca frekuensi tinggi yang akan membanjiri
+ * toast dan memicu muat ulang penuh bila diperlakukan seperti mutasi.
+ *
+ * @param action - Nama perintah dasbor (`domain.verb`).
+ * @returns True bila perintah boleh lewat tanpa toast dan tanpa muat ulang.
+ */
+export function isQuietCommand(action: string): boolean {
+  return ['.read', '.readMany', '.list', '.status'].some((suffix) => action.endsWith(suffix));
+}
 
 /** Isolated wall clock: only this component re-renders every second. */
 function LiveClock() {
@@ -181,7 +199,7 @@ export function DashboardWorkspace({
       try {
         const response = await fetch(
           `/api/dashboard/workspace?organizationId=${encodeURIComponent(targetOrg)}&view=analytics`,
-          { cache: 'no-store', ...(signal ? { signal } : {}) },
+          signal ? { signal } : undefined,
         );
         if (!response.ok) return null;
         return (await response.json()) as unknown;
@@ -202,7 +220,7 @@ export function DashboardWorkspace({
       const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}`;
 
       try {
-        const pendingBody = fetch(url, { cache: 'no-store', ...(signal ? { signal } : {}) });
+        const pendingBody = fetch(url, signal ? { signal } : undefined);
         const pendingAnalytics = targetView === 'dashboard' ? fetchAnalytics(targetOrg, signal) : null;
         const response = await pendingBody;
         const [body, analytics] = await Promise.all([
@@ -259,7 +277,7 @@ export function DashboardWorkspace({
       });
       return;
     }
-    if (view === 'content' || view === 'billing' || view === 'moderation' || view === 'ai') {
+    if (SELF_FETCHING_VIEWS.has(view)) {
       void Promise.resolve().then(() => {
         setPayload(null);
         setBusy(false);
@@ -299,7 +317,7 @@ export function DashboardWorkspace({
     setPendingOrgId(nextOrgId);
   }, []);
 
-  const command = useCallback(async (action: string, payload: unknown): Promise<unknown> => {
+  const command = useCallback(async (action: string, payload: unknown, options?: { readonly quiet?: boolean | undefined }): Promise<unknown> => {
     const targetOrg = organizationId;
     setBusy(true);
     setError(null);
@@ -330,18 +348,21 @@ export function DashboardWorkspace({
     };
 
     try {
-      const body = await toast.promise(run(), {
-        loading: `Menjalankan ${action}…`,
-        success: `Perintah ${action} berhasil dijalankan.`,
-        error: (cause) =>
-          cause instanceof TypeError
-            ? 'Gagal menghubungi server saat mengirim perintah.'
-            : cause instanceof Error
-              ? cause.message
-              : 'Gagal menjalankan perintah.',
-      }).unwrap();
+      const quiet = options?.quiet === true || isQuietCommand(action);
+      const body = quiet
+        ? await run()
+        : await toast.promise(run(), {
+          loading: `Menjalankan ${action}…`,
+          success: `Perintah ${action} berhasil dijalankan.`,
+          error: (cause) =>
+            cause instanceof TypeError
+              ? 'Gagal menghubungi server saat mengirim perintah.'
+              : cause instanceof Error
+                ? cause.message
+                : 'Gagal menjalankan perintah.',
+        }).unwrap();
       if (body === null || activeOrgRef.current !== targetOrg) return null;
-      void fetchData(view, targetOrg, filterQuery);
+      if (!quiet && !SELF_FETCHING_VIEWS.has(view)) void fetchData(view, targetOrg, filterQuery);
       return body;
     } catch (err: unknown) {
       if (activeOrgRef.current === targetOrg) {

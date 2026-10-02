@@ -75,10 +75,10 @@ export class BillingService {
     }
   }
 
-  async listInvoices(actor: ActorContext, organizationId: string): Promise<Result<readonly InvoiceRecord[], PublicErrorEnvelope>> {
+  async listInvoices(actor: ActorContext, organizationId: string, page?: { readonly limit?: number; readonly cursor?: string }): Promise<Result<readonly InvoiceRecord[], PublicErrorEnvelope>> {
     if (!this.userActor(actor)) return this.denied(actor.requestId);
     try {
-      return { ok: true, value: await this.repository.listInvoices(actor, organizationId) };
+      return { ok: true, value: await this.repository.listInvoices(actor, organizationId, page) };
     } catch (error) {
       return this.error(actor.requestId, 'invoice.list', error);
     }

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { clearEndpointCache } from '@/modules/dashboard/components/shared/endpoint-cache';
 import { BillingPanel } from '@/modules/dashboard/components/billing/billing-panel';
 
 const CUSTOMERS = [
@@ -60,6 +61,7 @@ function stubBillingWithCapture(state: string, invoices: unknown[]) {
 
 afterEach(() => {
   cleanup();
+  clearEndpointCache();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });

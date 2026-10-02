@@ -1,3 +1,4 @@
+import { pageFromSearchParams } from '@/data/repos/shared/list-page';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -71,7 +72,8 @@ async function handleGET(request: Request) {
         return result.ok ? NextResponse.json(result.value) : response(result.error);
       }
       if (scope === 'invoices' && parsed.data.organizationId !== undefined) {
-        const result = await service.listInvoices(session.actor, parsed.data.organizationId);
+        const page = pageFromSearchParams(url);
+        const result = await service.listInvoices(session.actor, parsed.data.organizationId, page);
         return result.ok ? NextResponse.json(result.value) : response(result.error);
       }
       return response(createPublicError('INVALID_INPUT', 'Invalid billing query.', requestId));

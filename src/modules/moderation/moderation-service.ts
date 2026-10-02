@@ -48,10 +48,10 @@ export class ModerationService {
     }
   }
 
-  async listReports(actor: ActorContext): Promise<Result<readonly ContentReportRecord[], PublicErrorEnvelope>> {
+  async listReports(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<Result<readonly ContentReportRecord[], PublicErrorEnvelope>> {
     if (!this.userActor(actor)) return this.denied(actor.requestId);
     try {
-      return { ok: true, value: await this.repository.listReports(actor) };
+      return { ok: true, value: await this.repository.listReports(actor, page) };
     } catch (error) {
       return this.error(actor.requestId, 'report.list', error);
     }
@@ -88,10 +88,10 @@ export class ModerationService {
     }
   }
 
-  async listPrivacyRequests(actor: ActorContext): Promise<Result<readonly PrivacyRequestRecord[], PublicErrorEnvelope>> {
+  async listPrivacyRequests(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<Result<readonly PrivacyRequestRecord[], PublicErrorEnvelope>> {
     if (!this.userActor(actor)) return this.denied(actor.requestId);
     try {
-      return { ok: true, value: await this.repository.listPrivacyRequests(actor) };
+      return { ok: true, value: await this.repository.listPrivacyRequests(actor, page) };
     } catch (error) {
       return this.error(actor.requestId, 'privacy.list', error);
     }
@@ -110,10 +110,10 @@ export class ModerationService {
     }
   }
 
-  async listHolds(actor: ActorContext): Promise<Result<readonly LitigationHoldRecord[], PublicErrorEnvelope>> {
+  async listHolds(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<Result<readonly LitigationHoldRecord[], PublicErrorEnvelope>> {
     if (!this.userActor(actor)) return this.denied(actor.requestId);
     try {
-      return { ok: true, value: await this.repository.listHolds(actor) };
+      return { ok: true, value: await this.repository.listHolds(actor, page) };
     } catch (error) {
       return this.error(actor.requestId, 'hold.list', error);
     }
@@ -150,10 +150,10 @@ export class ModerationService {
     }
   }
 
-  async listErasureRequests(actor: ActorContext): Promise<Result<readonly ErasureRequestRecord[], PublicErrorEnvelope>> {
+  async listErasureRequests(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<Result<readonly ErasureRequestRecord[], PublicErrorEnvelope>> {
     if (!this.userActor(actor)) return this.denied(actor.requestId);
     try {
-      return { ok: true, value: await this.repository.listErasureRequests(actor) };
+      return { ok: true, value: await this.repository.listErasureRequests(actor, page) };
     } catch (error) {
       return this.error(actor.requestId, 'erasure.list', error);
     }

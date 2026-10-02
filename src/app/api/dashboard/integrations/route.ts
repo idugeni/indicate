@@ -1,3 +1,4 @@
+import { pageFromSearchParams } from '@/data/repos/shared/list-page';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -56,7 +57,7 @@ async function handleGET(request: Request) {
   const requestId = resolveRequestId(request); const url = new URL(request.url); const parsed = querySchema.safeParse({ organizationId: url.searchParams.get('organizationId'), view: url.searchParams.get('view'), customerId: url.searchParams.get('customerId') ?? undefined }); if (!parsed.success) return response(createNonDisclosingDenial(requestId));
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return response(context);
   {
-    if (parsed.data.view === 'customers') { const result = parsed.data.customerId === undefined ? await context.customers.list(context.actor) : await context.customers.read(context.actor, parsed.data.customerId); return result.ok ? NextResponse.json(result.value) : response(result.error); }
+    if (parsed.data.view === 'customers') { const page = pageFromSearchParams(url); const result = parsed.data.customerId === undefined ? await context.customers.list(context.actor, page) : await context.customers.read(context.actor, parsed.data.customerId); return result.ok ? NextResponse.json(result.value) : response(result.error); }
     if (parsed.data.view === 'ai') { const result = await context.ai.overview(context.actor); return result.ok ? NextResponse.json(result.value) : response(result.error); }
     const [keys, accessKeys, subscription] = await Promise.all([context.apiKeys.list(context.actor), context.accessKeys.list(context.actor), context.customers.readSubscription(context.actor)]); if (!keys.ok) return response(keys.error); if (!accessKeys.ok) return response(accessKeys.error); if (!subscription.ok) return response(subscription.error); return NextResponse.json({ apiKeys: keys.value, accessKeys: accessKeys.value, subscription: subscription.value, email: context.emailStatus });
   }

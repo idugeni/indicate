@@ -199,9 +199,18 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [items, setItems] = useState<readonly LibraryMedia[]>(model?.media ?? []);
   const [cursor, setCursor] = useState<string | null>(model?.nextCursor ?? null);
-  const [serverCounts] = useState<readonly { readonly kind: MediaOwnerKind; readonly count: number; readonly bytes: number }[] | null>(model?.mediaCounts ?? null);
+  const [serverCounts, setServerCounts] = useState<readonly { readonly kind: MediaOwnerKind; readonly count: number; readonly bytes: number }[] | null>(model?.mediaCounts ?? null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [syncedData, setSyncedData] = useState<unknown>(data);
+  if (syncedData !== data) {
+    setSyncedData(data);
+    const snapshot = data as LibraryModel | null;
+    setItems(snapshot?.media ?? []);
+    setCursor(snapshot?.nextCursor ?? null);
+    setServerCounts(snapshot?.mediaCounts ?? null);
+    setLimit(PAGE_SIZE);
+  }
 
   const [previewCache, setPreviewCache] = useState<Record<string, SignedAssetAuthorization>>({});
   const [loadingMediaId, setLoadingMediaId] = useState<string | null>(null);
@@ -288,6 +297,7 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
   }, [command]);
 
   const firstLoad = useRef(true);
+  const requestSeq = useRef(0);
   useEffect(() => {
     if (firstLoad.current) {
       firstLoad.current = false;
@@ -296,6 +306,7 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
     const timer = window.setTimeout(() => {
       const run = commandRef.current;
       setListError(null);
+      const seq = ++requestSeq.current;
       void (async () => {
         try {
           const page = readPage(
@@ -308,10 +319,12 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
             }),
           );
           if (page === null) return;
+          if (seq !== requestSeq.current) return;
           setItems(page.items);
           setCursor(page.next);
           setLimit(PAGE_SIZE);
         } catch {
+          if (seq !== requestSeq.current) return;
           setListError('Gagal memuat ulang daftar media.');
         }
       })();

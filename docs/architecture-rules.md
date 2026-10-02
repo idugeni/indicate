@@ -87,9 +87,12 @@ The short version for contributors:
   hit/miss, and connection churn. Never claim an egress reduction without
   evidence, and label derived estimates as derived.
 
-Measured offenders already in the tree are catalogued in `AGENTS.md` §8.
-Fixing them is separate work; this rule exists so the next change does not
-add to them.
+Measured offenders already in the tree are pinned by `scripts/perf/db-access-budget.mjs`
+(each entry carries its recorded reason) and by the scope tests in
+`src/data/repos/dashboard-scopes.test.ts`. The 2026-10 dashboard remediation
+split the whole-tenant hydration into per-operation scoped reads and scoped
+`execute()`; keep it that way — do not reintroduce unscoped reads or
+full-state diffs when touching these paths.
 
 ## Verification
 

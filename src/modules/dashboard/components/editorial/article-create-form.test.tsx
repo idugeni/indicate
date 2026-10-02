@@ -413,7 +413,7 @@ describe('Formulir tulis artikel', () => {
       const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
       expect(input).not.toBeNull();
       fireEvent.change(input, { target: { files: [file] } });
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ filename: 'sampul.png' })));
+      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ filename: 'sampul.png' }), { quiet: true }));
       await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }));
       fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
       fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
@@ -547,7 +547,7 @@ describe('Formulir tulis artikel', () => {
     expect(screen.queryByText('2 portal apex')).toBe(null);
   });
 
-  it('menayangkan artikel tersimpan lewat satu formulir dengan varian unik per portal', async () => {
+  it('menayangkan artikel tersimpan dengan judul kanonik apa adanya di semua portal', async () => {
     const user = userEvent.setup();
     const { cmd, container } = setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
@@ -559,7 +559,7 @@ describe('Formulir tulis artikel', () => {
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(cmd).toHaveBeenCalledWith(
-        'publication.suggest',
+        'publication.request',
         expect.objectContaining({ articleId: 'art-baru', siteIds: ['s-city-1'] }),
       ),
     );
@@ -568,9 +568,7 @@ describe('Formulir tulis artikel', () => {
       articleId: 'art-baru',
       siteIds: ['s-city-1'],
       options: { mode: 'immediate' },
-      overrides: {
-        's-city-1': { title: 'Judul portal 0', description: 'Deskripsi portal 0.' },
-      },
+      overrides: {},
     }));
   });
 
@@ -584,9 +582,8 @@ describe('Formulir tulis artikel', () => {
         onSubmit={async () => ({ id: 'art-besar', slug: 'judul-uji' })}
         command={async (action, payload) => {
           const { siteIds } = payload as { readonly siteIds: readonly string[] };
-          if (action === 'publication.suggest') {
+          if (action === 'publication.request') {
             seen.push(siteIds.length);
-            return { overrides: Object.fromEntries(siteIds.map((id) => [id, { title: `T${id}`, description: `D${id} yang berbeda.` }])) };
           }
           return {};
         }}
@@ -603,9 +600,12 @@ describe('Formulir tulis artikel', () => {
     expect(seen).toEqual([100, 34]);
   });
 
-  it('menahan penerbitan bila varian portal tidak lengkap', async () => {
+  it('menampilkan galat bila permintaan penerbitan gagal', async () => {
     const user = userEvent.setup();
-    const cmd = vi.fn(async (action: string) => (action === 'publication.suggest' ? { overrides: {} } : {}));
+    const cmd = vi.fn(async (action: string) => {
+      if (action === 'publication.request') throw new Error('request failed');
+      return {};
+    });
     const { container } = render(
       <ArticleCreateForm data={DATA} onSubmit={async () => ({ id: 'art-var', slug: 'judul-uji' })} command={cmd} />,
     );
@@ -617,7 +617,7 @@ describe('Formulir tulis artikel', () => {
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(screen.queryByText(/gagal ditayangkan/)).toBeDefined());
-    expect(cmd.mock.calls.some(([action]) => action === 'publication.request')).toBe(false);
+    expect(cmd.mock.calls.some(([action]) => action === 'publication.request')).toBe(true);
   });
 
   it('tidak menayangkan draf meski tayang otomatis nyala', async () => {
@@ -790,9 +790,9 @@ describe('Formulir tulis artikel', () => {
       expect(typeof publishAt === 'string' && new Date(publishAt).getTime() < Date.now()).toBe(true);
     });
     await waitFor(() =>
-      expect(cmd).toHaveBeenCalledWith('article.sites.views.set', {
+      expect(cmd).toHaveBeenCalledWith('article.sites.views.setMany', {
         articleId: 'art-baru',
-        siteId: 's-city-1',
+        siteIds: expect.arrayContaining(['s-city-1']),
         viewCount: 5000,
       }),
     );
@@ -821,7 +821,7 @@ describe('Formulir tulis artikel', () => {
     await waitFor(() => {
       expect(cmd.mock.calls.find(([action]) => action === 'publication.request')).toBeDefined();
     });
-    expect(cmd.mock.calls.find(([action]) => action === 'article.sites.views.set')).toBeUndefined();
+    expect(cmd.mock.calls.find(([action]) => action === 'article.sites.views.setMany')).toBeUndefined();
   });
 
   it('menaikkan dan menurunkan tayangan awal lewat tombol stepper', async () => {
@@ -1012,6 +1012,9 @@ describe('Formulir tulis artikel', () => {
     );
     try {
       const cmd = vi.fn(async (action: string) => {
+        if (action === 'media.readMany') {
+          return { items: [{ mediaId: 'm-lib', url: 'https://r2.example/preview-lib', expiresAt: '2026-10-02T01:00:00.000Z' }] };
+        }
         if (action === 'media.read') return { url: 'https://r2.example/preview-lib' };
         return {};
       });
@@ -1062,6 +1065,9 @@ describe('Formulir tulis artikel', () => {
     );
     try {
       const cmd = vi.fn(async (action: string) => {
+        if (action === 'media.readMany') {
+          return { items: [{ mediaId: 'm-lib', url: 'https://r2.example/preview-lib', expiresAt: '2026-10-02T01:00:00.000Z' }] };
+        }
         if (action === 'media.read') return { url: 'https://r2.example/preview-lib' };
         return {};
       });

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { Loader2, UserRound } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,7 +31,7 @@ async function sha256Hex(file: File): Promise<string> {
 }
 
 async function api(path: string, init?: RequestInit): Promise<unknown> {
-  const response = await fetch(path, { cache: 'no-store', ...init });
+  const response = await fetch(path, init);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as unknown;
 }
@@ -52,9 +52,12 @@ export function ProfileForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const requestSeq = useRef(0);
   const reload = useCallback(async () => {
+    const seq = ++requestSeq.current;
     try {
       const body = (await api('/api/dashboard/profile')) as Profile;
+      if (seq !== requestSeq.current) return;
       setProfile(body);
       setBio(body.bio ?? '');
       setLocale(body.locale ?? '');
@@ -62,6 +65,7 @@ export function ProfileForm() {
       setAvatarFile(null);
       setAvatarMode('keep');
     } catch {
+      if (seq !== requestSeq.current) return;
       setError('Gagal memuat profil.');
     }
   }, []);

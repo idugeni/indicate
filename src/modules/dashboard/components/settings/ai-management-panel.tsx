@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Activity, CheckCircle2, Clock, KeyRound, Play, Plus, Power, ShieldCheck, SlidersHorizontal, TrendingUp, Trash2, Zap } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -304,14 +304,17 @@ export function AiManagementPanel({
   const maxRetriesId = useId();
   const cooldownId = useId();
 
+  const requestSeq = useRef(0);
   const reload = useCallback(async () => {
+    const seq = ++requestSeq.current;
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=ai`, { cache: 'no-store' });
+      const response = await fetch(`/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=ai`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const parsed = toOverview(await response.json());
       if (parsed === null) throw new Error('Bad payload');
+      if (seq !== requestSeq.current) return;
       setOverview(parsed);
       setRotationStrategy(parsed.policy.rotationStrategy);
       setDefaultModel(parsed.policy.defaultModel);
@@ -320,9 +323,10 @@ export function AiManagementPanel({
       setMaxRetries(String(parsed.policy.maxRetries));
       setCooldownDurationSec(String(parsed.policy.cooldownDurationSec));
     } catch {
+      if (seq !== requestSeq.current) return;
       setError('Gagal memuat kontrol AI.');
     } finally {
-      setBusy(false);
+      if (seq === requestSeq.current) setBusy(false);
     }
   }, [organizationId]);
 

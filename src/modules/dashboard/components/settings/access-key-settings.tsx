@@ -63,11 +63,9 @@ function formatDate(value: string | null): string {
 export function AccessKeySettings({
   command,
   data,
-  onRefresh,
 }: {
   readonly command: (action: string, payload: unknown) => Promise<unknown>;
   readonly data: unknown;
-  readonly onRefresh: () => void;
 }) {
   const nameId = useId();
   const [presetDays, setPresetDays] = useState<number | null>(30);
@@ -91,7 +89,6 @@ export function AccessKeySettings({
       if (result?.plaintext) {
         setIssuedLink(`${window.location.origin}/auth/access-key?key=${encodeURIComponent(result.plaintext)}`);
         form.reset();
-        onRefresh();
       }
     });
   };
@@ -111,7 +108,6 @@ export function AccessKeySettings({
     void (async () => {
       try {
         await command('access-key.revoke', { accessKeyId: item.id, expectedVersion: item.version });
-        onRefresh();
       } finally {
         setRevokingId(null);
       }

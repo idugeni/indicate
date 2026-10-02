@@ -20,9 +20,9 @@ export class CustomerService {
   }
   private failure(actor: AuthorizedTenantActorContext): Result<never, PublicErrorEnvelope> { return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Customer administration is temporarily unavailable.', actor.requestId) }; }
 
-  async list(actor: AuthorizedTenantActorContext): Promise<Result<readonly CustomerProjection[], PublicErrorEnvelope>> {
+  async list(actor: AuthorizedTenantActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<Result<readonly CustomerProjection[], PublicErrorEnvelope>> {
     if (!this.platform(actor)) return this.denied(actor, 'customer.list.denied', 'organization');
-    try { return { ok: true, value: await this.repository.listCustomers(actor) }; } catch (error) { return error instanceof IntegrationsAccessDeniedError ? this.denied(actor, 'customer.list.denied', 'organization') : this.failure(actor); }
+    try { return { ok: true, value: await this.repository.listCustomers(actor, page) }; } catch (error) { return error instanceof IntegrationsAccessDeniedError ? this.denied(actor, 'customer.list.denied', 'organization') : this.failure(actor); }
   }
   async read(actor: AuthorizedTenantActorContext, organizationId: string): Promise<Result<CustomerProjection, PublicErrorEnvelope>> {
     if (!this.platform(actor)) return this.denied(actor, 'customer.read.denied', 'organization');

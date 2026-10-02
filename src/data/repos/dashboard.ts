@@ -4,8 +4,8 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { extractTipTapImages } from '@/modules/site/tiptap-document';
 import { regionScopeCovers } from '@/modules/site/region-scope';
-import type { ActivityHour, RecentActivity, AnalyticsProjection, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay } from '@/modules/dashboard/models';
-import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
+import type { ActivityHour, ArticleRecord, RecentActivity, AnalyticsProjection, ConfigurationScope, EditorialScope, NetworkArticlesScope, PublisherClaimScope, PublisherScope, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay, TaxonomyScope } from '@/modules/dashboard/models';
+import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type DashboardCollectionName, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { redact } from '@/core/security/redaction';
 import { DashboardValidationError } from '@/modules/dashboard/tenant-service-errors';
 import {
@@ -83,7 +83,12 @@ function indexSiteSettingsBy(rows: readonly DashboardTenantState['siteSettings']
 }
 
 /** Build every identity map the mutation diff needs, once per transaction. */
-function buildTenantStateIndex(before: DashboardTenantState, state: MutableTenantState): TenantStateIndex {
+function buildTenantStateIndex(before: DashboardTenantState, state: MutableTenantState, loaded?: ReadonlySet<DashboardCollectionName>): TenantStateIndex {
+  const emptyArticles = new Map<string, DashboardTenantState['articles'][number]>();
+  const emptyArticleSites = new Map<string, DashboardTenantState['articleSites'][number]>();
+  const emptySites = new Map<string, DashboardTenantState['sites'][number]>();
+  const emptyCategories = new Map<string, DashboardTenantState['categories'][number]>();
+  const want = (name: DashboardCollectionName): boolean => loaded === undefined || loaded.has(name);
   return {
     priorDomains: indexBy(before.domains),
     priorRegions: indexBy(before.regions),
@@ -95,10 +100,10 @@ function buildTenantStateIndex(before: DashboardTenantState, state: MutableTenan
     priorPublishers: indexBy(before.publishers),
     priorArticles: indexBy(before.articles),
     priorArticleSites: indexBy(before.articleSites),
-    currentArticles: indexBy(state.articles),
-    currentArticleSites: indexBy(state.articleSites),
-    currentSites: indexBy(state.sites),
-    currentCategories: indexBy(state.categories),
+    currentArticles: want('articles') ? indexBy(state.articles) : emptyArticles,
+    currentArticleSites: want('articleSites') ? indexBy(state.articleSites) : emptyArticleSites,
+    currentSites: want('sites') ? indexBy(state.sites) : emptySites,
+    currentCategories: want('categories') ? indexBy(state.categories) : emptyCategories,
   };
 }
 
@@ -174,45 +179,55 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     if (grants.length !== 1) throw new DashboardAccessDeniedError();
   }
 
-  private async load(transaction: Transaction, organizationId: string): Promise<DashboardTenantState> {
-    const organization = await transaction.select().from(organizations).where(and(eq(organizations.id, organizationId), eq(organizations.status, 'active'))).limit(1);
-    if (organization[0] === undefined) throw new DashboardAccessDeniedError();
-    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, publisherRows, affiliationRows, categoryRows, authorRows, articleRows, articleCategoryRows, assignmentRows, mediaRows, jobRows, targetRows] = await Promise.all([
-      transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, cloudflareZoneId: domains.cloudflareZoneId, siteTopology: domains.siteTopology, routingVersion: domains.routingVersion, version: domains.version, createdAt: domains.createdAt, updatedAt: domains.updatedAt }).from(domains).where(eq(domains.organizationId, organizationId)),
-      transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)),
-      transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.organizationId, organizationId)),
-      transaction.select({ siteId: siteSettings.siteId, name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, seoRobotsDirective: siteSettings.seoRobotsDirective, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, version: siteSettings.version, createdAt: siteSettings.createdAt, updatedAt: siteSettings.updatedAt }).from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
-      transaction.select({ id: roles.id, name: roles.name, tier: roles.tier, active: roles.active, version: roles.version, createdAt: roles.createdAt, updatedAt: roles.updatedAt }).from(roles).where(eq(roles.organizationId, organizationId)),
-      transaction.select({ roleId: rolePermissions.roleId, permission: permissions.name }).from(rolePermissions).innerJoin(permissions, and(eq(permissions.id, rolePermissions.permissionId), eq(permissions.organizationId, organizationId), eq(permissions.scope, 'organization'))).where(eq(rolePermissions.organizationId, organizationId)),
-      transaction.select({ userId: memberships.userId, roleId: memberships.roleId, status: memberships.status, regionId: memberships.regionId, version: memberships.version, createdAt: memberships.createdAt, updatedAt: memberships.updatedAt }).from(memberships).where(eq(memberships.organizationId, organizationId)),
-      transaction.select({ id: publishers.id, name: publishers.name, type: publishers.type, attributionLabel: publishers.attributionLabel, contacts: publishers.contacts, evidenceReference: publishers.evidenceReference, verificationStatus: publishers.verificationStatus, submittedBy: publishers.submittedBy, submittedAt: publishers.submittedAt, verifiedBy: publishers.verifiedBy, verifiedAt: publishers.verifiedAt, rejectionReason: publishers.rejectionReason, status: publishers.status, version: publishers.version, createdAt: publishers.createdAt, updatedAt: publishers.updatedAt }).from(publishers).where(eq(publishers.organizationId, organizationId)),
-      transaction.select({ id: officialAffiliations.id, publisherId: officialAffiliations.publisherId, siteId: officialAffiliations.siteId, institutionName: officialAffiliations.institutionName, claimScopes: officialAffiliations.claimScopes, evidenceReference: officialAffiliations.evidenceReference, active: officialAffiliations.active, verifiedAt: officialAffiliations.verifiedAt, version: officialAffiliations.version, createdAt: officialAffiliations.createdAt, updatedAt: officialAffiliations.updatedAt }).from(officialAffiliations).where(eq(officialAffiliations.organizationId, organizationId)),
-      transaction.select({ id: categories.id, name: categories.name, slug: categories.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).where(eq(categories.organizationId, organizationId)),
-      transaction.select({ id: authors.id, displayName: authors.displayName, byline: authors.byline, status: authors.status, version: authors.version, createdAt: authors.createdAt, updatedAt: authors.updatedAt }).from(authors).where(eq(authors.organizationId, organizationId)),
-      transaction.select({ id: articles.id, regionId: articles.regionId, publisherId: articles.publisherId, categoryId: articles.categoryId, authorId: articles.authorId, leadMediaId: articles.leadMediaId, coverImageUrl: articles.coverImageUrl, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, body: articles.body, bodyJson: articles.bodyJson, source: articles.source, tags: articles.tags, status: articles.status, publishedAt: articles.publishedAt, scheduledAt: articles.scheduledAt, archivedAt: articles.archivedAt, version: articles.version, createdAt: articles.createdAt, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.organizationId, organizationId)),
-      transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)),
-      transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, stateOccurredAt: articleSites.stateOccurredAt, publishedUrl: articleSites.publishedUrl, publishedAt: articleSites.publishedAt, active: articleSites.active, viewCount: articleSites.viewCount, assignmentSource: articleSites.assignmentSource, expandedFromSiteId: articleSites.expandedFromSiteId, customCanonicalUrl: articleSites.customCanonicalUrl, version: articleSites.version, createdAt: articleSites.createdAt, updatedAt: articleSites.updatedAt }).from(articleSites).where(eq(articleSites.organizationId, organizationId)),
-      transaction.select({ id: media.id, state: media.state, purpose: media.purpose, mediaType: media.mediaType }).from(media).where(eq(media.organizationId, organizationId)),
-      transaction.select({ id: publishingJobs.id, articleId: publishingJobs.articleId, state: publishingJobs.state, createdAt: publishingJobs.createdAt, finalizedAt: publishingJobs.finalizedAt, updatedAt: publishingJobs.updatedAt }).from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)),
-      transaction.select({ id: publishingJobTargets.id, jobId: publishingJobTargets.jobId, articleSiteId: publishingJobTargets.articleSiteId, state: publishingJobTargets.state, finishedAt: publishingJobTargets.finishedAt, updatedAt: publishingJobTargets.updatedAt }).from(publishingJobTargets).where(eq(publishingJobTargets.organizationId, organizationId)),
-    ]);
+  private async resolveMembershipProfiles(
+    transaction: Transaction,
+    membershipRows: readonly { readonly userId: string }[],
+  ): Promise<Map<string, { displayName: string; avatarUrl: string | null }>> {
     const membershipIds = membershipRows.map((membership) => membership.userId);
     const membershipProfiles = new Map<string, { displayName: string; avatarUrl: string | null }>();
-    if (membershipIds.length > 0) {
-      const profileRows = await transaction.execute<{ user_id: string; display_name: string | null; avatar_url: string | null }>(sql`
-        SELECT u AS user_id, profile.display_name, profile.avatar_url
-        FROM unnest(${sqlStringArray(membershipIds)}::uuid[]) AS u
-        LEFT JOIN LATERAL indicate_private.lookup_user_profile(u) AS profile ON true
-      `);
-      const byId = new Map(profileRows.map((row) => [row.user_id, row]));
-      for (const membership of membershipRows) {
-        const profile = byId.get(membership.userId);
-        // Lookup bound to verified-user: non-user actors (api_key) lack
-        // that context so it is always empty — use userId as a neutral label
-        // (already exposed in the same payload) instead of failing the read.
-        membershipProfiles.set(membership.userId, { displayName: profile?.display_name ?? membership.userId, avatarUrl: profile?.avatar_url ?? null });
-      }
+    if (membershipIds.length === 0) return membershipProfiles;
+    const profileRows = await transaction.execute<{ user_id: string; display_name: string | null; avatar_url: string | null }>(sql`
+      SELECT u AS user_id, profile.display_name, profile.avatar_url
+      FROM unnest(${sqlStringArray(membershipIds)}::uuid[]) AS u
+      LEFT JOIN LATERAL indicate_private.lookup_user_profile(u) AS profile ON true
+    `);
+    const byId = new Map(profileRows.map((row) => [row.user_id, row]));
+    for (const membership of membershipRows) {
+      const profile = byId.get(membership.userId);
+      // Lookup bound to verified-user: non-user actors (api_key) lack
+      // that context so it is always empty — use userId as a neutral label
+      // (already exposed in the same payload) instead of failing the read.
+      membershipProfiles.set(membership.userId, { displayName: profile?.display_name ?? membership.userId, avatarUrl: profile?.avatar_url ?? null });
     }
+    return membershipProfiles;
+  }
+
+  private async load(transaction: Transaction, organizationId: string, only?: ReadonlySet<DashboardCollectionName>): Promise<DashboardTenantState> {
+    const organization = await transaction.select({ id: organizations.id, name: organizations.name }).from(organizations).where(and(eq(organizations.id, organizationId), eq(organizations.status, 'active'))).limit(1);
+    if (organization[0] === undefined) throw new DashboardAccessDeniedError();
+    const want = (name: DashboardCollectionName): boolean => only === undefined || only.has(name);
+    const articleRows = want('articles')
+      ? (await transaction.select({ id: articles.id, regionId: articles.regionId, publisherId: articles.publisherId, categoryId: articles.categoryId, authorId: articles.authorId, leadMediaId: articles.leadMediaId, coverImageUrl: articles.coverImageUrl, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, source: articles.source, tags: articles.tags, status: articles.status, publishedAt: articles.publishedAt, scheduledAt: articles.scheduledAt, archivedAt: articles.archivedAt, version: articles.version, createdAt: articles.createdAt, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.organizationId, organizationId))).map((row) => ({ ...row, body: '', bodyJson: null as unknown | null }))
+      : [];
+    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, publisherRows, affiliationRows, categoryRows, authorRows, articleCategoryRows, assignmentRows, mediaRows, jobRows, targetRows] = await Promise.all([
+      want('domains') ? transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, cloudflareZoneId: domains.cloudflareZoneId, siteTopology: domains.siteTopology, routingVersion: domains.routingVersion, version: domains.version, createdAt: domains.createdAt, updatedAt: domains.updatedAt }).from(domains).where(eq(domains.organizationId, organizationId)) : [],
+      want('regions') ? transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)) : [],
+      want('sites') ? transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.organizationId, organizationId)) : [],
+      want('siteSettings') ? transaction.select({ siteId: siteSettings.siteId, name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, seoRobotsDirective: siteSettings.seoRobotsDirective, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, version: siteSettings.version, createdAt: siteSettings.createdAt, updatedAt: siteSettings.updatedAt }).from(siteSettings).where(eq(siteSettings.organizationId, organizationId)) : [],
+      want('roles') ? transaction.select({ id: roles.id, name: roles.name, tier: roles.tier, active: roles.active, version: roles.version, createdAt: roles.createdAt, updatedAt: roles.updatedAt }).from(roles).where(eq(roles.organizationId, organizationId)) : [],
+      want('roles') ? transaction.select({ roleId: rolePermissions.roleId, permission: permissions.name }).from(rolePermissions).innerJoin(permissions, and(eq(permissions.id, rolePermissions.permissionId), eq(permissions.organizationId, organizationId), eq(permissions.scope, 'organization'))).where(eq(rolePermissions.organizationId, organizationId)) : [],
+      want('memberships') ? transaction.select({ userId: memberships.userId, roleId: memberships.roleId, status: memberships.status, regionId: memberships.regionId, version: memberships.version, createdAt: memberships.createdAt, updatedAt: memberships.updatedAt }).from(memberships).where(eq(memberships.organizationId, organizationId)) : [],
+      want('publishers') ? transaction.select({ id: publishers.id, name: publishers.name, type: publishers.type, attributionLabel: publishers.attributionLabel, contacts: publishers.contacts, evidenceReference: publishers.evidenceReference, verificationStatus: publishers.verificationStatus, submittedBy: publishers.submittedBy, submittedAt: publishers.submittedAt, verifiedBy: publishers.verifiedBy, verifiedAt: publishers.verifiedAt, rejectionReason: publishers.rejectionReason, status: publishers.status, version: publishers.version, createdAt: publishers.createdAt, updatedAt: publishers.updatedAt }).from(publishers).where(eq(publishers.organizationId, organizationId)) : [],
+      want('affiliations') ? transaction.select({ id: officialAffiliations.id, publisherId: officialAffiliations.publisherId, siteId: officialAffiliations.siteId, institutionName: officialAffiliations.institutionName, claimScopes: officialAffiliations.claimScopes, evidenceReference: officialAffiliations.evidenceReference, active: officialAffiliations.active, verifiedAt: officialAffiliations.verifiedAt, version: officialAffiliations.version, createdAt: officialAffiliations.createdAt, updatedAt: officialAffiliations.updatedAt }).from(officialAffiliations).where(eq(officialAffiliations.organizationId, organizationId)) : [],
+      want('categories') ? transaction.select({ id: categories.id, name: categories.name, slug: categories.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).where(eq(categories.organizationId, organizationId)) : [],
+      want('authors') ? transaction.select({ id: authors.id, displayName: authors.displayName, byline: authors.byline, status: authors.status, version: authors.version, createdAt: authors.createdAt, updatedAt: authors.updatedAt }).from(authors).where(eq(authors.organizationId, organizationId)) : [],
+      want('articleCategories') ? transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)) : [],
+      want('articleSites') ? transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, stateOccurredAt: articleSites.stateOccurredAt, publishedUrl: articleSites.publishedUrl, publishedAt: articleSites.publishedAt, active: articleSites.active, viewCount: articleSites.viewCount, assignmentSource: articleSites.assignmentSource, expandedFromSiteId: articleSites.expandedFromSiteId, customCanonicalUrl: articleSites.customCanonicalUrl, version: articleSites.version, createdAt: articleSites.createdAt, updatedAt: articleSites.updatedAt }).from(articleSites).where(eq(articleSites.organizationId, organizationId)) : [],
+      want('media') ? transaction.select({ id: media.id, state: media.state, purpose: media.purpose, mediaType: media.mediaType }).from(media).where(eq(media.organizationId, organizationId)) : [],
+      want('publishingJobs') ? transaction.select({ id: publishingJobs.id, articleId: publishingJobs.articleId, state: publishingJobs.state, createdAt: publishingJobs.createdAt, finalizedAt: publishingJobs.finalizedAt, updatedAt: publishingJobs.updatedAt }).from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)) : [],
+      want('publishingJobTargets') ? transaction.select({ id: publishingJobTargets.id, jobId: publishingJobTargets.jobId, articleSiteId: publishingJobTargets.articleSiteId, state: publishingJobTargets.state, finishedAt: publishingJobTargets.finishedAt, updatedAt: publishingJobTargets.updatedAt }).from(publishingJobTargets).where(eq(publishingJobTargets.organizationId, organizationId)) : [],
+    ]);
+    const membershipProfiles = await this.resolveMembershipProfiles(transaction, membershipRows);
     const permissionsByRole = new Map<string, Set<string>>();
     for (const grant of grantRows) {
       const set = permissionsByRole.get(grant.roleId) ?? new Set<string>(); set.add(grant.permission); permissionsByRole.set(grant.roleId, set);
@@ -580,7 +595,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const rows = await transaction.execute<{
         readonly id: string; readonly organization_id: string | null; readonly category: string;
         readonly purged_count: number; readonly started_at: Date | string; readonly finished_at: Date | string;
-      }>(sql`SELECT * FROM indicate_private.retention_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
+      }>(sql`SELECT id, organization_id, category, purged_count, started_at, finished_at FROM indicate_private.retention_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
       return Object.freeze(rows.map((row) => ({
         id: row.id,
         organizationId: row.organization_id,
@@ -667,7 +682,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         const rows = await transaction.execute<{
           id: string; email: string; role_id: string | null; role_name: string | null;
           expires_at: Date; accepted_at: Date | null; created_at: Date;
-        }>(sql`SELECT * FROM indicate_private.invite_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
+        }>(sql`SELECT id, email, role_id, role_name, expires_at, accepted_at, created_at FROM indicate_private.invite_list(${actor.actorId}::uuid, ${actor.organizationId}::uuid)`);
         const now = Date.now();
         return Object.freeze(rows.map((row) => {
           const status = row.accepted_at !== null ? 'accepted' as const : row.expires_at.getTime() <= now ? 'expired' as const : 'pending' as const;
@@ -772,9 +787,282 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     });
   }
 
-  async read(actor: AuthorizedTenantActorContext, permission: string): Promise<DashboardTenantState> {    return this.database.transaction(async (transaction) => {
+  /**
+   * Scoped configuration read: identity, geography, and access collections only.
+   *
+   * Reads 7 narrow tables instead of the 17-table `load()` hydration; articles,
+   * assignments, media, and jobs are never touched on this path.
+   */
+  async readConfigurationScope(actor: AuthorizedTenantActorContext, permission: string): Promise<ConfigurationScope> {
+    return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
-      await this.authorize(transaction, actor, permission); return this.load(transaction, actor.organizationId);
+      await this.authorize(transaction, actor, permission);
+      const organizationId = actor.organizationId;
+      const organization = await transaction.select({ id: organizations.id, name: organizations.name }).from(organizations).where(and(eq(organizations.id, organizationId), eq(organizations.status, 'active'))).limit(1);
+      if (organization[0] === undefined) throw new DashboardAccessDeniedError();
+      const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows] = await Promise.all([
+        transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, cloudflareZoneId: domains.cloudflareZoneId, siteTopology: domains.siteTopology, routingVersion: domains.routingVersion, version: domains.version, createdAt: domains.createdAt, updatedAt: domains.updatedAt }).from(domains).where(eq(domains.organizationId, organizationId)),
+        transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)),
+        transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.organizationId, organizationId)),
+        transaction.select({ siteId: siteSettings.siteId, name: siteSettings.name, description: siteSettings.description, tagline: siteSettings.tagline, seoDefaultTitle: siteSettings.seoDefaultTitle, seoDefaultDescription: siteSettings.seoDefaultDescription, seoOpenGraphSiteName: siteSettings.seoOpenGraphSiteName, locale: siteSettings.locale, seoRobotsDirective: siteSettings.seoRobotsDirective, colors: siteSettings.colors, socialLinks: siteSettings.socialLinks, seo: siteSettings.seo, navigation: siteSettings.navigation, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId, version: siteSettings.version, createdAt: siteSettings.createdAt, updatedAt: siteSettings.updatedAt }).from(siteSettings).where(eq(siteSettings.organizationId, organizationId)),
+        transaction.select({ id: roles.id, name: roles.name, tier: roles.tier, active: roles.active, version: roles.version, createdAt: roles.createdAt, updatedAt: roles.updatedAt }).from(roles).where(eq(roles.organizationId, organizationId)),
+        transaction.select({ roleId: rolePermissions.roleId, permission: permissions.name }).from(rolePermissions).innerJoin(permissions, and(eq(permissions.id, rolePermissions.permissionId), eq(permissions.organizationId, organizationId), eq(permissions.scope, 'organization'))).where(eq(rolePermissions.organizationId, organizationId)),
+        transaction.select({ userId: memberships.userId, roleId: memberships.roleId, status: memberships.status, regionId: memberships.regionId, version: memberships.version, createdAt: memberships.createdAt, updatedAt: memberships.updatedAt }).from(memberships).where(eq(memberships.organizationId, organizationId)),
+      ]);
+      const membershipProfiles = await this.resolveMembershipProfiles(transaction, membershipRows);
+      const permissionsByRole = new Map<string, Set<string>>();
+      for (const grant of grantRows) {
+        const set = permissionsByRole.get(grant.roleId) ?? new Set<string>(); set.add(grant.permission); permissionsByRole.set(grant.roleId, set);
+      }
+      return {
+        organizationName: organization[0].name,
+        domains: domainRows.map((row) => ({ id: row.id, organizationId, normalizedHostname: row.normalizedHostname, status: row.status, cloudflareZoneId: row.cloudflareZoneId, siteTopology: row.siteTopology, routingVersion: row.routingVersion, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        regions: regionRows.map((row) => ({ id: row.id, organizationId, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        sites: siteRows.map((row) => ({ id: row.id, organizationId, domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        siteSettings: settingsRows.map((row) => ({ id: row.siteId, organizationId, siteId: row.siteId, name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map((item) => ({ label: String(item.label ?? ''), path: String(item.path ?? '/') })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        roles: roleRows.map((row) => ({ id: row.id, organizationId, name: row.name, tier: row.tier, active: row.active, permissions: permissionsByRole.get(row.id) ?? new Set(), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        memberships: membershipRows.map((membership) => ({ id: membership.userId, organizationId, userId: membership.userId, displayName: membershipProfiles.get(membership.userId)!.displayName, avatarUrl: membershipProfiles.get(membership.userId)!.avatarUrl, roleId: membership.roleId, status: membership.status, regionId: membership.regionId, version: membership.version, createdAt: iso(membership.createdAt), updatedAt: iso(membership.updatedAt) })),
+      };
+    });
+  }
+
+  /**
+   * Scoped publisher read: publishers, claims, and mini geography.
+   *
+   * Skips articles, assignments, media, jobs, and settings entirely; the claim
+   * rollup only needs publisher rows, affiliation rows, and site/region names.
+   */
+  async readPublisherScope(actor: AuthorizedTenantActorContext, permission: string): Promise<PublisherScope> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organizationId = actor.organizationId;
+      const [publisherRows, affiliationRows, siteRows, regionRows] = await Promise.all([
+        transaction.select({ id: publishers.id, name: publishers.name, type: publishers.type, attributionLabel: publishers.attributionLabel, contacts: publishers.contacts, evidenceReference: publishers.evidenceReference, verificationStatus: publishers.verificationStatus, submittedBy: publishers.submittedBy, submittedAt: publishers.submittedAt, verifiedBy: publishers.verifiedBy, verifiedAt: publishers.verifiedAt, rejectionReason: publishers.rejectionReason, status: publishers.status, version: publishers.version, createdAt: publishers.createdAt, updatedAt: publishers.updatedAt }).from(publishers).where(eq(publishers.organizationId, organizationId)),
+        transaction.select({ id: officialAffiliations.id, publisherId: officialAffiliations.publisherId, siteId: officialAffiliations.siteId, institutionName: officialAffiliations.institutionName, claimScopes: officialAffiliations.claimScopes, evidenceReference: officialAffiliations.evidenceReference, active: officialAffiliations.active, verifiedAt: officialAffiliations.verifiedAt, version: officialAffiliations.version, createdAt: officialAffiliations.createdAt, updatedAt: officialAffiliations.updatedAt }).from(officialAffiliations).where(eq(officialAffiliations.organizationId, organizationId)),
+        transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.organizationId, organizationId)),
+        transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)),
+      ]);
+      return {
+        publishers: publisherRows.map((row) => ({ id: row.id, organizationId, name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: Object.fromEntries(Object.entries(row.contacts).map(([key, value]) => [key, String(value)])), evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: optionalIso(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: optionalIso(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        sites: siteRows.map((row) => ({ id: row.id, organizationId, domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        regions: regionRows.map((row) => ({ id: row.id, organizationId, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+      };
+    });
+  }
+
+  /**
+   * Scoped taxonomy read: narrow article facets for counting, never bodies.
+   *
+   * Category/tag counts need every article's facet columns, but never titles,
+   * bodies, or content — three narrow selects replace the 17-table hydration.
+   */
+  async readTaxonomyScope(actor: AuthorizedTenantActorContext, permission: string): Promise<TaxonomyScope> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organizationId = actor.organizationId;
+      const [articleRows, linkRows, categoryRows, regionRows] = await Promise.all([
+        transaction.select({ id: articles.id, regionId: articles.regionId, categoryId: articles.categoryId, tags: articles.tags }).from(articles).where(eq(articles.organizationId, organizationId)),
+        transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)),
+        transaction.select({ id: categories.id, name: categories.name, slug: categories.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).where(eq(categories.organizationId, organizationId)),
+        transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId }).from(regions).where(eq(regions.organizationId, organizationId)),
+      ]);
+      const linksByArticle = new Map<string, string[]>();
+      for (const link of [...linkRows].sort((a, b) => a.position - b.position)) {
+        const list = linksByArticle.get(link.articleId) ?? [];
+        list.push(link.categoryId);
+        linksByArticle.set(link.articleId, list);
+      }
+      return {
+        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, categoryId: row.categoryId, categoryIds: linksByArticle.get(row.id) ?? [], tags: [...row.tags] })),
+        categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        regions: regionRows.map((row) => ({ id: row.id, kind: row.kind, parentRegionId: row.parentRegionId })),
+      };
+    });
+  }
+
+  /**
+   * Scoped publisher-claim read: one publisher plus its claim rows.
+   *
+   * A missing publisher denies exactly like `requireRecord` on full state.
+   */
+  async readPublisherClaimScope(actor: AuthorizedTenantActorContext, permission: string, publisherId: string, siteId: string): Promise<PublisherClaimScope> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organizationId = actor.organizationId;
+      const [publisherRows, affiliationRows] = await Promise.all([
+        transaction.select({ id: publishers.id, name: publishers.name, type: publishers.type, attributionLabel: publishers.attributionLabel, contacts: publishers.contacts, evidenceReference: publishers.evidenceReference, verificationStatus: publishers.verificationStatus, submittedBy: publishers.submittedBy, submittedAt: publishers.submittedAt, verifiedBy: publishers.verifiedBy, verifiedAt: publishers.verifiedAt, rejectionReason: publishers.rejectionReason, status: publishers.status, version: publishers.version, createdAt: publishers.createdAt, updatedAt: publishers.updatedAt }).from(publishers).where(and(eq(publishers.organizationId, organizationId), eq(publishers.id, publisherId))).limit(1),
+        transaction.select({ id: officialAffiliations.id, publisherId: officialAffiliations.publisherId, siteId: officialAffiliations.siteId, institutionName: officialAffiliations.institutionName, claimScopes: officialAffiliations.claimScopes, evidenceReference: officialAffiliations.evidenceReference, active: officialAffiliations.active, verifiedAt: officialAffiliations.verifiedAt, version: officialAffiliations.version, createdAt: officialAffiliations.createdAt, updatedAt: officialAffiliations.updatedAt }).from(officialAffiliations).where(and(eq(officialAffiliations.organizationId, organizationId), eq(officialAffiliations.publisherId, publisherId), eq(officialAffiliations.siteId, siteId))),
+      ]);
+      const publisher = publisherRows[0];
+      if (publisher === undefined) throw new DashboardAccessDeniedError();
+      return {
+        publisher: { id: publisher.id, organizationId, name: publisher.name, type: publisher.type, attributionLabel: publisher.attributionLabel, contacts: Object.fromEntries(Object.entries(publisher.contacts).map(([key, value]) => [key, String(value)])), evidenceReference: publisher.evidenceReference, verificationStatus: publisher.verificationStatus, submittedBy: publisher.submittedBy, submittedAt: optionalIso(publisher.submittedAt), verifiedBy: publisher.verifiedBy, verifiedAt: optionalIso(publisher.verifiedAt), rejectionReason: publisher.rejectionReason, status: publisher.status, version: publisher.version, createdAt: iso(publisher.createdAt), updatedAt: iso(publisher.updatedAt) },
+        affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+      };
+    });
+  }
+
+  /**
+   * Scoped editorial read: SQL-filtered bodyless articles plus board lookups.
+   *
+   * Every article predicate (region lock, status/search, reference filters,
+   * site/state assignment) runs in the database; `body` is only matched with
+   * `ILIKE` in `WHERE` and never selected. Assignments cover exactly the
+   * returned articles plus the in-scope sites, instead of the whole tenant.
+   */
+  async readEditorialScope(
+    actor: AuthorizedTenantActorContext,
+    permission: string,
+    filter: { readonly regionId?: string; readonly siteId?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly publicationState?: string; readonly search?: string },
+  ): Promise<EditorialScope> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organizationId = actor.organizationId;
+      const lock = actor.regionScopeId ?? null;
+      const needle = filter.search === undefined || filter.search.trim() === '' ? null : `%${filter.search.trim().replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+      const [articleRows, categoryRows, authorRows, publisherRows, regionRows, siteRows, domainRows] = await Promise.all([
+        transaction.execute<{
+          id: string; region_id: string | null; publisher_id: string | null; category_id: string | null; author_id: string | null;
+          lead_media_id: string | null; cover_image_url: string | null; slug: string; title: string; excerpt: string | null;
+          canonical_url: string | null; source: string; tags: string[]; status: string; published_at: Date | null;
+          scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
+        }>(sql`
+          SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
+            a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.published_at, a.scheduled_at,
+            a.archived_at, a.version, a.created_at, a.updated_at
+          FROM articles a
+          WHERE a.organization_id = ${organizationId}
+            AND (${lock}::uuid IS NULL OR (a.region_id IS NOT NULL AND (a.region_id = ${lock}::uuid OR a.region_id IN (
+              SELECT r.id FROM regions r WHERE r.organization_id = ${organizationId} AND r.parent_region_id = ${lock}::uuid))))
+            AND (${filter.regionId ?? null}::uuid IS NULL OR a.region_id = ${filter.regionId ?? null}::uuid)
+            AND (${filter.categoryId ?? null}::uuid IS NULL OR a.category_id = ${filter.categoryId ?? null}::uuid)
+            AND (${filter.publisherId ?? null}::uuid IS NULL OR a.publisher_id = ${filter.publisherId ?? null}::uuid)
+            AND (${filter.authorId ?? null}::uuid IS NULL OR a.author_id = ${filter.authorId ?? null}::uuid)
+            AND ((${filter.siteId ?? null}::uuid IS NULL AND ${filter.publicationState ?? null} IS NULL) OR EXISTS (
+              SELECT 1 FROM article_sites s
+              WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.active
+                AND (${filter.siteId ?? null}::uuid IS NULL OR s.site_id = ${filter.siteId ?? null}::uuid)
+                AND (${filter.publicationState ?? null} IS NULL OR s.state = ${filter.publicationState ?? null})))
+            AND (${needle} IS NULL OR (a.title ILIKE ${needle} ESCAPE '\\' OR a.source ILIKE ${needle} ESCAPE '\\' OR a.body ILIKE ${needle} ESCAPE '\\'))`),
+        transaction.select({ id: categories.id, name: categories.name, slug: categories.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).where(eq(categories.organizationId, organizationId)),
+        transaction.select({ id: authors.id, displayName: authors.displayName, byline: authors.byline, status: authors.status, version: authors.version, createdAt: authors.createdAt, updatedAt: authors.updatedAt }).from(authors).where(eq(authors.organizationId, organizationId)),
+        transaction.select({ id: publishers.id, name: publishers.name, attributionLabel: publishers.attributionLabel, status: publishers.status }).from(publishers).where(eq(publishers.organizationId, organizationId)),
+        transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)),
+        transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.organizationId, organizationId)),
+        transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname }).from(domains).where(eq(domains.organizationId, organizationId)),
+      ]);
+      const articleIds = articleRows.map((row) => row.id);
+      const geography = regionRows.map((row) => ({ id: row.id, kind: row.kind, parentRegionId: row.parentRegionId }));
+      const inScopeSiteIds = siteRows.filter((site) => regionScopeCovers(lock, site.regionId, geography)).map((site) => site.id);
+      const [linkRows, assignmentRows] = articleIds.length === 0 && inScopeSiteIds.length === 0
+        ? [[], []] as const
+        : await Promise.all([
+          articleIds.length === 0 ? [] : transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(and(eq(articleCategories.organizationId, organizationId), inArray(articleCategories.articleId, articleIds))).orderBy(articleCategories.position),
+          transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, stateOccurredAt: articleSites.stateOccurredAt, publishedUrl: articleSites.publishedUrl, publishedAt: articleSites.publishedAt, active: articleSites.active, viewCount: articleSites.viewCount, assignmentSource: articleSites.assignmentSource, expandedFromSiteId: articleSites.expandedFromSiteId, customCanonicalUrl: articleSites.customCanonicalUrl, version: articleSites.version, createdAt: articleSites.createdAt, updatedAt: articleSites.updatedAt }).from(articleSites).where(and(eq(articleSites.organizationId, organizationId), or(articleIds.length === 0 ? sql`false` : inArray(articleSites.articleId, articleIds), inScopeSiteIds.length === 0 ? sql`false` : inArray(articleSites.siteId, inScopeSiteIds)))),
+        ]);
+      const categoryIdsByArticle = new Map<string, string[]>();
+      for (const link of linkRows) {
+        const list = categoryIdsByArticle.get(link.articleId) ?? [];
+        list.push(link.categoryId);
+        categoryIdsByArticle.set(link.articleId, list);
+      }
+      return {
+        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIso(row.published_at), scheduledAt: optionalIso(row.scheduled_at), archivedAt: optionalIso(row.archived_at), version: row.version, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) })),
+        articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource as 'manual' | 'auto', expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        authors: authorRows.map((row) => ({ id: row.id, organizationId, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        publishers: publisherRows.map((row) => ({ id: row.id, name: row.name, attributionLabel: row.attributionLabel, status: row.status })),
+        regions: regionRows.map((row) => ({ id: row.id, organizationId, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        sites: siteRows.map((row) => ({ id: row.id, organizationId, domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        domains: domainRows.map((row) => ({ id: row.id, normalizedHostname: row.normalizedHostname })),
+      };
+    });
+  }
+
+  /**
+   * Scoped network-article read: one site plus its published articles.
+   *
+   * Mirrors `selectNetworkArticles` in SQL: the site must exist and be active,
+   * articles must be active with an active region (or none) and an active
+   * published assignment for the site. Bodies are matched but never selected.
+   */
+  async readNetworkArticlesScope(
+    actor: AuthorizedTenantActorContext,
+    permission: string,
+    siteId: string,
+    filter: { readonly regionId?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly search?: string },
+  ): Promise<NetworkArticlesScope> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const organizationId = actor.organizationId;
+      const lock = actor.regionScopeId ?? null;
+      const needle = filter.search === undefined || filter.search.trim() === '' ? null : `%${filter.search.trim().replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+      const [siteRows, regionRows, publisherRows, affiliationRows, categoryRows, authorRows] = await Promise.all([
+        transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(and(eq(sites.organizationId, organizationId), eq(sites.id, siteId))).limit(1),
+        transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)),
+        transaction.select({ id: publishers.id, name: publishers.name, type: publishers.type, attributionLabel: publishers.attributionLabel, contacts: publishers.contacts, evidenceReference: publishers.evidenceReference, verificationStatus: publishers.verificationStatus, submittedBy: publishers.submittedBy, submittedAt: publishers.submittedAt, verifiedBy: publishers.verifiedBy, verifiedAt: publishers.verifiedAt, rejectionReason: publishers.rejectionReason, status: publishers.status, version: publishers.version, createdAt: publishers.createdAt, updatedAt: publishers.updatedAt }).from(publishers).where(eq(publishers.organizationId, organizationId)),
+        transaction.select({ id: officialAffiliations.id, publisherId: officialAffiliations.publisherId, siteId: officialAffiliations.siteId, institutionName: officialAffiliations.institutionName, claimScopes: officialAffiliations.claimScopes, evidenceReference: officialAffiliations.evidenceReference, active: officialAffiliations.active, verifiedAt: officialAffiliations.verifiedAt, version: officialAffiliations.version, createdAt: officialAffiliations.createdAt, updatedAt: officialAffiliations.updatedAt }).from(officialAffiliations).where(and(eq(officialAffiliations.organizationId, organizationId), eq(officialAffiliations.siteId, siteId))),
+        transaction.select({ id: categories.id }).from(categories).where(eq(categories.organizationId, organizationId)),
+        transaction.select({ id: authors.id }).from(authors).where(eq(authors.organizationId, organizationId)),
+      ]);
+      const siteRow = siteRows[0];
+      if (siteRow === undefined) throw new DashboardAccessDeniedError();
+      const site = { id: siteRow.id, organizationId, domainId: siteRow.domainId, regionId: siteRow.regionId, siteLevel: siteRow.siteLevel, parentSiteId: siteRow.parentSiteId, normalizedHostname: siteRow.normalizedHostname, status: siteRow.status, activationState: siteRow.activationState, version: siteRow.version, createdAt: iso(siteRow.createdAt), updatedAt: iso(siteRow.updatedAt) };
+      const geography = regionRows.map((row) => ({ id: row.id, kind: row.kind, parentRegionId: row.parentRegionId }));
+      if (!regionScopeCovers(lock, site.regionId, geography)) throw new DashboardAccessDeniedError();
+      const regionRecords = regionRows.map((row) => ({ id: row.id, organizationId, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) }));
+      const emptyScope: NetworkArticlesScope = {
+        site, articles: [], articleSites: [],
+        publishers: publisherRows.map((row) => ({ id: row.id, organizationId, name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: Object.fromEntries(Object.entries(row.contacts).map(([key, value]) => [key, String(value)])), evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: optionalIso(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: optionalIso(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        regions: regionRecords,
+        categoryIds: categoryRows.map((row) => row.id),
+        authorIds: authorRows.map((row) => row.id),
+      };
+      if (site.status !== 'active' || site.activationState !== 'active') return emptyScope;
+      if (site.regionId !== null && !regionRecords.some((region) => region.id === site.regionId && region.status === 'active')) return emptyScope;
+      const articleRows = await transaction.execute<{
+        id: string; region_id: string | null; publisher_id: string | null; category_id: string | null; author_id: string | null;
+        lead_media_id: string | null; cover_image_url: string | null; slug: string; title: string; excerpt: string | null;
+        canonical_url: string | null; source: string; tags: string[]; status: string; published_at: Date | null;
+        scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
+      }>(sql`
+        SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
+          a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.published_at, a.scheduled_at,
+          a.archived_at, a.version, a.created_at, a.updated_at
+        FROM articles a
+        WHERE a.organization_id = ${organizationId}
+          AND a.status = 'active'
+          AND (${lock}::uuid IS NULL OR (a.region_id IS NOT NULL AND (a.region_id = ${lock}::uuid OR a.region_id IN (
+            SELECT r.id FROM regions r WHERE r.organization_id = ${organizationId} AND r.parent_region_id = ${lock}::uuid))))
+          AND (a.region_id IS NULL OR EXISTS (
+            SELECT 1 FROM regions r WHERE r.organization_id = ${organizationId} AND r.id = a.region_id AND r.status = 'active'))
+          AND (${filter.regionId ?? null}::uuid IS NULL OR a.region_id = ${filter.regionId ?? null}::uuid)
+          AND (${filter.categoryId ?? null}::uuid IS NULL OR a.category_id = ${filter.categoryId ?? null}::uuid)
+          AND (${filter.publisherId ?? null}::uuid IS NULL OR a.publisher_id = ${filter.publisherId ?? null}::uuid)
+          AND (${filter.authorId ?? null}::uuid IS NULL OR a.author_id = ${filter.authorId ?? null}::uuid)
+          AND (${needle} IS NULL OR (a.title ILIKE ${needle} ESCAPE '\\' OR a.source ILIKE ${needle} ESCAPE '\\' OR a.body ILIKE ${needle} ESCAPE '\\'))
+          AND EXISTS (
+            SELECT 1 FROM article_sites s
+            WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.site_id = ${siteId}::uuid AND s.active AND s.state = 'published')`);
+      const articleIds = articleRows.map((row) => row.id);
+      const linkRows = articleIds.length === 0 ? [] : await transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(and(eq(articleCategories.organizationId, organizationId), inArray(articleCategories.articleId, articleIds))).orderBy(articleCategories.position);
+      const categoryIdsByArticle = new Map<string, string[]>();
+      for (const link of linkRows) {
+        const list = categoryIdsByArticle.get(link.articleId) ?? [];
+        list.push(link.categoryId);
+        categoryIdsByArticle.set(link.articleId, list);
+      }
+      return {
+        ...emptyScope,
+        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIso(row.published_at), scheduledAt: optionalIso(row.scheduled_at), archivedAt: optionalIso(row.archived_at), version: row.version, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) })),
+      };
     });
   }
 
@@ -880,18 +1168,40 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     });
   }
 
-  async execute<T>(actor: AuthorizedTenantActorContext, permission: string, operation: (transaction: DashboardTransaction) => T | Promise<T>): Promise<T> {
+  async execute<T>(actor: AuthorizedTenantActorContext, permission: string, operation: (transaction: DashboardTransaction) => T | Promise<T>, scope?: readonly DashboardCollectionName[]): Promise<T> {
     return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
       await this.authorize(transaction, actor, permission);
       await this.enforceWritableSubscription(transaction, actor);
       await transaction.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, actor.organizationId)).limit(1).for('update');
-      const before = await this.load(transaction, actor.organizationId);
+      const loaded = scope === undefined ? undefined : new Set<DashboardCollectionName>(scope);
+      const before = await this.load(transaction, actor.organizationId, loaded);
       const state = structuredClone(before) as MutableTenantState;
+      if (loaded !== undefined) {
+        for (const name of ['domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships', 'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media', 'publishingJobs', 'publishingJobTargets'] as const) {
+          if (!loaded.has(name)) {
+            Object.defineProperty(state, name, {
+              configurable: true,
+              get(): never {
+                throw new DashboardAccessDeniedError();
+              },
+            });
+          }
+        }
+      }
       const pendingAudits: AuditRecord[] = [];
       const displayNameCache = new Map<string, string | null>();
       const dashboardTransaction: DashboardTransaction = {
         state,
+        articleContentTouched: new Set<string>(),
+        refreshArticleContent: async (articleId) => {
+          const rows = await transaction.select({ id: articles.id, body: articles.body, bodyJson: articles.bodyJson }).from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, articleId))).limit(1);
+          const row = rows[0];
+          if (row === undefined) return false;
+          const index = state.articles.findIndex((candidate) => candidate.id === articleId);
+          if (index !== -1) state.articles[index] = { ...state.articles[index]!, body: row.body, bodyJson: (row.bodyJson ?? null) as unknown | null };
+          return true;
+        },
         resolveUserDisplayName: async (userId) => {
           const cached = displayNameCache.get(userId);
           if (cached !== undefined) return cached;
@@ -905,7 +1215,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         appendAudit: (event) => pendingAudits.push({ ...event, id: crypto.randomUUID(), organizationId: actor.organizationId, actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, requestId: actor.requestId, occurredAt: new Date().toISOString(), before: event.before === null ? null : redact(event.before) as Record<string, unknown>, after: event.after === null ? null : redact(event.after) as Record<string, unknown> }),
       };
       const result = await operation(dashboardTransaction);
-      await this.persist(transaction, actor.actorId, before, state, pendingAudits);
+      await this.persist(transaction, actor.actorId, before, state, pendingAudits, dashboardTransaction.articleContentTouched, loaded);
       return result;
     });
   }
@@ -918,30 +1228,43 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     throw new DashboardSubscriptionInactiveError(state ?? 'none');
   }
 
-  private async persist(transaction: Transaction, actorId: string, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[]): Promise<void> {
-    const index = buildTenantStateIndex(before, state);
-    for (const row of state.domains) {
+  private async persist(transaction: Transaction, actorId: string, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[], articleContentTouched: ReadonlySet<string>, loaded?: ReadonlySet<DashboardCollectionName>): Promise<void> {
+    const want = (name: DashboardCollectionName): boolean => loaded === undefined || loaded.has(name);
+    const index = buildTenantStateIndex(before, state, loaded);
+    const domainRows = want('domains') ? state.domains : [];
+    const regionRows = want('regions') ? state.regions : [];
+    const siteRows = want('sites') ? state.sites : [];
+    const settingsRows = want('siteSettings') ? state.siteSettings : [];
+    const roleRows = want('roles') ? state.roles : [];
+    const membershipRows = want('memberships') ? state.memberships : [];
+    const publisherRows = want('publishers') ? state.publishers : [];
+    const affiliationRows = want('affiliations') ? state.affiliations : [];
+    const categoryRows = want('categories') ? state.categories : [];
+    const authorRows = want('authors') ? state.authors : [];
+    const articleRows = want('articles') ? state.articles : [];
+    const articleSiteRows = want('articleSites') ? state.articleSites : [];
+    for (const row of domainRows) {
       const prior = index.priorDomains.get(row.id);
       if (prior !== undefined && prior.normalizedHostname === row.normalizedHostname && prior.status === row.status
         && prior.cloudflareZoneId === row.cloudflareZoneId && prior.siteTopology === row.siteTopology
         && prior.routingVersion === row.routingVersion && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
       await transaction.insert(domains).values({ organizationId: state.organizationId, id: row.id, normalizedHostname: row.normalizedHostname, status: row.status, cloudflareZoneId: row.cloudflareZoneId, siteTopology: row.siteTopology, routingVersion: row.routingVersion, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [domains.organizationId, domains.id], set: { normalizedHostname: row.normalizedHostname, status: row.status, cloudflareZoneId: row.cloudflareZoneId, siteTopology: row.siteTopology, routingVersion: row.routingVersion, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.regions) {
+    for (const row of regionRows) {
       const prior = index.priorRegions.get(row.id);
       if (prior !== undefined && prior.externalKey === row.externalKey && prior.name === row.name && prior.shortName === row.shortName
         && prior.slug === row.slug && prior.status === row.status && prior.kind === row.kind && prior.parentRegionId === row.parentRegionId
         && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
       await transaction.insert(regions).values({ organizationId: state.organizationId, id: row.id, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [regions.organizationId, regions.id], set: { externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.sites) {
+    for (const row of siteRows) {
       const prior = index.priorSites.get(row.id);
       if (prior !== undefined && prior.domainId === row.domainId && prior.regionId === row.regionId && prior.siteLevel === row.siteLevel
         && prior.parentSiteId === row.parentSiteId && prior.normalizedHostname === row.normalizedHostname && prior.status === row.status
         && prior.activationState === row.activationState && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
       await transaction.insert(sites).values({ organizationId: state.organizationId, id: row.id, domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [sites.organizationId, sites.id], set: { domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.siteSettings) {
+    for (const row of settingsRows) {
       const prior = index.priorSiteSettings.get(row.siteId);
       if (prior !== undefined && prior.name === row.name && prior.description === row.description && prior.tagline === row.tagline
         && prior.seoDefaultTitle === row.seoDefaultTitle && prior.seoDefaultDescription === row.seoDefaultDescription
@@ -953,7 +1276,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         && sameJson(prior.seo, row.seo) && sameJson(prior.navigation, row.navigation)) continue;
       await transaction.insert(siteSettings).values({ organizationId: state.organizationId, siteId: row.siteId, name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map(({ label, path }) => ({ label, path })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [siteSettings.organizationId, siteSettings.siteId], set: { name: row.name, description: row.description, tagline: row.tagline, seoDefaultTitle: row.seoDefaultTitle, seoDefaultDescription: row.seoDefaultDescription, seoOpenGraphSiteName: row.seoOpenGraphSiteName, locale: row.locale, seoRobotsDirective: row.seoRobotsDirective, colors: row.colors, socialLinks: row.socialLinks, seo: row.seo, navigation: row.navigation.map(({ label, path }) => ({ label, path })), logoMediaId: row.logoMediaId, faviconMediaId: row.faviconMediaId, defaultMediaId: row.defaultMediaId, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.roles) {
+    for (const row of roleRows) {
       const prior = before.roles.find(({ id }) => id === row.id);
       const same = prior !== undefined && prior.name === row.name && prior.tier === row.tier && prior.active === row.active
         && JSON.stringify([...prior.permissions].sort()) === JSON.stringify([...row.permissions].sort());
@@ -971,7 +1294,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       await transaction.delete(rolePermissions).where(and(eq(rolePermissions.organizationId, state.organizationId), eq(rolePermissions.roleId, row.id)));
       if (selected.length > 0) await transaction.insert(rolePermissions).values(selected.map((permission) => ({ organizationId: state.organizationId, roleId: row.id, permissionId: permission!.id })));
     }
-    for (const row of state.memberships) {
+    for (const row of membershipRows) {
       const prior = before.memberships.find(({ userId }) => userId === row.userId);
       if (prior !== undefined && prior.roleId === row.roleId && prior.status === row.status && prior.regionId === row.regionId) continue;
       if (prior === undefined) {
@@ -981,7 +1304,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         if (changed.length !== 1) throw new DashboardConflictError();
       }
     }
-    for (const row of state.publishers) {
+    for (const row of publisherRows) {
       const prior = before.publishers.find(({ id }) => id === row.id);
       const same = prior !== undefined && prior.name === row.name && prior.type === row.type && prior.attributionLabel === row.attributionLabel
         && JSON.stringify(prior.contacts) === JSON.stringify(row.contacts) && prior.evidenceReference === row.evidenceReference
@@ -991,7 +1314,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       if (same) continue;
       await transaction.insert(publishers).values({ organizationId: state.organizationId, id: row.id, name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: row.contacts, evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: row.submittedAt === null ? null : new Date(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [publishers.organizationId, publishers.id], set: { name: row.name, type: row.type, attributionLabel: row.attributionLabel, contacts: row.contacts, evidenceReference: row.evidenceReference, verificationStatus: row.verificationStatus, submittedBy: row.submittedBy, submittedAt: row.submittedAt === null ? null : new Date(row.submittedAt), verifiedBy: row.verifiedBy, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), rejectionReason: row.rejectionReason, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.affiliations) {
+    for (const row of affiliationRows) {
       const prior = index.priorAffiliations.get(row.id);
       if (prior !== undefined && prior.publisherId === row.publisherId && prior.siteId === row.siteId
         && prior.institutionName === row.institutionName && prior.evidenceReference === row.evidenceReference
@@ -999,20 +1322,20 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         && prior.updatedAt === row.updatedAt && sameJson(prior.claimScopes, row.claimScopes)) continue;
       await transaction.insert(officialAffiliations).values({ organizationId: state.organizationId, id: row.id, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [officialAffiliations.organizationId, officialAffiliations.id], set: { institutionName: row.institutionName, claimScopes: [...row.claimScopes], evidenceReference: row.evidenceReference, active: row.active, verifiedAt: row.verifiedAt === null ? null : new Date(row.verifiedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.categories) {
+    for (const row of categoryRows) {
       const prior = index.priorCategories.get(row.id);
       if (prior !== undefined && prior.name === row.name && prior.slug === row.slug && prior.status === row.status
         && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
       await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    for (const row of state.authors) {
+    for (const row of authorRows) {
       const prior = index.priorAuthors.get(row.id);
       if (prior !== undefined && prior.displayName === row.displayName && prior.byline === row.byline
         && prior.status === row.status && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
       await transaction.insert(authors).values({ organizationId: state.organizationId, id: row.id, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [authors.organizationId, authors.id], set: { displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
     const changedArticles: DashboardTenantState['articles'][number][] = [];
-    for (const row of state.articles) {
+    for (const row of articleRows) {
       const prior = index.priorArticles.get(row.id);
       if (prior !== undefined && prior.regionId === row.regionId && prior.publisherId === row.publisherId
         && prior.categoryId === row.categoryId && prior.authorId === row.authorId && prior.leadMediaId === row.leadMediaId
@@ -1022,9 +1345,11 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         && prior.archivedAt === row.archivedAt && prior.version === row.version && prior.updatedAt === row.updatedAt
         && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null) && sameJson(prior.tags, row.tags)) continue;
       changedArticles.push(row);
-      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+      const contentTrusted = row.body !== '' || (row.bodyJson !== null && row.bodyJson !== undefined);
+      const hydratedContent = contentTrusted ? { body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null } : {};
+      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, tags: [...row.tags], status: row.status, scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
-    if (!sameJson(
+    if (want('articleCategories') && !sameJson(
       [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
       [...before.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
     )) {
@@ -1033,7 +1358,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         await transaction.insert(articleCategories).values(chunk.map((row) => ({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }))).onConflictDoNothing();
       }
     }
-    const removedArticleIds = [...index.priorArticles.keys()].filter((id) => !index.currentArticles.has(id));
+    const removedArticleIds = want('articles') ? [...index.priorArticles.keys()].filter((id) => !index.currentArticles.has(id)) : [];
     for (const articleId of removedArticleIds) {
       const [reportRows, mediaRows, reservationRows] = await Promise.all([
         transaction.select({ id: contentReports.id }).from(contentReports).where(and(eq(contentReports.organizationId, state.organizationId), eq(contentReports.articleId, articleId))).limit(1),
@@ -1046,10 +1371,10 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       await transaction.delete(articleRevisions).where(and(eq(articleRevisions.organizationId, state.organizationId), eq(articleRevisions.articleId, articleId)));
       await transaction.delete(articles).where(and(eq(articles.organizationId, state.organizationId), eq(articles.id, articleId)));
     }
-    await this.recordArticleRevisions(transaction, actorId, before, index);
-    if (changedArticles.length > 0) await this.syncArticleGalleryMetadata(transaction, changedArticles, state.organizationId);
+    if (want('articles')) await this.recordArticleRevisions(transaction, actorId, before, index, articleContentTouched);
+    if (want('articles') && changedArticles.length > 0) await this.syncArticleGalleryMetadata(transaction, changedArticles, state.organizationId);
     const changedArticleSites: DashboardTenantState['articleSites'][number][] = [];
-    for (const row of state.articleSites) {
+    for (const row of articleSiteRows) {
       const prior = index.priorArticleSites.get(row.id);
       if (prior !== undefined && prior.state === row.state && prior.stateOccurredAt === row.stateOccurredAt
         && prior.publishedUrl === row.publishedUrl && prior.publishedAt === row.publishedAt && prior.active === row.active
@@ -1076,14 +1401,14 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         },
       });
     }
-    await this.enqueueDeliveryInvalidations(transaction, before, state, index);
+    await this.enqueueDeliveryInvalidations(transaction, before, state, index, loaded);
     if (pendingAudits.length > 0) await transaction.insert(auditLogs).values(pendingAudits.map((row) => ({ organizationId: row.organizationId, id: row.id, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: [...row.changedFields], before: row.before, after: row.after, requestId: row.requestId, occurredAt: new Date(row.occurredAt) })));
   }
 
-  private async recordArticleRevisions(transaction: Transaction, actorId: string, before: DashboardTenantState, index: TenantStateIndex): Promise<void> {
+  private async recordArticleRevisions(transaction: Transaction, actorId: string, before: DashboardTenantState, index: TenantStateIndex, articleContentTouched: ReadonlySet<string>): Promise<void> {
     for (const row of index.currentArticles.values()) {
       const prior = index.priorArticles.get(row.id);
-      if (prior !== undefined && prior.title === row.title && prior.body === row.body && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null)) continue;
+      if (prior !== undefined && prior.title === row.title && !articleContentTouched.has(row.id)) continue;
       const latest = await transaction.select({ revisionNumber: articleRevisions.revisionNumber }).from(articleRevisions).where(and(eq(articleRevisions.organizationId, before.organizationId), eq(articleRevisions.articleId, row.id))).orderBy(desc(articleRevisions.revisionNumber)).limit(1);
       const revisionNumber = (latest[0]?.revisionNumber ?? 0) + 1;
       await transaction.insert(articleRevisions).values({ organizationId: before.organizationId, id: crypto.randomUUID(), articleId: row.id, revisionNumber, title: row.title, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, snapshot: { slug: row.slug, excerpt: row.excerpt, source: row.source, tags: [...row.tags], status: row.status, version: row.version }, createdBy: actorId, createdAt: new Date(row.updatedAt), updatedAt: new Date(row.updatedAt) });
@@ -1119,8 +1444,18 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     }
   }
 
-  private async enqueueDeliveryInvalidations(transaction: Transaction, before: DashboardTenantState, state: MutableTenantState, index: TenantStateIndex): Promise<void> {
+  private async enqueueDeliveryInvalidations(transaction: Transaction, before: DashboardTenantState, state: MutableTenantState, index: TenantStateIndex, loaded?: ReadonlySet<DashboardCollectionName>): Promise<void> {
     type Aggregate = { siteId: string; previousHostname: string | null; currentHostname: string | null; reasons: Set<string>; articleSlugs: Set<string>; categorySlugs: Set<string>; mediaIds: Set<string> };
+    const want = (name: DashboardCollectionName): boolean => loaded === undefined || loaded.has(name);
+    const sites = want('sites') ? state.sites : [];
+    const regions = want('regions') ? state.regions : [];
+    const siteSettings = want('siteSettings') ? state.siteSettings : [];
+    const articles = want('articles') ? state.articles : [];
+    const articleSites = want('articleSites') ? state.articleSites : [];
+    const publishers = want('publishers') ? state.publishers : [];
+    const affiliations = want('affiliations') ? state.affiliations : [];
+    const categories = want('categories') ? state.categories : [];
+    const authors = want('authors') ? state.authors : [];
     const affected = new Map<string, Aggregate>();
     const priorSite = (siteId: string) => index.priorSites.get(siteId);
     const currentSite = (siteId: string) => index.currentSites.get(siteId);
@@ -1140,20 +1475,20 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const categorySlugs = categoryIds.flatMap((id) => [priorCategorySlug(id), currentCategorySlug(id)]).filter((slug): slug is string => slug !== undefined);
       return { slugs: [prior?.slug, current?.slug].filter((slug): slug is string => slug !== undefined), categorySlugs };
     };
-    for (const site of state.sites) { const prior = priorSite(site.id); if (prior !== undefined && changed({ host: prior.normalizedHostname, region: prior.regionId, level: prior.siteLevel, parent: prior.parentSiteId, status: prior.status, activation: prior.activationState }, { host: site.normalizedHostname, region: site.regionId, level: site.siteLevel, parent: site.parentSiteId, status: site.status, activation: site.activationState })) add(site.id, 'site.mapping'); }
-    for (const region of state.regions) { const prior = index.priorRegions.get(region.id); if (prior !== undefined && changed(prior, region)) for (const site of state.sites.filter((item) => item.regionId === region.id)) add(site.id, 'region.changed'); }
-    for (const settings of state.siteSettings) { const prior = index.priorSiteSettings.get(settings.siteId); if (prior !== undefined && changed(prior, settings)) { const mediaIds = [prior.logoMediaId, prior.faviconMediaId, prior.defaultMediaId, settings.logoMediaId, settings.faviconMediaId, settings.defaultMediaId].filter((id): id is string => id !== null); add(settings.siteId, 'site_settings.changed', [], mediaIds); } }
-    for (const article of state.articles) {
+    for (const site of sites) { const prior = priorSite(site.id); if (prior !== undefined && changed({ host: prior.normalizedHostname, region: prior.regionId, level: prior.siteLevel, parent: prior.parentSiteId, status: prior.status, activation: prior.activationState }, { host: site.normalizedHostname, region: site.regionId, level: site.siteLevel, parent: site.parentSiteId, status: site.status, activation: site.activationState })) add(site.id, 'site.mapping'); }
+    for (const region of regions) { const prior = index.priorRegions.get(region.id); if (prior !== undefined && changed(prior, region)) for (const site of sites.filter((item) => item.regionId === region.id)) add(site.id, 'region.changed'); }
+    for (const settings of siteSettings) { const prior = index.priorSiteSettings.get(settings.siteId); if (prior !== undefined && changed(prior, settings)) { const mediaIds = [prior.logoMediaId, prior.faviconMediaId, prior.defaultMediaId, settings.logoMediaId, settings.faviconMediaId, settings.defaultMediaId].filter((id): id is string => id !== null); add(settings.siteId, 'site_settings.changed', [], mediaIds); } }
+    for (const article of articles) {
       const prior = priorArticle(article.id); if (prior === undefined || !changed(prior, article)) continue;
       const details = articleDetails(article.id);
-      const relations = [...before.articleSites, ...state.articleSites].filter((relation) => relation.articleId === article.id);
+      const relations = [...before.articleSites, ...articleSites].filter((relation) => relation.articleId === article.id);
       for (const relation of relations) add(relation.siteId, 'article.changed', details.slugs, details.categorySlugs);
     }
-    for (const relation of state.articleSites) { const prior = index.priorArticleSites.get(relation.id); if (prior === undefined || changed(prior, relation)) { const details = articleDetails(relation.articleId); add(relation.siteId, 'article_site.changed', details.slugs, details.categorySlugs); if (prior !== undefined && prior.siteId !== relation.siteId) add(prior.siteId, 'article_site.changed', details.slugs, details.categorySlugs); } }
-    for (const publisher of state.publishers) { const prior = index.priorPublishers.get(publisher.id); if (prior === undefined || !changed(prior, publisher)) continue; for (const article of state.articles.filter((item) => item.publisherId === publisher.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'publisher.changed', details.slugs, details.categorySlugs); } }
-    for (const affiliation of state.affiliations) { const prior = index.priorAffiliations.get(affiliation.id); if (prior !== undefined && !changed(prior, affiliation)) continue; const publisherIds = [prior?.publisherId, affiliation.publisherId].filter((id): id is string => id !== undefined); const siteIds = [prior?.siteId, affiliation.siteId].filter((id): id is string => id !== undefined); for (const article of state.articles.filter((item) => item.publisherId !== null && publisherIds.includes(item.publisherId))) { const details = articleDetails(article.id); for (const siteId of siteIds) if (state.articleSites.some((item) => item.articleId === article.id && item.siteId === siteId)) add(siteId, 'affiliation.changed', details.slugs, details.categorySlugs); } }
-    for (const category of state.categories) { const prior = index.priorCategories.get(category.id); if (prior === undefined || !changed(prior, category)) continue; for (const article of state.articles.filter((item) => item.categoryId === category.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'category.changed', details.slugs, [...details.categorySlugs, category.slug]); } }
-    for (const author of state.authors) { const prior = index.priorAuthors.get(author.id); if (prior === undefined || !changed(prior, author)) continue; for (const article of state.articles.filter((item) => item.authorId === author.id)) { const details = articleDetails(article.id); for (const relation of state.articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'author.changed', details.slugs, details.categorySlugs); } }
+    for (const relation of articleSites) { const prior = index.priorArticleSites.get(relation.id); if (prior === undefined || changed(prior, relation)) { const details = articleDetails(relation.articleId); add(relation.siteId, 'article_site.changed', details.slugs, details.categorySlugs); if (prior !== undefined && prior.siteId !== relation.siteId) add(prior.siteId, 'article_site.changed', details.slugs, details.categorySlugs); } }
+    for (const publisher of publishers) { const prior = index.priorPublishers.get(publisher.id); if (prior === undefined || !changed(prior, publisher)) continue; for (const article of articles.filter((item) => item.publisherId === publisher.id)) { const details = articleDetails(article.id); for (const relation of articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'publisher.changed', details.slugs, details.categorySlugs); } }
+    for (const affiliation of affiliations) { const prior = index.priorAffiliations.get(affiliation.id); if (prior !== undefined && !changed(prior, affiliation)) continue; const publisherIds = [prior?.publisherId, affiliation.publisherId].filter((id): id is string => id !== undefined); const siteIds = [prior?.siteId, affiliation.siteId].filter((id): id is string => id !== undefined); for (const article of articles.filter((item) => item.publisherId !== null && publisherIds.includes(item.publisherId))) { const details = articleDetails(article.id); for (const siteId of siteIds) if (articleSites.some((item) => item.articleId === article.id && item.siteId === siteId)) add(siteId, 'affiliation.changed', details.slugs, details.categorySlugs); } }
+    for (const category of categories) { const prior = index.priorCategories.get(category.id); if (prior === undefined || !changed(prior, category)) continue; for (const article of articles.filter((item) => item.categoryId === category.id)) { const details = articleDetails(article.id); for (const relation of articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'category.changed', details.slugs, [...details.categorySlugs, category.slug]); } }
+    for (const author of authors) { const prior = index.priorAuthors.get(author.id); if (prior === undefined || !changed(prior, author)) continue; for (const article of articles.filter((item) => item.authorId === author.id)) { const details = articleDetails(article.id); for (const relation of articleSites.filter((item) => item.articleId === article.id)) add(relation.siteId, 'author.changed', details.slugs, details.categorySlugs); } }
     const targets = [...affected.values()].map((aggregate) => completeInvalidationValues({ organizationId: state.organizationId, siteId: aggregate.siteId, previousHostname: aggregate.previousHostname, currentHostname: aggregate.currentHostname, reason: [...aggregate.reasons].sort().join(','), articleSlugs: [...aggregate.articleSlugs], categorySlugs: [...aggregate.categorySlugs], mediaIds: [...aggregate.mediaIds] }));
     for (const chunk of insertChunks(targets)) await transaction.insert(invalidationTasks).values(chunk as never);
   }

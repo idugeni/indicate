@@ -32,13 +32,13 @@ export function requireUnrestrictedRegion(actor: AuthorizedTenantActorContext): 
   if (regionLock(actor) !== null) throw new DashboardAccessDeniedError();
 }
 
-export function requireSiteInScope(state: DashboardTenantState, siteId: string, actor: AuthorizedTenantActorContext): SiteRecord {
+export function requireSiteInScope<T extends Pick<SiteRecord, 'id' | 'regionId'>>(state: { readonly sites: readonly T[]; readonly regions: readonly ScopeGeography[] }, siteId: string, actor: AuthorizedTenantActorContext): T {
   const site = requireRecord(state.sites, siteId);
   if (!regionScopeCovers(regionLock(actor), site.regionId, state.regions)) throw new DashboardAccessDeniedError();
   return site;
 }
 
-export function requireArticleInScope(state: DashboardTenantState, articleId: string, actor: AuthorizedTenantActorContext): ArticleRecord {
+export function requireArticleInScope<T extends Pick<ArticleRecord, 'id' | 'regionId'>>(state: { readonly articles: readonly T[]; readonly regions: readonly ScopeGeography[] }, articleId: string, actor: AuthorizedTenantActorContext): T {
   const article = requireRecord(state.articles, articleId);
   if (!regionScopeCovers(regionLock(actor), article.regionId, state.regions)) throw new DashboardAccessDeniedError();
   return article;
@@ -53,7 +53,7 @@ export function requireArticleInScope(state: DashboardTenantState, articleId: st
  * @throws {DashboardAccessDeniedError} Bila aktor terkunci meminta nasional
  * atau geografi di luar cakupannya.
  */
-export function requireLockedRegionValue(state: DashboardTenantState, actor: AuthorizedTenantActorContext, regionId: string | null): void {
+export function requireLockedRegionValue(state: Pick<DashboardTenantState, 'regions'>, actor: AuthorizedTenantActorContext, regionId: string | null): void {
   if (regionId === null) {
     if (regionLock(actor) !== null) throw new DashboardAccessDeniedError();
     return;

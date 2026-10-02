@@ -17,6 +17,7 @@ import {
   type SortingState,
 } from '@tanstack/table-core';
 import { toast } from 'sonner';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -76,7 +77,7 @@ interface DataViewProps {
    */
   readonly collections?: readonly string[];
   /** Workspace command dispatcher; when absent, the table becomes read-only. */
-  readonly command?: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command?: DashboardCommand;
   /** Switch modules from inside content (quick actions, guides); when absent, navigation buttons are hidden. */
   readonly onSelectView?: (view: View) => void;
   /** Tenant scope for additive AI assists; absent disables them. */
@@ -435,7 +436,7 @@ function CollectionTable({
   readonly currentPage: number;
   readonly onPageChange: (page: number) => void;
   readonly onRefresh: () => void;
-  readonly command: ((action: string, payload: unknown) => Promise<unknown>) | undefined;
+  readonly command: DashboardCommand | undefined;
   /** Set false when a wrapping section already names the table. */
   readonly showTitle?: boolean;
   /**
@@ -475,7 +476,6 @@ function CollectionTable({
     const result = await command(action, { id: item.id, expectedVersion: Number(item.version ?? 1) });
     if (result !== null) {
       setEditingId(null);
-      onRefresh();
     }
   };
 
@@ -670,7 +670,7 @@ function CollectionTable({
             const result = await command(transition.action, {
               id: row.original.id,
               expectedVersion: Number(row.original.version ?? 1),
-            });
+            }, { quiet: true });
             if (result !== null) succeeded += 1;
           }
           if (succeeded === 0) throw new Error(`Aksi ${transition.label} gagal untuk semua ${rows.length} baris.`);
@@ -876,7 +876,6 @@ function CollectionTable({
                 lookups={lookups}
                 onSaved={() => {
                   setEditingId(null);
-                  onRefresh();
                 }}
                 onCancel={() => setEditingId(null)}
                 onSubmit={async (action, payload) =>

@@ -96,7 +96,7 @@ describe('Formulir penyaluran artikel', () => {
     fireEvent.change(screen.getByLabelText(/Jumlah tayang/), { target: { value: '250' } });
     fireEvent.submit(container.querySelectorAll('form')[1] as HTMLFormElement);
     await waitFor(() =>
-      expect(cmd).toHaveBeenCalledWith('article.sites.views.set', { articleId: 'art-1', siteId: 's-1', viewCount: 250 }),
+      expect(cmd).toHaveBeenCalledWith('article.sites.views.setMany', { articleId: 'art-1', siteIds: ['s-1'], viewCount: 250 }),
     );
     expect(cmd).toHaveBeenCalledTimes(1);
   });

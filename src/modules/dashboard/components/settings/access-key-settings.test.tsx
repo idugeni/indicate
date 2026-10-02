@@ -14,27 +14,24 @@ afterEach(() => {
 describe('pengaturan kunci akses dashboard', () => {
   it('menerbitkan tautan akses sekali lihat', async () => {
     const command = vi.fn(async () => ({ plaintext: 'inda_ujicoba.rahasia' }));
-    const onRefresh = vi.fn();
-    const { container } = render(<AccessKeySettings command={command} data={{}} onRefresh={onRefresh} />);
+    const { container } = render(<AccessKeySettings command={command} data={{}} />);
     fireEvent.change(screen.getByLabelText('Nama kunci'), { target: { value: 'Laptop cadangan' } });
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith('access-key.issue', expect.objectContaining({ name: 'Laptop cadangan' })),
     );
     expect(await screen.findByText(/\/auth\/access-key\?key=/)).toBeDefined();
-    expect(onRefresh).toHaveBeenCalled();
   });
 
   it('menolak menerbitkan tanpa nama', async () => {
     const command = vi.fn(async () => ({}));
-    const { container } = render(<AccessKeySettings command={command} data={{}} onRefresh={vi.fn()} />);
+    const { container } = render(<AccessKeySettings command={command} data={{}} />);
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     await waitFor(() => expect(command).not.toHaveBeenCalled());
   });
 
-  it('mencabut kunci aktif lalu memuat ulang', async () => {
+  it('mencabut kunci aktif tanpa refresh ganda', async () => {
     const command = vi.fn(async () => ({}));
-    const onRefresh = vi.fn();
     render(
       <AccessKeySettings
         command={command}
@@ -51,7 +48,6 @@ describe('pengaturan kunci akses dashboard', () => {
             },
           ],
         }}
-        onRefresh={onRefresh}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Cabut kunci Laptop cadangan' }));
@@ -61,6 +57,5 @@ describe('pengaturan kunci akses dashboard', () => {
         expectedVersion: 1,
       }),
     );
-    await waitFor(() => expect(onRefresh).toHaveBeenCalled());
   });
 });

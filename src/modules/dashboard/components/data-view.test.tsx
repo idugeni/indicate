@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { DataView } from '@/modules/dashboard/components/data-view';
 
@@ -60,8 +61,7 @@ describe('Tampilan data dasbor', () => {
   });
 });
 
-describe('Tampilan data koleksi', () => {
-  it('menampilkan status kosong dan memanggil muat ulang', () => {
+describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan memanggil muat ulang', () => {
     const reload = vi.fn();
     render(
       <DataView view="configuration" data={{}} currentPage={1} onPageChange={vi.fn()} onRefresh={reload} />,
@@ -405,5 +405,32 @@ describe('Tampilan data koleksi', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Status' }));
     expect(screen.queryByText('active')).toBe(null);
     expect(screen.getByText('portal.example')).toBeDefined();
+  });
+
+  it('aksi bulk berjalan diam per baris dan muat ulang sekali', async () => {
+    const user = userEvent.setup();
+    const command = vi.fn(async () => ({}));
+    const refresh = vi.fn();
+    render(
+      <DataView
+        view="articles"
+        data={{
+          articles: [
+            { id: 'a-1', title: 'Berita 1', status: 'draft', version: 1 },
+            { id: 'a-2', title: 'Berita 2', status: 'draft', version: 1 },
+          ],
+        }}
+        currentPage={1}
+        onPageChange={vi.fn()}
+        onRefresh={refresh}
+        command={command}
+      />,
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Pilih semua baris halaman ini' }));
+    await user.click(screen.getByRole('button', { name: 'Arsipkan (2)' }));
+    await waitFor(() => expect(command).toHaveBeenCalledTimes(2));
+    expect(command).toHaveBeenNthCalledWith(1, 'article.archive', { id: 'a-1', expectedVersion: 1 }, { quiet: true });
+    expect(command).toHaveBeenNthCalledWith(2, 'article.archive', { id: 'a-2', expectedVersion: 1 }, { quiet: true });
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });

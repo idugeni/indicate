@@ -46,7 +46,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   const repository = {
     execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
-      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit });
+      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
     recordDenied: vi.fn(async () => undefined),
     enqueueCachePurge: vi.fn(async () => []),

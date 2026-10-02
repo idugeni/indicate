@@ -26,14 +26,14 @@ export interface PrivacySubmitInput {
 
 export interface ModerationRepository {
   submitReport(input: ReportSubmitInput): Promise<{ readonly id: string }>;
-  listReports(actor: ActorContext): Promise<readonly ContentReportRecord[]>;
+  listReports(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly ContentReportRecord[]>;
   decideReport(actor: ActorContext, input: { readonly reportId: string; readonly actionTaken: boolean; readonly note: string | null; readonly requestId: string; readonly now: string }): Promise<void>;
   submitPrivacyRequest(actor: ActorContext, input: PrivacySubmitInput): Promise<{ readonly ticketNumber: string }>;
-  listPrivacyRequests(actor: ActorContext): Promise<readonly PrivacyRequestRecord[]>;
+  listPrivacyRequests(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly PrivacyRequestRecord[]>;
   decidePrivacyRequest(actor: ActorContext, input: { readonly ticket: string; readonly status: 'in_progress' | 'fulfilled' | 'rejected'; readonly note: string | null; readonly requestId: string; readonly now: string }): Promise<void>;
-  listHolds(actor: ActorContext): Promise<readonly LitigationHoldRecord[]>;
+  listHolds(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly LitigationHoldRecord[]>;
   createHold(actor: ActorContext, input: { readonly organizationId: string; readonly reason: string; readonly requestId: string; readonly now: string }): Promise<{ readonly id: string }>;
   releaseHold(actor: ActorContext, input: { readonly holdId: string; readonly requestId: string; readonly now: string }): Promise<void>;
-  listErasureRequests(actor: ActorContext): Promise<readonly ErasureRequestRecord[]>;
+  listErasureRequests(actor: ActorContext, page?: { readonly limit?: number; readonly cursor?: string }): Promise<readonly ErasureRequestRecord[]>;
   createErasureRequest(actor: ActorContext, input: { readonly organizationId: string; readonly reason: string; readonly scheduledFor: string; readonly requestId: string; readonly now: string }): Promise<{ readonly id: string }>;
 }

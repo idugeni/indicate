@@ -244,7 +244,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ArticleManager data={data} command={command} onRefresh={onRefresh} /> : null}
+      {view === 'articles' ? <ArticleManager data={data} command={command} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
@@ -319,7 +319,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           <TabsContent keepMounted value="koneksi">
             <div className="space-y-6">
               <IntegrationSettings command={command} isPlatform={permissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || permissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} />
-              <AccessKeySettings command={command} data={data} onRefresh={onRefresh} />
+              <AccessKeySettings command={command} data={data} />
               {collectionTables(['apiKeys', 'accessKeys'])}
             </div>
           </TabsContent>

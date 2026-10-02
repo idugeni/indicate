@@ -1,8 +1,8 @@
 'use client';
 
-import { useId, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
+import { useId, useMemo, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { Activity, CalendarClock, Loader2, RefreshCw, Send, Sparkles } from 'lucide-react';
+import { Activity, CalendarClock, Loader2, RefreshCw, Send } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -85,8 +85,6 @@ export function PublishingForm({
   const [siteQuery, setSiteQuery] = useState('');
   const [expandedSiteIds, setExpandedSiteIds] = useState<readonly string[]>([]);
   const [siteLimit, setSiteLimit] = useState(SITE_PAGE_SIZE);
-  const [isSuggesting, startSuggestTransition] = useTransition();
-  const formRef = useRef<HTMLFormElement>(null);
   const articleOptions = useMemo(
     () => (model?.articles ?? []).map((item) => ({ value: item.id, label: `${item.title ? `${item.title}${item.slug ? ` (${item.slug})` : ''}` : (item.slug ?? 'Tanpa judul')}${item.status === 'scheduled' ? ' · Terjadwal' : ''}` })),
     [model?.articles],
@@ -171,30 +169,6 @@ export function PublishingForm({
     });
   };
 
-  const handleSuggest = () => {
-    const form = formRef.current;
-    if (form === null) return;
-    const values = new FormData(form);
-    const articleId = String(values.get('articleId') ?? '');
-    const siteIds = values.getAll('siteIds').map(String);
-    if (articleId === '' || siteIds.length === 0) {
-      toast.warning('Pilih artikel dan minimal satu situs dulu sebelum membuat varian.');
-      return;
-    }
-    startSuggestTransition(async () => {
-      const result = (await command('publication.suggest', { articleId, siteIds })) as {
-        readonly overrides?: Readonly<Record<string, { readonly title?: string; readonly description?: string }>>;
-      } | null;
-      if (result?.overrides === undefined) return;
-      const next: Record<string, { title: string; description: string; imageMediaId: string }> = {};
-      for (const [siteId, override] of Object.entries(result.overrides)) {
-        next[siteId] = { title: override?.title ?? '', description: override?.description ?? '', imageMediaId: '' };
-      }
-      setSuggested(next);
-      toast.info(`Varian unik terisi untuk ${Object.keys(next).length} situs — periksa sebelum kirim.`);
-    });
-  };
-
   const handleArticleChange = (next: string | null) => {
     setSelectedArticleId(next ?? '');
     setScheduleSelection(null);
@@ -254,7 +228,7 @@ export function PublishingForm({
     <div className="grid min-w-0 gap-4 lg:grid-cols-2">
       <SectionCard icon={Send} title="Terbitkan ke Situs" eyebrow="Penerbitan">
 
-        <form ref={formRef} noValidate onSubmit={handlePublish} className="space-y-4">
+        <form noValidate onSubmit={handlePublish} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor={articleSelectId} className="font-mono text-xs text-paper-dim">
               Pilih Artikel
@@ -395,7 +369,7 @@ export function PublishingForm({
                             maxLength={160}
                             value={suggested[item.id]?.title ?? ''}
                             onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: e.target.value, description: prev[item.id]?.description ?? '', imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
-                            placeholder="Judul khusus situs ini (10-160 karakter, unik per situs)"
+                            placeholder="Judul khusus situs ini (opsional, kosong = pakai kanonik)"
                             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
                           />
                           <Input
@@ -403,7 +377,7 @@ export function PublishingForm({
                             maxLength={500}
                             value={suggested[item.id]?.description ?? ''}
                             onChange={(e) => setSuggested((prev) => ({ ...prev, [item.id]: { title: prev[item.id]?.title ?? '', description: e.target.value, imageMediaId: prev[item.id]?.imageMediaId ?? '' } }))}
-                            placeholder="Deskripsi khusus situs ini (50-500 karakter, unik per situs)"
+                            placeholder="Deskripsi khusus situs ini (opsional, kosong = pakai kanonik)"
                             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-mono text-xs text-paper focus-visible:ring-brass"
                           />
                           <Input
@@ -459,24 +433,12 @@ export function PublishingForm({
             </AppTooltip>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSuggest}
-              disabled={isPublishing || isSuggesting}
-            >
-              {isSuggesting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              )}
-              <span>Buat Varian Unik Otomatis</span>
-            </Button>
+          <div>
             <Button
               type="submit"
               variant="default"
               disabled={isPublishing}
+              className="w-full"
             >
               {isPublishing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -496,7 +458,7 @@ export function PublishingForm({
               { label: 'Mode', value: publishMode === 'scheduled' ? 'Terjadwal' : 'Terbit sekarang' },
               { label: 'Waktu', value: publishMode === 'scheduled' && publishAt !== '' ? formatScheduleTime(localDateTimeToIso(publishAt) ?? publishAt) : 'Segera setelah dikirim' },
               { label: 'Portal tujuan', value: `${selectedSiteIds.length.toLocaleString('id-ID')} dipilih` },
-              { label: 'Varian unik', value: `${Object.values(suggested).filter((entry) => entry.title !== '' || entry.description !== '' || entry.imageMediaId !== '').length.toLocaleString('id-ID')} terisi` },
+              { label: 'Override khusus', value: `${Object.values(suggested).filter((entry) => entry.title !== '' || entry.description !== '' || entry.imageMediaId !== '').length.toLocaleString('id-ID')} terisi` },
               { label: 'Artikel', value: selectedArticle?.title ?? selectedArticle?.slug ?? 'Belum dipilih' },
             ].map((row) => (
               <div key={row.label} className="flex items-baseline justify-between gap-3 py-1.5">

@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { cachedJsonGet, invalidateEndpoint } from '@/modules/dashboard/components/shared/endpoint-cache';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SINGLE_INVOICE_AMOUNT_IDR } from '@/modules/billing/schemas';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -71,7 +72,7 @@ function selectCustomerOptions(body: unknown): readonly CustomerOption[] {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const response = await fetch(path, { cache: 'no-store', ...init });
+  const response = await fetch(path, init);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as unknown;
 }
@@ -145,8 +146,9 @@ export function BillingPanel({
     let cancelled = false;
     void (async () => {
       try {
-        const body = await api(
-          `/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=customers`,
+        const body = await cachedJsonGet(
+          'integrations:customers:' + organizationId,
+          `/api/dashboard/integrations?organizationId=${encodeURIComponent(organizationId)}&view=customers`
         );
         if (!cancelled) setCustomers(selectCustomerOptions(body));
       } catch {
@@ -217,6 +219,7 @@ export function BillingPanel({
         ...(expectedVersion === undefined ? {} : { expectedVersion }),
       });
       setNotice(`Status langganan tersimpan: ${manualStatus}.`);
+      invalidateEndpoint('integrations:customers:' + organizationId);
       await reload();
     } catch {
       setError('Status langganan gagal disimpan.');

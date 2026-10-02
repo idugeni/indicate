@@ -38,7 +38,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   const repository = {
     execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
-      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit });
+      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
     recordDenied: vi.fn(async () => undefined),
   };
@@ -239,7 +239,7 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     const repository = {
       execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
         const op = operation as (transaction: unknown) => unknown;
-        return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn() });
+        return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn(), refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
       }),
       recordDenied: vi.fn(async () => undefined),
     };
@@ -344,6 +344,22 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('mempertahankan isi lama saat update tanpa body', async () => {
+    const article = { id: ID, organizationId: 'org-1', regionId: ID2, slug: 'lama', title: 'T', body: 'Isi lama yang utuh', bodyJson: { type: 'doc', content: [] }, source: 'S', tags: [], status: 'draft', version: 1, publisherId: null, categoryId: CAT1, authorId: null, leadMediaId: null, coverImageUrl: null };
+    const { service } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+      categories: [{ id: CAT1, status: 'active' }],
+      articles: [article],
+    });
+    const result = await service.updateArticle(actor, {
+      id: ID, expectedVersion: 1, regionId: ID2, publisherId: null, categoryId: CAT1,
+      authorId: null, slug: 'lama', title: 'Judul Baru Yang Cukup Panjang', source: 'S', tags: [], status: 'draft',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.body).toBe('Isi lama yang utuh');
   });
 
   it('mempertahankan kategori lama saat update lawas tanpa categoryIds', async () => {

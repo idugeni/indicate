@@ -47,9 +47,39 @@ function harness(options: { readonly collections?: Record<string, readonly unkno
   const repository = {
     execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
-      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn() });
+      return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn(), refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
-    read: vi.fn(async () => editorialState),
+    readEditorialScope: vi.fn(async () => ({
+      articles: editorialState.articles,
+      articleSites: editorialState.articleSites,
+      categories: [],
+      authors: [],
+      publishers: [],
+      regions: editorialState.regions,
+      sites: editorialState.sites,
+      domains: [],
+    })),
+    readPublisherScope: vi.fn(async () => ({
+      publishers: editorialState.publishers,
+      affiliations: [],
+      sites: editorialState.sites,
+      regions: editorialState.regions,
+    })),
+    readPublisherClaimScope: vi.fn(async (_actor: unknown, _permission: unknown, publisherId: string) => {
+      const publisher = (editorialState.publishers as readonly Record<string, unknown>[]).find((row) => row.id === publisherId);
+      if (publisher === undefined) throw new DashboardAccessDeniedError();
+      return { publisher, affiliations: [] };
+    }),
+    readNetworkArticlesScope: vi.fn(async () => ({
+      site: (editorialState.sites as readonly Record<string, unknown>[])[0],
+      articles: editorialState.articles,
+      articleSites: editorialState.articleSites,
+      publishers: editorialState.publishers,
+      affiliations: [],
+      regions: editorialState.regions,
+      categoryIds: [],
+      authorIds: [],
+    })),
     createInvitation: vi.fn(async () => ({ id: 'invite-1' })),
     revokeInvitation: vi.fn(async () => ({ id: 'invite-1' })),
     recordDenied: vi.fn(async () => undefined),
@@ -80,14 +110,19 @@ describe('TenantBusinessService editorial reads', () => {
   it('menyertakan domain rujukan untuk pengelompokan penyaluran', async () => {
     const { service } = harness({
       repo: {
-        read: vi.fn(async () => ({
-          ...editorialState,
+        readEditorialScope: vi.fn(async () => ({
+          articles: editorialState.articles,
+          articleSites: editorialState.articleSites,
+          categories: [],
+          authors: [],
+          publishers: [],
+          regions: editorialState.regions,
+          sites: [
+            { id: ID2, organizationId: 'org-1', domainId: ID, regionId: null, normalizedHostname: 'wonosobo.fakta01.my.id', status: 'active' },
+          ],
           domains: [
             { id: ID, organizationId: 'org-1', normalizedHostname: 'fakta01.my.id' },
             { id: ID2, organizationId: 'org-1', normalizedHostname: 'lain.id' },
-          ],
-          sites: [
-            { id: ID2, organizationId: 'org-1', domainId: ID, regionId: null, normalizedHostname: 'wonosobo.fakta01.my.id', status: 'active' },
           ],
         })),
       },
@@ -136,7 +171,7 @@ describe('TenantBusinessService editorial reads', () => {
       ],
       affiliations,
     };
-    const { service } = harness({ repo: { read: vi.fn(async () => state) } });
+    const { service } = harness({ repo: { readPublisherScope: vi.fn(async () => state) } });
 
     const all = await service.listPublishers(actor);
     expect(all.ok).toBe(true);
@@ -186,7 +221,7 @@ describe('TenantBusinessService editorial reads', () => {
       column: 'category_id',
       constraint: 'articles_category_fk',
     });
-    const { service } = harness({ repo: { read: vi.fn(async () => { throw failure; }) } });
+    const { service } = harness({ repo: { readEditorialScope: vi.fn(async () => { throw failure; }) } });
     const lines: string[] = [];
     const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => { lines.push(String(args[0])); });
     try {
@@ -249,6 +284,32 @@ describe('TenantBusinessService updates', () => {
 
     const missing = await withAssignment.service.setArticleSiteViews(actor, { articleId: ID, siteId: ID, viewCount: 1 });
     expect(missing.ok).toBe(false);
+  });
+
+  it('menyimpan tayangan banyak situs dalam satu panggilan', async () => {
+    const missingId = '0199a2b3-4c5d-7e8f-9012-3456789abc99';
+    const thirdId = '0199a2b3-4c5d-7e8f-9012-3456789abc03';
+    const withAssignment = harness({
+      collections: {
+        articles: [{ id: ID, organizationId: 'org-1', regionId: null }],
+        sites: [
+          { id: ID2, organizationId: 'org-1', regionId: null },
+          { id: thirdId, organizationId: 'org-1', regionId: null },
+        ],
+        articleSites: [
+          { id: 'as-1', articleId: ID, siteId: ID2, viewCount: 0, version: 1 },
+          { id: 'as-2', articleId: ID, siteId: thirdId, viewCount: 0, version: 1 },
+        ],
+      },
+    });
+    const bulk = await withAssignment.service.setArticleSiteViewsMany(actor, { articleId: ID, siteIds: [ID2, thirdId, missingId], viewCount: 500 });
+    expect(bulk.ok).toBe(true);
+    if (!bulk.ok) throw new Error('expected ok');
+    expect(bulk.value.updated).toBe(2);
+    expect(bulk.value.missing).toEqual([missingId]);
+
+    const broken = await withAssignment.service.setArticleSiteViewsMany(actor, { articleId: ID, siteIds: [], viewCount: 1 });
+    expect(broken.ok).toBe(false);
   });
 });
 

@@ -295,6 +295,62 @@ export interface DashboardTenantState {
   readonly publishingJobTargets: readonly PublishingJobTargetSummary[];
 }
 
+/** Scoped configuration read: identity, geography, and access only. No articles, assignments, media, or jobs. */
+export interface ConfigurationScope {
+  readonly organizationName: string;
+  readonly domains: readonly DomainRecord[];
+  readonly regions: readonly RegionRecord[];
+  readonly sites: readonly SiteRecord[];
+  readonly siteSettings: readonly SiteSettingsRecord[];
+  readonly roles: readonly RoleRecord[];
+  readonly memberships: readonly MembershipRecord[];
+}
+
+/** Scoped publisher read: publishers, claims, and the mini geography the claim rollup needs. */
+export interface PublisherScope {
+  readonly publishers: readonly PublisherRecord[];
+  readonly affiliations: readonly OfficialAffiliationRecord[];
+  readonly sites: readonly SiteRecord[];
+  readonly regions: readonly RegionRecord[];
+}
+
+/** Scoped editorial read: SQL-filtered bodyless articles plus the lookups the board needs. */
+export interface EditorialScope {
+  readonly articles: readonly ArticleRecord[];
+  readonly articleSites: readonly ArticleSiteRecord[];
+  readonly categories: readonly CategoryRecord[];
+  readonly authors: readonly AuthorRecord[];
+  readonly publishers: readonly Pick<PublisherRecord, 'id' | 'name' | 'attributionLabel' | 'status'>[];
+  readonly regions: readonly RegionRecord[];
+  readonly sites: readonly SiteRecord[];
+  readonly domains: readonly Pick<DomainRecord, 'id' | 'normalizedHostname'>[];
+}
+
+/** Scoped taxonomy read: narrow article facets for counting, never bodies. */
+export interface TaxonomyScope {
+  readonly articles: readonly Pick<ArticleRecord, 'id' | 'organizationId' | 'regionId' | 'categoryId' | 'categoryIds' | 'tags'>[];
+  readonly categories: readonly CategoryRecord[];
+  readonly regions: readonly Pick<RegionRecord, 'id' | 'kind' | 'parentRegionId'>[];
+}
+
+/** Scoped publisher-claim read: one publisher plus its claim rows. */
+export interface PublisherClaimScope {
+  readonly publisher: PublisherRecord;
+  readonly affiliations: readonly OfficialAffiliationRecord[];
+}
+
+/** Scoped network-article read: one site plus its published articles and attribution inputs. */
+export interface NetworkArticlesScope {
+  readonly site: SiteRecord;
+  readonly articles: readonly ArticleRecord[];
+  readonly articleSites: readonly ArticleSiteRecord[];
+  readonly publishers: readonly PublisherRecord[];
+  readonly affiliations: readonly OfficialAffiliationRecord[];
+  readonly regions: readonly RegionRecord[];
+  readonly categoryIds: readonly string[];
+  readonly authorIds: readonly string[];
+}
+
 export interface ArticleFilter {
   readonly regionId?: string;
   readonly siteId?: string;

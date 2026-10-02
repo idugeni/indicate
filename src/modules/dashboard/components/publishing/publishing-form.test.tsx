@@ -107,25 +107,9 @@ describe('PublishingForm publish', () => {
 });
 
 describe('PublishingForm suggest and status', () => {
-  it('meminta pilih artikel dan portal sebelum suggest', async () => {
-    const command = vi.fn(async () => null);
-    const { toast } = await import('sonner');
-    render(<PublishingForm data={{ articles: [], sites: [] }} command={command} />);
-    fireEvent.click(screen.getByRole('button', { name: /varian unik otomatis/i }));
-    expect(toast.warning).toHaveBeenCalled();
-    expect(command).not.toHaveBeenCalledWith('publication.suggest', expect.anything());
-  });
-
-  it('mengisi varian dari suggest', async () => {
-    const command = vi.fn(async () => ({
-      overrides: { 'site-1': { title: 'Judul Saran Unik', description: 'Deskripsi saran yang cukup panjang.' } },
-    }));
-    setup(command);
-    fireEvent.click(screen.getAllByRole('checkbox')[0]!);
-    expandFirstTarget();
-    fireEvent.click(screen.getByRole('button', { name: /varian unik otomatis/i }));
-    await waitFor(() => expect(command).toHaveBeenCalledWith('publication.suggest', { articleId: 'article-1', siteIds: ['site-1'] }));
-    expect((screen.getAllByPlaceholderText(/judul khusus situs/i)[0]! as HTMLInputElement).value).toBe('Judul Saran Unik');
+  it('tidak lagi menyediakan tombol varian otomatis', () => {
+    setup(vi.fn(async () => null));
+    expect(screen.queryByRole('button', { name: /varian unik otomatis/i })).toBeNull();
   });
 
   it('memuat status via form dan mengulang yang gagal', async () => {

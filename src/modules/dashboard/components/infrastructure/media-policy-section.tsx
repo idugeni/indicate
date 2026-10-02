@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useId, useState, useTransition, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useTransition, type FormEvent } from 'react';
 import { Gauge, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { cachedJsonGet, invalidateEndpoint } from '@/modules/dashboard/components/shared/endpoint-cache';
 
 interface MediaPolicy {
   readonly allowedMimeTypes: readonly string[];
@@ -29,21 +30,23 @@ export function MediaPolicySection() {
   const [isLoading, startLoadingTransition] = useTransition();
   const [isSaving, startSaveTransition] = useTransition();
 
+  const loadSeq = useRef(0);
   const reload = useCallback(() => {
+    const seq = ++loadSeq.current;
     startLoadingTransition(async () => {
       setError(null);
       try {
-        const response = await fetch('/api/dashboard/runtime-config', { cache: 'no-store' });
-        if (response.status === 404) {
+        const body = (await cachedJsonGet('runtime-config', '/api/dashboard/runtime-config')) as { policy: MediaPolicy };
+        if (seq !== loadSeq.current) return;
+        setPolicy(body.policy);
+        setForbidden(false);
+      } catch (loadError) {
+        if (seq !== loadSeq.current) return;
+        if ((loadError as { readonly status?: number }).status === 404) {
           setForbidden(true);
           setPolicy(null);
           return;
         }
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const body = (await response.json()) as { policy: MediaPolicy };
-        setPolicy(body.policy);
-        setForbidden(false);
-      } catch {
         setError('Gagal memuat kebijakan media.');
       }
     });
@@ -85,12 +88,14 @@ export function MediaPolicySection() {
         });
         if (response.status === 409) {
           setError('Kebijakan berubah sebelum penyimpanan. Nilai terbaru dimuat ulang.');
+          invalidateEndpoint('runtime-config');
           reload();
           return;
         }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         setNotice('Kebijakan media tersimpan dan tercatat.');
         form.reset();
+        invalidateEndpoint('runtime-config');
         reload();
       } catch {
         setError('Penyimpanan gagal. Periksa hak akses platform Anda.');

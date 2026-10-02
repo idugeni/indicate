@@ -38,7 +38,7 @@ function harness(repoOverrides: Record<string, unknown> = {}) {
     auditLogPage: vi.fn(async () => [{ id: 'log-1' }]),
     retentionRuns: vi.fn(async () => []),
     operationsSummary: vi.fn(async () => ({ pending: 0 })),
-    read: vi.fn(async () => tenantState),
+    readConfigurationScope: vi.fn(async () => tenantState),
     activationAttempts: vi.fn(async () => []),
     listInvitations: vi.fn(async () => []),
     recordDenied: vi.fn(async () => undefined),
@@ -103,7 +103,7 @@ describe('TenantBusinessService listConfiguration', () => {
       parentSiteId: null, normalizedHostname: `kota-${index}.portal.test`, status: 'active' as const,
       activationState: 'active' as const, version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
     }));
-    const { service } = harness({ read: async () => stateWith({ sites, regions: [], siteSettings: [] }) });
+    const { service } = harness({ readConfigurationScope: async () => stateWith({ sites, regions: [], siteSettings: [] }) });
     const result = await service.listConfiguration(actor);
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
@@ -119,7 +119,7 @@ describe('TenantBusinessService listConfiguration', () => {
       parentSiteId: null, normalizedHostname: `kota-${index}.portal.test`, status: 'active' as const,
       activationState: 'active' as const, version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
     }));
-    const { service } = harness({ read: async () => stateWith({ sites, regions: [], siteSettings: [] }) });
+    const { service } = harness({ readConfigurationScope: async () => stateWith({ sites, regions: [], siteSettings: [] }) });
     const result = await service.listConfiguration(actor, { search: 'kota-259' });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
@@ -144,7 +144,7 @@ describe('TenantBusinessService listConfiguration', () => {
       { id: 'site-city', organizationId: 'org-1', domainId: 'domain-1', regionId: city, siteLevel: 'city', parentSiteId: 'site-apex', normalizedHostname: 'wonosobo.portal.test', status: 'active', activationState: 'active', version: 1 },
       { id: 'site-sibling', organizationId: 'org-1', domainId: 'domain-1', regionId: siblingCity, siteLevel: 'city', parentSiteId: 'site-apex', normalizedHostname: 'sleman.portal.test', status: 'active', activationState: 'active', version: 1 },
     ];
-    const { service } = harness({ read: async () => stateWith({ regions: geography, sites, siteSettings: [] }) });
+    const { service } = harness({ readConfigurationScope: async () => stateWith({ regions: geography, sites, siteSettings: [] }) });
     const result = await service.listConfiguration({ ...actor, regionScopeId: province });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');

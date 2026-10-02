@@ -154,11 +154,12 @@ export const articleCreateSchema = z.object({
   status: z.enum(['draft', 'in_review', 'scheduled', 'active']).default('draft'),
   scheduledAt: z.iso.datetime({ offset: true }).nullish(),
 }).strict();
-export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVersion });
+export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVersion, body: z.string().trim().min(1).max(200_000).optional() });
 export const articleTransitionSchema = z.object({ id, expectedVersion }).strict();
 export const articleDeleteSchema = z.object({ id, expectedVersion }).strict();
 export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).max(200) }).strict();
 export const siteViewsSchema = z.object({ articleId: id, siteId: id, viewCount: z.int().min(0).max(1_000_000_000) }).strict();
+export const siteViewsBulkSchema = z.object({ articleId: id, siteIds: z.array(id).min(1).max(200), viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const articleFilterSchema = z.object({
   regionId: id.optional(), siteId: id.optional(), categoryId: id.optional(), publisherId: id.optional(), authorId: id.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(),

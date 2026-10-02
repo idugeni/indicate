@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+import { clearEndpointCache } from '@/modules/dashboard/components/shared/endpoint-cache';
 import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
 
 const POLICY = {
@@ -16,6 +17,7 @@ const POLICY = {
 
 afterEach(() => {
   cleanup();
+  clearEndpointCache();
   vi.unstubAllGlobals();
 });
 

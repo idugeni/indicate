@@ -158,13 +158,17 @@ export function ArticleDistributeForm({
       return;
     }
     startSeedTransition(async () => {
-      let succeeded = 0;
-      for (const siteId of seedSiteIds) {
-        const result = await command('article.sites.views.set', { articleId: assignArticleValue, siteId, viewCount });
-        if (result !== null) succeeded += 1;
+      const result = (await command('article.sites.views.setMany', { articleId: assignArticleValue, siteIds: seedSiteIds, viewCount })) as {
+        readonly updated?: unknown;
+        readonly missing?: unknown;
+      } | null;
+      const updated = typeof result?.updated === 'number' ? result.updated : 0;
+      const missingCount = Array.isArray(result?.missing) ? result.missing.length : 0;
+      if (updated === 0) toast.error('Gagal menyimpan jumlah tayang.');
+      else {
+        toast.success(`Jumlah tayang tersimpan untuk ${updated} situs.`);
+        if (missingCount > 0) toast.info(`${missingCount} situs belum tersalurkan — salurkan dulu sebelum mengisi tayangan.`);
       }
-      if (succeeded === 0) toast.error('Gagal menyimpan jumlah tayang.');
-      else toast.success(`Jumlah tayang tersimpan untuk ${succeeded} situs.`);
       form.reset();
     });
   };

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { INLINE_COMPRESS, formatBytes, prepareImageUpload } from '@/modules/publishing/compress-image';
 import { normalizeImageSource } from '@/modules/publishing/heic-source';
 import { MEDIA_PURPOSES } from '@/modules/publishing/object-key';
@@ -30,7 +31,7 @@ export function MediaForm({
   command,
 }: {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
 }) {
   const model = data as {
     readonly articles?: readonly { readonly id: string; readonly title?: string }[];
@@ -108,7 +109,7 @@ export function MediaForm({
           purpose: values.get('purpose'),
           owner,
           ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
-        })) as {
+        }, { quiet: true })) as {
           readonly reservationId?: string;
           readonly authorization?: {
             readonly url?: string;

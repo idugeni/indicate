@@ -13,6 +13,8 @@ import type { media, mediaKeyReservations, objectCleanupTasks, publicationTransi
 export type ReservationRow = typeof mediaKeyReservations.$inferSelect;
 export type MediaRow = typeof media.$inferSelect;
 export type JobRow = typeof publishingJobs.$inferSelect;
+/** Columns `mapJob` reads; reconciliation bookkeeping stays out of dashboard projections. */
+export type JobProjection = Pick<JobRow, 'id' | 'organizationId' | 'articleId' | 'idempotencyKey' | 'fingerprint' | 'fingerprintVersion' | 'state' | 'options' | 'dispatchStatus' | 'dispatchAttempts' | 'nextDispatchAt' | 'leaseOwner' | 'leaseExpiresAt' | 'fencingToken' | 'finalizedAt' | 'version' | 'createdAt' | 'updatedAt'>;
 export type TargetRow = typeof publishingJobTargets.$inferSelect;
 export type ReceiptRow = typeof publicationTransitionReceipts.$inferSelect;
 export type CleanupRow = typeof objectCleanupTasks.$inferSelect;
@@ -51,7 +53,7 @@ export function mapMedia(row: MediaRow): MediaAssetRecord {
   return { id: row.id, organizationId: row.organizationId, objectKey: row.objectKey, purpose: row.purpose, mediaType: row.mediaType, sizeBytes: row.sizeBytes, checksum: row.checksum, thumbObjectKey: row.thumbObjectKey ?? null, widthPx: row.widthPx ?? null, heightPx: row.heightPx ?? null, altText: row.altText ?? null, caption: row.caption ?? null, sortOrder: row.sortOrder, focalX: row.focalX ?? null, focalY: row.focalY ?? null, owner: mapOwnerFromRow(row), state: row.state, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) };
 }
 
-export function mapJob(row: JobRow): PublicationJobRecord {
+export function mapJob(row: JobProjection): PublicationJobRecord {
   return { id: row.id, organizationId: row.organizationId, articleId: row.articleId, idempotencyKey: row.idempotencyKey, fingerprint: row.fingerprint, fingerprintVersion: row.fingerprintVersion, state: row.state, options: row.options as PublicationJobRecord['options'], dispatchStatus: row.dispatchStatus, dispatchAttempts: row.dispatchAttempts, nextDispatchAt: iso(row.nextDispatchAt), leaseOwner: row.leaseOwner, leaseExpiresAt: optionalIso(row.leaseExpiresAt), fencingToken: row.fencingToken, finalizedAt: optionalIso(row.finalizedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) };
 }
 

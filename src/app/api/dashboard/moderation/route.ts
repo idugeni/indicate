@@ -1,3 +1,4 @@
+import { pageFromSearchParams } from '@/data/repos/shared/list-page';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -58,17 +59,18 @@ async function handleGET(request: Request) {
   const url = new URL(request.url);
   const parsed = getSchema.safeParse({ scope: url.searchParams.get('scope') });
   if (!parsed.success) return response(createNonDisclosingDenial(requestId));
+  const page = pageFromSearchParams(url);
   const session = await sessionFor(requestId);
   if ('error' in session) return response(session);
   try {
     return await withService(session, async (service) => {
       const result = parsed.data.scope === 'reports'
-        ? await service.listReports(session.actor)
+        ? await service.listReports(session.actor, page)
         : parsed.data.scope === 'holds'
-          ? await service.listHolds(session.actor)
+          ? await service.listHolds(session.actor, page)
           : parsed.data.scope === 'erasure-requests'
-            ? await service.listErasureRequests(session.actor)
-            : await service.listPrivacyRequests(session.actor);
+            ? await service.listErasureRequests(session.actor, page)
+            : await service.listPrivacyRequests(session.actor, page);
       return result.ok ? NextResponse.json(result.value) : response(result.error);
     });
   } catch {

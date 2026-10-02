@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
+import { DashboardWorkspace, isQuietCommand } from '@/modules/dashboard/components/dashboard-workspace';
 
 /** The workspace loads eighteen panels through `next/dynamic`, so a lazy panel needs more than the 1s default. */
 const LAZY_MODULE_TIMEOUT_MS = 8000;
@@ -196,8 +196,7 @@ describe('Dashboard workspace', () => {
     await expect(unwrapSpy.mock.results.at(-1)?.value).resolves.toEqual({ publisherId: 'p-2' });
   });
 
-  it('does not stack raw tables below the media panel', async () => {
-    const fetchMock = vi.fn(async (url: unknown) => {
+  it('does not stack raw tables below the media panel', async () => {    const fetchMock = vi.fn(async (url: unknown) => {
       const target = String(url);
       if (!target.includes('view=media')) return { ok: true, json: async () => ({}) };
       return {
@@ -220,4 +219,47 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText('reservations')).toBeNull();
     expect(screen.queryByText(/data, halaman/)).toBeNull();
   });
+
+  it('menandai perintah baca sebagai diam dan mutasi sebagai berisik', () => {
+    for (const action of ['media.read', 'media.readMany', 'media.list', 'publication.status', 'api-key.list']) {
+      expect(isQuietCommand(action)).toBe(true);
+    }
+    for (const action of ['media.reserve', 'media.archive', 'publication.request', 'publisher.submit']) {
+      expect(isQuietCommand(action)).toBe(false);
+    }
+  });
+
+  it('perintah diam tidak memicu toast maupun muat ulang', async () => {
+    const calls: { readonly url: string; readonly init?: { readonly body?: string } | undefined }[] = [];
+    const fetchMock = vi.fn(async (url: unknown, init?: { readonly body?: string }) => {
+      calls.push({ url: String(url), init });
+      if (init?.body !== undefined) {
+        return {
+          ok: true,
+          json: async () => ({
+            items: [{ id: 'm-1', objectKey: 'o/berkas.png', purpose: 'organization-asset', mediaType: 'image/png', sizeBytes: 1024, owner: { kind: 'organization' }, state: 'active', createdAt: '2026-09-24T00:00:00.000Z' }],
+            nextCursor: 'kursor-1',
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          media: [{ id: 'm-1', objectKey: 'o/berkas.png', purpose: 'organization-asset', mediaType: 'image/png', sizeBytes: 1024, owner: { kind: 'organization' }, state: 'active', createdAt: '2026-09-24T00:00:00.000Z' }],
+          nextCursor: 'kursor-1',
+          mediaCounts: [{ kind: 'organization', count: 1, bytes: 1024 }],
+          articles: [],
+          sites: [],
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    initialView = 'media';
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    await screen.findByText('Pustaka Media & Repositori Aset', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await screen.findByRole('button', { name: /Muat 24 lagi/ }, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    fireEvent.click(screen.getByRole('button', { name: /Muat 24 lagi/ }));
+    await waitFor(() => expect(calls.filter((call) => call.init?.body !== undefined)).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
+    expect(calls.filter((call) => call.init?.body === undefined)).toHaveLength(1);
+  }, 20000);
 });

@@ -193,7 +193,6 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
       { key: 'excerpt', label: 'Deskripsi (opsional)', kind: 'textarea', placeholder: 'Ringkasan ≤ 500 karakter; kosong = dari isi' },
       { key: 'canonicalUrl', label: 'URL kanonis (opsional)', kind: 'text', placeholder: 'https://…' },
       { key: 'scheduledAt', label: 'Jadwal terbit (ISO, opsional)', kind: 'text', placeholder: '2026-10-01T07:00:00.000Z' },
-      { key: 'body', label: 'Isi Artikel', kind: 'textarea', required: true },
     ],
     transitions: [
       { action: 'article.archive', label: 'Arsipkan', whenStatus: ['draft', 'active'] },
@@ -344,7 +343,7 @@ export function buildUpdatePayload(
         id, expectedVersion, regionId: nullableId('regionId'), publisherId: nullableId('publisherId'),
         categoryId: nullableId('categoryId'), authorId: nullableId('authorId'), slug: lower('slug'),
         title: text('title'), excerpt: optionalText('excerpt'),
-        canonicalUrl: optionalText('canonicalUrl'), body: String(values.body ?? '').trim(), source: text('source'),
+        canonicalUrl: optionalText('canonicalUrl'), source: text('source'),
         status: text('status'), scheduledAt: optionalText('scheduledAt'),
       };
     }

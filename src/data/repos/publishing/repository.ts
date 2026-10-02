@@ -950,42 +950,60 @@ export class DrizzlePublishingRepository implements PublishingRepository {
       const lock = regionScopeId ?? null;
       const scope = lock === null ? undefined : eq(regions.id, lock);
       const wants = (name: PublishingSnapshotCollection) => collections.has(name);
+      /** Read one row past the ceiling so callers learn the list is partial instead of assuming completeness. */
+      const take = <T>(rows: readonly T[], cap: number): { readonly items: T[]; readonly truncated: boolean } =>
+        rows.length > cap ? { items: rows.slice(0, cap), truncated: true } : { items: [...rows], truncated: false };
       const [articleRows, siteRows, domainRows, settingsRows, reservationRows, cleanupRows, invalidationRows, jobRows, targetRows, assignmentRows] = await Promise.all([
-        wants('articles') ? transaction.select({ id: articles.id, regionId: articles.regionId, status: articles.status, scheduledAt: articles.scheduledAt, leadMediaId: articles.leadMediaId, title: articles.title, slug: articles.slug }).from(articles).where(eq(articles.organizationId, organizationId)).orderBy(desc(articles.createdAt)).limit(SNAPSHOT_MAX_ARTICLES) : [],
-        wants('sites') ? transaction.select({ id: sites.id, regionId: sites.regionId, domainId: sites.domainId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState }).from(sites).where(eq(sites.organizationId, organizationId)).orderBy(sites.normalizedHostname).limit(SNAPSHOT_MAX_SITES) : [],
-        wants('domains') ? transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, siteTopology: domains.siteTopology }).from(domains).where(eq(domains.organizationId, organizationId)).orderBy(domains.normalizedHostname).limit(SNAPSHOT_MAX_DOMAINS) : [],
-        wants('sites') ? transaction.select({ siteId: siteSettings.siteId, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId }).from(siteSettings).where(eq(siteSettings.organizationId, organizationId)).limit(SNAPSHOT_MAX_SETTINGS) : [],
-        wants('reservations') ? transaction.select({ id: mediaKeyReservations.id, organizationId: mediaKeyReservations.organizationId, objectKey: mediaKeyReservations.objectKey, purpose: mediaKeyReservations.purpose, articleId: mediaKeyReservations.articleId, siteId: mediaKeyReservations.siteId, organizationAsset: mediaKeyReservations.organizationAsset, expectedMediaType: mediaKeyReservations.expectedMediaType, expectedSizeBytes: mediaKeyReservations.expectedSizeBytes, expectedChecksum: mediaKeyReservations.expectedChecksum, status: mediaKeyReservations.status, expiresAt: mediaKeyReservations.expiresAt, createdAt: mediaKeyReservations.createdAt, updatedAt: mediaKeyReservations.updatedAt }).from(mediaKeyReservations).where(eq(mediaKeyReservations.organizationId, organizationId)).orderBy(desc(mediaKeyReservations.createdAt)).limit(SNAPSHOT_MAX_RESERVATIONS) : [],
-        wants('cleanupTasks') ? transaction.select({ id: objectCleanupTasks.id, organizationId: objectCleanupTasks.organizationId, objectKey: objectCleanupTasks.objectKey, reason: objectCleanupTasks.reason, status: objectCleanupTasks.status, attempts: objectCleanupTasks.attempts, nextAttemptAt: objectCleanupTasks.nextAttemptAt, sanitizedFailure: objectCleanupTasks.sanitizedFailure }).from(objectCleanupTasks).where(eq(objectCleanupTasks.organizationId, organizationId)).orderBy(desc(objectCleanupTasks.createdAt)).limit(SNAPSHOT_MAX_CLEANUP_TASKS) : [],
-        wants('invalidationIntents') ? transaction.select({ id: invalidationTasks.id, siteId: invalidationTasks.siteId, reason: invalidationTasks.reason, tags: invalidationTasks.tags, status: invalidationTasks.status }).from(invalidationTasks).where(and(eq(invalidationTasks.organizationId, organizationId), scope ?? sql`true`)).orderBy(desc(invalidationTasks.createdAt)).limit(SNAPSHOT_MAX_INVALIDATION_INTENTS) : [],
-        wants('jobs') ? transaction.select().from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)).orderBy(desc(publishingJobs.createdAt)).limit(SNAPSHOT_MAX_JOBS) : [],
-        wants('targets') ? transaction.select({ target: publishingJobTargets, siteId: articleSites.siteId }).from(publishingJobTargets).innerJoin(articleSites, and(eq(articleSites.organizationId, publishingJobTargets.organizationId), eq(articleSites.id, publishingJobTargets.articleSiteId))).where(eq(publishingJobTargets.organizationId, organizationId)).limit(SNAPSHOT_MAX_TARGETS) : [],
-        wants('articleSites') ? transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, active: articleSites.active }).from(articleSites).where(eq(articleSites.organizationId, organizationId)).orderBy(desc(articleSites.createdAt)).limit(SNAPSHOT_MAX_ASSIGNMENTS) : [],
+        wants('articles') ? transaction.select({ id: articles.id, regionId: articles.regionId, status: articles.status, scheduledAt: articles.scheduledAt, leadMediaId: articles.leadMediaId, title: articles.title, slug: articles.slug }).from(articles).where(eq(articles.organizationId, organizationId)).orderBy(desc(articles.createdAt)).limit(SNAPSHOT_MAX_ARTICLES + 1) : [],
+        wants('sites') ? transaction.select({ id: sites.id, regionId: sites.regionId, domainId: sites.domainId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState }).from(sites).where(eq(sites.organizationId, organizationId)).orderBy(sites.normalizedHostname).limit(SNAPSHOT_MAX_SITES + 1) : [],
+        wants('domains') ? transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, siteTopology: domains.siteTopology }).from(domains).where(eq(domains.organizationId, organizationId)).orderBy(domains.normalizedHostname).limit(SNAPSHOT_MAX_DOMAINS + 1) : [],
+        wants('sites') ? transaction.select({ siteId: siteSettings.siteId, logoMediaId: siteSettings.logoMediaId, faviconMediaId: siteSettings.faviconMediaId, defaultMediaId: siteSettings.defaultMediaId }).from(siteSettings).where(eq(siteSettings.organizationId, organizationId)).limit(SNAPSHOT_MAX_SETTINGS + 1) : [],
+        wants('reservations') ? transaction.select({ id: mediaKeyReservations.id, organizationId: mediaKeyReservations.organizationId, objectKey: mediaKeyReservations.objectKey, purpose: mediaKeyReservations.purpose, articleId: mediaKeyReservations.articleId, siteId: mediaKeyReservations.siteId, organizationAsset: mediaKeyReservations.organizationAsset, expectedMediaType: mediaKeyReservations.expectedMediaType, expectedSizeBytes: mediaKeyReservations.expectedSizeBytes, expectedChecksum: mediaKeyReservations.expectedChecksum, status: mediaKeyReservations.status, expiresAt: mediaKeyReservations.expiresAt, createdAt: mediaKeyReservations.createdAt, updatedAt: mediaKeyReservations.updatedAt }).from(mediaKeyReservations).where(eq(mediaKeyReservations.organizationId, organizationId)).orderBy(desc(mediaKeyReservations.createdAt)).limit(SNAPSHOT_MAX_RESERVATIONS + 1) : [],
+        wants('cleanupTasks') ? transaction.select({ id: objectCleanupTasks.id, organizationId: objectCleanupTasks.organizationId, objectKey: objectCleanupTasks.objectKey, reason: objectCleanupTasks.reason, status: objectCleanupTasks.status, attempts: objectCleanupTasks.attempts, nextAttemptAt: objectCleanupTasks.nextAttemptAt, sanitizedFailure: objectCleanupTasks.sanitizedFailure }).from(objectCleanupTasks).where(eq(objectCleanupTasks.organizationId, organizationId)).orderBy(desc(objectCleanupTasks.createdAt)).limit(SNAPSHOT_MAX_CLEANUP_TASKS + 1) : [],
+        wants('invalidationIntents') ? transaction.select({ id: invalidationTasks.id, siteId: invalidationTasks.siteId, reason: invalidationTasks.reason, tags: invalidationTasks.tags, status: invalidationTasks.status }).from(invalidationTasks).where(and(eq(invalidationTasks.organizationId, organizationId), scope ?? sql`true`)).orderBy(desc(invalidationTasks.createdAt)).limit(SNAPSHOT_MAX_INVALIDATION_INTENTS + 1) : [],
+        wants('jobs') ? transaction.select({ id: publishingJobs.id, organizationId: publishingJobs.organizationId, articleId: publishingJobs.articleId, idempotencyKey: publishingJobs.idempotencyKey, fingerprint: publishingJobs.fingerprint, fingerprintVersion: publishingJobs.fingerprintVersion, state: publishingJobs.state, options: publishingJobs.options, dispatchStatus: publishingJobs.dispatchStatus, dispatchAttempts: publishingJobs.dispatchAttempts, nextDispatchAt: publishingJobs.nextDispatchAt, leaseOwner: publishingJobs.leaseOwner, leaseExpiresAt: publishingJobs.leaseExpiresAt, fencingToken: publishingJobs.fencingToken, finalizedAt: publishingJobs.finalizedAt, version: publishingJobs.version, createdAt: publishingJobs.createdAt, updatedAt: publishingJobs.updatedAt }).from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)).orderBy(desc(publishingJobs.createdAt)).limit(SNAPSHOT_MAX_JOBS + 1) : [],
+        wants('targets') ? transaction.select({ target: publishingJobTargets, siteId: articleSites.siteId }).from(publishingJobTargets).innerJoin(articleSites, and(eq(articleSites.organizationId, publishingJobTargets.organizationId), eq(articleSites.id, publishingJobTargets.articleSiteId))).where(eq(publishingJobTargets.organizationId, organizationId)).limit(SNAPSHOT_MAX_TARGETS + 1) : [],
+        wants('articleSites') ? transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, active: articleSites.active }).from(articleSites).where(eq(articleSites.organizationId, organizationId)).orderBy(desc(articleSites.createdAt)).limit(SNAPSHOT_MAX_ASSIGNMENTS + 1) : [],
       ]);
+      const articlesPage = take(articleRows, SNAPSHOT_MAX_ARTICLES);
+      const sitesPage = take(siteRows, SNAPSHOT_MAX_SITES);
+      const domainsPage = take(domainRows, SNAPSHOT_MAX_DOMAINS);
+      const reservationsPage = take(reservationRows, SNAPSHOT_MAX_RESERVATIONS);
+      const cleanupPage = take(cleanupRows, SNAPSHOT_MAX_CLEANUP_TASKS);
+      const invalidationPage = take(invalidationRows, SNAPSHOT_MAX_INVALIDATION_INTENTS);
+      const jobsPage = take(jobRows, SNAPSHOT_MAX_JOBS);
+      const targetsPage = take(targetRows, SNAPSHOT_MAX_TARGETS);
+      const assignmentsPage = take(assignmentRows, SNAPSHOT_MAX_ASSIGNMENTS);
       const settingsBySite = new Map(settingsRows.map((row) => [row.siteId, [row.logoMediaId, row.faviconMediaId, row.defaultMediaId].filter((value): value is string => value !== null)]));
       const articleVisible = (row: { readonly id: string; readonly regionId: string | null }) => lock === null || row.regionId === lock;
       const siteVisible = (row: { readonly id: string; readonly regionId: string | null }) => lock === null || row.regionId === null || row.regionId === lock;
-      const visibleArticles = articleRows.filter(articleVisible);
+      const visibleArticles = articlesPage.items.filter(articleVisible);
       const visibleArticleIds = new Set(visibleArticles.map((row) => row.id));
-      const visibleSites = siteRows.filter(siteVisible);
+      const visibleSites = sitesPage.items.filter(siteVisible);
       const visibleSiteIds = new Set(visibleSites.map((row) => row.id));
-      const visibleJobs = jobRows.filter((row) => visibleArticleIds.has(row.articleId));
+      const visibleJobs = jobsPage.items.filter((row) => visibleArticleIds.has(row.articleId));
       const visibleJobIds = new Set(visibleJobs.map((row) => row.id));
       return {
         organizationId,
         articles: visibleArticles.map((row) => ({ id: row.id, organizationId, active: row.status === 'active', status: row.status, scheduledAt: optionalIso(row.scheduledAt), leadMediaId: row.leadMediaId, title: row.title, slug: row.slug })),
         sites: visibleSites.map((row) => ({ id: row.id, organizationId, active: row.status === 'active' && row.activationState === 'active', normalizedHostname: row.normalizedHostname, domainId: row.domainId, settingsMediaIds: settingsBySite.get(row.id) ?? [] })),
-        domains: domainRows.map((row) => ({ id: row.id, organizationId, normalizedHostname: row.normalizedHostname, status: row.status, siteTopology: row.siteTopology })),
-        reservations: wants('reservations') ? reservationRows.map(mapReservation).filter((row) => row.owner.kind === 'organization' || (row.owner.kind === 'article' && visibleArticleIds.has(row.owner.articleId)) || (row.owner.kind === 'site' && visibleSiteIds.has(row.owner.siteId))) : [],
-        cleanupTasks: wants('cleanupTasks') ? cleanupRows.map(mapCleanup) : [],
-        invalidationIntents: wants('invalidationIntents') ? invalidationRows.filter((row) => visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, siteId: row.siteId, reason: row.reason, tags: row.tags, status: row.status })) : [],
+        domains: domainsPage.items.map((row) => ({ id: row.id, organizationId, normalizedHostname: row.normalizedHostname, status: row.status, siteTopology: row.siteTopology })),
+        reservations: wants('reservations') ? reservationsPage.items.map(mapReservation).filter((row) => row.owner.kind === 'organization' || (row.owner.kind === 'article' && visibleArticleIds.has(row.owner.articleId)) || (row.owner.kind === 'site' && visibleSiteIds.has(row.owner.siteId))) : [],
+        cleanupTasks: wants('cleanupTasks') ? cleanupPage.items.map(mapCleanup) : [],
+        invalidationIntents: wants('invalidationIntents') ? invalidationPage.items.filter((row) => visibleSiteIds.has(row.siteId)).map((row) => ({ id: row.id, organizationId, siteId: row.siteId, reason: row.reason, tags: row.tags, status: row.status })) : [],
         jobs: wants('jobs') ? visibleJobs.map(mapJob) : [],
-        targets: wants('targets') ? targetRows.filter(({ target }) => visibleJobIds.has(target.jobId)).map(({ target, siteId }) => mapTarget({ ...target, siteId })) : [],
+        targets: wants('targets') ? targetsPage.items.filter(({ target }) => visibleJobIds.has(target.jobId)).map(({ target, siteId }) => mapTarget({ ...target, siteId })) : [],
         articleSites: wants('articleSites')
-          ? assignmentRows
+          ? assignmentsPage.items
               .filter((row) => visibleArticleIds.has(row.articleId) && visibleSiteIds.has(row.siteId))
               .map((row) => ({ id: row.id, articleId: row.articleId, siteId: row.siteId, state: row.state, active: row.active }))
           : [],
+        truncated: {
+          articles: articlesPage.truncated, sites: sitesPage.truncated, domains: domainsPage.truncated,
+          reservations: reservationsPage.truncated, cleanupTasks: cleanupPage.truncated,
+          invalidationIntents: invalidationPage.truncated, jobs: jobsPage.truncated,
+          targets: targetsPage.truncated, articleSites: assignmentsPage.truncated,
+        },
       };
     });
   }

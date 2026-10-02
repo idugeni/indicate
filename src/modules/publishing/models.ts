@@ -263,4 +263,10 @@ export interface PublishingTenantSnapshot {
   readonly jobs: readonly PublicationJobRecord[];
   readonly targets: readonly PublicationTargetRecord[];
   readonly articleSites: readonly PublishingAssignmentRef[];
+  /**
+   * Per-collection ceiling signal: true when the tenant holds more rows than
+   * the ceiling returned. Consumers must treat a true flag as "list is
+   * partial", never as complete.
+   */
+  readonly truncated: Readonly<Record<PublishingSnapshotCollection, boolean>>;
 }

@@ -282,6 +282,7 @@ export function ArticleCreateForm({
   const [libraryShown, setLibraryShown] = useState(LIBRARY_PAGE);
   const [libraryPreviews, setLibraryPreviews] = useState<Readonly<Record<string, string>>>({});
   const libraryAuthInFlight = useRef<Set<string>>(new Set());
+  const libraryExpiry = useRef<ReadonlyMap<string, number>>(new Map());
   const librarySearchInputId = useId();
   const [savingFeaturedMeta, setSavingFeaturedMeta] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
@@ -696,8 +697,7 @@ export function ArticleCreateForm({
     void (async () => {
       try {
         const response = await fetch(
-          `/api/dashboard/publishing?organizationId=${encodeURIComponent(organizationId)}&view=media`,
-          { cache: 'no-store' },
+          `/api/dashboard/publishing?organizationId=${encodeURIComponent(organizationId)}&view=media&limit=100`,
         );
         if (!response.ok) throw new Error('Gagal memuat pustaka media.');
         const body = (await response.json()) as { readonly media?: readonly unknown[] };
@@ -725,26 +725,41 @@ export function ArticleCreateForm({
   const libraryVisible = libraryFiltered.slice(0, libraryShown);
 
   useEffect(() => {
-    if (!libraryOpen || command === undefined || libraryVisible.length === 0) return;
+    if (!libraryOpen || command === undefined || libraryVisible.length === 0) return undefined;
+    const now = Date.now();
     const missing = libraryVisible.filter(
-      (item) => libraryPreviews[item.id] === undefined && !libraryAuthInFlight.current.has(item.id),
+      (item) =>
+        (libraryPreviews[item.id] === undefined || (libraryExpiry.current.get(item.id) ?? 0) - 60_000 <= now) &&
+        !libraryAuthInFlight.current.has(item.id),
     );
-    if (missing.length === 0) return;
+    if (missing.length === 0) return undefined;
     for (const item of missing) libraryAuthInFlight.current.add(item.id);
-    void (async () => {
-      const entries: [string, string][] = [];
-      for (const item of missing) {
+    const timer = window.setTimeout(() => {
+      const run = command;
+      void (async () => {
         try {
-          const auth = (await command('media.read', { mediaId: item.id })) as { readonly url?: unknown } | null;
-          if (typeof auth?.url === 'string' && auth.url !== '') entries.push([item.id, auth.url]);
+          const result = (await run('media.readMany', { mediaIds: missing.map((item) => item.id) })) as {
+            readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown; readonly expiresAt?: unknown }[];
+          } | null;
+          if (!Array.isArray(result?.items)) return;
+          const entries: [string, string][] = [];
+          const expiry = new Map(libraryExpiry.current);
+          for (const entry of result.items) {
+            if (typeof entry?.mediaId !== 'string' || typeof entry?.url !== 'string' || entry.url === '') continue;
+            entries.push([entry.mediaId, entry.url]);
+            const expires = typeof entry?.expiresAt === 'string' ? Date.parse(entry.expiresAt) : Number.NaN;
+            if (Number.isFinite(expires)) expiry.set(entry.mediaId, expires);
+          }
+          libraryExpiry.current = expiry;
+          if (entries.length > 0) setLibraryPreviews((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
         } catch {
           /* Pratinjau per baris best-effort; kartu tanpa URL tetap bisa dipilih. */
         }
-      }
-      if (entries.length > 0) setLibraryPreviews((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
-    })().finally(() => {
-      for (const item of missing) libraryAuthInFlight.current.delete(item.id);
-    });
+      })().finally(() => {
+        for (const item of missing) libraryAuthInFlight.current.delete(item.id);
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
   }, [libraryOpen, libraryVisible, command, libraryPreviews]);
 
   const pickLibraryCover = (item: CoverLibraryItem) => {
@@ -940,6 +955,7 @@ export function ArticleCreateForm({
   };
 
   const handleFocalPick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (savingFeaturedMeta) return;
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
     const x = Math.min(100, Math.max(0, Math.round(((event.clientX - rect.left) / rect.width) * 100)));
@@ -958,15 +974,9 @@ export function ArticleCreateForm({
    * @param scheduledAt - ISO publish time for a scheduled article.
    * @returns Nothing; the toast carries the outcome.
    *
-   * @remarks Two server rules shape this. First, `siteIds` is capped per command,
-   * so a network with more apex portals than the cap has to be split into as many
-   * batches as it takes — the batch count therefore follows the live apex count
-   * instead of a fixed number. Second, any multi-portal request must carry a
-   * distinct title and description per portal, so each batch asks for suggested
-   * variants first and sends them back as overrides; sending an empty override
-   * map is rejected. Batches run in order because each one's suggestions are
-   * computed against the variants the previous batch already claimed, which is
-   * what keeps every portal's title unique across the whole fan-out.
+   * @remarks `siteIds` is capped per command, so a network with more apex
+   * portals than the cap has to be split into as many batches as it takes.
+   * Every portal carries the canonical title/description unchanged.
    *
    * The article exists before any of this runs, so a failure leaves it publishable
    * from the queue rather than losing the writing.
@@ -986,29 +996,23 @@ export function ArticleCreateForm({
     let viewsFailed = 0;
     try {
       for (const [index, batch] of batches.entries()) {
-        const suggested = (await command('publication.suggest', { articleId, siteIds: batch })) as {
-          readonly overrides?: Readonly<Record<string, { readonly title?: string; readonly description?: string }>>;
-        } | null;
-        const overrides = suggested?.overrides ?? {};
-        if (Object.keys(overrides).length !== batch.length) {
-          throw new Error('Varian portal tidak lengkap untuk satu batch.');
-        }
         await command('publication.request', {
           articleId,
           siteIds: batch,
           idempotencyKey: `${idempotencyPrefix}:${index}`,
           options: { mode: scheduled ? 'scheduled' : 'immediate' },
           publishAt: scheduled ? (scheduledAt ?? null) : (backdateIso ?? null),
-          overrides,
+          overrides: {},
         });
         dispatched += batch.length;
         if (initialViews !== null) {
-          for (const siteId of batch) {
-            try {
-              await command('article.sites.views.set', { articleId, siteId, viewCount: initialViews });
-            } catch {
-              viewsFailed += 1;
-            }
+          try {
+            const seeded = (await command('article.sites.views.setMany', { articleId, siteIds: batch, viewCount: initialViews })) as {
+              readonly missing?: unknown;
+            } | null;
+            viewsFailed += Array.isArray(seeded?.missing) ? seeded.missing.length : batch.length;
+          } catch {
+            viewsFailed += batch.length;
           }
         }
       }

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { clearEndpointCache } from '@/modules/dashboard/components/shared/endpoint-cache';
 import { CustomerManagement } from '@/modules/dashboard/components/customers/customer-management';
 
 function stubCustomers() {
@@ -22,6 +23,7 @@ function stubCustomers() {
 
 afterEach(() => {
   cleanup();
+  clearEndpointCache();
 });
 
 describe('Manajemen pelanggan', () => {

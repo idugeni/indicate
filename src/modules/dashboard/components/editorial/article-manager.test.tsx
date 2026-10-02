@@ -58,13 +58,11 @@ describe('ArticleManager', () => {
   it('membuka editor ubah dan menyimpan perubahan lewat article.update', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'a-1', version: 3 }));
-    const onRefresh = vi.fn();
-    render(<ArticleManager data={DATA} command={command} onRefresh={onRefresh} />);
+    render(<ArticleManager data={DATA} command={command} />);
     await user.click(screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo' }));
     expect(screen.getByRole('form', { name: 'Ubah Artikel' })).toBeDefined();
     await user.click(screen.getByRole('button', { name: 'Simpan perubahan' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('article.update', expect.objectContaining({ id: 'a-1', expectedVersion: 2 })));
-    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
   });
 
   it('menampilkan tanggal long beserta jam di samping tanggal terbit', () => {
@@ -72,28 +70,24 @@ describe('ArticleManager', () => {
     expect(screen.getAllByText(/22 September 2026/).length).toBeGreaterThan(0);
   });
 
-  it('mengarsipkan baris aktif lalu memuat ulang', async () => {
+  it('mengarsipkan baris aktif tanpa refresh ganda', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'a-1', version: 3 }));
-    const onRefresh = vi.fn();
-    render(<ArticleManager data={DATA} command={command} onRefresh={onRefresh} />);
+    render(<ArticleManager data={DATA} command={command} />);
     await user.click(screen.getByRole('button', { name: 'Arsipkan artikel Banjir Wonosobo' }));
     expect(command).toHaveBeenCalledWith('article.archive', { id: 'a-1', expectedVersion: 2 });
-    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('menghapus permanen draf lewat dialog konfirmasi', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'a-2' }));
-    const onRefresh = vi.fn();
-    render(<ArticleManager data={DATA} command={command} onRefresh={onRefresh} />);
+    render(<ArticleManager data={DATA} command={command} />);
     expect(screen.getByRole('button', { name: 'Hapus permanen artikel Banjir Wonosobo' })).toBeDefined();
     await user.clear(screen.getByLabelText('Status'));
     await user.click(screen.getByRole('button', { name: 'Hapus permanen artikel APBD Jateng' }));
     expect(screen.getByText('Hapus permanen artikel?')).toBeDefined();
     await user.click(screen.getByRole('button', { name: 'Hapus permanen' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('article.delete', { id: 'a-2', expectedVersion: 1 }));
-    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
   });
 
   it('menawarkan pulihkan untuk baris arsip', async () => {
