@@ -42,6 +42,22 @@ export const ARTICLE_FALLBACK_IMAGE_URL = '/assets/article-fallback.webp';
 export const SERVICE_SUMMARY =
   'Indicate menyatukan pengelolaan banyak portal berita ke dalam satu dasbor terpusat. Redaksi menulis satu kali, lalu menerbitkannya ke situs mana pun yang dipilih — dengan data masing-masing pelanggan yang terjaga dan terpisah.';
 
+/**
+ * Kata kunci situs untuk metadata mesin pencari di seluruh halaman korporat.
+ */
+export const SITE_KEYWORDS: readonly string[] = Object.freeze([
+  'platform berita',
+  'publishing infrastructure',
+  'CMS media Indonesia',
+  'portal berita multi-situs',
+  'ruang redaksi digital',
+  'sistem penerbitan berita',
+  'jaringan media',
+  'manajemen redaksi',
+  'hosting portal berita',
+  'Indicate',
+]);
+
 export const SITE_ROUTES: readonly NavigationLink[] = Object.freeze([
   { href: '/services', label: 'Layanan' },
   { href: '/pricing', label: 'Harga' },
