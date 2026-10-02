@@ -94,6 +94,14 @@ describe('dokumen legal', () => {
       expect(bagian.body.length).toBeGreaterThan(0);
     });
   });
+
+  it('membatasi setiap paragraf render maksimal 150 kata', () => {
+    for (const bagian of [...TERMS_SECTIONS, ...PRIVACY_SECTIONS]) {
+      for (const paragraf of bagian.body.split(/\n\s*\n/)) {
+        expect(paragraf.trim().split(/\s+/).length).toBeLessThanOrEqual(150);
+      }
+    }
+  });
 });
 
 describe('tenant live', () => {

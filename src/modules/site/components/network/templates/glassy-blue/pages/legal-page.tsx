@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { buildSeoDocument } from '@/modules/site/seo';
 import { slugify } from '@/modules/site/slugify';
 import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
+import { splitLegalParagraphs } from '@/modules/site/components/layout/doc-section';
 import { TENANT_RELATED_DOCS } from '@/modules/site/legal-documents';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueShell } from '@/modules/site/components/network/templates/glassy-blue/chrome/shell';
@@ -91,7 +92,9 @@ export function GlassyBlueLegal({ site, title, description, path = '/', sections
                   {section.heading}
                 </h2>
               </div>
-              <p className="m-0 mt-3 text-justify font-sans text-sm leading-relaxed text-slate-600">{section.body}</p>
+              {splitLegalParagraphs(section.body).map((paragraph, index) => (
+                <p key={`${section.heading}-${index}`} className="m-0 mt-3 text-justify font-sans text-sm leading-relaxed text-slate-600">{paragraph}</p>
+              ))}
             </article>
           ))}
         </div>
