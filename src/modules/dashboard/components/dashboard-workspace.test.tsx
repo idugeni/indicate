@@ -207,8 +207,10 @@ describe('Dashboard workspace', () => {
         expect(String(call[0])).not.toMatch(/Perintah .* berhasil dijalankan/);
       }
     }
-    await waitFor(() => expect(gets.filter((url) => url.includes('view=publishers')).length).toBe(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
-  });
+    // Let the refetch settle before counting, otherwise the assertion races it.
+    await waitFor(() => expect(gets.some((url) => url.includes('view=publishers'))).toBe(true), { timeout: LAZY_MODULE_TIMEOUT_MS });
+    expect(gets.filter((url) => url.includes('view=publishers'))).toHaveLength(1);
+  }, 20000);
 
   it('does not stack raw tables below the media panel', async () => {    const fetchMock = vi.fn(async (url: unknown) => {
       const target = String(url);

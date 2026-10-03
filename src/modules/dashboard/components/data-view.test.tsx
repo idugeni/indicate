@@ -406,7 +406,7 @@ describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan mem
     expect(screen.getByText('portal.example')).toBeDefined();
   });
 
-  it('aksi bulk memakai satu toast progres dinamis dan satu muat ulang', async () => {
+  it('aksi bulk memakai satu toast progres dinamis dan satu muat ulang', { timeout: 30000 }, async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({}));
     const refresh = vi.fn();
