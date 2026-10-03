@@ -105,7 +105,11 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
               sizes="(max-width: 1024px) 100vw, 55vw"
             />
           </Link>
-          <p className="absolute bottom-4 left-4 m-0 flex max-w-[calc(100%-2rem)] items-center gap-2 rounded-xl bg-black/55 px-3.5 py-2.5 text-white backdrop-blur-sm">
+          {/* 6rem = left-4 (1rem) + tombol h-10 w-10 (2.5rem) + right-4 (1rem)
+              + jeda 1.5rem. Tanpa potongan tombol ini, caption melebar sampai
+              100%-2rem dan teksnya tertutup lingkaran merah, bukan terpotong
+              oleh ellipsis. */}
+          <p className="absolute bottom-4 left-4 m-0 flex max-w-[calc(100%-6rem)] items-center gap-2 rounded-xl bg-black/55 px-3.5 py-2.5 text-white backdrop-blur-sm">
             <MapPin className="h-4 w-4 flex-none text-red-300" aria-hidden="true" />
             <span className="min-w-0">
               <span className="block truncate text-xs font-bold leading-tight">{place}</span>

@@ -127,26 +127,15 @@ export function withCategoryIndex(items: readonly CategoryNavItem[]): readonly C
 }
 
 /**
- * Hitung artikel tayang per slug kategori pada situs aktif.
- *
- * @param site - Data situs tenant aktif.
- * @returns Peta slug ke jumlah artikel.
- */
-export function categoryFrequencyRank(site: NetworkSiteData): ReadonlyMap<string, number> {
-  const counts = new Map<string, number>();
-  for (const article of site.articles) {
-    if (article.categorySlug === null) continue;
-    counts.set(article.categorySlug, (counts.get(article.categorySlug) ?? 0) + 1);
-  }
-  return counts;
-}
-
-/**
  * Turunkan navigasi kategori dari artikel tayang, terbesar dulu.
  *
  * @param site - Data situs tenant aktif.
  * @param limit - Batas jumlah kanal.
  * @returns Daftar kanal unik terurut frekuensi artikel menurun.
+ * @remarks Jalur degradasi, bukan sumber kebenaran. Dipakai hanya saat tabel
+ * `categories` tidak terbaca atau kosong, dan karena `site.articles` hanya memuat
+ * artikel halaman aktif, hasilnya bukan gambaran kanal tenant. Jangan dipakai untuk
+ * klaim seperti "belum memiliki artikel".
  */
 export function categoryNav(site: NetworkSiteData, limit = CATEGORY_NAV_LIMIT): readonly CategoryNavItem[] {
   if (site.settings.navigation.length > 0) {

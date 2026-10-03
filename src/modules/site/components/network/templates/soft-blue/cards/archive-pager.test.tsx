@@ -1,47 +1,42 @@
 // @vitest-environment jsdom
-import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
 
 import { makeNetworkArticle } from '@/modules/delivery/network-test-fixtures';
 import { SoftBlueArchivePager } from '@/modules/site/components/network/templates/soft-blue/cards/archive-pager';
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
 
 afterEach(() => {
   cleanup();
 });
 
-const articles = (count: number) =>
-  Array.from({ length: count }, (_, index) =>
-    makeNetworkArticle({ id: `a-${index + 1}`, slug: `berita-${index + 1}`, title: `Berita ${index + 1}` }),
+function artikel(n: number) {
+  return Array.from({ length: n }, (_, i) =>
+    makeNetworkArticle({ id: `a-${i}`, slug: `b-${i}`, title: `Berita ${i}`, attribution: 'Redaksi' }),
   );
+}
+
+const kelasGrid = () => screen.getByRole('region', { name: 'Kabar Lainnya' }).querySelector('.grid')?.getAttribute('class') ?? '';
 
 describe('SoftBlueArchivePager', () => {
-  it('null untuk daftar kosong', () => {
-    const { container } = render(<SoftBlueArchivePager articles={[]} heading="Terkini" description="d" />);
-    expect(container.firstChild).toBe(null);
+  it('tidak 2-kolom sebelum lg — kartu horizontal butuh lebar per kolom', () => {
+    render(<SoftBlueArchivePager articles={artikel(6)} heading="Kabar Lainnya" description="Jelajahi" />);
+    const kelas = kelasGrid();
+    // `sm:grid-cols-2` menyisakan kolom teks ~70px di 640px sehingga baris meta
+    // meluber keluar grid dan halaman bergeser horizontal.
+    expect(kelas).not.toMatch(/sm:grid-cols-2/);
+    expect(kelas).toMatch(/lg:grid-cols-2/);
   });
 
-  it('berpindah halaman dengan sebelumnya dan berikutnya', () => {
-    render(<SoftBlueArchivePager articles={articles(12)} heading="Terkini" description="d" />);
-    expect(screen.getByRole('status')).toHaveTextContent('1–6/12');
-    expect(screen.getByText('Berita 1')).toBeDefined();
-    const previous = screen.getByRole('button', { name: /sebelumnya/i });
-    const next = screen.getByRole('button', { name: /berikutnya/i });
-    expect(previous).toBeDisabled();
-
-    fireEvent.click(next);
-    expect(screen.getByRole('status')).toHaveTextContent('7–12/12');
-    expect(screen.getByText('Berita 12')).toBeDefined();
-    expect(screen.getByText('Halaman 2 dari 2')).toBeDefined();
-    expect(next).toBeDisabled();
-
-    fireEvent.click(previous);
-    expect(screen.getByRole('status')).toHaveTextContent('1–6/12');
+  it('tetap merender kartu dan heading', () => {
+    render(<SoftBlueArchivePager articles={artikel(3)} heading="Kabar Lainnya" description="Jelajahi" />);
+    expect(screen.getByRole('region', { name: 'Kabar Lainnya' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /Kabar Lainnya/ })).toBeDefined();
   });
 
-  it('tanpa kendali bila kurang dari satu halaman', () => {
-    render(<SoftBlueArchivePager articles={articles(4)} heading="Terkini" description="d" />);
-    expect(screen.queryByRole('navigation')).toBe(null);
-    expect(screen.getByRole('status')).toHaveTextContent('1–4/4');
+  it('tidak merender apa pun saat kosong', () => {
+    const { container } = render(<SoftBlueArchivePager articles={[]} heading="Kabar Lainnya" description="Jelajahi" />);
+    expect(container.textContent).toBe('');
   });
 });

@@ -1,5 +1,14 @@
-import { TemplateRingLoader } from '@/modules/site/components/network/ui/ring-loader';
+import type { ReactElement } from 'react';
 
-export function WarmEditorialLoader() {
-  return <TemplateRingLoader background="#fdf7f0" accent="#b4532a" glow="#9fc0ff" foreground="#ffffff" />;
+import { BrandedLoader } from '@/modules/site/components/network/ui/branded-loader';
+import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm-editorial/theme';
+
+/**
+ * Render loader berbranding Warm Editorial.
+ *
+ * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
+ * @returns Overlay `role="status"` berpalet Warm Editorial.
+ */
+export function WarmEditorialLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
+  return <BrandedLoader theme={WARM_EDITORIAL} logoUrl={logoUrl} />;
 }

@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { ChannelPage } from '@/modules/site/components/network/network-listing';
+import { ChannelPage, TemplateLoader } from '@/modules/site/components/network/network-listing';
 import RootLoading from '@/app/loading';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { resolveTenantBranding } from '@/modules/delivery/tenant-branding';
 import { TAG_MAX_LENGTH, normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 import { notFoundMetadata } from '@/modules/site/seo';
 
@@ -23,10 +24,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return networkMetadata(`/tags/${clean}`, { tag: clean });
 }
 
-/** Static shell for instant validation: params are only read inside Suspense. */
-export default function TagPage({ params }: Props) {
+/**
+ * Render shell topik dengan fallback berbrand tenant.
+ *
+ * @remarks Branding di-resolve di atas boundary supaya fallback bisa menyebut
+ * tenant sebelum situs ter-resolve: `resolveTenantBranding` membaca lewat
+ * `classifyTenantHost` yang sudah dedup per request plus template ber-tag 24
+ * jam, jadi cache hangat tidak menambah round-trip baru. Konsekuensinya shell
+ * ini tidak lagi dapat di-prerender — tiap request menunggu branding sebelum
+ * fallback ter-cat, sementara sebelumnya fallback langsung stream. Validasi
+ * params tetap di dalam `TagContent` supaya shell tidak menahan 404.
+ */
+export default async function TagPage({ params }: Props) {
+  const branding = await resolveTenantBranding();
   return (
-    <Suspense fallback={<RootLoading />}>
+    <Suspense
+      fallback={
+        branding === null ? (
+          <RootLoading />
+        ) : (
+          <TemplateLoader templateId={branding.templateId} logoUrl={branding.logoUrl} />
+        )
+      }
+    >
       <TagContent params={params} />
     </Suspense>
   );

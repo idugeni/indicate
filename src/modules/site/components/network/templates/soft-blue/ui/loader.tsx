@@ -1,5 +1,14 @@
-import { TemplateRingLoader } from '@/modules/site/components/network/ui/ring-loader';
+import type { ReactElement } from 'react';
 
-export function SoftBlueLoader() {
-  return <TemplateRingLoader background="#f1f6ff" accent="#2563eb" glow="#9fc0ff" foreground="#ffffff" />;
+import { BrandedLoader } from '@/modules/site/components/network/ui/branded-loader';
+import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
+
+/**
+ * Render loader berbranding Soft Blue.
+ *
+ * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
+ * @returns Overlay `role="status"` berpalet Soft Blue.
+ */
+export function SoftBlueLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
+  return <BrandedLoader theme={SOFT_BLUE} logoUrl={logoUrl} />;
 }

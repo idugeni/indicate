@@ -153,7 +153,7 @@ function harness(handlers: {
             if (keys.includes('logoMediaId')) return chainable(settings, limitLog);
             if (keys.includes('bodyExcerpt')) return chainable(articles, limitLog);
             if (keys.includes('body') && keys.includes('slug')) return chainable(feed, limitLog);
-            if (only('slug', 'name')) return chainable(handlers.categories ?? [], limitLog);
+            if (only('slug', 'name', 'articleCount', 'lastUpdatedAt')) return chainable(handlers.categories ?? [], limitLog);
             if (only('sitekey')) return chainable(handlers.reportSitekey ?? [{ sitekey: null }], limitLog);
             return chainable([], limitLog);
           };
@@ -398,15 +398,44 @@ describe('public bundle and category nav reads', () => {
     const { repository, selectLog } = harness({});
     const bundle = await repository.loadNetworkBundle({ ...CONTEXT }, {});
     expect(bundle.bypassed).toBe(false);
-    expect(selectLog.some((entry) => entry.keys.includes('slug') && entry.keys.includes('name') && entry.keys.length === 2)).toBe(false);
+    expect(selectLog.some((entry) => entry.keys.includes('articleCount'))).toBe(false);
   });
 
   it('baca kanal dibatasi di SQL sesuai jumlah kanal yang dirender', async () => {
     const { repository, limitLog } = harness({
-      categories: Array.from({ length: 64 }, (_, i) => ({ slug: `kanal-${i}`, name: `Kanal ${i}` })),
+      categories: Array.from({ length: 64 }, (_, i) => ({ slug: `kanal-${i}`, name: `Kanal ${i}`, articleCount: 4, lastUpdatedAt: null })),
     });
     await expect(repository.loadSiteCategories({ ...CONTEXT }, 6)).resolves.toHaveLength(6);
     expect(limitLog).toContain(6);
+  });
+
+  it('baca kanal sekaligus jumlah artikelnya, bukan kolom terpisah', async () => {
+    // Jumlah ini menentukan `robots` halaman kanal DAN entri sitemap-nya, jadi
+    // keduanya harus datang dari satu baca yang sama.
+    const { repository, selectLog } = harness({
+      categories: [{ slug: 'politik', name: 'Politik', articleCount: 480, lastUpdatedAt: new Date('2026-09-10T00:00:00.000Z') }],
+    });
+    const rows = await repository.loadSiteCategories({ ...CONTEXT }, 200);
+
+    expect(selectLog.filter((entry) => entry.keys.includes('articleCount'))).toHaveLength(1);
+    expect(selectLog.find((entry) => entry.keys.includes('articleCount'))?.keys).toEqual([
+      'slug',
+      'name',
+      'articleCount',
+      'lastUpdatedAt',
+    ]);
+    expect(rows).toEqual([
+      { slug: 'politik', name: 'Politik', articleCount: 480, lastUpdatedAt: '2026-09-10T00:00:00.000Z' },
+    ]);
+  });
+
+  it('lastmod kanal kosong tetap null, bukan string kosong', async () => {
+    const { repository } = harness({
+      categories: [{ slug: 'tipis', name: 'Tipis', articleCount: 0, lastUpdatedAt: null }],
+    });
+    const rows = await repository.loadSiteCategories({ ...CONTEXT }, 200);
+    expect(rows[0]?.lastUpdatedAt).toBeNull();
+    expect(rows[0]?.articleCount).toBe(0);
   });
 });
 

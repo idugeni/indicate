@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ArticleListItem, FeedArticle, NetworkArticle, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { SiteCategory } from '@/modules/delivery/ports';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { deriveAboutPublisher } from '@/modules/site/about-profile';
 import { articleBodyText } from '@/modules/site/article-markup';
@@ -447,8 +448,6 @@ export function serializeRobots(site: {
 interface SitemapEntry {
   readonly loc: string;
   readonly lastmod: string;
-  readonly changefreq: 'daily' | 'weekly' | 'monthly';
-  readonly priority: string;
   readonly image?: string;
   readonly imageTitle?: string;
 }
@@ -474,7 +473,30 @@ function ownedArticles(articles: readonly ArticleListItem[]): readonly ArticleLi
   return articles.filter((article) => article.href.startsWith('/'));
 }
 
-export function serializeSitemap(site: NetworkSiteData): string {
+/**
+ * Lantai konten tipis untuk satu halaman agregat kanal.
+ *
+ * @remarks Angka ini mengatur `robots` halaman `/categories/*` **dan** keluuaran
+ * `<url>` sitemap-nya, jadi harus ada satu sumber kebenaran. Kalau sitemap
+ * memakai angka sendiri, keduanya menyimpang dan sitemap kembali mendaftarkan
+ * URL yang halamannya melayani `noindex`.
+ */
+export const CATEGORY_INDEX_MINIMUM = 3;
+
+/**
+ * Render sitemap tenant.
+ *
+ * @param site - Data situs tenant aktif.
+ * @param channels - Kanal aktif beserta jumlah artikel yang sudah dihitung SQL
+ *   pada scope lineage yang sama dengan halaman kanal.
+ * @returns Dokumen `<urlset>` XML.
+ * @remarks Kanal **wajib** datang dari luar: `site.articles` hanya memuat 100 baris
+ * terakhir, jadi menjadikannya sumber kanal membuat kanal aktif yang artikelnya
+ * sudah tua hilang dari sitemap. Jumlah artikelnya juga harus berasal dari query
+ * yang sama dengan `network-runtime`, kalau tidak satu kanal bisa sekaligus
+ * `noindex` di halaman dan terdaftar di sitemap.
+ */
+export function serializeSitemap(site: NetworkSiteData, channels: readonly SiteCategory[]): string {
   const stable = site.siteCreatedAt;
   const indexable = site.articles.filter((article) => article.robotsDirective?.startsWith('noindex') !== true);
   const owned = ownedArticles(indexable);
@@ -482,31 +504,37 @@ export function serializeSitemap(site: NetworkSiteData): string {
     (latest, article) => (article.updatedAt > latest ? article.updatedAt : latest),
     stable,
   );
+  // Dokumen statis disunting dari pengaturan tenant, bukan dari artikel. Memakai
+  // `homepageLastmod` membuat halaman kebijakan privasi tampak berubah setiap kali
+  // ada artikel terbit, dan Google hanya memercayai `lastmod` yang konsisten dan
+  // dapat diverifikasi. `siteCreatedAt` adalah jawaban yang jujur untuk dokumen
+  // yang tidak pernah disunting lewat kanal artikel.
+  const staticLastmod = toLastmod(stable, stable);
   const entries: SitemapEntry[] = [
-    { loc: absoluteSiteUrl(site.context, '/'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'daily', priority: '1.0' },
-    { loc: absoluteSiteUrl(site.context, '/kebijakan-privasi'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
-    { loc: absoluteSiteUrl(site.context, '/syarat-ketentuan'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
-    { loc: absoluteSiteUrl(site.context, '/tentang'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
-    { loc: absoluteSiteUrl(site.context, '/kontak'), lastmod: toLastmod(homepageLastmod, stable), changefreq: 'monthly', priority: '0.3' },
+    { loc: absoluteSiteUrl(site.context, '/'), lastmod: toLastmod(homepageLastmod, stable) },
+    { loc: absoluteSiteUrl(site.context, '/kebijakan-privasi'), lastmod: staticLastmod },
+    { loc: absoluteSiteUrl(site.context, '/syarat-ketentuan'), lastmod: staticLastmod },
+    { loc: absoluteSiteUrl(site.context, '/tentang'), lastmod: staticLastmod },
+    { loc: absoluteSiteUrl(site.context, '/kontak'), lastmod: staticLastmod },
+    // Halaman indeks kanal A-Z: `index, follow` dengan self-canonical lewat
+    // branch default network-runtime. Tanpa baris ini, kanal yang hanya muncul di
+    // sana tidak pernah dikenal crawler.
+    { loc: absoluteSiteUrl(site.context, '/indeks'), lastmod: staticLastmod },
   ];
-  const seenCategories = new Set<string>();
-  for (const article of indexable) {
-    if (article.categorySlug !== null && !seenCategories.has(article.categorySlug)) {
-      seenCategories.add(article.categorySlug);
-      entries.push({
-        loc: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`),
-        lastmod: toLastmod(article.updatedAt, stable),
-        changefreq: 'daily',
-        priority: '0.7',
-      });
-    }
+  // Kanal di bawah lantai konten tipis tidak boleh didaftarkan: halaman `/categories/*`
+  // serving `noindex` sementara sitemap mengiklarkannya adalah dua sinyal yang
+  // saling bertentangan. Ambang dan hitungannya sama dengan `network-runtime`.
+  for (const channel of channels) {
+    if (channel.articleCount < CATEGORY_INDEX_MINIMUM) continue;
+    entries.push({
+      loc: absoluteSiteUrl(site.context, `/categories/${channel.slug}`),
+      lastmod: toLastmod(channel.lastUpdatedAt ?? stable, stable),
+    });
   }
   for (const article of owned) {
     entries.push({
       loc: resolveArticleCanonical(site, `/${article.slug}`, isNetworkArticle(article) ? article : undefined),
       lastmod: toLastmod(article.updatedAt, stable),
-      changefreq: 'weekly',
-      priority: '0.8',
       ...(article.imageUrl === null
         ? {}
         : { image: absoluteSiteAssetUrl(site.context, article.imageUrl), imageTitle: article.title }),
@@ -515,7 +543,7 @@ export function serializeSitemap(site: NetworkSiteData): string {
   const body = entries
     .map(
       (entry) =>
-        `<url><loc>${xml(entry.loc)}</loc><lastmod>${xml(entry.lastmod)}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority>${entry.image === undefined ? '' : `<image:image><image:loc>${xml(entry.image)}</image:loc>${entry.imageTitle === undefined ? '' : `<image:title>${xml(entry.imageTitle)}</image:title>`}</image:image>`}</url>`,
+        `<url><loc>${xml(entry.loc)}</loc><lastmod>${xml(entry.lastmod)}</lastmod>${entry.image === undefined ? '' : `<image:image><image:loc>${xml(entry.image)}</image:loc>${entry.imageTitle === undefined ? '' : `<image:title>${xml(entry.imageTitle)}</image:title>`}</image:image>`}</url>`,
     )
     .join('');
   const hasImages = entries.some((entry) => entry.image !== undefined);

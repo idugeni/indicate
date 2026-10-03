@@ -18,6 +18,15 @@ export interface NetworkSiteCachePort {
 export interface SiteCategory {
   readonly slug: string;
   readonly name: string;
+  /**
+   * Published articles visible to this portal's whole lineage, same scope as the
+   * listing query. Decides whether `/categories/<slug>` clears
+   * `CATEGORY_INDEX_MINIMUM`, so the page robots and the sitemap agree by
+   * construction instead of by two numbers kept in sync by hand.
+   */
+  readonly articleCount: number;
+  /** Newest `articles.updatedAt` in that lineage scope; null when the channel is empty. */
+  readonly lastUpdatedAt: string | null;
 }
 
 /** Single-checkout public read: one tenant context for site and bypass state. */
@@ -53,6 +62,13 @@ export interface DeliveryRepository {
    * @returns First `limit` active categories ordered by name.
    */
   loadSiteCategories(context: ResolvedSiteContext, limit: number): Promise<readonly SiteCategory[]>;
+  /**
+   * Id template tenant dari kolom generated `site_settings.template_id`.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @returns Id template tenant, atau null saat situs belum punya baris pengaturan.
+   */
+  loadSiteTemplateId(context: ResolvedSiteContext): Promise<string | null>;
   /**
    * Turnstile site key authorizing this tenant's report form.
    *

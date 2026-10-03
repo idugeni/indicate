@@ -48,12 +48,11 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
     >
       <Image
         unoptimized
+        fill
         src={src}
         alt={article.title}
         priority={index === 0}
-        className="aspect-[16/10] w-full object-cover sm:aspect-[21/9]"
-        width={article.imageWidth ?? 1600}
-        height={article.imageHeight ?? 686}
+        className="object-cover"
         sizes="100vw"
       />
       <div
@@ -67,8 +66,13 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
           </span>
         )}
       </div>
-      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
-        <h1 className="m-0 max-w-3xl font-sans text-2xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl">
+      {/* Stack ini WAJIB in-flow: kalau `absolute bottom-0`, konten yang lebih
+          tinggi dari gambar akan terdorong ke atas keluar kotak lalu dipotong
+          `overflow-hidden` — dan yang terpotong adalah judul, karena dia blok
+          paling atas. `min-h-*` hanya memberi tinggi gambar, sedangkan
+          pertumbuhan tinggi mengikuti isi. */}
+      <div className="relative flex min-h-[24rem] flex-col justify-end p-4 sm:min-h-[26rem] sm:p-6">
+        <h1 className="m-0 max-w-3xl line-clamp-3 font-sans text-2xl font-extrabold leading-[1.15] tracking-tight text-white sm:line-clamp-2 sm:text-4xl">
           <Link href={article.href} className="hover:text-[#9fc0ff]">
             {article.title}
           </Link>

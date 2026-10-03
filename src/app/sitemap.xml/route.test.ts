@@ -17,10 +17,12 @@ describe('controlPlaneSitemap', () => {
     expect(body).not.toContain('<loc>https://indicate.website/status</loc>');
   });
 
-  it('memberi prioritas tertinggi pada beranda', () => {
+  it('tidak mengirim changefreq dan priority yang diabaikan Google', () => {
     const body = controlPlaneSitemap('indicate.website');
-    expect(body).toContain('<changefreq>daily</changefreq><priority>1.0</priority>');
-    expect(body).toContain('<changefreq>weekly</changefreq><priority>0.7</priority>');
+    expect(body).not.toContain('<changefreq>');
+    expect(body).not.toContain('<priority>');
+    // Setiap entri tetap membawa lastmod, satu-satunya hint yang dipakai Google.
+    expect(body).toContain('</loc><lastmod>');
   });
 
   it('membungkus entri dalam urlset sitemap yang valid', () => {

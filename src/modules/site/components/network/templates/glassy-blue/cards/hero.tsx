@@ -75,8 +75,10 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
             height={article.imageHeight ?? 750}
             sizes="(max-width: 1024px) 100vw, 50vw"
           />
-          <span className="absolute left-4 top-4 inline-flex items-center rounded-full bg-white/90 px-3 py-1 font-sans text-xs font-bold text-slate-800 shadow-sm backdrop-blur">
-            #{(article.categoryName ?? 'Sorotan').replace(/\s+/g, '')}
+          <span className="absolute left-4 top-4 inline-flex max-w-[calc(100%-2rem)] items-center rounded-full bg-white/90 px-3 py-1 font-sans text-xs font-bold text-slate-800 shadow-sm backdrop-blur">
+            <span className="min-w-0 truncate">
+              #{(article.categoryName ?? 'Sorotan').replace(/\s+/g, '')}
+            </span>
           </span>
           {location === null || location === '' ? null : (
             <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-slate-900/70 to-transparent px-4 pb-3.5 pt-10 font-sans text-xs font-medium text-white">

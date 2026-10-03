@@ -1,5 +1,14 @@
-import { TemplateRingLoader } from '@/modules/site/components/network/ui/ring-loader';
+import type { ReactElement } from 'react';
 
-export function GreenMinimalLoader() {
-  return <TemplateRingLoader background="#f7faf7" accent="#1d7a38" glow="#86c79a" foreground="#ffffff" />;
+import { BrandedLoader } from '@/modules/site/components/network/ui/branded-loader';
+import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
+
+/**
+ * Render loader berbranding Green Minimal.
+ *
+ * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
+ * @returns Overlay `role="status"` berpalet Green Minimal.
+ */
+export function GreenMinimalLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
+  return <BrandedLoader theme={GREEN_MINIMAL} logoUrl={logoUrl} />;
 }

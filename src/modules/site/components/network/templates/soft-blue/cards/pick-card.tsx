@@ -34,10 +34,10 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
       <div className="flex min-w-0 flex-1 flex-col">
         {article.categoryName === null ? null : (
           <span
-            className="inline-flex w-fit items-center rounded-md px-2 py-0.5 font-sans text-[11px] font-bold"
+            className="inline-flex max-w-full items-center rounded-md px-2 py-0.5 font-sans text-[11px] font-bold"
             style={badge}
           >
-            {article.categoryName}
+            <span className="min-w-0 truncate">{article.categoryName}</span>
           </span>
         )}
         <h3 className="m-0 mt-2 line-clamp-3 font-sans text-[15px] font-bold leading-snug tracking-tight text-slate-900">

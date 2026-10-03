@@ -1,15 +1,23 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within, act } from '@testing-library/react';
 
 import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 
 afterEach(() => {
+  geser(0);
   cleanup();
 });
 
 function kanal(n: number) {
   return Array.from({ length: n }, (_, i) => ({ label: `Kat ${i + 1}`, href: `/kat-${i + 1}`, slug: `kat-${i + 1}` }));
+}
+
+function geser(y: number) {
+  act(() => {
+    Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+    window.dispatchEvent(new Event('scroll'));
+  });
 }
 
 describe('CategoryNavStrip', () => {
@@ -36,9 +44,34 @@ describe('CategoryNavStrip', () => {
     expect(dots.length).toBe(0);
   });
 
-  it('tersembunyi pada sm ke atas', () => {
+  it('tersembunyi pada lg ke atas', () => {
     render(<CategoryNavStrip categories={kanal(2)} path="/" />);
     const nav = screen.getByRole('navigation', { name: 'Kanal liputan' });
-    expect(nav.getAttribute('class')).toMatch(/sm:hidden/);
+    expect(nav.getAttribute('class')).toMatch(/lg:hidden/);
+  });
+
+  it('tertutup begitu halaman digulir dan terbuka lagi di puncak', () => {
+    render(<CategoryNavStrip categories={kanal(2)} path="/" />);
+    const nav = screen.getByRole('navigation', { name: 'Kanal liputan' });
+
+    expect(nav.getAttribute('class')).toMatch(/grid-rows-\[1fr\]/);
+
+    geser(400);
+    expect(nav.getAttribute('class')).toMatch(/grid-rows-\[0fr\]/);
+    expect(nav.getAttribute('inert')).not.toBeNull();
+    expect(nav.getAttribute('aria-hidden')).toBe('true');
+
+    geser(0);
+    expect(nav.getAttribute('class')).toMatch(/grid-rows-\[1fr\]/);
+    expect(nav.getAttribute('inert')).toBeNull();
+    expect(nav.getAttribute('aria-hidden')).toBe('false');
+  });
+
+  it('tahan guncangan kecil di sekitar puncak', () => {
+    render(<CategoryNavStrip categories={kanal(2)} path="/" />);
+    const nav = screen.getByRole('navigation', { name: 'Kanal liputan' });
+
+    geser(12);
+    expect(nav.getAttribute('class')).toMatch(/grid-rows-\[1fr\]/);
   });
 });

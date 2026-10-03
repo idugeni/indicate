@@ -35,15 +35,15 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
           />
         </Link>
         {article.categoryName === null ? null : (
-          <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-lg bg-[var(--tpl-primary,#ea580c)] px-3 py-1 font-sans text-xs font-bold text-white shadow-md">
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            {article.categoryName}
+          <span className="absolute left-4 top-4 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-lg bg-[var(--tpl-primary,#ea580c)] px-3 py-1 font-sans text-xs font-bold text-white shadow-md">
+            <MapPin className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+            <span className="min-w-0 truncate">{article.categoryName}</span>
           </span>
         )}
         {location === null || location === '' ? null : (
-          <p className="m-0 absolute bottom-4 left-4 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 font-sans text-xs font-semibold text-slate-900 backdrop-blur">
-            <MapPin className="h-3.5 w-3.5 text-[var(--tpl-primary,#ea580c)]" aria-hidden="true" />
-            {location}
+          <p className="m-0 absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 font-sans text-xs font-semibold text-slate-900 backdrop-blur">
+            <MapPin className="h-3.5 w-3.5 flex-none text-[var(--tpl-primary,#ea580c)]" aria-hidden="true" />
+            <span className="min-w-0 truncate">{location}</span>
           </p>
         )}
       </div>

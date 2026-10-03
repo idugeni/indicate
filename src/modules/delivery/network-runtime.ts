@@ -4,7 +4,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { buildSeoDocument, indexableRobots, nonIndexableRobots, tenantBrand, tenantFavicon } from '@/modules/site/seo';
+import { buildSeoDocument, CATEGORY_INDEX_MINIMUM, indexableRobots, nonIndexableRobots, tenantBrand, tenantFavicon } from '@/modules/site/seo';
 import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import type { RobotsDirective } from '@/modules/site/seo';
 import { isNetworkArticle } from '@/modules/delivery/models';
@@ -182,9 +182,12 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
  * Aggregator index threshold: list/tag/category pages stay noindex until content volume
  * is sufficient (anti thin-content). Rises on its own as articles grow,
  * with no per-site configuration.
+ *
+ * @remarks `CATEGORY_INDEX_MINIMUM` sengaja TIDAK dideklarasikan ulang di sini:
+ * sitemap memakai angka yang sama untuk tidak mendaftarkan `/categories/*` yang
+ * halaman ini layani `noindex`. Duplikat di sini adalah sumber bug yang diperbaiki.
  */
 const TAG_INDEX_MINIMUM = 3;
-const CATEGORY_INDEX_MINIMUM = 3;
 
 /**
  * Social card entries for one tenant page, shared by Open Graph and Twitter.

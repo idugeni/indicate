@@ -1,5 +1,14 @@
-import { TemplateRingLoader } from '@/modules/site/components/network/ui/ring-loader';
+import type { ReactElement } from 'react';
 
-export function DarkNavyLoader() {
-  return <TemplateRingLoader background="#070f22" accent="#2f7bff" glow="#9fc0ff" foreground="#ffffff" />;
+import { BrandedLoader } from '@/modules/site/components/network/ui/branded-loader';
+import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
+
+/**
+ * Render loader berbranding Dark Navy.
+ *
+ * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
+ * @returns Overlay `role="status"` berpalet Dark Navy.
+ */
+export function DarkNavyLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
+  return <BrandedLoader theme={DARK_NAVY} logoUrl={logoUrl} />;
 }

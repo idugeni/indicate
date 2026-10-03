@@ -93,8 +93,8 @@ function makeDeps(site: NetworkSiteData | null, throttle: WebMcpThrottle = { all
   const load = vi.fn(async () => site);
   const loadSiteCategories = vi.fn(async (_context: ResolvedSiteContext, limit: number) =>
     [
-      { slug: 'politik', name: 'Politik' },
-      { slug: 'ekonomi', name: 'Ekonomi' },
+      { slug: 'politik', name: 'Politik', articleCount: 5, lastUpdatedAt: '2026-01-02T00:00:00.000Z' },
+      { slug: 'ekonomi', name: 'Ekonomi', articleCount: 0, lastUpdatedAt: null },
     ].slice(0, limit),
   );
   return {

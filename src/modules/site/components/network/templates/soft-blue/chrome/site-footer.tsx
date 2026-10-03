@@ -11,8 +11,6 @@ import { StoreBadges } from '@/modules/site/components/network/chrome/store-badg
 
 const ABOUT_LINKS = [
   { label: 'Profil', href: '/tentang' },
-  { label: 'Redaksi', href: '/redaksi' },
-  { label: 'Karier', href: '/karier' },
   { label: 'Kontak', href: '/kontak' },
   { label: 'Kebijakan Privasi', href: '/kebijakan-privasi' },
   { label: 'Syarat & Ketentuan', href: '/syarat-ketentuan' },
@@ -28,9 +26,9 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
-        <div className="order-4 col-span-2 sm:col-span-1">
-          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="col-span-2 flex flex-col items-center text-center sm:col-span-1 sm:items-start sm:text-left">
+          <Link href="/" className="flex min-w-0 flex-col items-center gap-2.5 leading-none no-underline sm:flex-row sm:items-center">
             <Image
               unoptimized
               src={site.settings.logoUrl}
@@ -52,7 +50,7 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
             {site.settings.description}
           </p>
           {configuredSocials.length > 0 ? (
-            <p className="m-0 mt-4 flex flex-wrap items-center gap-2">
+            <p className="m-0 mt-4 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               {configuredSocials.map(({ name, href }) => {
                 const Icon = channelIcon(name);
                 return (
@@ -82,7 +80,7 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
           </div>
         </div>
 
-        <nav aria-label="Kategori" className="order-1">
+        <nav aria-label="Kategori">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Kategori</h2>
           <ul className="m-0 mt-4 list-none space-y-2.5 p-0">
             {categories.map((item) => (
@@ -95,7 +93,7 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
           </ul>
         </nav>
 
-        <nav aria-label="Tentang kami" className="order-2">
+        <nav aria-label="Tentang kami">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Tentang Kami</h2>
           <ul className="m-0 mt-4 list-none space-y-2.5 p-0">
             {ABOUT_LINKS.map((item) => (
@@ -108,7 +106,7 @@ export async function SoftBlueFooter({ site }: { readonly site: NetworkSiteData 
           </ul>
         </nav>
 
-        <div className="order-3 col-span-2 sm:col-span-1">
+        <div className="col-span-2 sm:col-span-1">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Aplikasi Mobile</h2>
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
             Baca berita kapan saja, di mana saja dengan aplikasi {site.settings.name}.

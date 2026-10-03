@@ -1,6 +1,8 @@
+import type { ReactElement } from 'react';
+
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
-import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
+import { normalizeTemplateId, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { CleanBlueListing, type ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
 import { CleanBlueArticle } from '@/modules/site/components/network/templates/clean-blue/pages/article-page';
 import { CleanBlueLegal } from '@/modules/site/components/network/templates/clean-blue/pages/legal-page';
@@ -230,31 +232,45 @@ export function ListingPage({ site, title, description, path = '/', indexable = 
 
 /**
  * Cross-template tenant loader dispatcher: the slot already holding the active template renders its own colored ring.
+ *
+ * @param templateId - Id template mentah dari pengaturan tenant, apa adanya.
+ * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
+ * @returns Overlay `role="status"` berpalet template aktif, atau Clean Blue saat id tak dikenal.
+ * @remarks `templateId` diterima sebagai `unknown` karena pemanggil hanya memegang
+ * nilai mentah, dan `normalizeTemplateId` melempar untuk id tak terdaftar; status
+ * memuat tidak boleh melempar, jadi normalisasi dibungkus `try`/`catch` yang turun
+ * ke Clean Blue alih-alih menggagalkan cat.
  */
-export function TemplateLoader({ templateId }: { readonly templateId: unknown }) {
-  switch (normalizeTemplateId(templateId)) {
+export function TemplateLoader({ templateId, logoUrl }: { readonly templateId: unknown; readonly logoUrl: string }): ReactElement {
+  let id: TemplateId;
+  try {
+    id = normalizeTemplateId(templateId);
+  } catch {
+    return <CleanBlueLoader logoUrl={logoUrl} />;
+  }
+  switch (id) {
     case 'black-lime':
-      return <BlackLimeLoader />;
+      return <BlackLimeLoader logoUrl={logoUrl} />;
     case 'dark-navy':
-      return <DarkNavyLoader />;
+      return <DarkNavyLoader logoUrl={logoUrl} />;
     case 'glassy-blue':
-      return <GlassyBlueLoader />;
+      return <GlassyBlueLoader logoUrl={logoUrl} />;
     case 'green-minimal':
-      return <GreenMinimalLoader />;
+      return <GreenMinimalLoader logoUrl={logoUrl} />;
     case 'orange-modern':
-      return <OrangeModernLoader />;
+      return <OrangeModernLoader logoUrl={logoUrl} />;
     case 'purple-editorial':
-      return <PurpleEditorialLoader />;
+      return <PurpleEditorialLoader logoUrl={logoUrl} />;
     case 'red-editorial':
-      return <RedEditorialLoader />;
+      return <RedEditorialLoader logoUrl={logoUrl} />;
     case 'soft-blue':
-      return <SoftBlueLoader />;
+      return <SoftBlueLoader logoUrl={logoUrl} />;
     case 'warm-editorial':
-      return <WarmEditorialLoader />;
+      return <WarmEditorialLoader logoUrl={logoUrl} />;
     case 'clean-blue':
-      return <CleanBlueLoader />;
+      return <CleanBlueLoader logoUrl={logoUrl} />;
     default:
-      throw new Error('Template site tidak dikenal.');
+      return <CleanBlueLoader logoUrl={logoUrl} />;
   }
 }
 

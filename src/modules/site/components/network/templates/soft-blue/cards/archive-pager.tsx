@@ -20,7 +20,13 @@ export function SoftBlueArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <SoftBluePickCard key={article.id} article={article} index={index} />}
-      gridClassName="sm:grid-cols-2"
+      /* Kartu soft-blue horizontal: gambar di kiri (w-32, lalu w-44 di lg) plus
+         baris meta. Dua kolom sejak `sm` menyisakan kolom teks hanya ~70px di
+         640px — ruang ArticleMeta ~30px untuk konten yang butuh ~90px, sehingga
+         kartu meluber keluar grid dan halaman ikut bergeser horizontal. Dua kolom
+         baru aman di lg, saat satu kartu ~478px. `orange-modern` boleh pakai
+         `sm:grid-cols-2` karena kartunya vertikal dan teksnya selebar kolom. */
+      gridClassName="lg:grid-cols-2"
       pageSize={6}
     />
   );

@@ -8,7 +8,7 @@ import { articleBodyText } from '@/modules/site/article-markup';
 import { isTipTapDoc, extractTipTapImages, tiptapToText } from '@/modules/site/tiptap-document';
 import { pickPublisherSocials } from '@/modules/site/company-contact';
 import { isPublicObjectKey } from '@/modules/publishing/object-key';
-import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle } from '@/modules/delivery/ports';
+import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle, type SiteCategory } from '@/modules/delivery/ports';
 import { articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, publishers, regions, sites, siteSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
@@ -300,7 +300,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   /**
-   * Read the channels one navigation renders.
+   * Read the channels one navigation renders, with the published-article count
+   * each channel already has in this portal's lineage.
    *
    * @param transaction - Tenant transaction.
    * @param context - Resolved tenant hostname context.
@@ -309,14 +310,28 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    * @remarks Bounded in SQL rather than in the caller. The operator organization
    * holds 64 active channels and every navigation renders six, so the previous
    * unbounded read shipped 58 unused rows out of the pooler on each fill.
+   * @remarks The join is the same lineage scope the listing query uses
+   * (`lineageSiteIds`, `published`, `active`, `published_at IS NOT NULL`), so
+   * `articleCount` equals the number of rows `/categories/<slug>` actually
+   * serves. A count computed any other way would let the page and the sitemap
+   * disagree about whether a channel is indexable. Navigation ignores the count;
+   * reading it costs one integer on a query this cache already runs.
    */
-  private async readCategories(transaction: Transaction, context: ResolvedSiteContext, limit: number): Promise<readonly { slug: string; name: string }[]> {
-      const rows = await transaction.select({ slug: categories.slug, name: categories.name })
+  private async readCategories(transaction: Transaction, context: ResolvedSiteContext, limit: number): Promise<readonly SiteCategory[]> {
+      const rows = await transaction.select({
+        slug: categories.slug,
+        name: categories.name,
+        articleCount: sql<number>`count(${articleSites.id})::int`,
+        lastUpdatedAt: sql<Date | null>`max(${articles.updatedAt})`,
+      })
         .from(categories)
+        .leftJoin(articles, and(eq(articles.organizationId, categories.organizationId), eq(articles.categoryId, categories.id), eq(articles.status, 'active')))
+        .leftJoin(articleSites, and(eq(articleSites.organizationId, categories.organizationId), eq(articleSites.articleId, articles.id), eq(articleSites.state, 'published'), eq(articleSites.active, true), isNotNull(articleSites.publishedAt), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`))
         .where(and(eq(categories.organizationId, context.organizationId), eq(categories.status, 'active')))
+        .groupBy(categories.slug, categories.name)
         .orderBy(sql`${categories.name} ASC`)
         .limit(limit);
-      return rows.map((row) => ({ slug: row.slug, name: row.name }));
+      return rows.map((row) => ({ slug: row.slug, name: row.name, articleCount: row.articleCount, lastUpdatedAt: row.lastUpdatedAt === null ? null : iso(row.lastUpdatedAt) }));
   }
 
   private async readBypassed(transaction: Transaction, context: ResolvedSiteContext): Promise<boolean> {
@@ -340,9 +355,30 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
-  async loadSiteCategories(context: ResolvedSiteContext, limit: number): Promise<readonly { slug: string; name: string }[]> {    return this.database.transaction(async (transaction) => {
+  async loadSiteCategories(context: ResolvedSiteContext, limit: number): Promise<readonly SiteCategory[]> {
+    return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
       return this.readCategories(transaction, context, limit);
+    });
+  }
+
+  /**
+   * Baca id template tenant untuk fallback branded sebelum situs ter-resolve.
+   *
+   * @param context - Resolved tenant hostname context.
+   * @returns Id template tenant, atau null saat belum ada baris `site_settings`.
+   * @remarks Satu skalar generated, bukan `colors`. `template_id` sudah menyimpan
+   * `colors->>'templateId'`, jadi shell yang mem-brand diri sendiri menarik satu
+   * kolom bertipe text alih-alih seluruh blob warna per host.
+   */
+  async loadSiteTemplateId(context: ResolvedSiteContext): Promise<string | null> {
+    return this.database.transaction(async (transaction) => {
+      await this.publicTenant(transaction, context);
+      const rows = await transaction.select({ templateId: siteSettings.templateId })
+        .from(siteSettings)
+        .where(and(eq(siteSettings.organizationId, context.organizationId), eq(siteSettings.siteId, context.siteId)))
+        .limit(1);
+      return rows[0]?.templateId ?? null;
     });
   }
 

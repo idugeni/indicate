@@ -35,9 +35,9 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
           />
         </Link>
         {article.publisherCity === null || article.publisherCity === '' ? null : (
-          <p className="m-0 absolute bottom-4 left-4 flex items-center gap-1.5 rounded-full bg-[#0e1b33]/70 px-3 py-1.5 font-sans text-xs font-semibold text-white backdrop-blur">
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            {article.publisherCity}
+          <p className="m-0 absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full bg-[#0e1b33]/70 px-3 py-1.5 font-sans text-xs font-semibold text-white backdrop-blur">
+            <MapPin className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+            <span className="min-w-0 truncate">{article.publisherCity}</span>
           </p>
         )}
       </div>

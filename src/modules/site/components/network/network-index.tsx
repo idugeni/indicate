@@ -3,10 +3,7 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { Container } from '@/modules/site/components/network/ui/container';
-import {
-  categoryFrequencyRank,
-  type CategoryNavItem,
-} from '@/modules/site/components/network/ui/nav';
+import type { CategoryNavItem } from '@/modules/site/components/network/ui/nav';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
@@ -28,7 +25,7 @@ export interface IndexPageProps {
  * Daftar kanal A–Z penuh, memakai cangkang template tenant yang aktif.
  *
  * @param props - Situs tenant, kanal terurut nama, dan path halaman.
- * @returns Halaman indeks dengan grup huruf dan jumlah artikel per kanal.
+ * @returns Halaman indeks dengan grup huruf.
  */
 export function IndexPage({ site, categories, path = '/indeks' }: IndexPageProps) {
   switch (normalizeTemplateId(site.settings.colors.templateId)) {
@@ -103,6 +100,12 @@ export function IndexPage({ site, categories, path = '/indeks' }: IndexPageProps
  * @param props - Situs tenant dan kanal terurut nama.
  * @returns Grup huruf kanal berisi artikel beserta catatan sisanya.
  */
+/**
+ * Daftar kanal A–Z. Sengaja tidak menyaring atau menghitung artikel: `site.articles`
+ * hanya memuat artikel halaman Beranda, sehingga kanal yang artikelnya ada di luar
+ * halaman itu akan tersembunyi dan jumlah yang tampil bisa jauh di bawah kenyataan.
+ * Kanal aktif sudah dibatasi operator lewat `categories.status`.
+ */
 export function IndexContent({
   site,
   categories,
@@ -110,11 +113,8 @@ export function IndexContent({
   readonly site: NetworkSiteData;
   readonly categories: readonly CategoryNavItem[];
 }) {
-  const counts = categoryFrequencyRank(site);
-  const filled = categories.filter((item) => (counts.get(item.slug ?? item.href) ?? 0) > 0);
-  const hiddenCount = categories.length - filled.length;
   const groups = new Map<string, readonly CategoryNavItem[]>();
-  for (const item of filled) {
+  for (const item of categories) {
     const letter = (item.label.charAt(0) || '#').toUpperCase();
     groups.set(letter, [...(groups.get(letter) ?? []), item]);
   }
@@ -129,15 +129,13 @@ export function IndexContent({
           Semua kanal liputan
         </h1>
         <p className="m-0 mt-2 max-w-2xl font-sans text-sm leading-relaxed text-[var(--tpl-muted)]">
-          {filled.length === 0
-            ? `Belum ada kanal ${site.settings.name} berisi artikel.`
-            : `Jelajahi ${filled.length} kanal ${site.settings.name} berisi artikel${hiddenCount > 0 ? `; ${hiddenCount} kanal lainnya belum memiliki artikel.` : '.'}`}
+          {categories.length === 0
+            ? `Belum ada kanal ${site.settings.name} yang diterbitkan.`
+            : `Jelajahi ${categories.length} kanal liputan ${site.settings.name}, diurutkan dari A sampai Z.`}
         </p>
       </div>
       {categories.length === 0 ? (
         <p className="m-0 font-sans text-sm text-[var(--tpl-muted)]">Belum ada kanal yang diterbitkan.</p>
-      ) : filled.length === 0 ? (
-        <p className="m-0 font-sans text-sm text-[var(--tpl-muted)]">Terbitkan artikel berkategori agar kanal tampil di sini.</p>
       ) : (
         letters.map((letter) => (
           <section key={letter} aria-label={`Kanal huruf ${letter}`}>
@@ -148,23 +146,16 @@ export function IndexContent({
               <span className="sr-only">Kanal huruf {letter}</span>
             </h2>
             <ul className="m-0 mt-4 grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3">
-              {(groups.get(letter) ?? []).map((item) => {
-                const slug = item.slug ?? item.href;
-                const count = counts.get(slug) ?? 0;
-                return (
-                  <li key={`${item.href}:${item.label}`} className="m-0 p-0">
-                    <Link
-                      href={item.href}
-                      className="flex items-center gap-2.5 rounded-xl bg-[var(--tpl-card)] px-4 py-3 font-sans text-sm font-semibold text-[var(--tpl-ink)] ring-1 ring-[var(--tpl-ring)] transition-colors hover:text-[var(--tpl-primary)]"
-                    >
-                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                      <span className="flex-none font-mono text-[11px] font-medium tabular-nums text-[var(--tpl-muted)]">
-                        {count} artikel
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
+              {(groups.get(letter) ?? []).map((item) => (
+                <li key={`${item.href}:${item.label}`} className="m-0 p-0">
+                  <Link
+                    href={item.href}
+                    className="flex items-center gap-2.5 rounded-xl bg-[var(--tpl-card)] px-4 py-3 font-sans text-sm font-semibold text-[var(--tpl-ink)] ring-1 ring-[var(--tpl-ring)] transition-colors hover:text-[var(--tpl-primary)]"
+                  >
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </section>
         ))

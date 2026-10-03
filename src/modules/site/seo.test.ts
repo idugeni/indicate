@@ -16,6 +16,11 @@ import {
   tenantFavicon,
 } from '@/modules/site/seo';
 
+/** Kanal aktif beserta jumlah artikel yang sudah dihitung SQL pada scope lineage. */
+function channel(slug: string, name: string, articleCount: number, lastUpdatedAt: string | null = '2026-09-10T00:00:00.000Z') {
+  return { slug, name, articleCount, lastUpdatedAt } as const;
+}
+
 describe('serializeRss enclosure', () => {
   it('memakai tipe MIME media R2 bila diketahui', () => {
     const articles = [
@@ -265,16 +270,66 @@ describe('serializers', () => {
     const site = makeNetworkSite([
       makeNetworkArticle({ slug: 'berita-utama', updatedAt: '2026-09-14T10:00:00.000Z', categorySlug: 'politik' }),
     ]);
-    const sitemap = serializeSitemap(site);
+    const sitemap = serializeSitemap(site, [channel('politik', 'Politik', 12)]);
     expect(sitemap).toContain('https://portal.example/</loc>');
     expect(sitemap).toContain('/categories/politik');
     expect(sitemap).toContain('/berita-utama');
   });
 
+  describe('sitemap mengikuti aturan Google Search Central', () => {
+    it('tidak mendaftarkan kanal yang halamannya noindex (konten tipis)', () => {
+      const site = makeNetworkSite([makeNetworkArticle({ slug: 'a', categorySlug: 'gemuk' })]);
+      const sitemap = serializeSitemap(site, [channel('tipis', 'Tipis', 2), channel('gemuk', 'Gemuk', 3)]);
+      // `tipis`articleCount-nya 2 < CATEGORY_INDEX_MINIMUM, jadi `/categories/tipis`
+      // dilayani `noindex, nofollow` oleh network-runtime.
+      expect(sitemap).not.toContain('/categories/tipis');
+      expect(sitemap).toContain('/categories/gemuk');
+    });
+
+    it('mendaftarkan kanal yang artikelnya di luar 100 terakhir', () => {
+      // `site.articles` hanya 100 baris terakhir; kanal tua harus tetap masuk
+      // sitemap karena jumlahnya datang dari SQL, bukan dari jendela itu.
+      const site = makeNetworkSite([makeNetworkArticle({ slug: 'segar', categorySlug: 'segar' })]);
+      const sitemap = serializeSitemap(site, [
+        channel('lama', 'Lama', 480, '2024-01-02T00:00:00.000Z'),
+        channel('segar', 'Segar', 6),
+      ]);
+      expect(sitemap).toContain('/categories/lama');
+      expect(sitemap).toContain('/categories/segar');
+    });
+
+    it('berhenti mengirim lastmod yang tidak jujur pada dokumen statis', () => {
+      const site = makeNetworkSite([
+        makeNetworkArticle({ slug: 'baru', updatedAt: '2026-09-14T10:00:00.000Z' }),
+      ]);
+      const sitemap = serializeSitemap(site, []);
+      const privacy = /<loc>[^<]*\/kebijakan-privasi<\/loc><lastmod>([^<]*)<\/lastmod>/.exec(sitemap);
+      const home = /<loc>https:\/\/portal\.example\/<\/loc><lastmod>([^<]*)<\/lastmod>/.exec(sitemap);
+      expect(privacy).not.toBeNull();
+      expect(home).not.toBeNull();
+      // Dokumen statis tidak berubah karena artikel baru terbit, jadi lastmod-nya
+      // tidak boleh mengikuti `updatedAt` artikel.
+      expect(privacy?.[1]).not.toBe('2026-09-14T10:00:00.000Z');
+      expect(home?.[1]).toBe('2026-09-14T10:00:00.000Z');
+    });
+
+    it('tidak mengirim changefreq dan priority yang diabaikan Google', () => {
+      const site = makeNetworkSite([makeNetworkArticle({ slug: 'satu' })]);
+      const sitemap = serializeSitemap(site, []);
+      expect(sitemap).not.toContain('<changefreq>');
+      expect(sitemap).not.toContain('<priority>');
+    });
+
+    it('mendaftarkan indeks kanal A-Z yang indexable', () => {
+      const sitemap = serializeSitemap(makeNetworkSite([makeNetworkArticle({ slug: 'satu' })]), []);
+      expect(sitemap).toContain('https://portal.example/indeks</loc>');
+    });
+  });
+
   it('tidak mendeklarasikan artikel warisan kota di sitemap portal pencetus', () => {
     const inherited = makeNetworkArticle({ slug: 'kota-lokal', href: 'https://kota.portal.example/kota-lokal' });
     const owned = makeNetworkArticle({ slug: 'milik-sendiri', href: '/milik-sendiri' });
-    const sitemap = serializeSitemap(makeNetworkSite([inherited, owned]));
+    const sitemap = serializeSitemap(makeNetworkSite([inherited, owned]), []);
     expect(sitemap).toContain('/milik-sendiri');
     expect(sitemap).not.toContain('kota.portal.example');
     const news = serializeNewsSitemap(makeNetworkSite([inherited, owned]));
@@ -296,7 +351,7 @@ describe('serializers', () => {
       publishedAt: new Date(Date.now() - 3_600_000).toISOString(),
       updatedAt: '2026-09-14T10:00:00.000Z',
     });
-    const sitemap = serializeSitemap(makeNetworkSite([canonical]));
+    const sitemap = serializeSitemap(makeNetworkSite([canonical]), []);
     expect(sitemap).toContain('https://portal-apex.example/berita-cascade');
     expect(sitemap).not.toContain('https://portal.example/berita-cascade');
     const news = serializeNewsSitemap(makeNetworkSite([canonical]));
@@ -310,7 +365,7 @@ describe('serializers', () => {
       publishedAt: new Date(Date.now() - 3_600_000).toISOString(),
       updatedAt: '2026-09-14T10:00:00.000Z',
     });
-    const sitemap = serializeSitemap(makeNetworkSite([hidden]));
+    const sitemap = serializeSitemap(makeNetworkSite([hidden]), []);
     expect(sitemap).not.toContain('/tersembunyi');
     const news = serializeNewsSitemap(makeNetworkSite([hidden]));
     expect(news).not.toContain('/tersembunyi');
@@ -318,8 +373,8 @@ describe('serializers', () => {
 
   it('menstabilkan lastmod situs kosong ke createdAt situs', () => {
     const empty = makeNetworkSite([]);
-    const first = serializeSitemap(empty);
-    const second = serializeSitemap(empty);
+    const first = serializeSitemap(empty, []);
+    const second = serializeSitemap(empty, []);
     expect(first).toBe(second);
     expect(first).toContain('2026-09-01T00:00:00.000Z');
   });

@@ -21,11 +21,26 @@ const CATEGORIES = [
 ];
 
 describe('IndexPage', () => {
-  it('menyembunyikan kanal kosong dan menghitung sisanya', () => {
+  it('menampilkan seluruh kanal aktif tanpa menyaring dari artikel halaman', () => {
     render(<IndexContent site={siteWith('berita', 'berita')} categories={CATEGORIES} />);
-    expect(screen.getByRole('link', { name: /Berita2 artikel/ })).toBeDefined();
-    expect(screen.queryByRole('link', { name: /Agama/ })).toBeNull();
-    expect(screen.getByText(/1 kanal .* berisi artikel/)).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Agama' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Berita' })).toBeDefined();
+  });
+
+  it('tidak mengklaim jumlah artikel per kanal', () => {
+    render(<IndexContent site={siteWith('berita', 'berita')} categories={CATEGORIES} />);
+    expect(screen.queryByText(/\d+ artikel/)).toBeNull();
+  });
+
+  it('tidak menyatakan kanal sebagai kosong', () => {
+    render(<IndexContent site={siteWith('berita')} categories={CATEGORIES} />);
+    expect(screen.queryByText(/belum memiliki artikel/)).toBeNull();
+    expect(screen.queryByText(/Belum ada kanal .* berisi artikel/)).toBeNull();
+  });
+
+  it('menyatakan jumlah kanal sebenarnya, bukan jumlah kanal terisi', () => {
+    render(<IndexContent site={siteWith()} categories={CATEGORIES} />);
+    expect(screen.getByText(/Jelajahi 2 kanal liputan/)).toBeDefined();
   });
 
   it('menampilkan huruf sekali tanpa duplikat terlihat', () => {
@@ -37,9 +52,9 @@ describe('IndexPage', () => {
     expect(heading.textContent).toBe('BKanal huruf B');
   });
 
-  it('menyatakan kosong saat tak ada kanal berisi artikel', () => {
-    render(<IndexContent site={siteWith()} categories={CATEGORIES} />);
+  it('menyatakan kosong hanya saat memang tidak ada kanal', () => {
+    render(<IndexContent site={siteWith('berita')} categories={[]} />);
     expect(screen.queryByRole('link', { name: /Berita/ })).toBeNull();
-    expect(screen.getByText(/Belum ada kanal .* berisi artikel/)).toBeDefined();
+    expect(screen.getByText(/Belum ada kanal .* yang diterbitkan/)).toBeDefined();
   });
 });

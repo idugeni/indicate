@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 import {
   isCategoryNavActive,
@@ -7,11 +10,21 @@ import {
 } from '@/modules/site/components/network/ui/nav';
 
 /**
- * Strip kanal geser horizontal untuk layar sangat kecil di dalam header sticky.
+ * Toleransi posisi scroll agar guncangan sub-piksel tidak membuat strip berkedip.
+ * Pita kategori menutup begitu halaman digulir, lalu kembali saat menyentuh puncak.
+ */
+const TOP_SLACK_PX = 24;
+
+/**
+ * Strip kanal geser horizontal untuk layar kecil dan tablet di dalam header sticky.
  *
  * @param categories - Kanal navbar tanpa item Indeks.
  * @param path - Path halaman aktif.
- * @returns Bar snap-x dengan "Indeks" terakhir, hanya di bawah sm.
+ * @returns Bar snap-x dengan "Indeks" terakhir, hanya di bawah lg, menyusut saat digulir.
+ * @remarks Padanan `TemplateBackToTop`: listener scroll pasif yang hanya menyimpan
+ *   satu boolean. Row `0fr`/`1fr` dipilih agar tinggi menutup tanpa mengukur tinggi
+ *   strip di JS, dan `inert` ikut dipakai supaya link yang tak terlihat hilang dari
+ *   tab-order serta pohon aksesibilitas.
  */
 export function CategoryNavStrip({
   categories,
@@ -20,14 +33,27 @@ export function CategoryNavStrip({
   readonly categories: readonly CategoryNavItem[];
   readonly path: string;
 }) {
+  const [atTop, setAtTop] = useState(true);
+
+  useEffect(() => {
+    const onScroll = () => setAtTop(window.scrollY <= TOP_SLACK_PX);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const items = withCategoryIndex(categories);
   if (items.length === 0) return null;
   return (
     <nav
       aria-label="Kanal liputan"
-      className="border-t border-[var(--tpl-ring,var(--tpl-faint))] sm:hidden"
+      aria-hidden={!atTop}
+      inert={!atTop}
+      className={`grid border-t border-[var(--tpl-ring,var(--tpl-faint))] transition-[grid-template-rows] duration-180 ease-out lg:hidden ${
+        atTop ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+      }`}
     >
-      <ul className="m-0 flex list-none snap-x snap-mandatory gap-1.5 overflow-x-auto px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="m-0 flex min-h-0 list-none snap-x snap-mandatory gap-1.5 overflow-x-auto overflow-y-hidden px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item) => {
           const active = isCategoryNavActive(path, item.href);
           return (

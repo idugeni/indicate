@@ -26,9 +26,9 @@ export async function PurpleEditorialFooter({ site }: { readonly site: NetworkSi
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="flex flex-col items-center text-center">
-          <Link href="/" className="flex min-w-0 items-center justify-center gap-2.5 leading-none no-underline">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="col-span-2 flex flex-col items-center text-center sm:col-span-1 sm:items-start sm:text-left">
+          <Link href="/" className="flex min-w-0 flex-col items-center gap-2.5 leading-none no-underline sm:flex-row sm:items-center">
             <Image
               unoptimized
               src={site.settings.logoUrl}
@@ -50,7 +50,7 @@ export async function PurpleEditorialFooter({ site }: { readonly site: NetworkSi
             {site.settings.description}
           </p>
           {configuredSocials.length > 0 ? (
-            <p className="m-0 mt-4 flex flex-wrap items-center justify-center gap-2">
+            <p className="m-0 mt-4 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               {configuredSocials.map(({ name, href }) => {
                 const Icon = channelIcon(name);
                 return (
@@ -75,11 +75,11 @@ export async function PurpleEditorialFooter({ site }: { readonly site: NetworkSi
               </Link>
             </p>
           ) : null}
-          <div className="m-0 mt-4 flex justify-center">
+          <div className="m-0 mt-4">
             <PurpleEditorialPreferredSourceButton site={site} />
           </div>
         </div>
-        <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-10 border-t border-slate-200 pt-10 sm:gap-10 lg:grid-cols-3">
+
         <nav aria-label="Kategori">
           <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Kategori</h2>
           <ul className="m-0 mt-4 list-none space-y-2.5 p-0">
@@ -106,13 +106,12 @@ export async function PurpleEditorialFooter({ site }: { readonly site: NetworkSi
           </ul>
         </nav>
 
-        <div className="col-span-2 lg:col-span-1">
-          <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Unduh Aplikasi</h2>
+        <div className="col-span-2 sm:col-span-1">
+          <h2 className="m-0 font-sans text-sm font-bold text-slate-900">Aplikasi Mobile</h2>
           <p className="m-0 mt-4 font-sans text-sm leading-relaxed text-slate-600">
-            Baca berita kapan saja, di mana saja dengan aplikasi {site.settings.name}.
+            Baca {site.settings.name} dengan ritme yang tenang, lengkap dengan konteks di balik setiap berita.
           </p>
           <StoreBadges />
-        </div>
         </div>
       </div>
 

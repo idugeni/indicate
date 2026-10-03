@@ -26,7 +26,11 @@ export function ArticleMeta({
   const item = 'inline-flex items-center gap-1.5';
   const icon = 'h-3.5 w-3.5 text-slate-400';
   return (
-    <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-sans text-xs tabular-nums text-slate-600">
+    /* `min-w-0` itu wajib: sebagai flex item di baris `justify-between` bersama
+       tombol panah, `min-width: auto` membuat baris ini tidak boleh menyusut di
+       bawah meta terlebar — jadi ia MENDORONG tombol keluar, bukan membungkus.
+       Tanpa itu, "1.234.567 pembaca" sudah cukup untuk meluber di 375px. */
+    <span className="flex min-w-0 flex-wrap items-center gap-x-3.5 gap-y-1 font-sans text-xs tabular-nums text-slate-600">
       <span className={item}>
         <CalendarDays className={icon} aria-hidden="true" />
         {formatDate(publishedAt, dateVariant)}

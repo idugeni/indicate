@@ -798,6 +798,20 @@
     50% { box-shadow: 0 0 0 3px rgb(204 154 68 / 0.28); }
   }
 
+  /* Dua arah putaran untuk pasangan cincin loader berlogo: cincin luar searah
+     jarum jam (lambat), cincin dalam berlawanan arah (cepat). Dipasangkan lewat
+     `motion-safe:animate-[...]`, jadi `prefers-reduced-motion` menghentikan
+     keduanya lewat `motion-reduce:animate-none`, bukan sekadar memperlambat. */
+  @keyframes brand-ring-cw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes brand-ring-ccw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ticker-progress { animation: none; }
     .ai-shimmer, .ai-busy-glow, .status-bar-rise { animation: none; }
