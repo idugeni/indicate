@@ -5,7 +5,6 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialHeaderBar } from '@/modules/site/components/network/templates/purple-editorial/chrome/header-bar';
 import { PurpleEditorialTopBar } from '@/modules/site/components/network/templates/purple-editorial/chrome/top-bar';
 import { PurpleEditorialDesktopNav, PurpleEditorialMobileNav } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -52,7 +51,6 @@ export async function PurpleEditorialHeader({ site, path = '/' }: { readonly sit
         nav={<PurpleEditorialDesktopNav categories={nav} path={path} />}
         sidebar={<PurpleEditorialMobileNav categories={nav} path={path} />}
       />
-      <CategoryNavStrip categories={nav} path={path} />
       </div>
     </>
   );

@@ -4,13 +4,12 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueHeaderBar } from '@/modules/site/components/network/templates/clean-blue/chrome/header-bar';
 import { CleanBlueDesktopNav, CleanBlueMobileNav } from '@/modules/site/components/network/templates/clean-blue/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
  * 3-column navbar: [brand as needed | flexible menu | actions as needed].
  * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
- * A snap-scroll kanal strip sticks below the bar on mobile, ending in "Indeks".
+ * Below `lg` the hamburger drawer carries the whole category list, ending in "Indeks".
  */
 export async function CleanBlueHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
   const nav = await getSiteCategoryNav(site);
@@ -50,7 +49,6 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
         nav={<CleanBlueDesktopNav categories={nav} path={path} />}
         sidebar={<CleanBlueMobileNav categories={nav} path={path} />}
       />
-      <CategoryNavStrip categories={nav} path={path} />
     </header>
   );
 }

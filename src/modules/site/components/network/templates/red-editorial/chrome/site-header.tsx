@@ -4,7 +4,6 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialHeaderBar } from '@/modules/site/components/network/templates/red-editorial/chrome/header-bar';
 import { RedEditorialDesktopNav, RedEditorialMobileNav } from '@/modules/site/components/network/templates/red-editorial/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -49,7 +48,6 @@ export async function RedEditorialHeader({ site, path = '/' }: { readonly site: 
         nav={<RedEditorialDesktopNav categories={nav} path={path} />}
         sidebar={<RedEditorialMobileNav categories={nav} path={path} />}
       />
-      <CategoryNavStrip categories={nav} path={path} />
     </header>
   );
 }

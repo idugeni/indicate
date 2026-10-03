@@ -5,7 +5,6 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GlassyBlueHeaderBar } from '@/modules/site/components/network/templates/glassy-blue/chrome/header-bar';
 import { GlassyBlueTopBar } from '@/modules/site/components/network/templates/glassy-blue/chrome/top-bar';
 import { GlassyBlueDesktopNav, GlassyBlueMobileNav } from '@/modules/site/components/network/templates/glassy-blue/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -52,7 +51,6 @@ export async function GlassyBlueHeader({ site, path = '/' }: { readonly site: Ne
         nav={<GlassyBlueDesktopNav categories={nav} path={path} />}
         sidebar={<GlassyBlueMobileNav categories={nav} path={path} />}
       />
-      <CategoryNavStrip categories={nav} path={path} />
       </div>
     </>
   );

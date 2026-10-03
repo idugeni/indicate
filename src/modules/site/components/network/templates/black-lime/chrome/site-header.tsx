@@ -4,7 +4,6 @@ import Link from 'next/link';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeHeaderBar } from '@/modules/site/components/network/templates/black-lime/chrome/header-bar';
 import { BlackLimeDesktopNav, BlackLimeMobileNav } from '@/modules/site/components/network/templates/black-lime/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -49,7 +48,6 @@ export async function BlackLimeHeader({ site, path = '/' }: { readonly site: Net
         nav={<BlackLimeDesktopNav categories={nav} path={path} />}
         sidebar={<BlackLimeMobileNav categories={nav} path={path} />}
       />
-      <CategoryNavStrip categories={nav} path={path} />
     </header>
   );
 }

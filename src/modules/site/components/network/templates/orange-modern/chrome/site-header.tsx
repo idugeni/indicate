@@ -5,7 +5,6 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernHeaderBar } from '@/modules/site/components/network/templates/orange-modern/chrome/header-bar';
 import { OrangeModernTopBar } from '@/modules/site/components/network/templates/orange-modern/chrome/top-bar';
 import { OrangeModernDesktopNav, OrangeModernMobileNav } from '@/modules/site/components/network/templates/orange-modern/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -52,7 +51,6 @@ export async function OrangeModernHeader({ site, path = '/' }: { readonly site: 
         nav={<OrangeModernDesktopNav categories={nav} path={path} />}
         sidebar={<OrangeModernMobileNav categories={nav} path={path} />}
       />
-      <CategoryNavStrip categories={nav} path={path} />
       </div>
     </>
   );

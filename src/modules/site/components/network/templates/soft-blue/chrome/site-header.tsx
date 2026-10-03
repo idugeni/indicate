@@ -5,7 +5,6 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueHeaderBar } from '@/modules/site/components/network/templates/soft-blue/chrome/header-bar';
 import { SoftBlueTopBar } from '@/modules/site/components/network/templates/soft-blue/chrome/top-bar';
 import { SoftBlueDesktopNav, SoftBlueMobileNav } from '@/modules/site/components/network/templates/soft-blue/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -53,7 +52,6 @@ export async function SoftBlueHeader({ site, path = '/' }: { readonly site: Netw
         nav={<SoftBlueDesktopNav categories={nav} path={path} />}
         sidebar={<SoftBlueMobileNav categories={nav} path={path} />}
           />
-          <CategoryNavStrip categories={nav} path={path} />
         </div>
       </div>
     </>

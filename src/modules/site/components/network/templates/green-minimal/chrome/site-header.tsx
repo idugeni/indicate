@@ -5,7 +5,6 @@ import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalHeaderBar } from '@/modules/site/components/network/templates/green-minimal/chrome/header-bar';
 import { GreenMinimalTopBar } from '@/modules/site/components/network/templates/green-minimal/chrome/top-bar';
 import { GreenMinimalDesktopNav, GreenMinimalMobileNav } from '@/modules/site/components/network/templates/green-minimal/chrome/site-nav-menu';
-import { CategoryNavStrip } from '@/modules/site/components/network/ui/category-nav-strip';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
 
 /**
@@ -52,7 +51,6 @@ export async function GreenMinimalHeader({ site, path = '/' }: { readonly site: 
         nav={<GreenMinimalDesktopNav categories={nav} path={path} />}
         sidebar={<GreenMinimalMobileNav categories={nav} path={path} />}
       />
-      <CategoryNavStrip categories={nav} path={path} />
       </div>
     </>
   );

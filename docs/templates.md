@@ -61,13 +61,15 @@ Logo dan nama turun dari baris mendatar ke tumpukan lewat
 pada pembungkus brand dan `justify-center` pada baris sosial wajib ikut,
 atau tombol `inline-flex` di dalamnya tidak ikut ke tengah.
 
-`network/ui/category-nav-strip.tsx` dipakai sepuluh template: kanal geser
-horizontal di dalam header sticky, tampil di bawah `lg` saja. ponta desktop
-`hidden lg:flex` dan hamburger `lg:hidden` bertemu di `lg`, jadi saat
-strip masih `sm:hidden` rentang `sm`–`lg` kehilangan seluruh navigasi
-kategori — `lg` harus tetap satu breakpoint dengan tombol hamburger.
-Strip menutup (`grid-rows-[0fr]` + `inert`) selama halaman tidak di puncak
-dan kembali saat `scrollY` ≤ 24px.
+Tidak ada strip kanal terpisah di header. Navigasi kategori punya tepat dua
+wajah: ponta desktop `hidden lg:flex` dan hamburger `lg:hidden` yang membuka
+drawer berisi seluruh kanal (ditutup "Indeks"). Keduanya bertemu di `lg`,
+jadi `lg` tetap satu breakpoint — jangan pernah membuat hamburger atau
+desktop nav punya batas sendiri, atau rentang `sm`–`lg` kehilangan seluruh
+navigasi kategori. Strip geser horizontal (`CategoryNavStrip`) pernah duduk
+di antara keduanya dan sengaja dihapus: ia menambah affordance kedua di
+mobile tanpa menambah jangkauan kanal. Kalau kanal perlu cepat dijangkau
+di layar kecil, perbaiki drawer, jangan tambah strip.
 
 ## Urutan kanal (invariants, bukan preferensi per template)
 
