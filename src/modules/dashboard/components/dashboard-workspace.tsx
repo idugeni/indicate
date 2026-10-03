@@ -106,17 +106,6 @@ const CLOCK_FORMAT = new Intl.DateTimeFormat('id-ID', {
   second: '2-digit',
 });
 
-/**
- * Command yang berjalan diam: baca frekuensi tinggi yang akan membanjiri
- * toast dan memicu muat ulang penuh bila diperlakukan seperti mutasi.
- *
- * @param action - Nama perintah dasbor (`domain.verb`).
- * @returns True bila perintah boleh lewat tanpa toast dan tanpa muat ulang.
- */
-export function isQuietCommand(action: string): boolean {
-  return ['.read', '.readMany', '.list', '.status'].some((suffix) => action.endsWith(suffix));
-}
-
 /** Isolated wall clock: only this component re-renders every second. */
 function LiveClock() {
   const [now, setNow] = useState<Date | null>(null);
@@ -317,7 +306,7 @@ export function DashboardWorkspace({
     setPendingOrgId(nextOrgId);
   }, []);
 
-  const command = useCallback(async (action: string, payload: unknown, options?: { readonly quiet?: boolean | undefined }): Promise<unknown> => {
+  const command = useCallback(async (action: string, payload: unknown, options?: { readonly refresh?: boolean | undefined }): Promise<unknown> => {
     const targetOrg = organizationId;
     setBusy(true);
     setError(null);
@@ -348,21 +337,12 @@ export function DashboardWorkspace({
     };
 
     try {
-      const quiet = options?.quiet === true || isQuietCommand(action);
-      const body = quiet
-        ? await run()
-        : await toast.promise(run(), {
-          loading: `Menjalankan ${action}…`,
-          success: `Perintah ${action} berhasil dijalankan.`,
-          error: (cause) =>
-            cause instanceof TypeError
-              ? 'Gagal menghubungi server saat mengirim perintah.'
-              : cause instanceof Error
-                ? cause.message
-                : 'Gagal menjalankan perintah.',
-        }).unwrap();
+      // No command speaks for itself: callers own the toast so one user action
+      // reports one outcome, and so a multi-step action cannot stack a toast and
+      // a full refetch per step. Refresh is opt-in for the same reason.
+      const body = await run();
       if (body === null || activeOrgRef.current !== targetOrg) return null;
-      if (!quiet && !SELF_FETCHING_VIEWS.has(view)) void fetchData(view, targetOrg, filterQuery);
+      if (options?.refresh === true && !SELF_FETCHING_VIEWS.has(view)) void fetchData(view, targetOrg, filterQuery);
       return body;
     } catch (err: unknown) {
       if (activeOrgRef.current === targetOrg) {

@@ -3,6 +3,7 @@
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import Image from 'next/image';
 import { Loader2, Settings2 } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,7 +66,7 @@ function SiteSettingsEditor({
 }: {
   readonly site: SiteOption;
   readonly settings: SiteSettingsRow | undefined;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
 }) {
   const nameId = useId();
   const descriptionId = useId();
@@ -101,6 +102,7 @@ function SiteSettingsEditor({
   const [seo, setSeo] = useState(stringify(settings?.seo));
   const [navigation, setNavigation] = useState(stringify(settings?.navigation ?? []));
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [isSaving, startSaveTransition] = useTransition();
 
   const handleTemplateChange = (next: string) => {
@@ -117,6 +119,7 @@ function SiteSettingsEditor({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setSaved(false);
     if (name.trim() === '') {
       setError('Isi nama situs terlebih dahulu.');
       return;
@@ -141,32 +144,40 @@ function SiteSettingsEditor({
     }
 
     startSaveTransition(async () => {
-      const result = await command('site.settings.update', {
-        siteId: site.id,
-        ...(settings === undefined ? {} : { expectedVersion: settings.version }),
-        name: name.trim(),
-        description: description.trim(),
-        tagline: tagline.trim() === '' ? null : tagline.trim(),
-        ...(seoTitle.trim() === '' ? {} : { seoDefaultTitle: seoTitle.trim() }),
-        ...(seoDescription.trim() === '' ? {} : { seoDefaultDescription: seoDescription.trim() }),
-        ...(ogSiteName.trim() === '' ? {} : { seoOpenGraphSiteName: ogSiteName.trim() }),
-        ...(locale.trim() === '' ? {} : { locale: locale.trim() }),
-        ...(robots === '' ? {} : { seoRobotsDirective: robots }),
-        logoMediaId: logoMedia.trim() === '' ? null : logoMedia.trim(),
-        faviconMediaId: faviconMedia.trim() === '' ? null : faviconMedia.trim(),
-        defaultMediaId: defaultMedia.trim() === '' ? null : defaultMedia.trim(),
-        colors: colorsValue,
-        socialLinks: socialValue,
-        seo: seoValue,
-        navigation: navigationValue,
-      });
-      if (result === null) setError('Penyimpanan gagal. Periksa pesan kesalahan di atas halaman.');
+      try {
+        const result = await command('site.settings.update', {
+          siteId: site.id,
+          ...(settings === undefined ? {} : { expectedVersion: settings.version }),
+          name: name.trim(),
+          description: description.trim(),
+          tagline: tagline.trim() === '' ? null : tagline.trim(),
+          ...(seoTitle.trim() === '' ? {} : { seoDefaultTitle: seoTitle.trim() }),
+          ...(seoDescription.trim() === '' ? {} : { seoDefaultDescription: seoDescription.trim() }),
+          ...(ogSiteName.trim() === '' ? {} : { seoOpenGraphSiteName: ogSiteName.trim() }),
+          ...(locale.trim() === '' ? {} : { locale: locale.trim() }),
+          ...(robots === '' ? {} : { seoRobotsDirective: robots }),
+          logoMediaId: logoMedia.trim() === '' ? null : logoMedia.trim(),
+          faviconMediaId: faviconMedia.trim() === '' ? null : faviconMedia.trim(),
+          defaultMediaId: defaultMedia.trim() === '' ? null : defaultMedia.trim(),
+          colors: colorsValue,
+          socialLinks: socialValue,
+          seo: seoValue,
+          navigation: navigationValue,
+        }, { refresh: true });
+        if (result === null) {
+          setError('Penyimpanan gagal. Periksa pesan kesalahan di atas halaman.');
+          return;
+        }
+        setSaved(true);      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Penyimpanan pengaturan gagal.');
+      }
     });
   };
 
   return (
     <form noValidate onSubmit={handleSubmit} className="space-y-3.5">
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
+      {!error && saved ? <FormNotice tone="muted">Pengaturan situs tersimpan.</FormNotice> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={nameId} className="font-mono text-xs text-paper-dim">
@@ -482,7 +493,7 @@ export function SiteSettingsForm({
   command,
 }: {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
 }) {
   const model = data as {
     readonly sites?: readonly SiteOption[];

@@ -39,9 +39,7 @@ vi.mock('@/modules/dashboard/components/editorial/rich-text-editor', () => ({
   },
 }));
 
-vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
-}));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();
@@ -413,7 +411,7 @@ describe('Formulir tulis artikel', () => {
       const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
       expect(input).not.toBeNull();
       fireEvent.change(input, { target: { files: [file] } });
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ filename: 'sampul.png' }), { quiet: true }));
+      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ filename: 'sampul.png' })));
       await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }));
       fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
       fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });

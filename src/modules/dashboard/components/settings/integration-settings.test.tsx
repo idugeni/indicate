@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { IntegrationSettings } from '@/modules/dashboard/components/settings/integration-settings';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();
@@ -31,6 +31,7 @@ describe('Pengaturan integrasi', () => {
       expect(command).toHaveBeenCalledWith(
         'api-key.issue',
         expect.objectContaining({ name: 'Layanan Uji' }),
+        { refresh: true },
       ),
     );
     expect(await screen.findByText('kunci-rahasia-uji')).toBeDefined();
@@ -74,6 +75,7 @@ describe('Pengaturan integrasi', () => {
       expect(command).toHaveBeenCalledWith(
         'api-key.issue',
         expect.objectContaining({ scopes: ['article.read', 'publishing.read', 'sites.manage'] }),
+        { refresh: true },
       ),
     );
   });

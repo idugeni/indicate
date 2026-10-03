@@ -3,6 +3,7 @@
 import { memo } from 'react';
 import dynamic from 'next/dynamic';
 import { Globe, KeyRound, LogIn, Palette, Plug, UserRound, X, Zap } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -171,7 +172,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   /** True only while the first payload for this scope is still in flight. */
   readonly showSkeleton: boolean;
   readonly currentPage: number;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly onDismissError: () => void;
   readonly onFilterApply: (query: string) => void;
   readonly onPageChange: (page: number) => void;
@@ -248,7 +249,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {view === 'editorial' ? (
         <ArticleCreateForm
           data={data}
-          onSubmit={(payload) => command('article.create', payload)}
+          onSubmit={(payload) => command('article.create', payload, { refresh: true })}
           command={command}
           organizationId={organizationId}
         />
@@ -305,7 +306,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           <PublishingForm data={data} command={command} />
           <ArticleDistributeForm
             data={data}
-            onAssign={(payload) => command('article.sites.assign', payload)}
+            onAssign={(payload) => command('article.sites.assign', payload, { refresh: true })}
             command={command}
           />
         </div>

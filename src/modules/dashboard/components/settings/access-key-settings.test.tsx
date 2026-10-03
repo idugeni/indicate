@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { AccessKeySettings } from '@/modules/dashboard/components/settings/access-key-settings';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();
@@ -18,7 +18,7 @@ describe('pengaturan kunci akses dashboard', () => {
     fireEvent.change(screen.getByLabelText('Nama kunci'), { target: { value: 'Laptop cadangan' } });
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
     await waitFor(() =>
-      expect(command).toHaveBeenCalledWith('access-key.issue', expect.objectContaining({ name: 'Laptop cadangan' })),
+      expect(command).toHaveBeenCalledWith('access-key.issue', expect.objectContaining({ name: 'Laptop cadangan' }), { refresh: true }),
     );
     expect(await screen.findByText(/\/auth\/access-key\?key=/)).toBeDefined();
   });
@@ -30,7 +30,7 @@ describe('pengaturan kunci akses dashboard', () => {
     await waitFor(() => expect(command).not.toHaveBeenCalled());
   });
 
-  it('mencabut kunci aktif tanpa refresh ganda', async () => {
+  it('mencabut kunci aktif dalam satu muat ulang', async () => {
     const command = vi.fn(async () => ({}));
     render(
       <AccessKeySettings
@@ -55,7 +55,7 @@ describe('pengaturan kunci akses dashboard', () => {
       expect(command).toHaveBeenCalledWith('access-key.revoke', {
         accessKeyId: '123e4567-e89b-12d3-a456-426614174000',
         expectedVersion: 1,
-      }),
+      }, { refresh: true }),
     );
   });
 });

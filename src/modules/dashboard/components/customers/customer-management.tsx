@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Building2, Loader2, MailPlus, Plus, UserCheck } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,13 +43,14 @@ export function CustomerManagement({
   command,
   organizationId,
 }: {
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly organizationId?: string | undefined;
 }) {
   const nameInputId = useId();
   const slugInputId = useId();
   const [customerSlug, setCustomerSlug] = useState('');
   const [isCreatingCustomer, startCustomerTransition] = useTransition();
+  const [customerNotice, setCustomerNotice] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState('');
   const [assignOrgId, setAssignOrgId] = useState('');
   const [isAssigning, startAssignTransition] = useTransition();
@@ -66,6 +68,7 @@ export function CustomerManagement({
     const formData = new FormData(form);
     const name = String(formData.get('name') ?? '').trim();
     const slug = String(formData.get('slug') ?? '').trim();
+    setCustomerNotice(null);
     if (name === '') {
       toast.error('Isi nama organisasi dulu.');
       return;
@@ -80,16 +83,25 @@ export function CustomerManagement({
     }
 
     startCustomerTransition(async () => {
-      await command('customer.create', {
-        name,
-        slug,
-        customerMetadata: {},
-        subscription: {
-          status: String(formData.get('status') ?? 'suspended'),
-        },
-      });
-      form.reset();
-      setCustomerSlug('');
+      try {
+        await command('customer.create', {
+          name,
+          slug,
+          customerMetadata: {},
+          subscription: {
+            status: String(formData.get('status') ?? 'suspended'),
+          },
+        }, { refresh: true });
+        setCustomerNotice(`Organisasi ${name} terdaftar. Tetapkan admin berikutnya.`);
+        form.reset();
+        setCustomerSlug('');
+      } catch (error) {
+        setCustomerNotice(
+          error instanceof Error
+            ? `Pendaftaran gagal: ${error.message}`
+            : 'Pendaftaran gagal. Coba lagi.',
+        );
+      }
     });
   };
 
@@ -108,7 +120,7 @@ export function CustomerManagement({
     }
     startAssignTransition(async () => {
       try {
-        await command('membership.assign-first', { organizationId: orgId, userEmail: target });
+        await command('membership.assign-first', { organizationId: orgId, userEmail: target }, { refresh: true });
         setAssignNotice('Admin pertama berhasil ditetapkan.');
         setAssignEmail('');
       } catch {
@@ -200,6 +212,7 @@ export function CustomerManagement({
       <SectionCard icon={Building2} title="Organisasi Baru" eyebrow="Registrasi akun">
 
         <form noValidate onSubmit={handleCreateCustomer} className="flex flex-col gap-3.5">
+          {customerNotice ? <FormNotice tone="muted">{customerNotice}</FormNotice> : null}
           <div className="space-y-1.5">
             <Label htmlFor={nameInputId} className="font-mono text-xs uppercase tracking-wider text-paper-dim">
               Nama organisasi / lembaga

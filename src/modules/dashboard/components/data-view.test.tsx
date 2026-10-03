@@ -2,12 +2,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { toast } from 'sonner';
 
 import { DataView } from '@/modules/dashboard/components/data-view';
 
-vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
-}));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();
@@ -407,7 +406,7 @@ describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan mem
     expect(screen.getByText('portal.example')).toBeDefined();
   });
 
-  it('aksi bulk berjalan diam per baris dan muat ulang sekali', async () => {
+  it('aksi bulk memakai satu toast progres dinamis dan satu muat ulang', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({}));
     const refresh = vi.fn();
@@ -429,8 +428,16 @@ describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan mem
     await user.click(screen.getByRole('checkbox', { name: 'Pilih semua baris halaman ini' }));
     await user.click(screen.getByRole('button', { name: 'Arsipkan (2)' }));
     await waitFor(() => expect(command).toHaveBeenCalledTimes(2));
-    expect(command).toHaveBeenNthCalledWith(1, 'article.archive', { id: 'a-1', expectedVersion: 1 }, { quiet: true });
-    expect(command).toHaveBeenNthCalledWith(2, 'article.archive', { id: 'a-2', expectedVersion: 1 }, { quiet: true });
+    expect(command).toHaveBeenNthCalledWith(1, 'article.archive', { id: 'a-1', expectedVersion: 1 });
+    expect(command).toHaveBeenNthCalledWith(2, 'article.archive', { id: 'a-2', expectedVersion: 1 });
+    // One user action, one refresh: the per-command refetch is gone.
     expect(refresh).toHaveBeenCalledTimes(1);
+    // One user action, one toast: every progress update reuses the same id, so
+    // sonner edits a single toast instead of stacking one per row.
+    const ids = vi.mocked(toast.loading).mock.calls.map(([, options]) => options?.id);
+    expect(ids.length).toBeGreaterThan(1);
+    expect(new Set(ids).size).toBe(1);
+    expect(toast.success).toHaveBeenCalledTimes(1);
+    expect(toast.success).toHaveBeenCalledWith('Arsipkan: 2 dari 2 baris berhasil.', { id: ids[0] });
   });
 });

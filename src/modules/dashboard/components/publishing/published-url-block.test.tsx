@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { PublishedUrlBlock, formatPublishedUrlBlock } from '@/modules/dashboard/components/publishing/published-url-block';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();

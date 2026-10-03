@@ -3,6 +3,7 @@
 import { useId, useMemo, useState, useTransition, type FormEvent } from 'react';
 import { Copy, KeyRound, Link2, Loader2, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,7 @@ export function AccessKeySettings({
   command,
   data,
 }: {
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly data: unknown;
 }) {
   const nameId = useId();
@@ -85,10 +86,17 @@ export function AccessKeySettings({
     }
     startIssueTransition(async () => {
       const expiresAt = presetDays === null ? null : new Date(Date.now() + presetDays * 24 * 60 * 60 * 1000).toISOString();
-      const result = (await command('access-key.issue', { name, expiresAt })) as IssuedAccessKeyResult | null;
-      if (result?.plaintext) {
+      try {
+        const result = (await command('access-key.issue', { name, expiresAt }, { refresh: true })) as IssuedAccessKeyResult | null;
+        if (result?.plaintext === undefined || result.plaintext === '') {
+          toast.error('Kunci akses gagal diterbitkan.');
+          return;
+        }
         setIssuedLink(`${window.location.origin}/auth/access-key?key=${encodeURIComponent(result.plaintext)}`);
         form.reset();
+        toast.success(`Kunci akses untuk ${name} terbit.`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Kunci akses gagal diterbitkan.');
       }
     });
   };
@@ -107,7 +115,10 @@ export function AccessKeySettings({
     setRevokingId(item.id);
     void (async () => {
       try {
-        await command('access-key.revoke', { accessKeyId: item.id, expectedVersion: item.version });
+        await command('access-key.revoke', { accessKeyId: item.id, expectedVersion: item.version }, { refresh: true });
+        toast.success(`Kunci akses ${item.name} dicabut.`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Kunci akses gagal dicabut.');
       } finally {
         setRevokingId(null);
       }

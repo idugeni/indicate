@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Activity, CheckCircle2, Clock, KeyRound, Play, Plus, Power, ShieldCheck, SlidersHorizontal, TrendingUp, Trash2, Zap } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -267,7 +268,7 @@ export function AiManagementPanel({
   command,
 }: {
   readonly organizationId: string;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
 }) {
   const [overview, setOverview] = useState<OverviewState | null>(null);
   const [busy, setBusy] = useState(false);

@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +31,7 @@ export function IntegrationSettings({
   isPlatform = false,
   email = null,
 }: {
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly isPlatform?: boolean;
   readonly email?: EmailStatus | null;
 }) {
@@ -82,23 +83,34 @@ export function IntegrationSettings({
     }
 
     startIssueTransition(async () => {
-      const result = (await command('api-key.issue', {
-        name,
-        scopes: [...scopes],
-        expiresAt: null,
-      })) as { readonly plaintext?: string } | null;
+      try {
+        const result = (await command('api-key.issue', {
+          name,
+          scopes: [...scopes],
+          expiresAt: null,
+        }, { refresh: true })) as { readonly plaintext?: string } | null;
 
-      if (result?.plaintext) {
+        if (result?.plaintext === undefined || result.plaintext === '') {
+          toast.error('Kunci API gagal diterbitkan.');
+          return;
+        }
         setIssuedPlaintext(result.plaintext);
         form.reset();
+        toast.success(`Kunci API untuk ${name} terbit. Simpan sekarang — tidak ditampilkan lagi.`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Kunci API gagal diterbitkan.');
       }
     });
   };
   const handleTestEmail = () => {
     if (testEmail.trim().length === 0) return;
     startEmailTestTransition(async () => {
-      const result = (await command('email.test', { to: testEmail.trim() })) as { readonly id?: string } | null;
-      setTestNotice(result?.id ? 'Surel uji terkirim.' : 'Surel uji gagal. Coba lagi.');
+      try {
+        const result = (await command('email.test', { to: testEmail.trim() })) as { readonly id?: string } | null;
+        setTestNotice(result?.id ? 'Surel uji terkirim.' : 'Surel uji gagal. Coba lagi.');
+      } catch (error) {
+        setTestNotice(error instanceof Error ? error.message : 'Surel uji gagal. Coba lagi.');
+      }
     });
   };
 

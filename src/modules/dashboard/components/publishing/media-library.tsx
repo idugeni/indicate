@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,7 +82,7 @@ interface LibraryModel {
 
 interface MediaLibraryProps {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly organizationId?: string | undefined;
 }
 

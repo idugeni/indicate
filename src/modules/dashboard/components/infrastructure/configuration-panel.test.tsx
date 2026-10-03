@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { ConfigurationPanel } from '@/modules/dashboard/components/infrastructure/configuration-panel';
 
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
+
 const DATA = {
   domains: [{ id: 'd-1', normalizedHostname: 'apex.example' }],
   regions: [{ id: 'r-1', name: 'Wonosobo' }],
@@ -43,6 +45,7 @@ describe('Panel konfigurasi infrastruktur', () => {
       expect(command).toHaveBeenCalledWith(
         'domain.create',
         expect.objectContaining({ normalizedHostname: 'contoh.co.id', status: 'inactive' }),
+        { refresh: true },
       ),
     );
   });
@@ -58,6 +61,7 @@ describe('Panel konfigurasi infrastruktur', () => {
       expect(command).toHaveBeenCalledWith(
         'region.create',
         expect.objectContaining({ name: 'Wonosobo', slug: 'wonosobo', status: 'active' }),
+        { refresh: true },
       ),
     );
   });
@@ -72,6 +76,7 @@ describe('Panel konfigurasi infrastruktur', () => {
       expect(command).toHaveBeenCalledWith(
         'site.create',
         expect.objectContaining({ normalizedHostname: 'wonosobo.suaradesa.net', status: 'inactive' }),
+        { refresh: true },
       ),
     );
   });

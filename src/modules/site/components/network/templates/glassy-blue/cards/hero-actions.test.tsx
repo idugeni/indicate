@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { GlassyBlueHeroActions } from '@/modules/site/components/network/templates/glassy-blue/cards/hero-actions';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 const tulis = vi.hoisted(() => vi.fn(async () => {}));
 

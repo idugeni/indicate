@@ -85,7 +85,7 @@ export async function uploadEditorImage(
     purpose: options.purpose ?? 'article-inline',
     owner,
     ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
-  }, { quiet: true })) as ReservationResponse | null;
+  })) as ReservationResponse | null;
   if (reserved?.reservationId === undefined || reserved.authorization?.url === undefined || reserved.authorization.requiredHeaders === undefined) {
     throw new Error('Gagal menyiapkan penyimpanan. Coba lagi.');
   }

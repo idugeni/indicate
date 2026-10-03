@@ -7,6 +7,7 @@ import {
   Layers,
   Loader2,
 } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ export function ArticleDistributeForm({
 }: {
   readonly data: unknown;
   readonly onAssign: (payload: unknown) => Promise<unknown>;
-  readonly command?: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command?: DashboardCommand;
   readonly articleId?: string | undefined;
 }) {
   const model = data as {
@@ -158,18 +159,22 @@ export function ArticleDistributeForm({
       return;
     }
     startSeedTransition(async () => {
-      const result = (await command('article.sites.views.setMany', { articleId: assignArticleValue, siteIds: seedSiteIds, viewCount })) as {
-        readonly updated?: unknown;
-        readonly missing?: unknown;
-      } | null;
-      const updated = typeof result?.updated === 'number' ? result.updated : 0;
-      const missingCount = Array.isArray(result?.missing) ? result.missing.length : 0;
-      if (updated === 0) toast.error('Gagal menyimpan jumlah tayang.');
-      else {
-        toast.success(`Jumlah tayang tersimpan untuk ${updated} situs.`);
-        if (missingCount > 0) toast.info(`${missingCount} situs belum tersalurkan — salurkan dulu sebelum mengisi tayangan.`);
+      try {
+        const result = (await command('article.sites.views.setMany', { articleId: assignArticleValue, siteIds: seedSiteIds, viewCount }, { refresh: true })) as {
+          readonly updated?: unknown;
+          readonly missing?: unknown;
+        } | null;
+        const updated = typeof result?.updated === 'number' ? result.updated : 0;
+        const missingCount = Array.isArray(result?.missing) ? result.missing.length : 0;
+        if (updated === 0) toast.error('Gagal menyimpan jumlah tayang.');
+        else {
+          toast.success(`Jumlah tayang tersimpan untuk ${updated} situs.`);
+          if (missingCount > 0) toast.info(`${missingCount} situs belum tersalurkan - salurkan dulu sebelum mengisi tayangan.`);
+        }
+        form.reset();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Gagal menyimpan jumlah tayang.');
       }
-      form.reset();
     });
   };
 

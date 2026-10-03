@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { DashboardWorkspace, isQuietCommand } from '@/modules/dashboard/components/dashboard-workspace';
+import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
 
 /** The workspace loads eighteen panels through `next/dynamic`, so a lazy panel needs more than the 1s default. */
 const LAZY_MODULE_TIMEOUT_MS = 8000;
@@ -28,17 +28,19 @@ vi.mock('nuqs', async () => {
   };
 });
 
-const { unwrapSpy } = vi.hoisted(() => ({ unwrapSpy: vi.fn(async (task: Promise<unknown>) => task) }));
-
-vi.mock('sonner', () => ({
-  toast: {
+const { toastMock } = vi.hoisted(() => ({
+  toastMock: {
     success: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
-    // Mirrors sonner 2.x: `promise` hands back `{ unwrap }`, never the resolved value.
-    promise: vi.fn((task: Promise<unknown>) => ({ unwrap: () => unwrapSpy(task) })),
+    warning: vi.fn(),
+    loading: vi.fn(() => 'toast-1'),
+    dismiss: vi.fn(),
+    promise: vi.fn(),
   },
 }));
+
+vi.mock('sonner', () => ({ toast: toastMock }));
 
 vi.mock('@/modules/dashboard/switch-organization-action', () => ({
   switchActiveOrganization: vi.fn(async () => ({ status: 'idle' })),
@@ -78,6 +80,7 @@ beforeEach(() => {
   initialView = 'dashboard';
   setViewExternal = null;
   releasePublishers = () => undefined;
+  for (const spy of Object.values(toastMock)) vi.mocked(spy).mockClear();
   setup();
 });
 
@@ -176,11 +179,12 @@ describe('Dashboard workspace', () => {
     });
   });
 
-  it('unwraps command responses instead of passing the toast object', async () => {
-    unwrapSpy.mockClear();
+  it('reports one human toast per user action instead of one per command', async () => {
     const posted: string[] = [];
-    const fetchMock = vi.fn(async (_url: unknown, init?: { body?: string }) => {
+    const gets: string[] = [];
+    const fetchMock = vi.fn(async (url: unknown, init?: { body?: string }) => {
       if (init?.body !== undefined) posted.push(init.body);
+      else gets.push(String(url));
       return {
         ok: true,
         json: async () => (init?.body === undefined ? { publishers: [{ id: 'p-1', name: 'Humas Rutan', version: 1 }] } : { publisherId: 'p-2' }),
@@ -189,11 +193,21 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'publishers';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    await screen.findByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    gets.length = 0;
     fireEvent.click(await screen.findByRole('button', { name: /Terapkan Keputusan/i }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
 
-    await waitFor(() => expect(unwrapSpy).toHaveBeenCalled(), { timeout: LAZY_MODULE_TIMEOUT_MS });
-    expect(JSON.parse(posted.at(-1) ?? '{}')).toMatchObject({ action: 'publisher.submit' });
-    await expect(unwrapSpy.mock.results.at(-1)?.value).resolves.toEqual({ publisherId: 'p-2' });
+    await waitFor(() => expect(posted).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
+    expect(JSON.parse(posted[0] ?? '{}')).toMatchObject({ action: 'publisher.submit' });
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledTimes(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
+    expect(toastMock.success).toHaveBeenCalledWith('Keputusan tata kelola berhasil diterapkan.');
+    // The old wrapper announced the machine action name; callers own the copy now.
+    for (const spy of [toastMock.success, toastMock.error, toastMock.info, toastMock.loading]) {
+      for (const call of vi.mocked(spy).mock.calls) {
+        expect(String(call[0])).not.toMatch(/Perintah .* berhasil dijalankan/);
+      }
+    }
+    await waitFor(() => expect(gets.filter((url) => url.includes('view=publishers')).length).toBe(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
   });
 
   it('does not stack raw tables below the media panel', async () => {    const fetchMock = vi.fn(async (url: unknown) => {
@@ -220,16 +234,7 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText(/data, halaman/)).toBeNull();
   });
 
-  it('menandai perintah baca sebagai diam dan mutasi sebagai berisik', () => {
-    for (const action of ['media.read', 'media.readMany', 'media.list', 'publication.status', 'api-key.list']) {
-      expect(isQuietCommand(action)).toBe(true);
-    }
-    for (const action of ['media.reserve', 'media.archive', 'publication.request', 'publisher.submit']) {
-      expect(isQuietCommand(action)).toBe(false);
-    }
-  });
-
-  it('perintah diam tidak memicu toast maupun muat ulang', async () => {
+  it('perintah baca tidak memicu toast maupun muat ulang', async () => {
     const calls: { readonly url: string; readonly init?: { readonly body?: string } | undefined }[] = [];
     const fetchMock = vi.fn(async (url: unknown, init?: { readonly body?: string }) => {
       calls.push({ url: String(url), init });

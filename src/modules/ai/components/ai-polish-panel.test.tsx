@@ -7,7 +7,7 @@ import { AiPolishPanel } from '@/modules/ai/components/ai-polish-panel';
 import { callAi } from '@/modules/ai/components/ai-client';
 
 vi.mock('@/modules/ai/components/ai-client', () => ({ callAi: vi.fn() }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();

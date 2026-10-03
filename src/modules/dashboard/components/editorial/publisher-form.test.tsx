@@ -52,6 +52,7 @@ describe('PublisherForm submit', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publisher.create',
       expect.objectContaining({ name: 'Radar Banyumas', type: 'independent_publisher', contacts: {} }),
+      { refresh: true },
     ));
     expect((screen.getByPlaceholderText(/radar jawa tengah sentral/i) as HTMLInputElement).value).toBe('');
   });
@@ -66,6 +67,7 @@ describe('PublisherForm submit', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publisher.approve',
       expect.objectContaining({ id: 'pub-1', expectedVersion: 3 }),
+      { refresh: true },
     ));
   });
 });

@@ -3,6 +3,7 @@
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { KeyRound, Loader2, Plus, Send, UserPlus } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -41,7 +42,7 @@ export function AccessManagementForm({
   organizationId,
 }: {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly organizationId: string;
 }) {
   const model = data as {
@@ -79,16 +80,20 @@ export function AccessManagementForm({
     }
 
     startRoleTransition(async () => {
-      const result = await command('role.create', {
-        name,
-        tier: formData.get('tier'),
-        active: roleActive,
-        permissions: [...rolePermissions],
-      });
-      if (result !== null) {
+      try {
+        const result = await command('role.create', {
+          name,
+          tier: formData.get('tier'),
+          active: roleActive,
+          permissions: [...rolePermissions],
+        }, { refresh: true });
+        if (result === null) return;
         form.reset();
         setRolePermissions([]);
         setRoleActive(true);
+        toast.success(`Peran ${name} berhasil dibuat.`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Gagal membuat peran baru.');
       }
     });
   };
@@ -114,7 +119,7 @@ export function AccessManagementForm({
         }
         const secret = await createInviteSecret();
         const tokenHash = await hashInviteCode(organizationId, email, secret);
-        const result = await command('invitation.create', { email, roleId, tokenHash });
+        const result = await command('invitation.create', { email, roleId, tokenHash }, { refresh: true });
         if (result === null) {
           setInviteNotice('Undangan gagal dibuat. Periksa peran dan email.');
           return;
@@ -131,7 +136,13 @@ export function AccessManagementForm({
   const handleRevokeInvite = (inviteId: string) => {
     if (!window.confirm('Batalkan undangan ini? Tautan undangan langsung tidak berlaku.')) return;
     startRevokeTransition(async () => {
-      await command('invitation.revoke', { id: inviteId });
+      try {
+        const result = await command('invitation.revoke', { id: inviteId }, { refresh: true });
+        if (result === null) return;
+        toast.success('Undangan dibatalkan.');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Gagal membatalkan undangan.');
+      }
     });
   };
 
@@ -154,13 +165,19 @@ export function AccessManagementForm({
     const existing = model?.memberships?.find((member) => member.userId === userId);
 
     startMembershipTransition(async () => {
-      const result = await command('membership.update', {
-        userId,
-        roleId: formData.get('roleId'),
-        status: formData.get('status'),
-        ...(existing === undefined ? {} : { expectedVersion: existing.version }),
-      });
-      if (result !== null) form.reset();
+      try {
+        const result = await command('membership.update', {
+          userId,
+          roleId: formData.get('roleId'),
+          status: formData.get('status'),
+          ...(existing === undefined ? {} : { expectedVersion: existing.version }),
+        }, { refresh: true });
+        if (result === null) return;
+        form.reset();
+        toast.success('Peran dan status keanggotaan tersimpan.');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Gagal menyimpan keanggotaan.');
+      }
     });
   };
 

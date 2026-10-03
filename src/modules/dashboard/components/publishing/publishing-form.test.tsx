@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 
 import { PublishingForm } from '@/modules/dashboard/components/publishing/publishing-form';
 
-vi.mock('sonner', () => ({ toast: { warning: vi.fn(), info: vi.fn(), success: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();
@@ -48,6 +48,7 @@ describe('PublishingForm publish', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
       expect.objectContaining({ articleId: 'article-1', siteIds: ['site-1'], options: { mode: 'immediate' } }),
+      { refresh: true },
     ));
     expect(await screen.findByText(/job-1/)).toBeDefined();
     expect(screen.getByText('Terkirim')).toBeDefined();
@@ -68,6 +69,7 @@ describe('PublishingForm publish', () => {
         publishAt: new Date('2099-01-02T10:00').toISOString(),
         options: { mode: 'scheduled' },
       }),
+      { refresh: true },
     ));
   });
 
@@ -81,6 +83,7 @@ describe('PublishingForm publish', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
       expect.objectContaining({ publishAt: null, options: { mode: 'immediate' } }),
+      { refresh: true },
     ));
   });
 
@@ -102,6 +105,7 @@ describe('PublishingForm publish', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
       expect.objectContaining({ overrides: { 'site-1': { title: 'Judul Khusus Portal Yang Unik' } } }),
+      { refresh: true },
     ));
   });
 });
@@ -198,6 +202,7 @@ describe('PublishingForm daftar situs tujuan', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
       expect.objectContaining({ siteIds: Array.from({ length: 10 }, (_, index) => `site-${110 + index}`) }),
+      { refresh: true },
     ));
   });
 
@@ -210,6 +215,7 @@ describe('PublishingForm daftar situs tujuan', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
       expect.objectContaining({ siteIds: ['site-0'] }),
+      { refresh: true },
     ));
   });
 

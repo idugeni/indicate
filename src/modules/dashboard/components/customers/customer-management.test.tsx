@@ -56,6 +56,7 @@ describe('Manajemen pelanggan', () => {
       expect(command).toHaveBeenCalledWith(
         'customer.create',
         expect.objectContaining({ name: 'Dinas Kominfo', slug: 'dinas-kominfo', subscription: { status: 'suspended' } }),
+        { refresh: true },
       ),
     );
   });
@@ -71,6 +72,7 @@ describe('Manajemen pelanggan', () => {
       expect(command).toHaveBeenCalledWith(
         'membership.assign-first',
         expect.objectContaining({ organizationId: 'org-1', userEmail: 'admin@organisasi.id' }),
+        { refresh: true },
       ),
     );
     expect(await screen.findByText('Admin pertama berhasil ditetapkan.')).toBeDefined();
@@ -90,6 +92,7 @@ describe('Manajemen pelanggan', () => {
       expect(command).toHaveBeenCalledWith(
         'membership.assign-first',
         expect.objectContaining({ organizationId: 'org-9', userEmail: 'admin@organisasi.id' }),
+        { refresh: true },
       ),
     );
   });

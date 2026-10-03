@@ -3,6 +3,7 @@
 import { useId, useMemo, useState, useTransition, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Activity, CalendarClock, Loader2, RefreshCw, Send } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -60,7 +61,7 @@ export function PublishingForm({
   command,
 }: {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
 }) {
   const model = data as {
     readonly articles?: readonly { readonly id: string; readonly title?: string; readonly slug?: string; readonly status?: string; readonly scheduledAt?: string | null }[];
@@ -205,18 +206,29 @@ export function PublishingForm({
     }
 
     startPublishTransition(async () => {
-      const result = (await command('publication.request', {
-        articleId,
-        siteIds,
-        idempotencyKey: values.get('idempotencyKey'),
-        options: { mode: publishMode === 'scheduled' ? 'scheduled' : 'immediate' },
-        publishAt: normalizedPublishAt,
-        overrides,
-      })) as PublicationStatusProjection | null;
-      if (result !== null && typeof result === 'object' && 'job' in result && 'targets' in result) {
-        setJobStatus(result);
+      try {
+        const result = (await command('publication.request', {
+          articleId,
+          siteIds,
+          idempotencyKey: values.get('idempotencyKey'),
+          options: { mode: publishMode === 'scheduled' ? 'scheduled' : 'immediate' },
+          publishAt: normalizedPublishAt,
+          overrides,
+        }, { refresh: true })) as PublicationStatusProjection | null;
+        if (result !== null && typeof result === 'object' && 'job' in result && 'targets' in result) {
+          setJobStatus(result);
+          toast.success(
+            publishMode === 'scheduled'
+              ? `Penerbitan dijadwalkan ke ${siteIds.length} situs.`
+              : `Penerbitan dikirim ke ${siteIds.length} situs.`,
+          );
+        } else {
+          toast.warning('Perintah diterima tetapi status penerbitan tidak dapat dimuat. Buka tab status.');
+        }
+        handleGenerateKey();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Penerbitan gagal dikirim. Coba lagi.');
       }
-      handleGenerateKey();
     });
   };
 

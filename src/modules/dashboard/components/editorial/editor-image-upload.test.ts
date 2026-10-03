@@ -32,7 +32,7 @@ describe('uploadEditorImage', () => {
     const result = await uploadEditorImage(file, { kind: 'organization' }, command, { prepare: mockPrepare as never, fetchFn: fetchFn as never });
     expect(result.storedSrc).toBe('/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde');
     expect(result.previewUrl).toBe('https://r2.example/preview');
-    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'article-inline' }), { quiet: true });
+    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'article-inline' }));
     expect(command).toHaveBeenCalledWith('media.complete', expect.objectContaining({ widthPx: 1200, heightPx: 675 }));
   });
 
@@ -60,7 +60,7 @@ describe('uploadEditorImage', () => {
     });
 
     expect(prepare).toHaveBeenCalledWith(file, COVER_COMPRESS);
-    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'article-cover' }), { quiet: true });
+    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'article-cover' }));
     expect(result.version).toBe(1);
     expect(result.sizeBytes).toBe(6);
   });
@@ -95,6 +95,6 @@ describe('uploadEditorImage', () => {
     const [preparedFile] = prepare.mock.calls[0]!;
     expect(preparedFile.name).toBe('IMG_0001.jpg');
     expect(preparedFile.type).toBe('image/jpeg');
-    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'article-cover', mediaType: 'image/webp' }), { quiet: true });
+    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ purpose: 'article-cover', mediaType: 'image/webp' }));
   });
 });

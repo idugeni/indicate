@@ -23,6 +23,7 @@ import {
   Type,
   WandSparkles,
 } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { DateTimeField } from '@/modules/dashboard/components/shared/date-time-field';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ import { callAi } from '@/modules/ai/components/ai-client';
 import { AiActionButton, AiPending } from '@/modules/ai/components/ai-action-button';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
+import { beginActionProgress } from '@/modules/dashboard/components/shared/action-progress';
 import { AppTooltip } from '@/ui/app-tooltip';
 import { useAiSlot } from '@/modules/dashboard/components/editorial/use-ai-slot';
 import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/components/editorial/publication-batch';
@@ -220,7 +222,7 @@ export function ArticleCreateForm({
 }: {
   readonly data: unknown;
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
-  readonly command?: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command?: DashboardCommand;
   readonly organizationId?: string | undefined;
 }) {
   const model = data as {
@@ -998,6 +1000,7 @@ export function ArticleCreateForm({
     const idempotencyPrefix = crypto.randomUUID();
     let dispatched = 0;
     let viewsFailed = 0;
+    const progress = beginActionProgress(`Mengirim ke ${targetSiteIds.length.toLocaleString('id-ID')} portal…`);
     try {
       for (const [index, batch] of batches.entries()) {
         await command('publication.request', {
@@ -1009,6 +1012,7 @@ export function ArticleCreateForm({
           overrides: {},
         });
         dispatched += batch.length;
+        progress.step(`Terkirim ke ${dispatched.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal…`);
         if (initialViews !== null) {
           try {
             const seeded = (await command('article.sites.views.setMany', { articleId, siteIds: batch, viewCount: initialViews })) as {
@@ -1020,16 +1024,16 @@ export function ArticleCreateForm({
           }
         }
       }
-      toast.success(
+      const viewsNote = viewsFailed > 0
+        ? ` ${viewsFailed.toLocaleString('id-ID')} portal gagal diisi tayangan awal — atur manual dari Hasil Tayang.`
+        : '';
+      progress.succeed(
         scheduled
-          ? `Terjadwal ke ${dispatched.toLocaleString('id-ID')} portal.`
-          : `Dikirim ke ${dispatched.toLocaleString('id-ID')} portal. Buka Hasil Tayang untuk menyalin URL.`,
+          ? `Terjadwal ke ${dispatched.toLocaleString('id-ID')} portal.${viewsNote}`
+          : `Dikirim ke ${dispatched.toLocaleString('id-ID')} portal. Buka Hasil Tayang untuk menyalin URL.${viewsNote}`,
       );
-      if (viewsFailed > 0) {
-        toast.info(`${viewsFailed.toLocaleString('id-ID')} portal gagal diset tayangan awal — atur manual dari Hasil Tayang.`);
-      }
     } catch {
-      toast.error(
+      progress.fail(
         dispatched === 0
           ? 'Artikel tersimpan, tetapi gagal ditayangkan. Coba lagi dari Antrean Penerbitan.'
           : `Artikel tersimpan dan ${dispatched.toLocaleString('id-ID')} portal sudah masuk antrean, sisanya gagal. Periksa Antrean Penerbitan.`,

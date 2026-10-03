@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   Archive,
   ArchiveRestore,
@@ -26,6 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -185,7 +187,7 @@ export function ArticleManager({
   onLoadMoreArticles,
 }: {
   readonly data: unknown;
-  readonly command?: ((action: string, payload: unknown) => Promise<unknown>) | undefined;
+  readonly command?: DashboardCommand | undefined;
   readonly onFilterApply?: ((query: string) => void) | undefined;
   readonly articlesNextCursor?: string | null | undefined;
   readonly articlesTotal?: number | undefined;
@@ -374,10 +376,13 @@ export function ArticleManager({
   const runRowAction = async (article: ArchiveArticle): Promise<void> => {
     if (command === undefined || busyId !== null) return;
     const action = article.status === 'archived' ? 'article.restore' : 'article.archive';
+    const restoring = article.status === 'archived';
     setBusyId(article.id);
     try {
-      // Workspace `command` already refetches the articles view on success.
-      await command(action, { id: article.id, expectedVersion: article.version });
+      await command(action, { id: article.id, expectedVersion: article.version }, { refresh: true });
+      toast.success(restoring ? 'Artikel dipulihkan.' : 'Artikel diarsipkan.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Perubahan status artikel gagal.');
     } finally {
       setBusyId(null);
     }
@@ -385,12 +390,16 @@ export function ArticleManager({
 
   const confirmDelete = async (): Promise<void> => {
     if (command === undefined || deleting === null || busyId !== null) return;
-    setBusyId(deleting.id);
+    const target = deleting;
+    setBusyId(target.id);
     try {
-      const result = await command('article.delete', { id: deleting.id, expectedVersion: deleting.version });
+      const result = await command('article.delete', { id: target.id, expectedVersion: target.version }, { refresh: true });
       if (result !== null) {
         setDeleting(null);
+        toast.success('Artikel dihapus beserta salinannya di seluruh portal.');
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Artikel gagal dihapus.');
     } finally {
       setBusyId(null);
     }

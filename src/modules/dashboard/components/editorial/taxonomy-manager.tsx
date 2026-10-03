@@ -26,6 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
@@ -55,8 +56,7 @@ import { Label } from '@/components/ui/label';
 import { AiTagSuggest } from '@/modules/ai/components/ai-tag-suggest';
 import { AppTooltip } from '@/ui/app-tooltip';
 
-interface TaxonomyCategory {
-  readonly id: string;
+interface TaxonomyCategory {  readonly id: string;
   readonly name: string;
   readonly slug: string;
   readonly status: string;
@@ -71,7 +71,7 @@ interface TaxonomyTag {
 
 interface TaxonomyManagerProps {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly organizationId?: string | undefined;
 }
 
@@ -221,7 +221,7 @@ export function TaxonomyManager({
 
     startCreateTransition(async () => {
       try {
-        await command('category.create', { name: cleanName, slug: cleanSlug });
+        await command('category.create', { name: cleanName, slug: cleanSlug }, { refresh: true });
         toast.success(`Kategori “${cleanName}” berhasil dibuat.`);
         setCreateName('');
         setCreateSlug('');
@@ -269,7 +269,7 @@ export function TaxonomyManager({
           name: cleanName,
           slug: cleanSlug,
           status: editStatus,
-        });
+        }, { refresh: true });
         toast.success(`Kategori “${cleanName}” berhasil diperbarui.`);
         setEditing(null);
       } catch (error) {
@@ -286,7 +286,7 @@ export function TaxonomyManager({
 
     startDeleteTransition(async () => {
       try {
-        await command('category.delete', { id: target.id, expectedVersion: target.version });
+        await command('category.delete', { id: target.id, expectedVersion: target.version }, { refresh: true });
         toast.success(`Kategori “${target.name}” berhasil dihapus.`);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal menghapus kategori.';
@@ -315,7 +315,7 @@ export function TaxonomyManager({
 
     startRenameTransition(async () => {
       try {
-        await command('tag.rename', { from: cleanFrom, to: cleanTo });
+        await command('tag.rename', { from: cleanFrom, to: cleanTo }, { refresh: true });
         toast.success(
           isTagMerging
             ? `Tag #${cleanFrom} berhasil digabungkan ke #${cleanTo}.`
@@ -337,7 +337,7 @@ export function TaxonomyManager({
 
     startRemoveTransition(async () => {
       try {
-        await command('tag.remove', { tag: target.tag });
+        await command('tag.remove', { tag: target.tag }, { refresh: true });
         toast.success(`Tag #${target.tag} berhasil dihapus dari seluruh artikel.`);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal menghapus tag.';

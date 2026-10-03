@@ -40,7 +40,7 @@ describe('TaxonomyManager', () => {
     await user.type(screen.getByLabelText('Nama Kategori'), 'Olahraga');
     expect((screen.getByLabelText('Slug URL') as HTMLInputElement).value).toBe('olahraga');
     await user.click(screen.getByRole('button', { name: 'Daftarkan Kategori' }));
-    await waitFor(() => expect(command).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }, { refresh: true }));
   });
 
   it('menghapus kategori setelah konfirmasi', async () => {
@@ -49,7 +49,7 @@ describe('TaxonomyManager', () => {
     setup(command);
     await user.click(screen.getByRole('button', { name: 'Hapus kategori Ekonomi' }));
     await user.click(await screen.findByRole('button', { name: 'Ya, Hapus Kategori' }));
-    await waitFor(() => expect(command).toHaveBeenCalledWith('category.delete', { id: 'c-2', expectedVersion: 3 }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith('category.delete', { id: 'c-2', expectedVersion: 3 }, { refresh: true }));
   });
 
   it('batal hapus kategori tanpa konfirmasi', async () => {
@@ -69,7 +69,7 @@ describe('TaxonomyManager', () => {
     await user.click(await screen.findByRole('option', { name: '#harga-emas (2 artikel)' }));
     await user.type(screen.getByLabelText('Tag Tujuan'), 'logammulia');
     await user.click(screen.getByRole('button', { name: 'Perbarui Nama Tag' }));
-    await waitFor(() => expect(command).toHaveBeenCalledWith('tag.rename', { from: 'harga-emas', to: 'logammulia' }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith('tag.rename', { from: 'harga-emas', to: 'logammulia' }, { refresh: true }));
   });
 
   it('menghapus tag setelah konfirmasi', async () => {
@@ -78,7 +78,7 @@ describe('TaxonomyManager', () => {
     setup(command);
     await user.click(screen.getByRole('button', { name: 'Hapus tag politik' }));
     await user.click(await screen.findByRole('button', { name: 'Ya, Hapus Tag' }));
-    await waitFor(() => expect(command).toHaveBeenCalledWith('tag.remove', { tag: 'politik' }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith('tag.remove', { tag: 'politik' }, { refresh: true }));
   });
 
   it('mengubah kategori lewat dialog', async () => {
@@ -93,6 +93,7 @@ describe('TaxonomyManager', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'category.update',
       expect.objectContaining({ id: 'c-1', expectedVersion: 1, name: 'Politik Baru' }),
+      { refresh: true },
     ));
   });
 

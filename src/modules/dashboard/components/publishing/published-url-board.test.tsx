@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 
 import { PublishedUrlBoard, collectPublishedUrls } from '@/modules/dashboard/components/publishing/published-url-board';
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 vi.mock('nuqs', async () => (await import('@/test/stubs/nuqs')).nuqsStub());
 
 afterEach(() => {

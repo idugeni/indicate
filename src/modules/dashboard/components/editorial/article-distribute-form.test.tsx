@@ -5,9 +5,7 @@ import userEvent from '@testing-library/user-event';
 
 import { ArticleDistributeForm } from '@/modules/dashboard/components/editorial/article-distribute-form';
 
-vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
-}));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 afterEach(() => {
   cleanup();
@@ -96,7 +94,7 @@ describe('Formulir penyaluran artikel', () => {
     fireEvent.change(screen.getByLabelText(/Jumlah tayang/), { target: { value: '250' } });
     fireEvent.submit(container.querySelectorAll('form')[1] as HTMLFormElement);
     await waitFor(() =>
-      expect(cmd).toHaveBeenCalledWith('article.sites.views.setMany', { articleId: 'art-1', siteIds: ['s-1'], viewCount: 250 }),
+      expect(cmd).toHaveBeenCalledWith('article.sites.views.setMany', { articleId: 'art-1', siteIds: ['s-1'], viewCount: 250 }, { refresh: true }),
     );
     expect(cmd).toHaveBeenCalledTimes(1);
   });

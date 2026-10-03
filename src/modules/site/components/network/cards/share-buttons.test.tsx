@@ -7,7 +7,7 @@ import { ShareButtons } from '@/modules/site/components/network/cards/share-butt
 
 const SKIN = { muted: '#475569', ring: '#e2e8f0', xText: '#000000' } as const;
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 const tulis = vi.hoisted(() => vi.fn(async () => {}));
 

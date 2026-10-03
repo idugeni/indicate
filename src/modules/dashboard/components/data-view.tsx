@@ -33,6 +33,7 @@ import {
 import { AppTooltip } from '@/ui/app-tooltip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
+import { beginActionProgress } from '@/modules/dashboard/components/shared/action-progress';
 import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import {
   COLLECTION_LIMITS,
@@ -678,27 +679,20 @@ function CollectionTable({
   const runBulk = async (transition: EditorTransition, rows: readonly Row<DashboardFeatures, CollectionItem>[]): Promise<void> => {
     if (command === undefined) return;
     let succeeded = 0;
+    const progress = beginActionProgress(`Menjalankan ${transition.label} untuk ${rows.length} baris…`);
     try {
-      await toast.promise(
-        (async () => {
-          for (const row of rows) {
-            const result = await command(transition.action, {
-              id: row.original.id,
-              expectedVersion: Number(row.original.version ?? 1),
-            }, { quiet: true });
-            if (result !== null) succeeded += 1;
-          }
-          if (succeeded === 0) throw new Error(`Aksi ${transition.label} gagal untuk semua ${rows.length} baris.`);
-          return succeeded;
-        })(),
-        {
-          loading: `Menjalankan ${transition.label} untuk ${rows.length} baris…`,
-          success: (count) => `${transition.label}: ${count} dari ${rows.length} baris berhasil.`,
-          error: (cause) => (cause instanceof Error ? cause.message : `Aksi ${transition.label} gagal.`),
-        },
-      );
-    } catch {
-      /* Error toast already shown; ignore follow-up rejections. */
+      for (const row of rows) {
+        const result = await command(transition.action, {
+          id: row.original.id,
+          expectedVersion: Number(row.original.version ?? 1),
+        });
+        if (result !== null) succeeded += 1;
+        progress.step(`${transition.label}: ${succeeded} dari ${rows.length} baris selesai.`);
+      }
+      if (succeeded === 0) throw new Error(`Aksi ${transition.label} gagal untuk semua ${rows.length} baris.`);
+      progress.succeed(`${transition.label}: ${succeeded} dari ${rows.length} baris berhasil.`);
+    } catch (cause) {
+      progress.fail(cause instanceof Error ? cause.message : `Aksi ${transition.label} gagal.`);
     }
     setEditingId(null);
     setRowSelection({});

@@ -109,7 +109,7 @@ export function MediaForm({
           purpose: values.get('purpose'),
           owner,
           ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
-        }, { quiet: true })) as {
+        })) as {
           readonly reservationId?: string;
           readonly authorization?: {
             readonly url?: string;
@@ -164,7 +164,7 @@ export function MediaForm({
           prepared.width !== null && prepared.height !== null && Number.isInteger(prepared.width) && Number.isInteger(prepared.height) && prepared.width > 0 && prepared.height > 0
             ? { widthPx: prepared.width, heightPx: prepared.height }
             : undefined;
-        const completed = await command('media.complete', { reservationId: reserved.reservationId, ...(thumbPayload === undefined ? {} : { thumb: thumbPayload }), ...(dimensions === undefined ? {} : dimensions) });
+        const completed = await command('media.complete', { reservationId: reserved.reservationId, ...(thumbPayload === undefined ? {} : { thumb: thumbPayload }), ...(dimensions === undefined ? {} : dimensions) }, { refresh: true });
         if (completed === null) {
           setUploadStatus('Pemeriksaan berkas gagal. Coba unggah ulang.');
           return;
@@ -172,8 +172,12 @@ export function MediaForm({
 
         setUploadStatus('Berkas berhasil diunggah dan disimpan.');
         form.reset();
-      } catch {
-        setUploadStatus('Terjadi kendala jaringan selama proses pengunggahan.');
+      } catch (error) {
+        setUploadStatus(
+          error instanceof Error && error.message !== ''
+            ? error.message
+            : 'Terjadi kendala jaringan selama proses pengunggahan.',
+        );
       }
     });
   };

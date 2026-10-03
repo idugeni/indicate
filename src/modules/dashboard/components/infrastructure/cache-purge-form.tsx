@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from 'react';
 import { RefreshCw } from 'lucide-react';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,7 @@ export function CachePurgeForm({
   command,
 }: {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
 }) {
   const model = data as { readonly sites?: readonly SiteOption[] } | null;
   const siteSelectId = useId();
@@ -47,17 +48,21 @@ export function CachePurgeForm({
   const doPurge = () => {
     setNotice(null);
     startPurgeTransition(async () => {
-      const result = await command('site.cache.purge', isBulk ? { confirmBulk: true } : { siteId });
-      if (result === null) {
-        setNotice({ tone: 'error', message: 'Bersihkan cache gagal. Periksa pesan kesalahan di atas halaman.' });
-        return;
+      try {
+        const result = await command('site.cache.purge', isBulk ? { confirmBulk: true } : { siteId });
+        if (result === null) {
+          setNotice({ tone: 'error', message: 'Bersihkan cache gagal. Periksa pesan kesalahan di atas halaman.' });
+          return;
+        }
+        const value = result as { readonly sites?: readonly { readonly hostname: string }[]; readonly dispatched?: { readonly completed: number; readonly failed: number } | null };
+        const count = value.sites?.length ?? 0;
+        const dispatchNote = value.dispatched === null || value.dispatched === undefined
+          ? 'dijalankan sistem berikutnya'
+          : `${value.dispatched.completed} tugas selesai, ${value.dispatched.failed} gagal`;
+        setNotice({ tone: 'success', message: `Permintaan dikirim untuk ${targetLabel} (${count} situs) — ${dispatchNote}.` });
+      } catch (error) {
+        setNotice({ tone: 'error', message: error instanceof Error ? error.message : 'Bersihkan cache gagal.' });
       }
-      const value = result as { readonly sites?: readonly { readonly hostname: string }[]; readonly dispatched?: { readonly completed: number; readonly failed: number } | null };
-      const count = value.sites?.length ?? 0;
-      const dispatchNote = value.dispatched === null || value.dispatched === undefined
-        ? 'dijalankan sistem berikutnya'
-        : `${value.dispatched.completed} tugas selesai, ${value.dispatched.failed} gagal`;
-      setNotice({ tone: 'success', message: `Permintaan dikirim untuk ${targetLabel} (${count} situs) — ${dispatchNote}.` });
     });
   };
 

@@ -5,9 +5,7 @@ import userEvent from '@testing-library/user-event';
 
 import { MediaLibrary } from '@/modules/dashboard/components/publishing/media-library';
 
-vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), promise: vi.fn((task: Promise<unknown>) => task) },
-}));
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
 
 vi.mock('next/dynamic', () => ({ default: () => null }));
 

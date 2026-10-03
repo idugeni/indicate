@@ -9,6 +9,8 @@ vi.mock('next/image', () => ({
   default: ({ src, alt }: { src: string; alt: string }) => <span role="img" aria-label={alt} data-src={src} />,
 }));
 
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
+
 afterEach(() => {
   cleanup();
 });
@@ -44,6 +46,7 @@ describe('Formulir pengaturan situs', () => {
       expect(command).toHaveBeenCalledWith(
         'site.settings.update',
         expect.objectContaining({ siteId: 's-1', name: 'Portal Contoh' }),
+        { refresh: true },
       ),
     );
   });

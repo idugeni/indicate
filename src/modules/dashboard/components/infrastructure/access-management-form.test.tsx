@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event';
 
 import { AccessManagementForm } from '@/modules/dashboard/components/infrastructure/access-management-form';
 
+vi.mock('sonner', async () => (await import('@/test/stubs/sonner')).sonnerStub());
+
 const DATA = {
   roles: [{ id: 'role-1', name: 'Editor' }],
   memberships: [{ userId: 'u-1', displayName: 'Anggota Uji', roleId: 'role-1', version: 2 }],
@@ -35,6 +37,7 @@ describe('Formulir manajemen akses', () => {
       expect(command).toHaveBeenCalledWith(
         'role.create',
         expect.objectContaining({ name: 'Redaktur' }),
+        { refresh: true },
       ),
     );
   });
@@ -62,6 +65,7 @@ describe('Formulir manajemen akses', () => {
       expect(command).toHaveBeenCalledWith(
         'membership.update',
         expect.objectContaining({ userId: 'u-9' }),
+        { refresh: true },
       ),
     );
   });

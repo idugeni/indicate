@@ -28,10 +28,11 @@ import { Label } from '@/components/ui/label';
 import { AiPublisherVerify } from '@/modules/ai/components/ai-publisher-verify';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import type { PublisherEntity } from '@/modules/dashboard/components/shared/types';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 
 interface PublisherFormProps {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
   readonly organizationId?: string | undefined;
 }
 
@@ -182,7 +183,7 @@ export function PublisherForm({
           attributionLabel: cleanAttr,
           contacts: {},
           evidenceReference: createEvidence.trim() || null,
-        });
+        }, { refresh: true });
 
         toast.success(`Penerbit ${cleanName} berhasil didaftarkan.`);
         setCreateName('');
@@ -217,7 +218,7 @@ export function PublisherForm({
           expectedVersion: activePublisher.version,
           evidenceReference: verifyEvidence.trim() || undefined,
           reason: cleanReason || undefined,
-        });
+        }, { refresh: true });
 
         toast.success('Keputusan tata kelola berhasil diterapkan.');
         setVerifyReason('');

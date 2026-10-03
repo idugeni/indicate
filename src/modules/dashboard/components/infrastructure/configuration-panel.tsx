@@ -28,10 +28,11 @@ import type { DomainEntity, RegionEntity, SiteEntity } from '@/modules/dashboard
 import { MediaPolicySection } from '@/modules/dashboard/components/infrastructure/media-policy-section';
 import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastructure/policy-overview-section';
 import { slugify } from '@/modules/site/slugify';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 
 interface ConfigurationPanelProps {
   readonly data: unknown;
-  readonly command: (action: string, payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
 }
 
 interface ConfigurationModel {
@@ -154,7 +155,7 @@ export function ConfigurationPanel({
         await command('domain.create', {
           normalizedHostname: cleanHostname,
           status: 'inactive',
-        });
+        }, { refresh: true });
         toast.success(`Domain ${cleanHostname} berhasil ditambahkan.`);
         setDomainHostname('');
       } catch (error) {
@@ -192,7 +193,7 @@ export function ConfigurationPanel({
           status: 'active',
           kind: regionKind,
           parentRegionId: regionParentId.trim() || null,
-        });
+        }, { refresh: true });
 
         toast.success(`Wilayah ${cleanName} berhasil didaftarkan.`);
         setRegionName('');
@@ -228,7 +229,7 @@ export function ConfigurationPanel({
           regionId: siteRegionId.trim() || null,
           normalizedHostname: cleanHostname,
           status: 'inactive',
-        });
+        }, { refresh: true });
 
         toast.success(`Situs portal ${cleanHostname} berhasil disiapkan.`);
         setSiteHostname('');
