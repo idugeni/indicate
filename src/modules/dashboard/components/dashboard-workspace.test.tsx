@@ -193,7 +193,11 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'publishers';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    // Readiness has to be the resolved publisher card, not the name: the name
+    // also renders inside the combobox once options arrive, so `findByText`
+    // turns a timing race into "found multiple elements". The submit button is
+    // no better - it stays enabled until data loads.
+    await screen.findByText(/ID: p-1\.\.\. · Versi 1/, {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     gets.length = 0;
     fireEvent.click(await screen.findByRole('button', { name: /Terapkan Keputusan/i }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
 
