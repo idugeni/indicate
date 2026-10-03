@@ -39,7 +39,7 @@ export default async function IndexPageRoute() {
         branding === null ? (
           <RootLoading />
         ) : (
-          <TemplateLoader templateId={branding.templateId} logoUrl={branding.logoUrl} />
+          <TemplateLoader templateId={branding.templateId} />
         )
       }
     >

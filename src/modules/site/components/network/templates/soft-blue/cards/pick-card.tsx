@@ -52,7 +52,7 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
           </span>
         </p>
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-          <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+          <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} />
           <Link
             href={article.href}
             aria-label={`Baca: ${article.title}`}

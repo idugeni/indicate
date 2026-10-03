@@ -59,10 +59,9 @@ describe('siteMetadata', () => {  it('membangun kanonis, robots, dan kartu sosia
     expect(metadata.alternates?.canonical).toBe('https://dasbor.example/pricing');
   });
 
-  it('menyertakan kata kunci situs yang terisi', () => {
+  it('tidak memancarkan meta keywords karena mesin telusur modern membacanya', () => {
     const metadata = siteMetadata('Layanan', 'Deskripsi layanan.', '/services');
-    expect(metadata.keywords).toContain('platform berita');
-    expect((metadata.keywords as readonly string[]).length).toBeGreaterThan(0);
+    expect(metadata.keywords).toBeUndefined();
   });
 
   it('menyerahkan gambar sosial ke file opengraph-image per-segmen', () => {

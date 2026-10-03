@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveCallbackDestination, resolveTokenKind } from '@/app/(auth)/auth/callback/route';
+import { resolveCallbackDestination, resolveCallbackFailureAlert, resolveTokenKind } from '@/app/(auth)/auth/callback/route';
 
 describe('resolveCallbackDestination', () => {
   it('memakai dashboard kecuali alur recovery', () => {
@@ -25,5 +25,13 @@ describe('resolveTokenKind', () => {
   it('jatuh ke kode email untuk tipe asing', () => {
     expect(resolveTokenKind(null)).toBe('email');
     expect(resolveTokenKind('phone')).toBe('email');
+  });
+});
+
+describe('resolveCallbackFailureAlert', () => {
+  it('menandai galat provider terpisah dari tautan kedaluwarsa', () => {
+    expect(resolveCallbackFailureAlert(null)).toBe('unavailable');
+    expect(resolveCallbackFailureAlert('server_error')).toBe('provider');
+    expect(resolveCallbackFailureAlert('access_denied')).toBe('provider');
   });
 });

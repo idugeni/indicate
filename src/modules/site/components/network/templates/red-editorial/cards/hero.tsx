@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowRight, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { RedEditorialHeroActions } from '@/modules/site/components/network/templates/red-editorial/cards/hero-actions';
 import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/ui/format';
 
@@ -75,6 +76,8 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           </p>
           <p className="m-0 mt-3 font-sans text-xs tabular-nums text-[var(--tpl-faint,#ac9393)]">
             {formatDate(article.publishedAt, 'long')} · {reading} mnt baca · {formatFullViews(article.viewCount)} pembaca
+            {' · '}
+            <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" />
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link

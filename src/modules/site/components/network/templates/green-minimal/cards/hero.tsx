@@ -49,7 +49,7 @@ export function GreenMinimalHero({ article }: { readonly article: ArticleListIte
               <p className="m-0 truncate font-sans text-sm font-bold text-[var(--tpl-ink,#10231a)]">
                 {publisherName}
               </p>
-              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} dateVariant="long" />
+              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} dateVariant="long" />
             </div>
           </div>
         </div>

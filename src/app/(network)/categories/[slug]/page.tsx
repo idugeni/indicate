@@ -42,7 +42,7 @@ export default async function CategoryPage({ params }: Props) {
         branding === null ? (
           <RootLoading />
         ) : (
-          <TemplateLoader templateId={branding.templateId} logoUrl={branding.logoUrl} />
+          <TemplateLoader templateId={branding.templateId} />
         )
       }
     >

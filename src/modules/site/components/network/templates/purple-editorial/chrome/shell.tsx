@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CommentTargetProvider } from '@/modules/site/components/network/disqus/comment-target';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { templateThemeStyle } from '@/modules/site/components/network/ui/template-theme';
@@ -31,7 +32,9 @@ export function PurpleEditorialShell({
       </a>
       <PurpleEditorialHeader site={site} path={path} />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
-        {children}
+        <CommentTargetProvider site={site}>
+          {children}
+        </CommentTargetProvider>
       </main>
       <PurpleEditorialFooter site={site} />
       <TemplateBackToTop />

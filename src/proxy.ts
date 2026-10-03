@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getControlHosts, isProductionEdge } from '@/core/config/edge-hosts';
+import { DISQUS_FRAME_HOSTS, DISQUS_SCRIPT_HOSTS } from '@/core/security/disqus-contract';
 import { normalizeRequestHostname } from '@/core/hostname/normalize-request-hostname';
 import { ensureRequestId, REQUEST_ID_HEADER } from '@/core/observability/request-id';
 import { ensureTraceContext, TRACEPARENT_HEADER } from '@/core/observability/trace-context';
@@ -19,15 +20,21 @@ import {
 
 const noindex = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'private, no-store' };
 
-/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Allows Turnstile challenge script + widget frame (sole iframe in the app, dashboard auth and tenant report form). Allows Google Fonts stylesheet for the invoice print page. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins. */
+/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Allows Turnstile challenge script + widget frame (dashboard auth and tenant report form). Allows the Disqus origins on sites whose `site_settings.comments_enabled` is set: `<shortname>.disqus.com` serves `embed.js` and frames the thread, while `disquscdn.com` serves the bundles the embed injects. Both are wildcarded on the registrable domain because the forum shortname is network configuration, and `frame-src` therefore lists Turnstile alongside Disqus rather than Turnstile alone. Allows Google Fonts stylesheet for the invoice print page. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins. */
 function contentSecurityPolicy(): string {
-  const scriptHosts = "'self' 'unsafe-inline' https://static.cloudflareinsights.com https://challenges.cloudflare.com";
+  const scriptHosts = [
+    "'self'",
+    "'unsafe-inline'",
+    'https://static.cloudflareinsights.com',
+    'https://challenges.cloudflare.com',
+    ...DISQUS_SCRIPT_HOSTS,
+  ].join(' ');
   const scriptSrc = isProductionEdge() ? `script-src ${scriptHosts}` : `script-src ${scriptHosts} 'unsafe-eval'`;
   return [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "frame-src https://challenges.cloudflare.com",
+    `frame-src https://challenges.cloudflare.com ${DISQUS_FRAME_HOSTS.join(' ')}`,
     "img-src 'self' https: data: blob:",
     "font-src 'self' https: data:",
     "connect-src 'self' https:",

@@ -65,7 +65,7 @@ export function GlassyBluePickCard({ article, index }: { readonly article: Artic
         </p>
       </CardContent>
       <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-3.5">
-        <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+        <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} />
         <Link
           href={article.href}
           aria-label={`Baca: ${article.title}`}

@@ -360,40 +360,13 @@ export interface BreadcrumbListSchema {
   readonly itemListElement: readonly BreadcrumbItemSchema[];
 }
 
-export interface FaqQuestionSchema {
-  readonly '@type': 'Question';
-  readonly name: string;
-  readonly acceptedAnswer: Readonly<{ '@type': 'Answer'; text: string }>;
-}
-
-export interface FaqPageSchema {
-  readonly '@context': 'https://schema.org';
-  readonly '@type': 'FAQPage';
-  readonly mainEntity: readonly FaqQuestionSchema[];
-}
-
 export type JsonLdSchema =
   | WebSiteSchema
   | NewsMediaOrganizationSchema
   | NewsArticleSchema
   | ProfilePageSchema
   | BreadcrumbListSchema
-  | FaqPageSchema
   | Readonly<Record<string, unknown>>;
-
-export function buildFaqPageSchema(
-  items: readonly Readonly<{ question: string; answer: string }>[],
-): FaqPageSchema {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: items.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: { '@type': 'Answer', text: item.answer },
-    })),
-  };
-}
 
 export function serializeJsonLd(documents: readonly Readonly<Record<string, unknown>>[]): string {
   return safeJson(documents.length === 1 ? documents[0] : documents);

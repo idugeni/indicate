@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (244 migrations):
+-- Reviewed sources, in journal order (245 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -258,6 +258,7 @@
 --   242  20261001060000_orphan_cover_sweep  ledger sha256:ac1b188530fccdf89dedc520bca454a8c88c5b4190801b9be662548b6e05c332
 --   243  20261002000000_dashboard_list_pagination  ledger sha256:b41fe6f64d31744110e6e6249189f2d7a4f39bc6c7fc99b048a11bcfe5887b28
 --   244  20261003040000_backfill_article_author  ledger sha256:ee62a52cdd0399874d6cdaa3a5ec537a297b90c0e5b98a7f0669d32f321e8b8b
+--   245  20261003120000_site_comments_enabled  ledger sha256:ad4a2bb5a6249c879b441e8d8a51ed827613628a49a617a02032eef7f0b4d093
 
 BEGIN;
 
@@ -20259,4 +20260,38 @@ UPDATE public.articles AS article
        );
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ee62a52cdd0399874d6cdaa3a5ec537a297b90c0e5b98a7f0669d32f321e8b8b', 1790985600000);
+
+-- ----------------------------------------------------------------------
+-- 20261003120000_site_comments_enabled
+-- ----------------------------------------------------------------------
+-- Give each site an explicit reader-comment switch, defaulting to off.
+--
+-- The platform ships one Disqus forum for the whole network, so the switch is
+-- per site rather than per tenant account: an apex site and its regional
+-- children decide independently whether their own article pages carry a
+-- comment thread. Left at the database default, every existing and future site
+-- inherits `false`, which is the only safe starting point -- the embed is a
+-- third-party processor that profiles readers, and the public privacy copy
+-- promises that reader pages install no third-party trackers.
+--
+-- A constant `NOT NULL DEFAULT false` needs no backfill statement and no table
+-- rewrite on PostgreSQL 11 or newer: the default is materialized on read, so
+-- the 4,422 existing rows are untouched and the ACCESS EXCLUSIVE lock is held
+-- only for the catalog change. `IF NOT EXISTS` is there because this migration
+-- is applied by hand, and a retry after a partial apply must not fail on a
+-- column that is already there.
+--
+-- Ledger version 244 follows the live `max(version)`, which is 243. Journal idx
+-- 243 (`backfill_article_author`) carries no self-registration row and was
+-- never applied here, so the numbering offset that the missing migration 187
+-- introduced closes at this row rather than skipping a version.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.site_settings
+  ADD COLUMN IF NOT EXISTS comments_enabled boolean NOT NULL DEFAULT false;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (244, 'site_comments_enabled', 'sha256:8c542bde2f5c4772b183b9a3533fe3cf980a3546cbd3a3c0a81ab605d325fba2');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ad4a2bb5a6249c879b441e8d8a51ed827613628a49a617a02032eef7f0b4d093', 1791028800000);
 COMMIT;

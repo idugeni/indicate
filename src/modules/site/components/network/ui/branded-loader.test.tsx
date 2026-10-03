@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 
@@ -18,19 +21,36 @@ const THEME: TemplateTheme = {
   scheme: 'light',
 };
 
-const LOGO = 'https://portal.example/logo.png';
+const GLOBAL_CSS = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
 
-function outer() {
-  return document.querySelector<HTMLElement>('[data-brand-ring="outer"]');
+/** Indeks deklarasi layer sungguhan, bukan penyebutan di dalam komentar. */
+const BASE_LAYER = GLOBAL_CSS.indexOf('@layer base {');
+const COMPONENTS_LAYER = GLOBAL_CSS.indexOf('@layer components {');
+
+function track() {
+  return document.querySelector<HTMLElement>('[data-brand-orbit="track"]');
 }
 
-function inner() {
-  return document.querySelector<HTMLElement>('[data-brand-ring="inner"]');
+function dot() {
+  return document.querySelector<HTMLElement>('[data-brand-orbit="dot"]');
+}
+
+/**
+ * Isolate satu blok deklarasi di `@layer components`.
+ *
+ * Wajib di-scope ke layer itu: nama yang sama juga dipakai override
+ * `prefers-reduced-motion` di `@layer base`, dan pencarian polos akan
+ * mengambil yang lebih dulu — yaitu override, bukan geometri aslinya.
+ */
+function rule(selector: string): string {
+  const start = GLOBAL_CSS.indexOf(`${selector} {`, COMPONENTS_LAYER);
+  expect(start, `${selector} tidak ada di @layer components`).toBeGreaterThan(-1);
+  return GLOBAL_CSS.slice(start, GLOBAL_CSS.indexOf('}', start));
 }
 
 describe('BrandedLoader', () => {
   it('menyemdakan status sibuk tanpa teks terlihat', () => {
-    render(<BrandedLoader theme={THEME} logoUrl={LOGO} />);
+    render(<BrandedLoader theme={THEME} />);
     const status = screen.getByRole('status', { name: 'Memuat' });
 
     expect(status.getAttribute('aria-busy')).toBe('true');
@@ -39,52 +59,94 @@ describe('BrandedLoader', () => {
   });
 
   it('memakai nama aksesibel dari prop label', () => {
-    render(<BrandedLoader theme={THEME} logoUrl={LOGO} label="Memuat berita" />);
+    render(<BrandedLoader theme={THEME} label="Memuat berita" />);
 
     expect(screen.getByRole('status', { name: 'Memuat berita' })).toBeTruthy();
     cleanup();
   });
 
-  it('menampilkan logo tenant dalam lingkaran', () => {
-    const { container } = render(<BrandedLoader theme={THEME} logoUrl={LOGO} />);
-    const img = container.querySelector('img');
+  it('tidak memuat gambar logo tenant', () => {
+    // Logo yang diunggah tenant praktis selalu wordmark persegi panjang di dalam
+    // kanvas persegi; di dalam lingkaran ia terbaca sebagai kotak gelap.
+    const { container } = render(<BrandedLoader theme={THEME} />);
 
-    expect(img?.getAttribute('src')).toBe(LOGO);
-    expect(img?.getAttribute('srcset')).toBeNull();
-    const disc = img?.parentElement;
-    expect(disc?.getAttribute('class')).toMatch(/rounded-full/);
-    expect(disc?.getAttribute('class')).toMatch(/overflow-hidden/);
-    expect(img?.getAttribute('class')).toMatch(/object-contain/);
+    expect(container.querySelector('img')).toBeNull();
     cleanup();
   });
 
-  it('memutar dua cincin berlawanan arah dengan durasi berbeda', () => {
-    render(<BrandedLoader theme={THEME} logoUrl={LOGO} />);
-    const luar = outer();
-    const dalam = inner();
+  it('merender track dan titik berputar sebagai dua elemen terpisah', () => {
+    render(<BrandedLoader theme={THEME} />);
 
-    expect(luar?.getAttribute('class')).toMatch(/motion-safe:animate-\[brand-ring-cw_2\.4s_linear_infinite\]/);
-    expect(dalam?.getAttribute('class')).toMatch(/motion-safe:animate-\[brand-ring-ccw_1\.5s_linear_infinite\]/);
-    expect(luar?.getAttribute('style')).toContain('conic-gradient');
-    expect(dalam?.getAttribute('style')).toContain('conic-gradient');
-    expect(luar?.getAttribute('style')).not.toBe(dalam?.getAttribute('style'));
+    expect(track()?.getAttribute('class')).toContain('brand-orbit-track');
+    expect(dot()?.getAttribute('class')).toContain('brand-orbit');
+    // Geometri dan kebijakan gerak tinggal di globals.css.
+    expect(track()?.getAttribute('style')).toBeNull();
+    expect(dot()?.getAttribute('style')).toBeNull();
     cleanup();
   });
 
-  it('menarik warna cincin dari variabel tema, bukan hex langsung', () => {
-    render(<BrandedLoader theme={THEME} logoUrl={LOGO} />);
+  it('memutar track dan denyut dengan dua keyframe berbeda', () => {
+    expect(rule('.brand-orbit')).toMatch(/animation:\s*brand-orbit-spin\s+1\.6s/);
+    expect(rule('.brand-orbit-track')).toMatch(/animation:\s*brand-orbit-pulse\s+2\.4s/);
+    expect(GLOBAL_CSS).toContain('@keyframes brand-orbit-spin');
+    expect(GLOBAL_CSS).toContain('@keyframes brand-orbit-pulse');
+  });
 
-    for (const cincin of [outer(), inner()]) {
-      const style = cincin?.getAttribute('style') ?? '';
-      expect(style).toContain('var(--tpl-primary)');
-      expect(style).toMatch(/color-mix\(in srgb, var\(--tpl-primary\)/);
-      expect(style).not.toMatch(/#[0-9a-f]{3,8}/i);
+  it('menarik warna indikator dari variabel tema, bukan hex langsung', () => {
+    // The dot is painted on `.brand-orbit::after`, so the colour lives there,
+    // not on `.brand-orbit` itself.
+    const track = rule('.brand-orbit-track');
+    expect(track).toContain('var(--tpl-primary)');
+    expect(track).not.toMatch(/#[0-9a-f]{3,8}/i);
+
+    const after = GLOBAL_CSS.slice(GLOBAL_CSS.indexOf('.brand-orbit::after'));
+    const block = after.slice(0, after.indexOf('}'));
+    expect(block).toContain('background: var(--tpl-primary)');
+    expect(block).not.toMatch(/#[0-9a-f]{3,8}/i);
+  });
+
+  it('menempakkan titik di tepi track agar mengorbit, bukan berputar di pusat', () => {
+    // `inset: 4%` + rotate pada elemen yang sama memutar titik pada radius track.
+    expect(rule('.brand-orbit')).toContain('inset: 4%');
+    expect(rule('.brand-orbit-track')).toContain('inset: 4%');
+    // Titik rides pada ::after yang dipin ke tepi atas, jadi satu transform
+    // cukup — tanpa elemen kedua yang beranimasi.
+    const after = GLOBAL_CSS.slice(GLOBAL_CSS.indexOf('.brand-orbit::after'));
+    expect(after).toMatch(/\.brand-orbit::after \{[^}]*top:/);
+    expect(after).toMatch(/border-radius: 9999px/);
+  });
+
+  it('tidak memakai filter atau gradient yang mahal', () => {
+    // `filter: blur()` di tiap frame adalah biaya nyata di HP kelas bawah.
+    for (const selector of ['.brand-orbit-track', '.brand-orbit', '.brand-orbit::after']) {
+      const start = selector === '.brand-orbit::after'
+        ? GLOBAL_CSS.indexOf('.brand-orbit::after')
+        : GLOBAL_CSS.indexOf(`${selector} {`, COMPONENTS_LAYER);
+      const block = GLOBAL_CSS.slice(start, GLOBAL_CSS.indexOf('}', start));
+      expect(block).not.toMatch(/filter:/);
+      expect(block).not.toMatch(/conic-gradient/);
+      expect(block).not.toMatch(/mask-image/);
     }
-    cleanup();
+  });
+
+  it('melanjutkan putaran lambat saat reduced motion, bukan membekukan indikator', () => {
+    const slowSpin = GLOBAL_CSS.indexOf('.brand-orbit { animation: brand-orbit-spin 13s');
+    const slowPulse = GLOBAL_CSS.indexOf('.brand-orbit-track { animation: brand-orbit-pulse 8s');
+
+    expect(slowSpin).toBeGreaterThan(-1);
+    expect(slowPulse).toBeGreaterThan(-1);
+    // WAJIB di @layer base: `!important` membalik urutan cascade layer, jadi
+    // deklarasi yang sama di @layer components kalah oleh aturan global `*`
+    // dan indikator tetap beku di 0.01s / 1 iterasi.
+    expect(BASE_LAYER).toBeLessThan(slowSpin);
+    expect(slowSpin).toBeLessThan(COMPONENTS_LAYER);
+    // Tidak boleh mematikan animasi indikator sama sekali.
+    expect(rule('.brand-orbit')).not.toMatch(/animation:\s*none/);
+    expect(rule('.brand-orbit-track')).not.toMatch(/animation:\s*none/);
   });
 
   it('menggunakan kanvas tema sebagai latar overlay', () => {
-    render(<BrandedLoader theme={THEME} logoUrl={LOGO} />);
+    render(<BrandedLoader theme={THEME} />);
     const status = screen.getByRole('status');
 
     expect(status.getAttribute('style')).toContain(`--tpl-canvas: ${THEME.canvas}`);
@@ -96,30 +158,12 @@ describe('BrandedLoader', () => {
     cleanup();
   });
 
-  it('berhenti total dan tetap terbaca utuh saat reduced motion', () => {
-    render(<BrandedLoader theme={THEME} logoUrl={LOGO} />);
-
-    for (const cincin of [outer(), inner()]) {
-      const className = cincin?.getAttribute('class') ?? '';
-      expect(className).toMatch(/motion-reduce:animate-none/);
-      expect(className).not.toMatch(/motion-reduce:animate-\[/);
-    }
-    // Gradien menutup 360° penuh dengan kaki transparan, bukan busur terbuka,
-    // sehingga keadaan diam tetap berupa dua cincin utuh.
-    const gradient = outer()?.getAttribute('style') ?? '';
-    expect(gradient).toContain('0deg');
-    expect(gradient).toContain('360deg');
-    cleanup();
-  });
-
-  it('menyesuaikan ukuran cincin dan logo terhadap viewport', () => {
-    render(<BrandedLoader theme={THEME} logoUrl={LOGO} />);
+  it('menyesuaikan ukuran poros indikator terhadap viewport', () => {
+    render(<BrandedLoader theme={THEME} />);
     const poros = screen.getByRole('status').firstElementChild;
 
     expect(poros?.getAttribute('class')).toContain('h-[min(9rem,34vmin)]');
     expect(poros?.getAttribute('class')).toContain('w-[min(9rem,34vmin)]');
-    expect(outer()?.getAttribute('class')).toContain('inset-0');
-    expect(inner()?.getAttribute('class')).toContain('inset-[15%]');
     cleanup();
   });
 });

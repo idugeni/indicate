@@ -157,14 +157,46 @@ blob `colors`) lewat `loadSiteTemplateId`, cache 24 jam, tag `host:`/`site:`/
 boundary lalu merender `TemplateLoader` sebagai `fallback`; `branding === null`
 turun ke `RootLoading`.
 
-`BrandedLoader` (`network/ui/branded-loader.tsx`) menampilkan logo tenant dalam
-lingkaran dengan dua cincin berlawanan arah, background dari `--tpl-canvas`, dan
-**tanpa teks terlihat** — nama aksesibel datang dari `aria-label`, sedangkan
-seluruh subtree visual diberi `aria-hidden`. Putaran pakai
-`motion-safe:animate-[…]` + `motion-reduce:animate-none` dengan `@keyframes
-brand-ring-cw`/`brand-ring-ccw` di `globals.css`; aturan global
-`prefers-reduced-motion` hanya memaksa *duration*, jadi tanpa `animate-none`
-cincin membeku pada sudut acak, bukan berhenti.
+`BrandedLoader` (`network/ui/branded-loader.tsx`) menampilkan **satu titik berputar
+mengorbit cincin tipis** (`.brand-orbit-track` + `.brand-orbit`) di atas
+background `--tpl-canvas`, dan **tanpa teks terlihat** — nama aksesibel datang
+dari `aria-label`, sedangkan seluruh subtree visual diberi `aria-hidden`.
+
+**Tanpa logo tenant, dan itu disengaja.** Ke-134 `site-logo` di DB semuanya
+512×2 (persegi), tapi isinya *wordmark* — persegi panjang di dalam kanvas
+persegi. Dipakai `object-contain` di dalam disc bulat, yang tampil bukan logo
+melingkar melainkan **persegi gelap** di tengah lingkaran. Karena itu
+`logoUrl` dihapus dari `BrandedLoaderProps`, `TemplateLoader`, dan 10
+`templates/*/ui/loader.tsx` — plus `branding.logoUrl` tidak lagi diteruskan
+dari 5 route `(network)`. Indikator cukup warna `--tpl-primary`, jadi tidak ada
+permintaan gambar sama sekali di jalur render loader.
+
+Sengaja CSS polos — tanpa `conic-gradient`, `mask-image`, atau `filter: blur()`,
+yang di HP kelas bawah mahal karena di-repaint tiap frame. Indikatornya dua
+transform yang dikompositkan: track berdenyut (`scale` + `opacity`), titik
+berputar (`rotate`), dan titik itself rides pada `::after` yang dipin ke tepi
+atas track — jadi satu elemen animasi cukup untuk mengorbitkannya.
+
+Geometri dan kebijakan gerak hidup di `globals.css` sebagai `.brand-orbit*`
+(`@layer components`), bukan inline style: kebijakan `prefers-reduced-motion`
+harus berdiri di sebelah aturan globalnya. Dua jebakan yang sudah ternilai:
+
+- **Jangan lewat custom property untuk warnanya.** `var()` di dalam custom
+  property resolve terhadap elemen yang *mendeklarasikannya*, sedangkan
+  `--tpl-primary` hanya ada di overlay loader — deklarasi jadi invalid dan
+  warnanya jatuh diam-diam ke nilai awal.
+- **Override `prefers-reduced-motion` wajib di `@layer base`.** Aturan global
+  `* { animation-duration: 0.01ms !important }` ada di base, dan `!important`
+  membalik urutan cascade layer (layer paling awal menang untuk penting).
+  Deklarasi yang sama di `@layer components` kalah, hasilnya 0.01s/1 iterasi —
+  indikator beku, persis gejala yang dilaporkan. Di base, orbit justru
+  **melambat** (1.6s→13s, denyut 2.4s→8s), bukan mati: beku jadi cincin penuh
+  yang tak terbaca sebagai "memuat".
+
+`branded-loader.test.tsx` menguji kontrak CSS itu langsung dari
+`globals.css`, bukan cuma DOM — termasuk bahwa override reduced-motion berada
+di `@layer base`, dan bahwa tidak ada `filter`/`conic-gradient`/`mask-image`
+di ketiga blok loader.
 
 `RootLoading` (`src/app/loading.tsx`) kini benar-benar netral: `bg-bg`/`text-paper`
 saja, cincin `currentColor`, nol hex. Dipakai hanya saat host bukan tenant aktif

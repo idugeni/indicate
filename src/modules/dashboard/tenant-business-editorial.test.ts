@@ -23,6 +23,8 @@ const actor = {
   verifiedAuthUserId: 'auth-1',
 } as const;
 
+const verifyingActor = { ...actor, permissionSet: new Set<string>(['publisher.verify']) } as const;
+
 const COLLECTIONS = [
   'domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships',
   'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media', 'publishingJobs',
@@ -78,6 +80,33 @@ describe('TenantBusinessService publishers', () => {
     if (!result.ok) throw new Error('expected ok');
     expect(result.value.verificationStatus).toBe('unverified');
     expect((state.publishers as unknown[])).toHaveLength(1);
+  });
+
+  it('memverifikasi otomatis saat aktor berhak approve dan bukti tersedia', async () => {
+    const { service, appendAudit } = harness();
+    const result = await service.createPublisher(verifyingActor, { ...publisherInput, evidenceReference: 'sk-9' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.verificationStatus).toBe('verified');
+    expect(result.value.verifiedBy).toBe('user-1');
+    expect(result.value.verifiedAt).toBe(NOW.toISOString());
+    const actions = appendAudit.mock.calls.map(([entry]) => (entry as { action: string }).action);
+    expect(actions).toContain('publisher.create');
+    expect(actions).toContain('publisher.verify');
+  });
+
+  it('tidak memverifikasi otomatis tanpa hak, tanpa wilayah bebas, atau tanpa bukti', async () => {
+    const noRight = await harness().service.createPublisher(actor, { ...publisherInput, evidenceReference: 'sk-9' });
+    if (!noRight.ok) throw new Error('expected ok');
+    expect(noRight.value.verificationStatus).toBe('unverified');
+
+    const locked = await harness().service.createPublisher({ ...verifyingActor, regionScopeId: 'region-1' }, { ...publisherInput, evidenceReference: 'sk-9' });
+    if (!locked.ok) throw new Error('expected ok');
+    expect(locked.value.verificationStatus).toBe('unverified');
+
+    const noEvidence = await harness().service.createPublisher(verifyingActor, publisherInput);
+    if (!noEvidence.ok) throw new Error('expected ok');
+    expect(noEvidence.value.verificationStatus).toBe('unverified');
   });
 
   it('mereset verifikasi saat identitas berubah', async () => {

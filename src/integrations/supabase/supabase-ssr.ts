@@ -18,7 +18,11 @@ export interface SupabaseCookieWriter {
 
 export interface SupabaseSsrAuthAdapter extends SupabaseAuthPort {
   verifyCookieSession(): Promise<VerifiedAuthIdentity | null>;
-  exchangeCodeForSession(code: string): Promise<boolean>;
+  /**
+   * @param code - Auth code from the OAuth `code` query param.
+   * @param flowId - PKCE flow id from the callback's `sb_flow_id` param, or null when absent.
+   */
+  exchangeCodeForSession(code: string, flowId?: string | null): Promise<boolean>;
   verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'magiclink' | 'recovery'): Promise<boolean>;
   signOut(): Promise<void>;
 }
@@ -92,9 +96,15 @@ export function createSupabaseSsrAuthAdapter(input: {
         email: data.user.email ?? null,
       });
     },
-    async exchangeCodeForSession(code: string) {
+    async exchangeCodeForSession(code, flowId) {
       if (!code) return false;
-      const { error } = await client.auth.exchangeCodeForSession(code);
+      // auth-js hanya bisa mengaitkan callback ke verifier slotnya bila flow id
+      // diteruskan; tanpa itu ia memakai kunci legacy tetap yang meniru flow
+      // terakhir, sehingga dua login paralel bisa menukar verifier yang salah.
+      const { error } = await client.auth.exchangeCodeForSession(
+        code,
+        flowId === undefined || flowId === null ? undefined : { flowId },
+      );
       return error === null;
     },
     async verifyTokenHash(tokenHash: string, type: 'email' | 'signup' | 'magiclink' | 'recovery') {

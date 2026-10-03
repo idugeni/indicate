@@ -43,7 +43,7 @@ export default async function TagPage({ params }: Props) {
         branding === null ? (
           <RootLoading />
         ) : (
-          <TemplateLoader templateId={branding.templateId} logoUrl={branding.logoUrl} />
+          <TemplateLoader templateId={branding.templateId} />
         )
       }
     >

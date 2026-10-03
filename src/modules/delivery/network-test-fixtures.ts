@@ -67,6 +67,7 @@ export function makeNetworkSite(
       seoDefaultDescription: null,
       seoSiteName: null,
       locale: 'id-ID',
+      commentsEnabled: false,
       colors: {},
       socialLinks: {},
       navigation,

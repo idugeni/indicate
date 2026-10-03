@@ -4,11 +4,10 @@ import { BrandedLoader } from '@/modules/site/components/network/ui/branded-load
 import { GLASSY_BLUE } from '@/modules/site/components/network/templates/glassy-blue/theme';
 
 /**
- * Render loader berbranding Glassy Blue.
+ * Render loader berpalet Glassy Blue.
  *
- * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
  * @returns Overlay `role="status"` berpalet Glassy Blue.
  */
-export function GlassyBlueLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
-  return <BrandedLoader theme={GLASSY_BLUE} logoUrl={logoUrl} />;
+export function GlassyBlueLoader(): ReactElement {
+  return <BrandedLoader theme={GLASSY_BLUE} />;
 }

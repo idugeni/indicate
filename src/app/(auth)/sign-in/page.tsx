@@ -15,6 +15,7 @@ const PANEL_STEPS: readonly { readonly title: string; readonly detail: string }[
 
 const AUTH_ALERTS: Readonly<Record<string, string>> = Object.freeze({
   unavailable: 'Tautan masuk tidak valid atau kedaluwarsa. Minta kode baru di bawah.',
+  provider: 'Masuk dengan Google sedang gagal dikonfigurasi. Hubungi administrator, atau pakai kode email di bawah.',
   required: 'Sesi Anda berakhir atau belum masuk. Masuk kembali untuk membuka dashboard.',
   inactive: 'Akun Anda belum aktif. Hubungi administrator organisasi Anda.',
 });

@@ -457,6 +457,7 @@ export class TenantBusinessService {
       const seoOpenGraphSiteName = value.seoOpenGraphSiteName === undefined ? (before?.seoOpenGraphSiteName ?? null) : value.seoOpenGraphSiteName;
       const locale = value.locale === undefined ? (before?.locale ?? null) : value.locale;
       const seoRobotsDirective = value.seoRobotsDirective === undefined ? (before?.seoRobotsDirective ?? null) : value.seoRobotsDirective;
+      const commentsEnabled = value.commentsEnabled ?? before?.commentsEnabled ?? false;
       const uniqueCandidates = [
         ['name', 'Nama kanal', value.name],
         ['description', 'Deskripsi', value.description],
@@ -473,8 +474,8 @@ export class TenantBusinessService {
       }
       if (Object.keys(clashes).length > 0) throw new DashboardValidationError(clashes);
       const after: SiteSettingsRecord = before === undefined
-        ? { ...this.base(actor, now), siteId: value.siteId, id: value.siteId, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? {}, socialLinks: value.socialLinks ?? {}, seo: value.seo ?? {}, navigation: value.navigation ?? [], logoMediaId, faviconMediaId, defaultMediaId, version: 1 }
-        : { ...before, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? before.colors, socialLinks: value.socialLinks ?? before.socialLinks, seo: value.seo ?? before.seo, navigation: value.navigation ?? before.navigation, logoMediaId, faviconMediaId, defaultMediaId, version: before.version + 1, updatedAt: now };
+        ? { ...this.base(actor, now), siteId: value.siteId, id: value.siteId, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? {}, socialLinks: value.socialLinks ?? {}, seo: value.seo ?? {}, navigation: value.navigation ?? [], logoMediaId, faviconMediaId, defaultMediaId, commentsEnabled, version: 1 }
+        : { ...before, name: value.name, description: value.description, tagline, seoDefaultTitle, seoDefaultDescription, seoOpenGraphSiteName, locale, seoRobotsDirective, colors: value.colors ?? before.colors, socialLinks: value.socialLinks ?? before.socialLinks, seo: value.seo ?? before.seo, navigation: value.navigation ?? before.navigation, logoMediaId, faviconMediaId, defaultMediaId, commentsEnabled, version: before.version + 1, updatedAt: now };
       if (before === undefined) transaction.state.siteSettings.push(after); else replaceById(transaction.state.siteSettings, after);
       this.propagateBrandMedia(transaction, value.siteId, before?.defaultMediaId ?? null, defaultMediaId, now);
       this.audit(transaction, 'site.settings.update', 'site_settings', after.id, before ?? null, after); return after;
@@ -586,11 +587,26 @@ export class TenantBusinessService {
     }
   }
 
-  createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
+  /**
+ * Create a publisher, verifying it on the spot when the actor already holds the
+ * rights the manual approve path demands.
+ *
+ * @param actor - Tenant actor creating the publisher.
+ * @param raw - Unvalidated publisher payload.
+ * @returns The stored publisher record.
+ * @remarks Auto-verification is limited to actors that could have approved the
+ * record anyway: `publisher.verify`, an unrestricted region, and evidence supplied
+ * up front. An actor holding only `publisher.manage` still gets an unverified
+ * publisher, so the verification boundary cannot be self-minted.
+ */
+createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: publisherCreateSchema, permission: DASHBOARD_PERMISSIONS.publisherManage, action: 'publisher.create', targetType: 'publisher', scope: ['publishers', 'articles', 'articleSites'], execute: (transaction, value, now) => {
       requirePublisherNameAvailable(transaction.state, value.name);
-      const record: PublisherRecord = { ...this.base(actor, now), ...value, verificationStatus: 'unverified', submittedBy: null, submittedAt: null, verifiedBy: null, verifiedAt: null, rejectionReason: null, status: 'active' };
-      transaction.state.publishers.push(record); this.audit(transaction, 'publisher.create', 'publisher', record.id, null, record); return record;
+      const autoVerify = value.evidenceReference !== null && regionLock(actor) === null && actor.permissionSet.has(DASHBOARD_PERMISSIONS.publisherVerify);
+      const record: PublisherRecord = { ...this.base(actor, now), ...value, verificationStatus: autoVerify ? 'verified' : 'unverified', submittedBy: autoVerify ? actor.actorId : null, submittedAt: autoVerify ? now : null, verifiedBy: autoVerify ? actor.actorId : null, verifiedAt: autoVerify ? now : null, rejectionReason: null, status: 'active' };
+      transaction.state.publishers.push(record); this.audit(transaction, 'publisher.create', 'publisher', record.id, null, record);
+      if (autoVerify) this.audit(transaction, 'publisher.verify', 'publisher', record.id, { ...record, verificationStatus: 'unverified', verifiedBy: null, verifiedAt: null }, record);
+      return record;
     }});
   }
 

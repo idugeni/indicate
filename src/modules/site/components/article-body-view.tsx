@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { ArticleBlock, TextSegment } from '@/modules/site/article-markup';
+import { editorialLinkRel } from '@/modules/site/editorial-link-rel';
 
 function renderSegments(segments: readonly TextSegment[], keyPrefix: string): ReactNode {
   return segments.map((segment, index) => {
@@ -12,7 +13,7 @@ function renderSegments(segments: readonly TextSegment[], keyPrefix: string): Re
       </span>
     ));
     if (segment.href === undefined) return <span key={key}>{lines}</span>;
-    return <a key={key} href={segment.href} target="_blank" rel="noopener noreferrer">{lines}</a>;
+    return <a key={key} href={segment.href} target="_blank" rel={editorialLinkRel(segment.href)}>{lines}</a>;
   });
 }
 

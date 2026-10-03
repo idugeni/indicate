@@ -13,5 +13,5 @@ import { resolveTenantBranding } from '@/modules/delivery/tenant-branding';
 export default async function PublicLoading() {
   const branding = await resolveTenantBranding();
   if (branding === null) return <RootLoading />;
-  return <TemplateLoader templateId={branding.templateId} logoUrl={branding.logoUrl} />;
+  return <TemplateLoader templateId={branding.templateId} />;
 }

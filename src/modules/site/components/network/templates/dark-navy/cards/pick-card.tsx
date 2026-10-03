@@ -56,7 +56,7 @@ export function DarkNavyPickCard({ article, index }: { readonly article: Article
         </p>
       </CardContent>
       <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-[#1b2c4f] bg-[#0e1a33] px-5 py-3.5">
-        <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} />
+        <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} />
         <Link
           href={article.href}
           aria-label={`Baca: ${article.title}`}

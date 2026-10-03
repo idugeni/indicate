@@ -8,7 +8,7 @@ import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import { resolveGoogleSiteVerification } from '@/core/config/google-verification';
 import { deliveryComposition } from '@/modules/delivery';
 import { indexableRobots } from '@/modules/site/seo';
-import { SERVICE_NAME, SITE_KEYWORDS } from '@/ui/site/marketing-content';
+import { SERVICE_NAME } from '@/ui/site/marketing-content';
 
 /** Defense-in-depth: repeats the proxy's tenant-host refusal at the page so a routing change can't expose service pages. */
 export async function requireDashboardSurface(): Promise<void> {
@@ -66,7 +66,6 @@ export function siteMetadata(title: string, description: string, path: string): 
   return {
     title,
     description,
-    keywords: [...SITE_KEYWORDS],
     ...(google === undefined ? {} : { verification: { google } }),
     alternates: {
       canonical,

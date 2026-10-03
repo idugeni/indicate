@@ -342,6 +342,20 @@
     }
   }
 
+  /* The loader orbit keeps turning under reduced motion, only far slower: the
+     normal 1.6s/2.4s declarations in @layer components are stretched to 13s/8s
+     so the indicator never freezes into a dead ring, and the slow travel stays
+     clear of vestibular triggers.
+
+     This MUST sit in `@layer base`, alongside the global `*` rule above.
+     `!important` reverses cascade-layer order (earliest layer wins), so the
+     identical declaration in `@layer components` would lose and the orbit
+     would still land on 0.01s / 1 iteration — frozen, which is the bug. */
+  @media (prefers-reduced-motion: reduce) {
+    .brand-orbit { animation: brand-orbit-spin 13s linear infinite !important; }
+    .brand-orbit-track { animation: brand-orbit-pulse 8s ease-in-out infinite !important; }
+  }
+
   /* Windows High Contrast / forced-colors: keep status dots perceivable when
      backgrounds are flattened, and keep focus outlines visible. */
   @media (forced-colors: active) {
@@ -798,18 +812,55 @@
     50% { box-shadow: 0 0 0 3px rgb(204 154 68 / 0.28); }
   }
 
-  /* Dua arah putaran untuk pasangan cincin loader berlogo: cincin luar searah
-     jarum jam (lambat), cincin dalam berlawanan arah (cepat). Dipasangkan lewat
-     `motion-safe:animate-[...]`, jadi `prefers-reduced-motion` menghentikan
-     keduanya lewat `motion-reduce:animate-none`, bukan sekadar memperlambat. */
-  @keyframes brand-ring-cw {
+  /* Branded loader: a solid dot orbits a thin track, so the eye follows
+     something concrete instead of watching an abstract sweep. Deliberately
+     plain CSS — no conic gradient, no `mask-image`, no `filter: blur()` — so
+     the whole indicator is two composited transforms and stays cheap on
+     low-end phones.
+
+     Geometry lives here rather than in inline styles: the motion policy has to
+     sit next to the global `prefers-reduced-motion` rules in @layer base, and
+     keeping it in one place stops the track and the dot from drifting apart.
+
+     No tenant logo: the logo is whatever the tenant uploaded, and in practice
+     that is a rectangular wordmark letterboxed inside a square canvas — which
+     reads as a dark square, not a logo. */
+  .brand-orbit-track {
+    position: absolute;
+    inset: 4%;
+    border: 2px solid color-mix(in srgb, var(--tpl-primary) 25%, transparent);
+    border-radius: 9999px;
+    animation: brand-orbit-pulse 2.4s ease-in-out infinite;
+  }
+
+  /* Rotates the orbit; the dot rides on a ::after pinned to the top edge, so a
+     single transform moves it without a second animated element. */
+  .brand-orbit {
+    position: absolute;
+    inset: 4%;
+    animation: brand-orbit-spin 1.6s linear infinite;
+  }
+
+  .brand-orbit::after {
+    content: '';
+    position: absolute;
+    top: -0.36rem;
+    left: calc(50% - 0.36rem);
+    width: 0.72rem;
+    height: 0.72rem;
+    border-radius: 9999px;
+    background: var(--tpl-primary);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--tpl-primary) 55%, transparent);
+  }
+
+  @keyframes brand-orbit-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
 
-  @keyframes brand-ring-ccw {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(-360deg); }
+  @keyframes brand-orbit-pulse {
+    0%, 100% { transform: scale(0.86); opacity: 0.7; }
+    50% { transform: scale(1); opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { makeNetworkArticle, makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
 import {
   absoluteSiteAssetUrl,
-  buildFaqPageSchema,
   buildSeoDocument,
   indexableRobots,
   nonIndexableRobots,
@@ -209,6 +208,11 @@ describe('buildSeoDocument', () => {
     expect(article).not.toHaveProperty('author');
   });
 
+  it('tidak memancarkan FAQPage yang tidak lagi tampil di Google sejak Mei 2026', () => {
+    const document = buildSeoDocument(makeNetworkSite(), { path: '/faq' });
+    expect(JSON.stringify(document.jsonLd)).not.toContain('FAQPage');
+  });
+
   it('menerapkan override deskripsi regional', () => {
     const document = buildSeoDocument(makeNetworkSite(), {
       path: '/tentang',
@@ -220,12 +224,10 @@ describe('buildSeoDocument', () => {
 });
 
 describe('serializers', () => {
-  it('membangun FAQPage dan meng-escape JSON-LD', () => {
-    const schema = buildFaqPageSchema([{ question: 'Apa itu?', answer: 'Layanan <b>redaksi</b>.' }]);
-    expect(schema.mainEntity).toHaveLength(1);
-    const document = schema as unknown as Readonly<Record<string, unknown>>;
-    expect(serializeJsonLd([document])).not.toContain('<b>');
-    expect(serializeJsonLd([document])).toContain('\\u003c');
+  it('meng-escape JSON-LD supaya copy artikel tidak keluar dari script', () => {
+    const serialized = serializeJsonLd([{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Layanan <b>redaksi</b>.' }]);
+    expect(serialized).not.toContain('<b>');
+    expect(serialized).toContain('\\u003c');
   });
 
   it('membuat robots dengan custom dan sitemap', () => {

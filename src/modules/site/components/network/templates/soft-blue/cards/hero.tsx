@@ -56,7 +56,7 @@ export function SoftBlueHero({ article }: { readonly article: ArticleListItem })
               <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
                 {publisherName}
               </p>
-              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} dateVariant="long" />
+              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} dateVariant="long" />
             </div>
           </div>
           <SoftBlueHeroActions slug={article.slug} title={article.title} href={article.href} />

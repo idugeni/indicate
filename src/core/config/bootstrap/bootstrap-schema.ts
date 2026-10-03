@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { TURNSTILE_SITEKEY_PATTERN } from '@/core/security/turnstile-contract';
+import { DISQUS_SHORTNAME_PATTERN } from '@/core/security/disqus-contract';
 import { normalizeConfiguredHostname } from '@/core/hostname/normalize-configured-hostname';
 import { BOOTSTRAP_ENVIRONMENTS, type BootstrapEnvironment, type SchemaGateMode } from '@/core/config/bootstrap/bootstrap-env';
 import { SecretString } from '@/core/config/secret-string';
@@ -77,6 +78,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'GOOGLE_SITE_VERIFICATION',
   'INDEXNOW_KEY',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  'NEXT_PUBLIC_DISQUS_SHORTNAME',
   'TURNSTILE_REPORT_SECRETS',
 ]);
 
@@ -188,6 +190,15 @@ const bootstrapSchema = z
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    /**
+     * Network Disqus forum. Optional so a deployment without comments still
+     * boots; present but malformed is refused, because the value picks the
+     * origin that serves third-party script on reader pages.
+     */
+    NEXT_PUBLIC_DISQUS_SHORTNAME: z
+      .string()
+      .regex(DISQUS_SHORTNAME_PATTERN, 'disqus_shortname_malformed')
+      .optional(),
     TURNSTILE_REPORT_SECRETS: turnstileReportSecrets.optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
     SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.website/assets/default.png'),

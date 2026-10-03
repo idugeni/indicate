@@ -4,11 +4,10 @@ import { BrandedLoader } from '@/modules/site/components/network/ui/branded-load
 import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-editorial/theme';
 
 /**
- * Render loader berbranding Red Editorial.
+ * Render loader berpalet Red Editorial.
  *
- * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
  * @returns Overlay `role="status"` berpalet Red Editorial.
  */
-export function RedEditorialLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
-  return <BrandedLoader theme={RED_EDITORIAL} logoUrl={logoUrl} />;
+export function RedEditorialLoader(): ReactElement {
+  return <BrandedLoader theme={RED_EDITORIAL} />;
 }

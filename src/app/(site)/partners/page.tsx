@@ -7,6 +7,7 @@ import { PartnersExplorer } from '@/modules/site/components/directory/partners-e
 import {
   HeaderPrimaryCta, HeaderSecondaryCta, PrimaryCta, SecondaryCta, Section } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
+import { serializeJsonLd } from '@/modules/site/seo';
 
 const DESCRIPTION =
   'Organisasi pelanggan dengan langganan aktif di Indicate — berbagai institusi yang mempercayakan publikasi dan arsipnya kepada satu ruang redaksi.';
@@ -35,7 +36,7 @@ function PartnersJsonLd({ partners }: { readonly partners: readonly { readonly n
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload).replace(/</g, '\\u003c') }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd([payload]) }}
     />
   );
 }

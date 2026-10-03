@@ -16,6 +16,7 @@ import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar
 import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
+import { CommentThread } from '@/modules/site/components/network/disqus/comment-thread';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalPicks } from '@/modules/site/components/network/templates/green-minimal/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -229,6 +230,16 @@ export function GreenMinimalArticle({
           </footer>
 
           </article>
+
+          {site.settings.commentsEnabled ? (
+            <CommentThread
+              siteId={site.context.siteId}
+              articleId={article.id}
+              url={canonical}
+              title={article.title}
+              locale={site.settings.locale}
+            />
+          ) : null}
 
           {related.length > 0 ? (
             <div className="mt-10">

@@ -31,7 +31,7 @@ export default async function TenantHomePage() {
         branding === null ? (
           <RootLoading />
         ) : (
-          <TemplateLoader templateId={branding.templateId} logoUrl={branding.logoUrl} />
+          <TemplateLoader templateId={branding.templateId} />
         )
       }
     >

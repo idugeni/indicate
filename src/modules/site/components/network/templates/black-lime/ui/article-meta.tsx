@@ -1,6 +1,7 @@
 import { CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import { formatDate, formatFullViews } from '@/modules/site/components/network/ui/format';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import type { DateVariant } from '@/modules/site/components/network/ui/format';
 
 /**
@@ -9,6 +10,8 @@ import type { DateVariant } from '@/modules/site/components/network/ui/format';
  * @param publishedAt - Timestamp ISO terbit.
  * @param reading - Estimasi menit baca.
  * @param viewCount - Jumlah view mentah.
+ * @param articleId - Identitas artikel, untuk thread komentar milik situs ini.
+ * @param href - Tautan kartu; relatif host bila portal ini melayani artikelnya sendiri.
  * @param dateVariant - Varian tanggal; `long` untuk area lega seperti hero.
  * @returns Baris meta aksesibel.
  */
@@ -16,11 +19,15 @@ export function ArticleMeta({
   publishedAt,
   reading,
   viewCount,
+  articleId,
+  href,
   dateVariant = 'short',
 }: {
   readonly publishedAt: string;
   readonly reading: number;
   readonly viewCount: number;
+  readonly articleId: string;
+  readonly href: string;
   readonly dateVariant?: DateVariant;
 }) {
   const item = 'inline-flex items-center gap-1.5';
@@ -39,6 +46,7 @@ export function ArticleMeta({
         <Eye className={icon} aria-hidden="true" />
         {formatFullViews(viewCount)} pembaca
       </span>
+      <CommentCountSlot articleId={articleId} href={href} className={item} iconClassName={icon} />
     </span>
   );
 }

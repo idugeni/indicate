@@ -253,3 +253,35 @@ describe('identitas project pada URL database', () => {
     }
   });
 });
+
+describe('validateBootstrapConfig NEXT_PUBLIC_DISQUS_SHORTNAME', () => {
+  // The value is interpolated into https://<shortname>.disqus.com/embed.js on
+  // reader pages, so boot is the only place a deployment-wide bad value can be
+  // caught before it reaches production markup.
+  it('menerima label forum yang valid', () => {
+    const result = validateBootstrapConfig({ ...validEnv(), NEXT_PUBLIC_DISQUS_SHORTNAME: 'indicate-1' });
+    expect(result.success).toBe(true);
+  });
+
+  it('tetap booting tanpa shortname, karena komentar itu opsional', () => {
+    const result = validateBootstrapConfig(validEnv());
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    'evil.com/embed.js',
+    'user@evil.com',
+    '*.disqus.com',
+    'Indicate-1',
+    'indicate_1',
+    '-indicate',
+    'indicate-',
+    'ab',
+  ])('menolak shortname malformed: %s', (value) => {
+    const result = validateBootstrapConfig({ ...validEnv(), NEXT_PUBLIC_DISQUS_SHORTNAME: value });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.issues.some((issue) => issue.path.includes('NEXT_PUBLIC_DISQUS_SHORTNAME'))).toBe(true);
+    }
+  });
+});

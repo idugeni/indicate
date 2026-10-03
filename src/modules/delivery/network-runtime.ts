@@ -294,40 +294,6 @@ function robotsForDocument(robots: 'index, follow' | 'noindex, nofollow' | 'noin
  * @returns Tenant metadata carrying the tenant brand, favicon, and social card.
  * @remarks Titles use the absolute form so the control-plane '| Indicate' template (src/app/layout.tsx) is never appended.
  */
-/** Maximum keywords emitted on one tenant listing page. */
-const TENANT_LISTING_KEYWORD_LIMIT = 12;
-
-/**
- * Derive listing-page keywords from already-loaded site data.
- *
- * @param site - Resolved tenant site with its article list.
- * @param extra - Page-specific terms first (category or tag name).
- * @returns Deduplicated site name, tagline, region, extras, and categories.
- * @remarks No new query: categories come from the articles already in hand,
- * so this costs zero additional egress on warm renders.
- */
-function tenantListingKeywords(site: NetworkSiteData, extra: readonly string[] = []): string[] {
-  const categories: string[] = [];
-  for (const article of site.articles) {
-    if (article.categoryName !== null && !categories.includes(article.categoryName)) {
-      categories.push(article.categoryName);
-    }
-    if (categories.length >= 8) break;
-  }
-  const candidates = [...extra, site.settings.name, site.settings.tagline, site.regionName, ...categories];
-  const seen = new Set<string>();
-  const keywords: string[] = [];
-  for (const candidate of candidates) {
-    if (typeof candidate !== 'string') continue;
-    const trimmed = candidate.trim();
-    if (trimmed === '' || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    keywords.push(trimmed);
-    if (keywords.length >= TENANT_LISTING_KEYWORD_LIMIT) break;
-  }
-  return keywords;
-}
-
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string, robotsOverride?: RobotsDirective): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
   const candidate = query.articleSlug === undefined ? undefined : site.articles[0];
@@ -370,7 +336,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     return {
       title: { absolute: categoryTitle },
       description: categoryDescription,
-      keywords: tenantListingKeywords(site, [categoryName]),
       alternates: {
         canonical: categorySeo.canonical,
         languages: { 'id-ID': categorySeo.canonical },
@@ -419,7 +384,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
     return {
       title: { absolute: tagTitle },
       description: tagDescription,
-      keywords: tenantListingKeywords(site, [query.tag ?? '']),
       alternates: {
         canonical: tagSeo.canonical,
         languages: { 'id-ID': tagSeo.canonical },
@@ -465,7 +429,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
   return {
     title: { absolute: seo.title },
     description: seo.description,
-    keywords: tenantListingKeywords(site),
     alternates: {
       canonical: seo.canonical,
       languages: { 'id-ID': seo.canonical },
@@ -496,11 +459,6 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
       : undefined,
     ...(article === undefined
       ? {}
-      : {
-          authors: [{ name: article.authorDisplayName ?? article.authorName ?? article.attribution }],
-          keywords: article.categoryName === null && article.tags.length === 0
-            ? undefined
-            : [...(article.categoryName === null ? [] : [article.categoryName]), ...article.tags],
-        }),
+      : { authors: [{ name: article.authorDisplayName ?? article.authorName ?? article.attribution }] }),
   };
 }

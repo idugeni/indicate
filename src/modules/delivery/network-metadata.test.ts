@@ -140,31 +140,31 @@ describe('networkMetadata social card completeness', () => {
   });
 });
 
-describe('tenant listing keywords', () => {
+describe('tenant meta keywords', () => {
   beforeEach(() => {
     load.mockReset();
-  });
-
-  it('memberi kata kunci nama situs dan kategori di halaman utama', async () => {
-    load.mockResolvedValue(makeNetworkSite([makeNetworkArticle({ categoryName: 'Ekonomi', categorySlug: 'ekonomi' } as never)]));
-    const result = await meta('/');
-    expect(result.keywords).toContain('Portal');
-    expect(result.keywords).toContain('Ekonomi');
-  });
-
-  it('mendahulukan nama kategori di halaman kanal', async () => {
-    const articles = [1, 2, 3].map((n) => makeNetworkArticle({ id: `a-${n}`, slug: `b-${n}`, categoryName: 'Ekonomi', categorySlug: 'ekonomi' }) as never);
+    const articles = ['satu', 'dua', 'tiga'].map((slug, index) => makeNetworkArticle(
+      index === 0
+        ? { categoryName: 'Ekonomi', categorySlug: 'ekonomi', tags: ['daerah'] } as never
+        : { id: `a-${slug}`, slug: `b-${slug}`, categoryName: 'Ekonomi', categorySlug: 'ekonomi', tags: ['daerah'] } as never,
+    ));
     load.mockResolvedValue(makeNetworkSite(articles));
-    const result = await meta('/categories/ekonomi', { categorySlug: 'ekonomi' });
-    expect((result.keywords as readonly string[])[0]).toBe('Ekonomi');
   });
 
-  it('mendahulukan nama topik di halaman tag', async () => {
-    const articles = [1, 2, 3].map((n) => makeNetworkArticle({ id: `a-${n}`, slug: `b-${n}`, tags: ['daerah'] }) as never);
-    load.mockResolvedValue(makeNetworkSite(articles));
-    const result = await meta('/tags/daerah', { tag: 'daerah' });
-    expect((result.keywords as readonly string[])[0]).toBe('daerah');
-  });
+  const surfaces: readonly (readonly [string, Parameters<typeof networkMetadata>[1]])[]
+    = [
+      ['halaman utama', {}],
+      ['artikel', { articleSlug: 'berita-utama' }],
+      ['kanal', { categorySlug: 'ekonomi' }],
+      ['topik', { tag: 'daerah' }],
+    ];
+
+  for (const [name, query] of surfaces) {
+    it(`tidak memancarkan meta keywords di ${name}`, async () => {
+      const metadata = await meta('/', query);
+      expect(metadata.keywords).toBeUndefined();
+    });
+  }
 });
 
 describe('tenant brand isolation', () => {

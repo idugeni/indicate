@@ -39,6 +39,14 @@ export interface PublicSiteSettings {
   /** Natural height of the default image; null falls back to the 630 card height. */
   readonly defaultImageHeight: number | null;
   readonly robots: readonly string[];
+  /**
+   * Whether this site's article pages carry a reader comment thread.
+   *
+   * @remarks One Disqus forum serves the whole network, so threads are keyed by
+   * a site-namespaced identifier and this flag is what keeps one site's comments
+   * off another's pages. False everywhere until a site opts in.
+   */
+  readonly commentsEnabled: boolean;
 }
 
 export interface ArticleListItem {

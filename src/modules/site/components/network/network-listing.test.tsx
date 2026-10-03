@@ -15,8 +15,6 @@ import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-e
 import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm-editorial/theme';
 
-const LOGO = 'https://portal.example/logo.png';
-
 // Kanvas tiap template dipakai sebagai sidik jari cabang: tanpa ini, test hanya
 // membuktikan "sesuatu render" dan akan tetap hijau bila semua cabang mengembalikan
 // loader yang sama.
@@ -48,7 +46,7 @@ describe('TemplateLoader', () => {
 
   for (const templateId of TEMPLATE_IDS) {
     it(`merender status sibuk tanpa teks terlihat untuk ${templateId}`, () => {
-      render(<TemplateLoader templateId={templateId} logoUrl={LOGO} />);
+      render(<TemplateLoader templateId={templateId} />);
       const status = screen.getByRole('status');
 
       expect(status.getAttribute('aria-busy')).toBe('true');
@@ -56,26 +54,29 @@ describe('TemplateLoader', () => {
     });
 
     it(`memakai palet ${templateId} sendiri, bukan loader lain`, () => {
-      const { container } = render(<TemplateLoader templateId={templateId} logoUrl={LOGO} />);
+      const { container } = render(<TemplateLoader templateId={templateId} />);
 
       expect(statusStyle(container)).toContain(`--tpl-canvas: ${CANVAS[templateId]}`);
     });
+
+    it(`merender orbit yang sama untuk ${templateId}, hanya warnanya yang dibedakan`, () => {
+      const { container } = render(<TemplateLoader templateId={templateId} />);
+
+      expect(container.querySelector('[data-brand-orbit="track"]')).toBeTruthy();
+      expect(container.querySelector('[data-brand-orbit="dot"]')).toBeTruthy();
+    });
   }
 
-  it('menyampaikan logoUrl ke gambar yang dirender', () => {
-    const { container } = render(<TemplateLoader templateId="dark-navy" logoUrl={LOGO} />);
+  it('tidak memuat gambar logo tenant sama sekali', () => {
+    // Logo tenant praktis selalu wordmark persegi panjang di dalam kanvas
+    // persegi, jadi di dalam lingkaran ia terbaca sebagai kotak gelap.
+    const { container } = render(<TemplateLoader templateId="dark-navy" />);
 
-    expect(container.querySelector('img')?.getAttribute('src')).toBe(LOGO);
-  });
-
-  it('menyampaikan logoUrl apa adanya tanpa optimasi gambar', () => {
-    const { container } = render(<TemplateLoader templateId="clean-blue" logoUrl="https://tenant.example/logo.png?v=2" />);
-
-    expect(container.querySelector('img')?.getAttribute('srcset')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
   });
 
   it('tidak melempar untuk id asing dan turun ke palet Clean Blue', () => {
-    expect(() => render(<TemplateLoader templateId="template-hantu-999" logoUrl={LOGO} />)).not.toThrow();
+    expect(() => render(<TemplateLoader templateId="template-hantu-999" />)).not.toThrow();
 
     expect(screen.getByRole('status')).toBeDefined();
     expect(statusStyle(document.body)).toContain(`--tpl-canvas: ${CLEAN_BLUE.canvas}`);
@@ -84,7 +85,7 @@ describe('TemplateLoader', () => {
   it('tidak melempar saat templateId kosong atau bukan string', () => {
     for (const templateId of [undefined, null, '', 42, true, {}, [], () => 'clean-blue']) {
       cleanup();
-      expect(() => render(<TemplateLoader templateId={templateId} logoUrl={LOGO} />)).not.toThrow();
+      expect(() => render(<TemplateLoader templateId={templateId} />)).not.toThrow();
       expect(screen.getByRole('status')).toBeDefined();
     }
   });
@@ -92,18 +93,9 @@ describe('TemplateLoader', () => {
   it('tetap memakai palet Clean Blue untuk setiap nilai tak dikenal', () => {
     for (const templateId of [undefined, null, 'Clean-Blue', 'clean_blue', 7, {}]) {
       cleanup();
-      const { container } = render(<TemplateLoader templateId={templateId} logoUrl={LOGO} />);
+      const { container } = render(<TemplateLoader templateId={templateId} />);
 
       expect(statusStyle(container)).toContain(`--tpl-canvas: ${CLEAN_BLUE.canvas}`);
-    }
-  });
-
-  it('menyerahkan logo tenant ke setiap loader template, bukan hanya fallback', () => {
-    for (const templateId of TEMPLATE_IDS) {
-      cleanup();
-      const { container } = render(<TemplateLoader templateId={templateId} logoUrl={LOGO} />);
-
-      expect(container.querySelector('img')?.getAttribute('src')).toBe(LOGO);
     }
   });
 });

@@ -4,11 +4,10 @@ import { BrandedLoader } from '@/modules/site/components/network/ui/branded-load
 import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 
 /**
- * Render loader berbranding Green Minimal.
+ * Render loader berpalet Green Minimal.
  *
- * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
  * @returns Overlay `role="status"` berpalet Green Minimal.
  */
-export function GreenMinimalLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
-  return <BrandedLoader theme={GREEN_MINIMAL} logoUrl={logoUrl} />;
+export function GreenMinimalLoader(): ReactElement {
+  return <BrandedLoader theme={GREEN_MINIMAL} />;
 }

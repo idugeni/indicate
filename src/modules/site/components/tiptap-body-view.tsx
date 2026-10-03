@@ -3,6 +3,7 @@ import { AtSign, Camera, ClipboardList, FileText, FolderOpen, HardDrive, Music2,
 
 import { extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, resolveMediaSrc, resolveMediaThumbSrc, type TipTapNode } from '@/modules/site/tiptap-document';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
+import { editorialLinkRel } from '@/modules/site/editorial-link-rel';
 
 function renderTextNode(node: TipTapNode, key: string): ReactNode {
   const text = typeof node.text === 'string' ? node.text : '';
@@ -27,7 +28,7 @@ function renderTextNode(node: TipTapNode, key: string): ReactNode {
       const href = typeof mark.attrs?.href === 'string' ? mark.attrs.href : '';
       if (!isSafeLinkUrl(href)) continue;
       content = (
-        <a href={href} target="_blank" rel="noopener noreferrer">
+        <a href={href} target="_blank" rel={editorialLinkRel(href)}>
           {content}
         </a>
       );

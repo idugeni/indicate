@@ -82,6 +82,15 @@ export interface SiteSettingsRecord extends VersionedRecord {
   readonly logoMediaId: string | null;
   readonly faviconMediaId: string | null;
   readonly defaultMediaId: string | null;
+  /**
+   * Whether this site's article pages serve a reader comment thread.
+   *
+   * @remarks One Disqus forum serves the network, so this is a per-site opt-in
+   * rather than a tenant-wide setting. Enabling it makes the site a data
+   * controller for reader comment data processed by a third party in the United
+   * States, which is why it is off until an operator turns it on deliberately.
+   */
+  readonly commentsEnabled: boolean;
 }
 
 export interface RoleRecord extends VersionedRecord {

@@ -2,8 +2,6 @@ import type { Metadata } from 'next';
 
 import { getFaqs } from '@/modules/content/site-content';
 import { siteMetadata } from '@/ui/site/metadata-guard';
-import { buildFaqPageSchema } from '@/modules/site/seo';
-import { JsonLd } from '@/modules/site/components/network/json-ld';
 import { HeaderSecondaryCta, Section, toFaqGridItems } from '@/modules/site/components/layout/content';
 import { FaqBrowser } from '@/modules/site/components/layout/faq-browser';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
@@ -29,7 +27,6 @@ export default async function FaqPage() {
       <Section title="Semua jawaban" description="Ketik kata kunci atau klik pertanyaan untuk membuka jawabannya." eyebrow="Daftar">
         <FaqBrowser items={items} />
       </Section>
-      <JsonLd schemas={[buildFaqPageSchema(items)]} />
     </PublicPage>
   );
 }

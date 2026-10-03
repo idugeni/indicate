@@ -43,6 +43,25 @@ describe('TipTapBodyView', () => {
     expect(container.textContent).toContain('klik');
   });
 
+  it('memberi nofollow pada tautan luar dan tidak pada path in-site', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'sumber', marks: [{ type: 'link', attrs: { href: 'https://sumber.id/berita' } }] },
+            { type: 'text', text: ' ' },
+            { type: 'text', text: 'artikel lain', marks: [{ type: 'link', attrs: { href: '/artikel-lain' } }] },
+          ],
+        },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(container.querySelector('a[href="https://sumber.id/berita"]')?.getAttribute('rel')).toContain('nofollow');
+    expect(container.querySelector('a[href="/artikel-lain"]')?.getAttribute('rel')).not.toContain('nofollow');
+  });
+
   it('merender gambar aman dengan caption dan menolak src berbahaya', () => {
     const doc = {
       type: 'doc',

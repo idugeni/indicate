@@ -67,6 +67,7 @@ function makeSite(articles: readonly ArticleListItem[]): NetworkSiteData {
       seoDefaultDescription: 'Deskripsi SEO portal',
       seoSiteName: 'Portal SEO',
       locale: 'id',
+      commentsEnabled: false,
       colors: {},
       socialLinks: {},
       navigation: [],

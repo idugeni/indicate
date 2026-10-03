@@ -345,6 +345,15 @@ export const siteSettings = pgTable('site_settings', {
   faviconMediaId: uuid('favicon_media_id'),
   defaultMediaId: uuid('default_media_id'),
   locale: text('locale'),
+  /**
+   * Reader comment thread on this site's article pages.
+   *
+   * @remarks The network shares one Disqus forum, so this is a per-site switch
+   * and not a per-tenant account setting. Off by default: the embed loads a
+   * third-party processor that profiles readers, which the public privacy copy
+   * only permits once a site deliberately opts in.
+   */
+  commentsEnabled: boolean('comments_enabled').default(false).notNull(),
   seoDefaultTitle: text('seo_default_title'),
   seoDefaultDescription: text('seo_default_description'),
   seoRobotsDirective: seoRobotsDirective('seo_robots_directive'),

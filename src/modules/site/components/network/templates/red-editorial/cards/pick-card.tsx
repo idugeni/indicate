@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { TemplateShareButton } from '@/modules/site/components/network/ui/share-dialog';
@@ -51,6 +52,8 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
             {reading} mnt baca
             {' · '}
             {formatFullViews(article.viewCount)} pembaca
+            {' · '}
+            <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" />
           </span>
           <TemplateShareButton
             slug={article.slug}

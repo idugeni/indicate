@@ -398,6 +398,11 @@ skip_nonce_check = false
 email_optional = false
 
 [auth.external.google]
+# Client secret provider ini dikelola di Supabase Dashboard (Authentication >
+# Providers > Google), bukan di file ini: dashboard menyimpan credential yang
+# tidak dapat dibaca CLI, sehingga `supabase config push` tidak boleh menyebut
+# kunci `secret` di sini atau akan menimpa nilai yang sudah benar.
+# Client ID login ini BUKAN GOOGLE_CLIENT_ID di .env (OAuth client berbeda).
 client_id = "732840268849-ju9vigffoe4plbvioueh05s04ees0uc7.apps.googleusercontent.com"
 enabled = true
 

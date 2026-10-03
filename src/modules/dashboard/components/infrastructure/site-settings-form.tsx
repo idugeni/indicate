@@ -37,6 +37,7 @@ interface SiteSettingsRow {
   readonly seoOpenGraphSiteName: string | null;
   readonly locale: string | null;
   readonly seoRobotsDirective: 'index,follow' | 'noindex,nofollow' | null;
+  readonly commentsEnabled: boolean;
   readonly colors: Readonly<Record<string, string>>;
   readonly socialLinks: Readonly<Record<string, string>>;
   readonly seo: Readonly<Record<string, unknown>>;
@@ -76,6 +77,7 @@ function SiteSettingsEditor({
   const ogSiteNameId = useId();
   const localeId = useId();
   const robotsId = useId();
+  const commentsId = useId();
   const templateId = useId();
   const colorsId = useId();
   const logoId = useId();
@@ -93,6 +95,7 @@ function SiteSettingsEditor({
   const [ogSiteName, setOgSiteName] = useState(settings?.seoOpenGraphSiteName ?? '');
   const [locale, setLocale] = useState(settings?.locale ?? '');
   const [robots, setRobots] = useState(settings?.seoRobotsDirective ?? '');
+  const [comments, setComments] = useState(settings?.commentsEnabled ? 'on' : '');
   const [logoMedia, setLogoMedia] = useState(settings?.logoMediaId ?? '');
   const [faviconMedia, setFaviconMedia] = useState(settings?.faviconMediaId ?? '');
   const [defaultMedia, setDefaultMedia] = useState(settings?.defaultMediaId ?? '');
@@ -156,6 +159,7 @@ function SiteSettingsEditor({
           ...(ogSiteName.trim() === '' ? {} : { seoOpenGraphSiteName: ogSiteName.trim() }),
           ...(locale.trim() === '' ? {} : { locale: locale.trim() }),
           ...(robots === '' ? {} : { seoRobotsDirective: robots }),
+          commentsEnabled: comments === 'on',
           logoMediaId: logoMedia.trim() === '' ? null : logoMedia.trim(),
           faviconMediaId: faviconMedia.trim() === '' ? null : faviconMedia.trim(),
           defaultMediaId: defaultMedia.trim() === '' ? null : defaultMedia.trim(),
@@ -298,6 +302,29 @@ function SiteSettingsEditor({
             <DashboardSelectItem value="index,follow">index,follow</DashboardSelectItem>
             <DashboardSelectItem value="noindex,nofollow">noindex,nofollow</DashboardSelectItem>
           </DashboardSelect>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor={commentsId} className="font-mono text-xs text-paper-dim">
+            Komentar pembaca
+          </Label>
+          <DashboardSelect
+            id={commentsId}
+            value={comments}
+            disabled={isSaving}
+            placeholder="Nonaktif (bawaan)"
+            onValueChange={(next) => setComments(next ?? '')}
+          >
+            <DashboardSelectItem value="">Nonaktif (bawaan)</DashboardSelectItem>
+            <DashboardSelectItem value="on">Aktif</DashboardSelectItem>
+          </DashboardSelect>
+          <p className="m-0 text-xs text-paper-dim">
+            Memuat Disqus, pemroses pihak ketiga di Amerika Serikat yang memprofilkan pembaca. Situs
+            menjadi pengendali data komentar, jadi aktifkan hanya bila kanal siap menerima dan
+            membagikan pemberitahuan kepada pembacanya.
+          </p>
         </div>
       </div>
 

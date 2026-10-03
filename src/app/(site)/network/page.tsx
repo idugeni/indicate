@@ -9,6 +9,7 @@ import { NetworkExplorer } from '@/modules/site/components/directory/network-exp
 import {
   FeatureGrid, HeaderPrimaryCta, HeaderSecondaryCta, Section, StatBand, withIcons } from '@/modules/site/components/layout/content';
 import { PublicPage } from '@/modules/site/components/layout/public-page';
+import { serializeJsonLd } from '@/modules/site/seo';
 
 const GUIDE_ITEMS = Object.freeze([
   {
@@ -48,7 +49,7 @@ function NetworkJsonLd({ payload }: { readonly payload: Readonly<Record<string, 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload).replace(/</g, '\\u003c') }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd([payload]) }}
     />
   );
 }

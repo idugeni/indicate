@@ -1709,6 +1709,13 @@
       "when": 1790985600000,
       "tag": "20261003040000_backfill_article_author",
       "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1791028800000,
+      "tag": "20261003120000_site_comments_enabled",
+      "breakpoints": true
     }
   ]
 }

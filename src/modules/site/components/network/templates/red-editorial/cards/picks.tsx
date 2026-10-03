@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, TrendingUp } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { RedEditorialPickCard } from '@/modules/site/components/network/templates/red-editorial/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/red-editorial/ui/section-heading';
 import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -82,6 +83,8 @@ export function RedEditorialPicks({
                         </Link>
                         <span className="mt-1 block text-[11px] tabular-nums text-[#ac9393]">
                           {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
+                          {' · '}
+                          <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" />
                         </span>
                       </span>
                       <Image

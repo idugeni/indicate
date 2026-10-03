@@ -57,6 +57,7 @@ export const siteSettingsSchema = z.object({
   ),
   seoOpenGraphSiteName: z.string().trim().min(1).max(160).nullable().optional(),
   locale: z.string().trim().regex(/^[a-z]{2}-[A-Z]{2}$/, 'Gunakan format id-ID.').nullable().optional(),
+  commentsEnabled: z.boolean().optional(),
   seoRobotsDirective: z.enum(['index,follow', 'noindex,nofollow']).nullable().optional(),
   logoMediaId: id.nullable().optional(),
   faviconMediaId: id.nullable().optional(),

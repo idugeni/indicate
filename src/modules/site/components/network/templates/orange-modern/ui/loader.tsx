@@ -4,11 +4,10 @@ import { BrandedLoader } from '@/modules/site/components/network/ui/branded-load
 import { ORANGE_MODERN } from '@/modules/site/components/network/templates/orange-modern/theme';
 
 /**
- * Render loader berbranding Orange Modern.
+ * Render loader berpalet Orange Modern.
  *
- * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
  * @returns Overlay `role="status"` berpalet Orange Modern.
  */
-export function OrangeModernLoader({ logoUrl }: { readonly logoUrl: string }): ReactElement {
-  return <BrandedLoader theme={ORANGE_MODERN} logoUrl={logoUrl} />;
+export function OrangeModernLoader(): ReactElement {
+  return <BrandedLoader theme={ORANGE_MODERN} />;
 }

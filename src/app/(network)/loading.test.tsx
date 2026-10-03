@@ -16,7 +16,7 @@ vi.mock('@/modules/delivery/tenant-branding', () => ({
 }));
 
 vi.mock('@/modules/site/components/network/network-listing', () => ({
-  TemplateLoader: (props: { templateId: unknown; logoUrl: string }) => {
+  TemplateLoader: (props: { templateId: unknown }) => {
     spies.loaderProps.push(props);
     return <div data-testid="template-loader" />;
   },
@@ -43,13 +43,12 @@ afterEach(() => {
 });
 
 describe('Fallback pemuatan jaringan', () => {
-  it('menyerahkan id template dan URL logo tenant ke loader berbrand', async () => {
+  it('menyerahkan id template saja ke loader berpalet', async () => {
+    // LogoUrl sengaja tidak diteruskan: loader tidak lagi memakai logo tenant.
     spies.resolveTenantBranding.mockResolvedValue(BRANDING);
     render(await PublicLoading());
     expect(screen.getByTestId('template-loader')).toBeDefined();
-    expect(spies.loaderProps).toEqual([
-      { templateId: 'dark-navy', logoUrl: 'https://portal.example/logo.png' },
-    ]);
+    expect(spies.loaderProps).toEqual([{ templateId: 'dark-navy' }]);
     expect(spies.rootLoadingCalls).toBe(0);
   });
 

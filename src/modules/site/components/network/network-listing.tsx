@@ -231,46 +231,45 @@ export function ListingPage({ site, title, description, path = '/', indexable = 
 }
 
 /**
- * Cross-template tenant loader dispatcher: the slot already holding the active template renders its own colored ring.
+ * Cross-template tenant loader dispatcher: the slot already holding the active template renders its own colored indicator.
  *
  * @param templateId - Id template mentah dari pengaturan tenant, apa adanya.
- * @param logoUrl - URL absolut logo tenant yang ditampilkan di dalam cincin.
  * @returns Overlay `role="status"` berpalet template aktif, atau Clean Blue saat id tak dikenal.
  * @remarks `templateId` diterima sebagai `unknown` karena pemanggil hanya memegang
  * nilai mentah, dan `normalizeTemplateId` melempar untuk id tak terdaftar; status
  * memuat tidak boleh melempar, jadi normalisasi dibungkus `try`/`catch` yang turun
  * ke Clean Blue alih-alih menggagalkan cat.
  */
-export function TemplateLoader({ templateId, logoUrl }: { readonly templateId: unknown; readonly logoUrl: string }): ReactElement {
+export function TemplateLoader({ templateId }: { readonly templateId: unknown }): ReactElement {
   let id: TemplateId;
   try {
     id = normalizeTemplateId(templateId);
   } catch {
-    return <CleanBlueLoader logoUrl={logoUrl} />;
+    return <CleanBlueLoader />;
   }
   switch (id) {
     case 'black-lime':
-      return <BlackLimeLoader logoUrl={logoUrl} />;
+      return <BlackLimeLoader />;
     case 'dark-navy':
-      return <DarkNavyLoader logoUrl={logoUrl} />;
+      return <DarkNavyLoader />;
     case 'glassy-blue':
-      return <GlassyBlueLoader logoUrl={logoUrl} />;
+      return <GlassyBlueLoader />;
     case 'green-minimal':
-      return <GreenMinimalLoader logoUrl={logoUrl} />;
+      return <GreenMinimalLoader />;
     case 'orange-modern':
-      return <OrangeModernLoader logoUrl={logoUrl} />;
+      return <OrangeModernLoader />;
     case 'purple-editorial':
-      return <PurpleEditorialLoader logoUrl={logoUrl} />;
+      return <PurpleEditorialLoader />;
     case 'red-editorial':
-      return <RedEditorialLoader logoUrl={logoUrl} />;
+      return <RedEditorialLoader />;
     case 'soft-blue':
-      return <SoftBlueLoader logoUrl={logoUrl} />;
+      return <SoftBlueLoader />;
     case 'warm-editorial':
-      return <WarmEditorialLoader logoUrl={logoUrl} />;
+      return <WarmEditorialLoader />;
     case 'clean-blue':
-      return <CleanBlueLoader logoUrl={logoUrl} />;
+      return <CleanBlueLoader />;
     default:
-      return <CleanBlueLoader logoUrl={logoUrl} />;
+      return <CleanBlueLoader />;
   }
 }
 
