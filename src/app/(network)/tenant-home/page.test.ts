@@ -30,7 +30,6 @@ vi.mock('@/core/config/runtime/runtime-context', () => ({
 }));
 
 vi.mock('@/modules/site/components/network/network-listing', () => ({ ListingPage: () => null }));
-vi.mock('@/app/loading', () => ({ default: () => null }));
 
 vi.mock('@/modules/delivery', () => ({
   deliveryComposition: async () => ({

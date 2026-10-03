@@ -1,6 +1,6 @@
 import 'server-only';
 import type { Metadata } from 'next';
-import { cacheLife, cacheTag } from 'next/cache';
+import { cacheLife, cacheTag, unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
@@ -64,16 +64,33 @@ async function readCachedBypass(organizationId: string, siteId: string): Promise
 
 const readBypassed = cache(readCachedBypass);
 
+/**
+ * Pending pageview buffer for one article copy, shared across requests.
+ *
+ * @remarks One Redis `MGET` per article render is the highest-frequency Redis
+ * read on the public path: crawlers sweeping article URLs each pay a REST
+ * round trip. View counts merge a 3-hour flush window, so a 60-second lag is
+ * invisible. Tags reuse the invalidation vocabulary, so a publish fans the
+ * counter out with no dispatcher changes.
+ */
 const readArticleBuffer = cache(async (organizationId: string, siteId: string, articleSiteId: string): Promise<number> => {
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') return 0;
     const context = await getServerRuntimeContext();
-    const [pending] = await readPageviewCounts({
-      url: context.config.redis.url,
-      token: context.config.redis.token,
-      keys: [buildPageviewKey(context.bootstrap.environment, { o: organizationId, s: siteId, a: articleSiteId })],
-    });
-    return pending ?? 0;
+    const key = buildPageviewKey(context.bootstrap.environment, { o: organizationId, s: siteId, a: articleSiteId });
+    const cached = unstable_cache(
+      async (): Promise<number> => {
+        const [pending] = await readPageviewCounts({
+          url: context.config.redis.url,
+          token: context.config.redis.token,
+          keys: [key],
+        });
+        return pending ?? 0;
+      },
+      ['article-buffer', organizationId, siteId, articleSiteId],
+      { tags: [`org:${organizationId}`, `site:${siteId}`], revalidate: 60 },
+    );
+    return await cached();
   } catch {
     return 0;
   }

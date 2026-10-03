@@ -1,11 +1,8 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { ArticlePage, TemplateLoader } from '@/modules/site/components/network/network-listing';
-import RootLoading from '@/app/loading';
+import { ArticlePage } from '@/modules/site/components/network/network-listing';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { isNetworkArticle } from '@/modules/delivery/models';
-import { resolveTenantBranding } from '@/modules/delivery/tenant-branding';
 
 export const maxDuration = 25;
 
@@ -23,36 +20,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Render shell artikel dengan fallback berbrand tenant.
+ * Render artikel tenant tanpa fallback pemuatan.
  *
- * @remarks Branding di-resolve di atas boundary supaya fallback bisa menyebut
- * tenant sebelum situs ter-resolve: `resolveTenantBranding` membaca lewat
- * `classifyTenantHost` yang sudah dedup per request plus template ber-tag 24
- * jam, jadi cache hangat tidak menambah round-trip baru. Konsekuensinya shell
- * ini tidak lagi dapat di-prerender — tiap request menunggu branding sebelum
- * fallback ter-cat, sementara sebelumnya fallback langsung stream. Validasi
- * params tetap di dalam `DetailContent` supaya shell tidak menahan 404.
+ * @param params - Parameter rute artikel.
+ * @returns Halaman artikel tenant.
+ * @remarks Tanpa `Suspense` ber-fallback: tidak ada loader template maupun
+ * `RootLoading` domain utama yang boleh ter-cat di segmen ini. Validasi params
+ * tetap di dalam render supaya 404 milik halaman.
  */
 export default async function DetailPage({ params }: Props) {
-  const branding = await resolveTenantBranding();
-  return (
-    <Suspense
-      fallback={
-        branding === null ? (
-          <RootLoading />
-        ) : (
-          <TemplateLoader templateId={branding.templateId} />
-        )
-      }
-    >
-      <DetailContent params={params} />
-    </Suspense>
-  );
-}
-
-// Tetangga tanggal diambil dari daftar penuh saat seksi artikel terkait tidak
-// mencakup mereka, supaya slot `older`/`newer` tidak pernah kosong.
-async function DetailContent({ params }: Pick<Props, 'params'>) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
   const normalized = slug.trim().toLowerCase();

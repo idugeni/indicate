@@ -1,10 +1,7 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
-import { ListingPage, TemplateLoader } from '@/modules/site/components/network/network-listing';
-import RootLoading from '@/app/loading';
+import { ListingPage } from '@/modules/site/components/network/network-listing';
 import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
-import { resolveTenantBranding } from '@/modules/delivery/tenant-branding';
 
 export const maxDuration = 25;
 
@@ -13,34 +10,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Render shell portal dengan fallback berbrand tenant.
+ * Render portal tenant tanpa fallback pemuatan.
  *
- * @remarks Branding di-resolve di atas boundary supaya fallback bisa menyebut
- * tenant sebelum situs ter-resolve: `resolveTenantBranding` membaca lewat
- * `classifyTenantHost` yang sudah dedup per request plus template ber-tag 24
- * jam, jadi cache hangat tidak menambah round-trip baru. Konsekuensinya shell
- * ini tidak lagi dapat di-prerender — tiap request menunggu branding sebelum
- * fallback ter-cat, sementara sebelumnya fallback langsung stream. Resolusi
- * hostname tetap di dalam `TenantHomeContent` supaya shell tidak menahan 404.
+ * @returns Halaman daftar tenant.
+ * @remarks Tanpa `Suspense` ber-fallback: tidak ada loader template maupun
+ * `RootLoading` domain utama yang boleh ter-cat di segmen ini. Resolusi situs
+ * tetap di dalam render agar 404 milik halaman.
  */
 export default async function TenantHomePage() {
-  const branding = await resolveTenantBranding();
-  return (
-    <Suspense
-      fallback={
-        branding === null ? (
-          <RootLoading />
-        ) : (
-          <TemplateLoader templateId={branding.templateId} />
-        )
-      }
-    >
-      <TenantHomeContent />
-    </Suspense>
-  );
-}
-
-async function TenantHomeContent() {
   const site = await resolveNetworkSite({}, '/');
   return <ListingPage site={site} title={site.settings.name} />;
 }

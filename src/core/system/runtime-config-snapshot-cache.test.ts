@@ -215,4 +215,57 @@ describe('RuntimeConfigSnapshotCache lapis bersama', () => {
     expect(entry.snapshot.configurationVersion).toBe(7);
     expect(readComplete).not.toHaveBeenCalled();
   });
+
+  it('tidak mengunduh ulang blob saat revisi tidak berubah setelah kedaluwarsa', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const sharedRead = vi.fn(async () => validModel());
+    const touch = vi.fn(async () => {});
+    const store: SnapshotSharedStore = { read: sharedRead, write: async () => {}, touch };
+    const clock = new FixedMonotonicClock();
+    const repository: RuntimeConfigReadRepository = {
+      readComplete,
+      readInventoryVersion: async () => ({ configurationVersion: 7 }),
+    };
+    const { cache: expiredCache } = { cache: new RuntimeConfigSnapshotCache({ repository, clock, snapshotStore: store }) };
+    await expiredCache.get('test');
+    expect(sharedRead).toHaveBeenCalledOnce();
+    clock.advance(RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS + 1);
+    await expiredCache.get('test');
+    expect(sharedRead).toHaveBeenCalledOnce();
+    expect(readComplete).not.toHaveBeenCalled();
+    expect(touch).toHaveBeenCalledWith('test', 7, RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS);
+  });
+
+  it('tanpa store tetap hemat baca penuh saat revisi tidak berubah', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const clock = new FixedMonotonicClock();
+    const repository: RuntimeConfigReadRepository = {
+      readComplete,
+      readInventoryVersion: async () => ({ configurationVersion: 7 }),
+    };
+    const storeless = new RuntimeConfigSnapshotCache({ repository, clock });
+    await storeless.get('test');
+    clock.advance(RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS + 1);
+    await storeless.get('test');
+    expect(readComplete).toHaveBeenCalledOnce();
+  });
+
+  it('mengunduh ulang saat revisi sumber sudah lebih baru', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const sharedRead = vi.fn(async () => validModel());
+    const store: SnapshotSharedStore = { read: sharedRead, write: async () => {}, touch: async () => {} };
+    let configurationVersion = 7;
+    const clock = new FixedMonotonicClock();
+    const repository: RuntimeConfigReadRepository = {
+      readComplete,
+      readInventoryVersion: async () => ({ configurationVersion }),
+    };
+    const revisioned = new RuntimeConfigSnapshotCache({ repository, clock, snapshotStore: store });
+    await revisioned.get('test');
+    configurationVersion = 8;
+    clock.advance(RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS + 1);
+    await revisioned.get('test');
+    expect(sharedRead).toHaveBeenCalledTimes(2);
+    expect(readComplete).not.toHaveBeenCalled();
+  });
 });

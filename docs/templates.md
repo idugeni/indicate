@@ -10,9 +10,9 @@ Sepuluh template hidup di `src/modules/site/components/network/templates/`:
 `green-minimal`, `orange-modern`, `purple-editorial`, `red-editorial`,
 `soft-blue`, `warm-editorial`). Semua duplikat pola modular `clean-blue/`.
 Route `(network)` tidak mengenal nama template — semua lewat dispatcher di
-`src/modules/site/components/network/network-listing.tsx`. Loader berbrand
-justru pengecualian: ia butuh `templateId` **sebelum** situs ter-resolve,
-jadi `resolveTenantBranding()` membacanya sendiri satu skalar.
+`src/modules/site/components/network/network-listing.tsx`. Segmen `(network)`
+sengaja tanpa loader: tidak ada `templates/*/ui/loader.tsx`, tidak ada
+`TemplateLoader`, dan tidak ada pembacaan branding di atas boundary.
 
 ## Dispatcher (registry saat template baru lahir)
 
@@ -20,9 +20,9 @@ jadi `resolveTenantBranding()` membacanya sendiri satu skalar.
 `SearchPage`, `ReportPage`, `NotFoundPage`, `ChannelPage` — semua resolve via
 `normalizeTemplateId(...)` + `switch` langsung ke komponen per-template di
 `src/modules/site/components/network/network-listing.tsx` dengan fallback
-`clean-blue`. Pengecualian sadar: `(network)/loading.tsx` tetap satu loader
-netral — boundary Suspense tidak punya konteks Site, jadi loader per-template
- mustahil secara arsitektur.
+`clean-blue`. `(network)/loading.tsx` mengembalikan null — boundary Suspense
+tidak merender overlay apa pun, dan `RootLoading` domain utama tidak bocor ke
+rute tenant.
 
 ## Struktur per-template (modular, contoh `clean-blue/`)
 
@@ -36,7 +36,7 @@ netral — boundary Suspense tidak punya konteks Site, jadi loader per-template
                                  # store-badges, back-to-top
   ui/                            # container, status-line, empty, author-avatar,
                                  # article-meta, section-heading,
-                                 # <id>-input, <id>-button, loader
+                                 # <id>-input, <id>-button
   seo/json-ld.tsx                # JSON-LD mandiri template
   cards/                         # hero, ticker, picks, pick-card, archive-pager,
                                  # newsletter, hero-actions, share-buttons, view-beacon
@@ -139,73 +139,21 @@ Gambar tenant memakai `unoptimized` tanpa syarat di kartu hero/article
 (plus saklar global `images.unoptimized` di `next.config.ts`): nol biaya
 transformasi Vercel.
 
-`clean-blue`. Pengecualian sadar: `(network)/loading.tsx` **juga** memuat
-loader berbrand, karena ia ikut me-resolve branding sendiri.
+`clean-blue`. Lima route `(network)` merender langsung tanpa `Suspense`
+ber-fallback, dan `(network)/loading.tsx` mengembalikan null — tidak ada
+loader template maupun `RootLoading` domain utama yang ter-cat di rute tenant.
 
-## Loader berbrand (bukan lagi satu loader netral)
+## Tanpa loader (10 template + segmen jaringan)
 
-Loader lama sudah mati: `TemplateLoader` di `network-listing.tsx` tidak pernah
-dirender, 10 `templates/*/ui/loader.tsx` menggantungkan diri padanya, dan
-`network/ui/ring-loader.tsx` menggantungkan diri pada 10 file itu. 12 file
-reachable-nol.
-
-Sekarang: `resolveTenantBranding()` (`modules/delivery/tenant-branding.ts`)
-membaca **satu skalar** `site_settings.template_id` (generated column, bukan
-blob `colors`) lewat `loadSiteTemplateId`, cache 24 jam, tag `host:`/`site:`/
-`org:`. Logo **nol query**: `/logo.png` adalah rute deterministik per host
-(`https://<host>/logo.png`). Lima route `(network)` hoist branding ke atas
-boundary lalu merender `TemplateLoader` sebagai `fallback`; `branding === null`
-turun ke `RootLoading`.
-
-`BrandedLoader` (`network/ui/branded-loader.tsx`) menampilkan **satu titik berputar
-mengorbit cincin tipis** (`.brand-orbit-track` + `.brand-orbit`) di atas
-background `--tpl-canvas`, dan **tanpa teks terlihat** — nama aksesibel datang
-dari `aria-label`, sedangkan seluruh subtree visual diberi `aria-hidden`.
-
-**Tanpa logo tenant, dan itu disengaja.** Ke-134 `site-logo` di DB semuanya
-512×2 (persegi), tapi isinya *wordmark* — persegi panjang di dalam kanvas
-persegi. Dipakai `object-contain` di dalam disc bulat, yang tampil bukan logo
-melingkar melainkan **persegi gelap** di tengah lingkaran. Karena itu
-`logoUrl` dihapus dari `BrandedLoaderProps`, `TemplateLoader`, dan 10
-`templates/*/ui/loader.tsx` — plus `branding.logoUrl` tidak lagi diteruskan
-dari 5 route `(network)`. Indikator cukup warna `--tpl-primary`, jadi tidak ada
-permintaan gambar sama sekali di jalur render loader.
-
-Sengaja CSS polos — tanpa `conic-gradient`, `mask-image`, atau `filter: blur()`,
-yang di HP kelas bawah mahal karena di-repaint tiap frame. Indikatornya dua
-transform yang dikompositkan: track berdenyut (`scale` + `opacity`), titik
-berputar (`rotate`), dan titik itself rides pada `::after` yang dipin ke tepi
-atas track — jadi satu elemen animasi cukup untuk mengorbitkannya.
-
-Geometri dan kebijakan gerak hidup di `globals.css` sebagai `.brand-orbit*`
-(`@layer components`), bukan inline style: kebijakan `prefers-reduced-motion`
-harus berdiri di sebelah aturan globalnya. Dua jebakan yang sudah ternilai:
-
-- **Jangan lewat custom property untuk warnanya.** `var()` di dalam custom
-  property resolve terhadap elemen yang *mendeklarasikannya*, sedangkan
-  `--tpl-primary` hanya ada di overlay loader — deklarasi jadi invalid dan
-  warnanya jatuh diam-diam ke nilai awal.
-- **Override `prefers-reduced-motion` wajib di `@layer base`.** Aturan global
-  `* { animation-duration: 0.01ms !important }` ada di base, dan `!important`
-  membalik urutan cascade layer (layer paling awal menang untuk penting).
-  Deklarasi yang sama di `@layer components` kalah, hasilnya 0.01s/1 iterasi —
-  indikator beku, persis gejala yang dilaporkan. Di base, orbit justru
-  **melambat** (1.6s→13s, denyut 2.4s→8s), bukan mati: beku jadi cincin penuh
-  yang tak terbaca sebagai "memuat".
-
-`branded-loader.test.tsx` menguji kontrak CSS itu langsung dari
-`globals.css`, bukan cuma DOM — termasuk bahwa override reduced-motion berada
-di `@layer base`, dan bahwa tidak ada `filter`/`conic-gradient`/`mask-image`
-di ketiga blok loader.
-
-`RootLoading` (`src/app/loading.tsx`) kini benar-benar netral: `bg-bg`/`text-paper`
-saja, cincin `currentColor`, nol hex. Dipakai hanya saat host bukan tenant aktif
-atau baca branding gagal. `(dashboard)`, `(site)`, dan `status/` punya
-`loading.tsx` sendiri; `(auth)` sekarang juga punya, kalau tidak ia berkedip
-indigo gelap sebelum krem-nya ter-cat.
-
-Yang **tidak** berubah: 10 route `(network)` tetap Partial Prerender. `await`
-di atas boundary tidak menurunkan statusnya.
+Loader berbrand sudah dihapus seluruhnya: 10 `templates/*/ui/loader.tsx`,
+`network/ui/branded-loader.tsx`, dispatcher `TemplateLoader` di
+`network-listing.tsx`, `modules/delivery/tenant-branding.ts`, dan CSS
+`.brand-orbit*` di `globals.css`. Lima route `(network)` (`/`, `/[slug]`,
+`/indeks`, `/categories/[slug]`, `/tags/[tag]`) merender langsung tanpa
+`Suspense` ber-fallback dan tanpa membaca branding di atas boundary —
+satu round-trip `loadSiteTemplateId` per request ikut hilang.
+`(network)/loading.tsx` mengembalikan null agar `src/app/loading.tsx`
+(`RootLoading` domain utama) tidak diwarisi segmen tenant.
 
 ## Tiga registry (wajib kompak)
 
@@ -215,7 +163,7 @@ di atas boundary tidak menurunkan statusnya.
 
 ## Checklist template baru
 
-1. Duplikat pola `clean-blue/` (chrome, 8 halaman di `pages/`, loader di `ui/`).
+1. Duplikat pola `clean-blue/` (chrome, 8 halaman di `pages/`, tanpa loader di `ui/`).
 2. Tambah entri di registry `network-listing.tsx` + 3 registry di bawah + seed migration.
 3. `RESERVED_ARTICLE_SLUGS` (`modules/dashboard/schemas.ts`) untuk tiap path
    statis baru — dan untuk tiap path control-plane yang bocor ke host tenant.

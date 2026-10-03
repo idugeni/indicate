@@ -29,7 +29,7 @@ export interface SnapshotStatus {
 
 /** Cache runtime config snapshots in process.
  *
- * @remarks PostgreSQL stays the only authority; single-flight refresh, failed refreshes never extend freshness, expiry yields unavailable (never stale). Fast cross-instance path: cheap revision + raw model from the shared layer, validated by the same parser before adoption; any failure → full read. Rejected parse keeps the old entry on its original expiry; never adopt a partial value. Issues carry schema paths plus short codes only, so they are safe for telemetry and turn the next all-or-nothing rejection into a one-line diagnosis instead of `[unknown]`.
+ * @remarks PostgreSQL stays the only authority; single-flight refresh, failed refreshes never extend freshness, expiry yields unavailable (never stale). Fast cross-instance path: cheap revision + raw model from the shared layer, validated by the same parser before adoption; any failure → full read. When the revision is unchanged the refresh re-adopts the in-process snapshot without downloading the shared blob or re-reading Postgres, so steady state costs one revision check plus a best-effort TTL touch instead of a 3.65 MB transfer. Rejected parse keeps the old entry on its original expiry; never adopt a partial value. Issues carry schema paths plus short codes only, so they are safe for telemetry and turn the next all-or-nothing rejection into a one-line diagnosis instead of `[unknown]`.
  */
 export class RuntimeConfigSnapshotCache {
   readonly #repository: RuntimeConfigReadRepository;
@@ -75,6 +75,20 @@ export class RuntimeConfigSnapshotCache {
   }
 
   private async performRefresh(environment: string): Promise<CacheEntry> {
+    const active = this.#active;
+    if (active !== null && active.environment === environment) {
+      try {
+        const { configurationVersion } = await this.#repository.readInventoryVersion(environment);
+        if (configurationVersion === active.entry.snapshot.configurationVersion) {
+          if (this.#store !== null) {
+            void this.#store.touch(environment, configurationVersion, this.#storeTtlSeconds).catch(() => undefined);
+          }
+          return this.adopt(environment, active.entry.snapshot);
+        }
+      } catch {
+        /* inventory unavailable: fall through to the shared/full read below */
+      }
+    }
     if (this.#store !== null) {
       try {
         const { configurationVersion } = await this.#repository.readInventoryVersion(environment);

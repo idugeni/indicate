@@ -46,6 +46,17 @@ interface FlushEntry {
 
 type FlushDelta = Map<string, FlushEntry & { count: number }>;
 
+/**
+ * Keys pulled per flush iteration.
+ *
+ * @remarks One `SCAN` + one `GETDEL` eval per batch: a larger batch trades a
+ * slightly bigger single response (key names only) for fewer REST round
+ * trips, which is what the monthly Upstash command quota counts. Values
+ * travel once via the pop eval regardless of batch size, so bandwidth is
+ * unaffected.
+ */
+const SCAN_BATCH_SIZE = 1000;
+
 const POP_PAGE_SCRIPT = `
 local out = {}
 for _, key in ipairs(KEYS) do
@@ -100,7 +111,7 @@ async function handleGET(request: Request) {
     let invalid = 0;
     let cursor = 0;
     do {
-      const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: 200 });
+      const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: SCAN_BATCH_SIZE });
       cursor = Number(next);
       if (keys.length > 0) {
         const popped = (await redis.eval(POP_PAGE_SCRIPT, keys, [])) as string[];

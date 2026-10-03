@@ -1,8 +1,6 @@
-import type { ReactElement } from 'react';
-
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import type { DocSectionItem } from '@/modules/site/components/layout/doc-section';
-import { normalizeTemplateId, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
+import { normalizeTemplateId } from '@/modules/site/components/network/templates/listing-shared';
 import { CleanBlueListing, type ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
 import { CleanBlueArticle } from '@/modules/site/components/network/templates/clean-blue/pages/article-page';
 import { CleanBlueLegal } from '@/modules/site/components/network/templates/clean-blue/pages/legal-page';
@@ -93,16 +91,6 @@ import { WarmEditorialSearch } from '@/modules/site/components/network/templates
 import { WarmEditorialReport } from '@/modules/site/components/network/templates/warm-editorial/pages/report-page';
 import { WarmEditorialNotFound } from '@/modules/site/components/network/templates/warm-editorial/pages/not-found-page';
 import { WarmEditorialChannel } from '@/modules/site/components/network/templates/warm-editorial/pages/channel-page';
-import { CleanBlueLoader } from '@/modules/site/components/network/templates/clean-blue/ui/loader';
-import { BlackLimeLoader } from '@/modules/site/components/network/templates/black-lime/ui/loader';
-import { DarkNavyLoader } from '@/modules/site/components/network/templates/dark-navy/ui/loader';
-import { GlassyBlueLoader } from '@/modules/site/components/network/templates/glassy-blue/ui/loader';
-import { GreenMinimalLoader } from '@/modules/site/components/network/templates/green-minimal/ui/loader';
-import { OrangeModernLoader } from '@/modules/site/components/network/templates/orange-modern/ui/loader';
-import { PurpleEditorialLoader } from '@/modules/site/components/network/templates/purple-editorial/ui/loader';
-import { RedEditorialLoader } from '@/modules/site/components/network/templates/red-editorial/ui/loader';
-import { SoftBlueLoader } from '@/modules/site/components/network/templates/soft-blue/ui/loader';
-import { WarmEditorialLoader } from '@/modules/site/components/network/templates/warm-editorial/ui/loader';
 
 export { TEMPLATE_IDS, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
 export type { ListingProps } from '@/modules/site/components/network/templates/clean-blue/pages/listing-page';
@@ -227,49 +215,6 @@ export function ListingPage({ site, title, description, path = '/', indexable = 
       return <CleanBlueListing site={site} title={title} description={description} path={path} indexable={indexable} />;
     default:
       throw new Error('Template site tidak dikenal.');
-  }
-}
-
-/**
- * Cross-template tenant loader dispatcher: the slot already holding the active template renders its own colored indicator.
- *
- * @param templateId - Id template mentah dari pengaturan tenant, apa adanya.
- * @returns Overlay `role="status"` berpalet template aktif, atau Clean Blue saat id tak dikenal.
- * @remarks `templateId` diterima sebagai `unknown` karena pemanggil hanya memegang
- * nilai mentah, dan `normalizeTemplateId` melempar untuk id tak terdaftar; status
- * memuat tidak boleh melempar, jadi normalisasi dibungkus `try`/`catch` yang turun
- * ke Clean Blue alih-alih menggagalkan cat.
- */
-export function TemplateLoader({ templateId }: { readonly templateId: unknown }): ReactElement {
-  let id: TemplateId;
-  try {
-    id = normalizeTemplateId(templateId);
-  } catch {
-    return <CleanBlueLoader />;
-  }
-  switch (id) {
-    case 'black-lime':
-      return <BlackLimeLoader />;
-    case 'dark-navy':
-      return <DarkNavyLoader />;
-    case 'glassy-blue':
-      return <GlassyBlueLoader />;
-    case 'green-minimal':
-      return <GreenMinimalLoader />;
-    case 'orange-modern':
-      return <OrangeModernLoader />;
-    case 'purple-editorial':
-      return <PurpleEditorialLoader />;
-    case 'red-editorial':
-      return <RedEditorialLoader />;
-    case 'soft-blue':
-      return <SoftBlueLoader />;
-    case 'warm-editorial':
-      return <WarmEditorialLoader />;
-    case 'clean-blue':
-      return <CleanBlueLoader />;
-    default:
-      return <CleanBlueLoader />;
   }
 }
 
