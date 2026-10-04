@@ -36,6 +36,10 @@
       "schedule": "*/30 * * * *"
     },
     {
+      "path": "/api/internal/maintenance/ai-model-sweep",
+      "schedule": "15 3 * * *"
+    },
+    {
       "path": "/api/health",
       "schedule": "47 4 * * *"
     }

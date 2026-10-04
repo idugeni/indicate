@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AI_BREAKER_WINDOW_SECONDS, AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, getModelOwnerProvider, getRoundRobinCursor, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveOrderedAiModelChain, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
+import { AI_BREAKER_WINDOW_SECONDS, AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, getActiveRoutingPolicy, getModelOwnerProvider, getRoundRobinCursor, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveOrderedAiModelChain, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
 import type { AiCredentialRecord, AiRoutingPolicy } from '@/modules/ai/ai-types';
 
 function makeCredential(overrides: Partial<AiCredentialRecord> & { id: string }): AiCredentialRecord {
@@ -159,6 +159,7 @@ function makePolicy(overrides?: Partial<AiRoutingPolicy>): AiRoutingPolicy {
     id: 'default',
     rotationStrategy: 'health_aware',
     chainStrategy: 'fallback',
+    costMode: 'throughput',
     primaryProviderId: 'gemini',
     fallbackProviderId: null,
     defaultModel: 'gemini-3.8-flash',
@@ -206,6 +207,17 @@ describe('resolveAiModelChain', () => {
     expect(resolveAiModelChain(makePolicy({ primaryProviderId: 'openrouter' }), 'gemini-3.8-flash-tts', 'gemini')).toEqual([
       { providerId: 'gemini', modelName: 'gemini-3.8-flash-tts' },
     ]);
+  });
+
+  it('primary null menghasilkan rantai kosong tanpa menebak provider', () => {
+    expect(resolveAiModelChain(makePolicy({ primaryProviderId: null }))).toEqual([]);
+  });
+});
+
+describe('getActiveRoutingPolicy', () => {
+  it('null saat baris default belum ada atau db gagal', async () => {
+    expect(await getActiveRoutingPolicy({ execute: async () => [] })).toBeNull();
+    expect(await getActiveRoutingPolicy({ execute: async () => { throw new Error('down'); } })).toBeNull();
   });
 });
 
@@ -312,9 +324,9 @@ describe('model circuit breaker', () => {
     await recordModelInfraFailure(undefined, 'gemini', 'gemini-3.8-flash');
     await recordModelSuccess(undefined, 'gemini', 'gemini-3.8-flash');
     const failing = {
-      get: async (_key: string): Promise<number | null> => { throw new Error('redis down'); },
-      incrby: async (_key: string, _delta: number): Promise<number> => { throw new Error('redis down'); },
-      expire: async (_key: string, _seconds: number): Promise<void> => { throw new Error('redis down'); },
+      get: async (): Promise<number | null> => { throw new Error('redis down'); },
+      incrby: async (): Promise<number> => { throw new Error('redis down'); },
+      expire: async (): Promise<void> => { throw new Error('redis down'); },
     };
     expect(await isModelBreakerTripped(failing, 'gemini', 'gemini-3.8-flash')).toBe(false);
     await recordModelInfraFailure(failing, 'gemini', 'gemini-3.8-flash');
@@ -401,7 +413,7 @@ describe('recordKeySuccess single-statement', () => {
   });
 
   it('tidak pernah melempar saat db gagal', async () => {
-    const broken = { execute: async (_query: unknown): Promise<unknown[]> => { throw new Error('down'); } };
+    const broken = { execute: async (): Promise<unknown[]> => { throw new Error('down'); } };
     await expect(recordKeySuccess(broken, 'cred-1', 50)).resolves.toBeUndefined();
   });
 });
@@ -502,7 +514,7 @@ describe('model circuit breaker half-open', () => {
       store: {
         get: async (key: string): Promise<string | null> => values.get(key) ?? null,
         incrby: async (key: string, delta: number): Promise<number> => delta,
-        expire: async (_key: string, _seconds: number): Promise<void> => {},
+        expire: async (): Promise<void> => {},
         set: async (key: string, value: string): Promise<void> => {
           values.set(key, value);
         },

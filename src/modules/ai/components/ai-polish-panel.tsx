@@ -65,7 +65,9 @@ export function AiPolishPanel({
       setRounds((count) => count + 1);
       toast.success('Isi selesai dipoles. Tinjau sebelum diterapkan.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      const message = err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.';
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy('idle');
     }
@@ -104,7 +106,9 @@ export function AiPolishPanel({
         toast.success('Klasifikasi siap. Tinjau sebelum diterapkan.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      const message = err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.';
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy('idle');
     }

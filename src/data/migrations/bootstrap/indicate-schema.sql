@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (264 migrations):
+-- Reviewed sources, in journal order (267 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -278,6 +278,9 @@
 --   262  20261004151000_list_bridge_inbox  ledger sha256:c1a23974a063e7b7148f399e3a50f5b7c15a9c477a63ab4ee170ddea35bbfea0
 --   263  20261004162800_media_archived_rows_sweep  ledger sha256:c9844e3c32a5db4ec82830982e964c8139c32d8626500db4ba618f78e97fe3be
 --   264  20261004171400_audit_chain_exceptions  ledger sha256:291bc4ceccfd3da497d602c17be2cad49d8e2b75744cb793c28a2b35da013877
+--   265  20261005000000_ai_routing_cost_mode  ledger sha256:a7b5679ad8995ae656f026a7f87fa33708367fee072bd3771b5e8d2ee3f780b3
+--   266  20261006000000_ai_status_enums  ledger sha256:ee37cf9ce84f565802e003adb2d1539fe41577bf8cc0e4c8d0ae145a7526ec31
+--   267  20261006010000_invalidation_intent_status  ledger sha256:6de44bcab973e4f2803632109bb1523feb65f48d96fa98916990cbfd319500ee
 
 BEGIN;
 
@@ -21420,4 +21423,150 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (263, 'audit_chain_exceptions', 'sha256:cf8a9689055a3f7e7612e34693df73c8d6f2b1bd53a3622e5b813d914a7171f6');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('291bc4ceccfd3da497d602c17be2cad49d8e2b75744cb793c28a2b35da013877', 1791180000000);
+
+-- ----------------------------------------------------------------------
+-- 20261005000000_ai_routing_cost_mode
+-- ----------------------------------------------------------------------
+-- Postur biaya routing AI: throughput (tercepat dulu, perilaku lama) atau price (termurah dulu).
+--
+-- Kolom dipakai adapter OpenAI-compatible untuk memilih `provider.sort`
+-- OpenRouter per request; tanpa baris policy atau nilai tak dikenal,
+-- pembaca memakai 'throughput'. Default menjaga perilaku existing.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.ai_routing_policies
+  ADD COLUMN IF NOT EXISTS cost_mode text NOT NULL DEFAULT 'throughput';
+DO $cost_mode_check$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_routing_policies_cost_known') THEN
+    ALTER TABLE public.ai_routing_policies
+      ADD CONSTRAINT ai_routing_policies_cost_known CHECK (cost_mode IN ('throughput', 'price'));
+  END IF;
+END
+$cost_mode_check$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (264, 'ai_routing_cost_mode', 'sha256:43b344f1bc9675428c431a253b921ae6eefc7bef3fd4bb029bdff6c49d0fe2a3');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a7b5679ad8995ae656f026a7f87fa33708367fee072bd3771b5e8d2ee3f780b3', 1791244800000);
+
+-- ----------------------------------------------------------------------
+-- 20261006000000_ai_status_enums
+-- ----------------------------------------------------------------------
+-- Enum status tertutup: ganti text+CHECK dengan pgEnum agar nilai
+-- liar ditolak di level tipe, bukan validasi aplikasi.
+--
+-- Kolom yang dikonversi hanya berisi nilai di dalam enum baru
+-- (diverifikasi dari data live sebelum migrasi ini ditulis):
+-- chain_strategy, cost_mode, request_logs.status, insights.status,
+-- incidents.status, checks.health, erasure.status (pakai ulang
+-- task_status), organizations.kind, article_sites.assignment_source.
+-- Check redundant domain_activation_attempts_operation_check dihapus
+-- (kolomnya sudah activation_operation sejak awal).
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $ai_status_enums$
+BEGIN
+  BEGIN
+    EXECUTE 'CREATE TYPE public.ai_chain_strategy AS ENUM (''fallback'', ''round_robin'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'CREATE TYPE public.ai_cost_mode AS ENUM (''throughput'', ''price'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'CREATE TYPE public.ai_request_status AS ENUM (''success'', ''failed'', ''blocked'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'CREATE TYPE public.ai_insight_status AS ENUM (''open'', ''resolved'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'CREATE TYPE public.incident_status AS ENUM (''open'', ''resolved'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'CREATE TYPE public.probe_health AS ENUM (''ok'', ''degraded'', ''down'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'CREATE TYPE public.organization_kind AS ENUM (''operator'', ''customer'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+  BEGIN
+    EXECUTE 'CREATE TYPE public.article_assignment_source AS ENUM (''manual'', ''auto'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+END
+$ai_status_enums$;
+ALTER TABLE public.ai_routing_policies DROP CONSTRAINT IF EXISTS ai_routing_policies_chain_known;
+ALTER TABLE public.ai_routing_policies DROP CONSTRAINT IF EXISTS ai_routing_policies_cost_known;
+ALTER TABLE public.ai_request_logs DROP CONSTRAINT IF EXISTS ai_request_logs_status_known;
+ALTER TABLE public.organizations DROP CONSTRAINT IF EXISTS organizations_kind_check;
+ALTER TABLE public.article_sites DROP CONSTRAINT IF EXISTS article_sites_assignment_source_values;
+ALTER TABLE public.article_sites DROP CONSTRAINT IF EXISTS article_sites_expanded_from_consistent;
+ALTER TABLE public.domain_activation_attempts DROP CONSTRAINT IF EXISTS domain_activation_attempts_operation_check;
+ALTER TABLE public.ai_routing_policies ALTER COLUMN chain_strategy DROP DEFAULT;
+ALTER TABLE public.ai_routing_policies ALTER COLUMN chain_strategy TYPE public.ai_chain_strategy USING chain_strategy::public.ai_chain_strategy;
+ALTER TABLE public.ai_routing_policies ALTER COLUMN chain_strategy SET DEFAULT 'fallback';
+ALTER TABLE public.ai_routing_policies ALTER COLUMN cost_mode DROP DEFAULT;
+ALTER TABLE public.ai_routing_policies ALTER COLUMN cost_mode TYPE public.ai_cost_mode USING cost_mode::public.ai_cost_mode;
+ALTER TABLE public.ai_routing_policies ALTER COLUMN cost_mode SET DEFAULT 'throughput';
+ALTER TABLE public.ai_request_logs ALTER COLUMN status TYPE public.ai_request_status USING status::public.ai_request_status;
+ALTER TABLE public.ai_query_insights ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE public.ai_query_insights ALTER COLUMN status TYPE public.ai_insight_status USING status::public.ai_insight_status;
+ALTER TABLE public.ai_query_insights ALTER COLUMN status SET DEFAULT 'open';
+ALTER TABLE public.status_incidents ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE public.status_incidents ALTER COLUMN status TYPE public.incident_status USING status::public.incident_status;
+ALTER TABLE public.status_incidents ALTER COLUMN status SET DEFAULT 'open';
+ALTER TABLE public.status_checks ALTER COLUMN health TYPE public.probe_health USING health::public.probe_health;
+ALTER TABLE public.org_erasure_requests DROP CONSTRAINT IF EXISTS org_erasure_requests_status_check;
+ALTER TABLE public.org_erasure_requests ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE public.org_erasure_requests ALTER COLUMN status TYPE public.task_status USING status::public.task_status;
+ALTER TABLE public.org_erasure_requests ALTER COLUMN status SET DEFAULT 'pending';
+ALTER TABLE public.organizations ALTER COLUMN kind DROP DEFAULT;
+ALTER TABLE public.organizations ALTER COLUMN kind TYPE public.organization_kind USING kind::public.organization_kind;
+ALTER TABLE public.organizations ALTER COLUMN kind SET DEFAULT 'customer';
+ALTER TABLE public.article_sites ALTER COLUMN assignment_source DROP DEFAULT;
+ALTER TABLE public.article_sites ALTER COLUMN assignment_source TYPE public.article_assignment_source USING assignment_source::public.article_assignment_source;
+ALTER TABLE public.article_sites ALTER COLUMN assignment_source SET DEFAULT 'manual';
+DO $expanded_consistent$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'article_sites_expanded_from_consistent') THEN
+    ALTER TABLE public.article_sites
+      ADD CONSTRAINT article_sites_expanded_from_consistent CHECK ((assignment_source = 'auto') = (expanded_from_site_id IS NOT NULL));
+  END IF;
+END
+$expanded_consistent$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (265, 'ai_status_enums', 'sha256:21c81ea70da04386fb7c59f9f86ade6c54017ef07a16a5dc3813eef862cdafdf');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ee37cf9ce84f565802e003adb2d1539fe41577bf8cc0e4c8d0ae145a7526ec31', 1791331200000);
+
+-- ----------------------------------------------------------------------
+-- 20261006010000_invalidation_intent_status
+-- ----------------------------------------------------------------------
+-- Enum status intent invalidasi runtime-config: daur pending → claimed →
+-- completed/failed, diverifikasi dari fungsi claim/complete/fail.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DO $invalidation_intent_status$
+BEGIN
+  BEGIN
+    EXECUTE 'CREATE TYPE public.invalidation_intent_status AS ENUM (''pending'', ''claimed'', ''completed'', ''failed'')';
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END;
+END
+$invalidation_intent_status$;
+ALTER TABLE public.runtime_config_invalidation_intents ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE public.runtime_config_invalidation_intents ALTER COLUMN status TYPE public.invalidation_intent_status USING status::public.invalidation_intent_status;
+ALTER TABLE public.runtime_config_invalidation_intents ALTER COLUMN status SET DEFAULT 'pending';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (266, 'invalidation_intent_status', 'sha256:d3d5b85d5fb908ea9e9b15dab6680e72df374cb3b5edeb9c913af3a6d6070a97');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6de44bcab973e4f2803632109bb1523feb65f48d96fa98916990cbfd319500ee', 1791334800000);
 COMMIT;

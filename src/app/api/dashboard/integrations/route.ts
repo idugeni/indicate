@@ -1,6 +1,7 @@
 import { pageFromSearchParams } from '@/data/repos/shared/list-page';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { Redis } from '@upstash/redis';
 import { z } from 'zod';
 
 import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
@@ -17,6 +18,8 @@ import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAiRepository } from '@/data/repos/ai';
 import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
+import { aiBreakerKey } from '@/modules/ai/ai-router';
+import { buildChainHealth, type AiChainHealthEntry } from '@/modules/ai/ai-chain-health';
 import { createResendEmailApiAdapter } from '@/integrations/email/resend-email-api';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { UpstashRateLimitAdapter } from '@/integrations/redis/upstash-rate-limit';
@@ -34,7 +37,7 @@ const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().mi
  * @returns Status code honoring 429 for rate-limited webhook traffic.
  */
 export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
-interface Context { readonly actor: AuthorizedTenantActorContext; readonly localUserId: string; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly accessKeys: DashboardAccessKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
+interface Context { readonly actor: AuthorizedTenantActorContext; readonly localUserId: string; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly accessKeys: DashboardAccessKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly redis: Redis; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
 type ContextResult = Context | PublicErrorEnvelope; const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
@@ -44,7 +47,7 @@ async function contextFor(organizationId: string, requestId: string): Promise<Co
   const repository = new DrizzleIntegrationsRepository(runtime.db);
   const accessKeys = new DashboardAccessKeyService(new DrizzleDashboardAccessKeyRepository(runtime.db), identifiers);
   const emailPort = config.email === null ? null : createResendEmailApiAdapter(config.email.apiKey, config.email.defaultFrom);
-  const shared = { repository, apiKeys: new ApiKeyService(repository, identifiers), accessKeys, ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), policy: { ...config.rateLimits.mutation, failureMode: 'closed' as const } };
+  const shared = { repository, apiKeys: new ApiKeyService(repository, identifiers), accessKeys, ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), redis: new Redis({ url: config.redis.url, token: config.redis.token }), policy: { ...config.rateLimits.mutation, failureMode: 'closed' as const } };
   const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
   if (user === null) return createNonDisclosingDenial(requestId);
   const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
@@ -53,12 +56,70 @@ async function contextFor(organizationId: string, requestId: string): Promise<Co
 }
 function response(error: PublicErrorEnvelope) { const retry = error.error.fields?.retryAfterSeconds?.[0]; return NextResponse.json(error, { status: statusFor(error), ...(retry === undefined ? {} : { headers: { 'Retry-After': retry } }) }); }
 
+/**
+ * Read live breaker counters for the armed chain without touching providers.
+ *
+ * @param context - Request context carrying the runtime Redis connection.
+ * @param overview - Panel overview holding the armed policy and credentials.
+ * @returns Ordered chain health; empty when routing is unconfigured or Redis is down.
+ */
+async function readChainHealth(
+  context: { readonly redis: Pick<Redis, 'get'> },
+  overview: { readonly policy: { readonly chainStrategy: 'fallback' | 'round_robin'; readonly costMode: 'throughput' | 'price'; readonly primaryProviderId: string | null; readonly fallbackProviderId: string | null; readonly defaultModel: string; readonly fallbackModel: string } | null; readonly credentials: readonly { readonly providerId: string; readonly status: string }[] },
+): Promise<readonly AiChainHealthEntry[]> {
+  const policy = overview.policy;
+  if (policy === null) return [];
+  try {
+    const { redis } = context;
+    const entries = [
+      { providerId: policy.primaryProviderId, modelName: policy.defaultModel },
+      ...(policy.fallbackProviderId === null ? [] : [{ providerId: policy.fallbackProviderId, modelName: policy.fallbackModel }]),
+    ];
+    const values = new Map<string, unknown>();
+    await Promise.all(entries.map(async (entry) => {
+      if (entry.providerId === null) return;
+      try {
+        values.set(aiBreakerKey(entry.providerId, entry.modelName), await redis.get(aiBreakerKey(entry.providerId, entry.modelName)));
+      } catch {
+        /* Fail open: one unreadable counter must not hide the chain. */
+      }
+    }));
+    const active = new Set(overview.credentials.filter((row) => row.status === 'active').map((row) => row.providerId));
+    return buildChainHealth(
+      {
+        id: 'default',
+        rotationStrategy: 'health_aware',
+        chainStrategy: policy.chainStrategy,
+        costMode: policy.costMode,
+        primaryProviderId: policy.primaryProviderId,
+        fallbackProviderId: policy.fallbackProviderId,
+        defaultModel: policy.defaultModel,
+        fallbackModel: policy.fallbackModel,
+        maxRetries: 5,
+        perKeyRetryLimit: 2,
+        cooldownDurationSec: 60,
+        requestTimeoutMs: 60000,
+        globalConcurrencyLimit: 100,
+        updatedAt: new Date(0).toISOString(),
+      },
+      values,
+      active,
+    );
+  } catch {
+    return [];
+  }
+}
+
 async function handleGET(request: Request) {
   const requestId = resolveRequestId(request); const url = new URL(request.url); const parsed = querySchema.safeParse({ organizationId: url.searchParams.get('organizationId'), view: url.searchParams.get('view'), customerId: url.searchParams.get('customerId') ?? undefined }); if (!parsed.success) return response(createNonDisclosingDenial(requestId));
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return response(context);
   {
     if (parsed.data.view === 'customers') { const page = pageFromSearchParams(url); const result = parsed.data.customerId === undefined ? await context.customers.list(context.actor, page) : await context.customers.read(context.actor, parsed.data.customerId); return result.ok ? NextResponse.json(result.value) : response(result.error); }
-    if (parsed.data.view === 'ai') { const result = await context.ai.overview(context.actor); return result.ok ? NextResponse.json(result.value) : response(result.error); }
+    if (parsed.data.view === 'ai') {
+      const result = await context.ai.overview(context.actor);
+      if (!result.ok) return response(result.error);
+      return NextResponse.json({ ...result.value, chainHealth: await readChainHealth(context, result.value) });
+    }
     const [keys, accessKeys, subscription] = await Promise.all([context.apiKeys.list(context.actor), context.accessKeys.list(context.actor), context.customers.readSubscription(context.actor)]); if (!keys.ok) return response(keys.error); if (!accessKeys.ok) return response(accessKeys.error); if (!subscription.ok) return response(subscription.error); return NextResponse.json({ apiKeys: keys.value, accessKeys: accessKeys.value, subscription: subscription.value, email: context.emailStatus });
   }
 }
@@ -74,7 +135,7 @@ async function handlePOST(request: Request) {
       'api-key.issue': (payload) => context.apiKeys.issue(context.actor, payload), 'api-key.rotate': (payload) => context.apiKeys.rotate(context.actor, payload), 'api-key.revoke': (payload) => context.apiKeys.revoke(context.actor, payload),
       'access-key.issue': (payload) => context.accessKeys.issue(context.actor, context.localUserId, payload), 'access-key.revoke': (payload) => context.accessKeys.revoke(context.actor, payload),
       'email.test': (payload) => context.emailTest.send(context.actor, payload),
-      'ai.credential.create': (payload) => context.ai.createCredential(context.actor, payload), 'ai.credential.test': (payload) => context.ai.testCredential(context.actor, payload), 'ai.credential.toggle': (payload) => context.ai.toggleCredential(context.actor, payload), 'ai.credential.delete': (payload) => context.ai.deleteCredential(context.actor, payload),
+      'ai.credential.create': (payload) => context.ai.createCredential(context.actor, payload), 'ai.credential.test': (payload) => context.ai.testCredential(context.actor, payload), 'ai.credential.toggle': (payload) => context.ai.toggleCredential(context.actor, payload), 'ai.credential.delete': (payload) => context.ai.deleteCredential(context.actor, payload), 'ai.model.toggle': (payload) => context.ai.toggleModel(context.actor, payload),
       'ai.policy.update': (payload) => context.ai.updatePolicy(context.actor, payload),
       'ai.master.provision': (payload) => context.ai.provisionMaster(context.actor, payload),
       'ai.insight.report': (payload) => context.ai.reportInsight(context.actor, payload), 'ai.insight.resolve': (payload) => context.ai.resolveInsight(context.actor, payload),

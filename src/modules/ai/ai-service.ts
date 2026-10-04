@@ -331,7 +331,8 @@ async function executeWithTimeout(
     try {
       return await Promise.race([
         adapter.execute(apiKey, modelName, prompt),
-        new Promise<never>((_, reject) => {
+        new Promise<never>((resolve, reject) => {
+          void resolve;
           timer = setTimeout(() => {
             reject(new Error(`AI request timed out after ${timeoutMs}ms.`));
           }, timeoutMs);
@@ -344,7 +345,8 @@ async function executeWithTimeout(
   const signal = AbortSignal.timeout(timeoutMs);
   return Promise.race([
     adapter.execute(apiKey, modelName, prompt, { signal }),
-    new Promise<never>((_, reject) => {
+    new Promise<never>((resolve, reject) => {
+      void resolve;
       signal.addEventListener(
         'abort',
         () => {
@@ -504,19 +506,29 @@ export async function executeAiQuery(
   }
 
   const policy = await getActiveRoutingPolicy(deps.db);
+  if (policy === null || policy.primaryProviderId === null) {
+    return {
+      text: 'Maaf, routing AI belum dikonfigurasi. Silakan coba kembali beberapa saat lagi.',
+      providerId: 'exhausted',
+      modelName: 'none',
+      credentialId: '',
+      credentialMasked: '',
+      latencyMs: 0,
+      retryCount: 0,
+      toolCallsExecuted: [],
+      error: 'ROUTING_UNCONFIGURED',
+    };
+  }
   const systemInstruction =
     promptData.systemInstruction ??
     (isStaff ? DEFAULT_STAFF_SYSTEM_INSTRUCTION : DEFAULT_PUBLIC_SYSTEM_INSTRUCTION);
-  const thinkingConfig = resolveThinkingBudget(
-    promptData.channel,
-    promptData.thinkingConfig,
-    promptData.prompt.length,
-  );
+  const thinkingConfig = resolveThinkingBudget(promptData.channel, promptData.thinkingConfig);
   const effectivePrompt: AiChatPrompt = {
     ...promptData,
     prompt: isStaff ? scrubbedPrompt : wrapUntrustedUserInput(scrubbedPrompt),
     systemInstruction,
     thinkingConfig,
+    costMode: promptData.costMode ?? policy.costMode,
   };
 
   const historyLength = promptData.history?.length ?? 0;

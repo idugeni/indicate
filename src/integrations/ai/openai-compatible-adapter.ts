@@ -92,9 +92,11 @@ export interface OpenAiCompatibleRouting {
 function buildProviderRouting(
   routing: OpenAiCompatibleRouting,
   responseFormat: Record<string, unknown> | undefined,
+  costMode: 'throughput' | 'price' | undefined,
 ): Record<string, unknown> | undefined {
   const provider: Record<string, unknown> = {};
-  if (routing.sort !== undefined) provider.sort = routing.sort;
+  const sort = costMode === 'price' && routing.sort !== undefined ? 'price' : routing.sort;
+  if (sort !== undefined) provider.sort = sort;
   if (routing.allowFallbacks !== undefined) provider.allow_fallbacks = routing.allowFallbacks;
   if (routing.dataCollection !== undefined) provider.data_collection = routing.dataCollection;
   const requireParameters = routing.requireParameters ?? responseFormat !== undefined;
@@ -119,7 +121,7 @@ function buildRequestBody(
 ): Record<string, unknown> {
   const effort = resolveReasoningEffort(promptData.thinkingConfig?.thinkingBudget);
   const responseFormat = buildResponseFormat(promptData);
-  const provider = buildProviderRouting(routing, responseFormat);
+  const provider = buildProviderRouting(routing, responseFormat, promptData.costMode);
   return {
     model: modelName,
     messages: buildMessages(promptData),

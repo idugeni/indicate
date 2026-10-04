@@ -73,10 +73,25 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   primary is exhausted, the service retries the chain on the fallback before
   giving up; an empty fallback provider means the fallback model runs on the
   primary provider. All four are editable in the panel; the active chain is
-  shown underneath the form. Draft streaming stays on the primary provider:
+  shown underneath the form. No static provider/model fallback exists in
+  code: without an armed `default` row (or with an unset primary), requests
+  fail closed (`ROUTING_UNCONFIGURED`) instead of guessing a provider. Draft streaming stays on the primary provider:
   Gemini entries stream token deltas, OpenAI-compatible entries
   (`openrouter`, `vercel-gateway`) resolve one non-streaming turn and emit
   it as a single SSE delta before `done`, so the client contract is unchanged.
+- Cost posture (`cost_mode`, `throughput` default): `throughput` asks OpenRouter
+  for fastest-first routing, `price` asks for cheapest-first. Stored on the
+  policy row (migration 264), editable in the panel, honored per request.
+- Chain health: the panel Ringkasan tab shows live breaker state per chain
+  entry (healthy / tripped with consecutive failures / no active credential),
+  read from Redis without calling providers.
+- Model sweep (cron `15 3 * * *`, `GET /api/internal/maintenance/ai-model-sweep`):
+  diffs the catalog against each provider's live model listing (OpenRouter
+  public, Gemini and Vercel via active keys) and deactivates rows whose model
+  id vanished; listing failures skip that provider with no changes. TTS,
+  transcription, and embedding rows are never auto-deactivated, and nothing
+  is ever auto-reactivated — re-enable from the catalog table instead. Every
+  auto-deactivation writes an `ai.model.auto_deactivate` audit row.
 - Chain strategy (`chain_strategy`, `fallback` default): `fallback` tries the
   chain in fixed order and moves to the next entry on retryable failure;
   `round_robin` rotates the starting entry per request through the Redis

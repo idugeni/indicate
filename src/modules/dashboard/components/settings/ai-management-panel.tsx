@@ -1,17 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Activity, CheckCircle2, Clock, KeyRound, Play, Plus, Power, ShieldCheck, SlidersHorizontal, TrendingUp, Trash2, Zap } from 'lucide-react';
+import { Activity, ArrowRight, CheckCircle2, Clock, Database, KeyRound, Play, Plus, Power, RotateCcw, ScrollText, ShieldCheck, SlidersHorizontal, TrendingUp, Trash2, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
+import { AiModelCombobox } from '@/modules/dashboard/components/settings/ai-model-combobox';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { AppTooltip } from '@/ui/app-tooltip';
@@ -33,6 +40,7 @@ interface CredentialRow {
 interface PolicyState {
   readonly rotationStrategy: string;
   readonly chainStrategy: string;
+  readonly costMode: 'throughput' | 'price';
   readonly primaryProviderId: string | null;
   readonly defaultModel: string;
   readonly fallbackProviderId: string | null;
@@ -45,15 +53,28 @@ interface PolicyState {
 }
 
 interface ModelEntry {
+  readonly id: string;
   readonly providerId: string;
   readonly modelName: string;
   readonly displayName: string;
   readonly releaseStage: string | null;
+  readonly contextWindow: number;
+  readonly supportedModalities: readonly string[];
   readonly rpmLimit: number | null;
   readonly tpmLimit: number | null;
   readonly rpdLimit: number | null;
   readonly supportsTools: boolean;
   readonly isDefault: boolean;
+  readonly isActive: boolean;
+}
+
+interface ChainHealthRow {
+  readonly providerId: string;
+  readonly modelName: string;
+  readonly role: 'primary' | 'fallback';
+  readonly hasCredential: boolean;
+  readonly tripped: boolean;
+  readonly failCount: number;
 }
 
 interface LogRow {
@@ -91,9 +112,10 @@ interface OrgUsageRow {
 
 interface OverviewState {
   readonly credentials: readonly CredentialRow[];
-  readonly policy: PolicyState;
+  readonly policy: PolicyState | null;
   readonly models: readonly ModelEntry[];
   readonly providers: readonly { readonly id: string; readonly name: string; readonly isActive: boolean; readonly supportsChat: boolean }[];
+  readonly chainHealth: readonly ChainHealthRow[];
   readonly recentLogs: readonly LogRow[];
   readonly queryInsights: readonly InsightRow[];
   readonly tokenUsageByOrg: readonly OrgUsageRow[];
@@ -147,7 +169,7 @@ function toCredential(value: unknown): CredentialRow | null {
   if (row === null || typeof row.id !== 'string' || typeof row.label !== 'string') return null;
   return {
     id: row.id,
-    providerId: asString(row.providerId, 'gemini'),
+    providerId: asString(row.providerId, ''),
     label: row.label,
     keyMasked: asString(row.keyMasked, '••••••••••'),
     status: asString(row.status, 'active'),
@@ -171,15 +193,19 @@ function toOverview(value: unknown): OverviewState | null {
         const row = asRecord(entry);
         if (row === null || typeof row.modelName !== 'string') return [];
         const model: ModelEntry = {
+          id: typeof row.id === 'string' ? row.id : row.modelName,
           providerId: asString(row.providerId, ''),
           modelName: row.modelName,
           displayName: asString(row.displayName, row.modelName),
           releaseStage: typeof row.releaseStage === 'string' ? row.releaseStage : null,
+          contextWindow: asNumber(row.contextWindow, 0),
+          supportedModalities: Array.isArray(row.supportedModalities) ? row.supportedModalities.filter((modality): modality is string => typeof modality === 'string') : [],
           rpmLimit: toNullableNumber(row.rpmLimit),
           tpmLimit: toNullableNumber(row.tpmLimit),
           rpdLimit: toNullableNumber(row.rpdLimit),
           supportsTools: row.supportsTools === true,
           isDefault: row.isDefault === true,
+          isActive: row.isActive !== false,
         };
         return [model];
       })
@@ -245,23 +271,39 @@ function toOverview(value: unknown): OverviewState | null {
         }];
       })
     : [];
+  const chainHealth: ChainHealthRow[] = Array.isArray(body.chainHealth)
+    ? body.chainHealth.flatMap((entry) => {
+        const row = asRecord(entry);
+        if (row === null || typeof row.providerId !== 'string' || typeof row.modelName !== 'string') return [];
+        return [{
+          providerId: row.providerId,
+          modelName: row.modelName,
+          role: row.role === 'fallback' ? 'fallback' : 'primary',
+          hasCredential: row.hasCredential === true,
+          tripped: row.tripped === true,
+          failCount: asNumber(row.failCount),
+        }];
+      })
+    : [];
   return {
     credentials,
-    policy: {
-      rotationStrategy: policy === null ? 'health_aware' : asString(policy.rotationStrategy, 'health_aware'),
-      chainStrategy: policy === null ? 'fallback' : asString(policy.chainStrategy, 'fallback'),
-      primaryProviderId: policy === null || typeof policy.primaryProviderId !== 'string' ? null : policy.primaryProviderId,
-      defaultModel: policy === null ? 'gemini-2.5-flash' : asString(policy.defaultModel, 'gemini-2.5-flash'),
-      fallbackProviderId: policy === null || typeof policy.fallbackProviderId !== 'string' ? null : policy.fallbackProviderId,
-      fallbackModel: policy === null ? 'gemini-2.5-flash' : asString(policy.fallbackModel, 'gemini-2.5-flash'),
-      maxRetries: policy === null ? 3 : asNumber(policy.maxRetries, 3),
-      perKeyRetryLimit: policy === null ? 2 : asNumber(policy.perKeyRetryLimit, 2),
-      cooldownDurationSec: policy === null ? 300 : asNumber(policy.cooldownDurationSec, 300),
-      requestTimeoutMs: policy === null ? 60000 : asNumber(policy.requestTimeoutMs, 60000),
-      globalConcurrencyLimit: policy === null ? 100 : asNumber(policy.globalConcurrencyLimit, 100),
+    policy: policy === null ? null : {
+      rotationStrategy: asString(policy.rotationStrategy, 'health_aware'),
+      chainStrategy: asString(policy.chainStrategy, 'fallback'),
+      costMode: policy.costMode === 'price' ? 'price' : 'throughput',
+      primaryProviderId: typeof policy.primaryProviderId !== 'string' ? null : policy.primaryProviderId,
+      defaultModel: asString(policy.defaultModel, ''),
+      fallbackProviderId: typeof policy.fallbackProviderId !== 'string' ? null : policy.fallbackProviderId,
+      fallbackModel: asString(policy.fallbackModel, ''),
+      maxRetries: asNumber(policy.maxRetries, 3),
+      perKeyRetryLimit: asNumber(policy.perKeyRetryLimit, 2),
+      cooldownDurationSec: asNumber(policy.cooldownDurationSec, 300),
+      requestTimeoutMs: asNumber(policy.requestTimeoutMs, 60000),
+      globalConcurrencyLimit: asNumber(policy.globalConcurrencyLimit, 100),
     },
     models,
     providers,
+    chainHealth,
     recentLogs,
     queryInsights,
     tokenUsageByOrg,
@@ -311,19 +353,22 @@ export function AiManagementPanel({
   const [label, setLabel] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [priority, setPriority] = useState('1');
-  const [providerId, setProviderId] = useState('gemini');
+  const [providerId, setProviderId] = useState('');
 
   const [rotationStrategy, setRotationStrategy] = useState('health_aware');
   const [chainStrategy, setChainStrategy] = useState('fallback');
+  const [costMode, setCostMode] = useState<'throughput' | 'price'>('throughput');
   const [primaryProviderId, setPrimaryProviderId] = useState('');
-  const [defaultModel, setDefaultModel] = useState('gemini-2.5-flash');
+  const [defaultModel, setDefaultModel] = useState('');
   const [fallbackProviderId, setFallbackProviderId] = useState('');
-  const [fallbackModel, setFallbackModel] = useState('gemini-2.5-flash');
+  const [fallbackModel, setFallbackModel] = useState('');
   const [maxRetries, setMaxRetries] = useState('3');
   const [perKeyRetryLimit, setPerKeyRetryLimit] = useState('2');
   const [cooldownDurationSec, setCooldownDurationSec] = useState('300');
   const [timeoutSec, setTimeoutSec] = useState('60');
   const [concurrencyLimit, setConcurrencyLimit] = useState('100');
+  const [masterAction, setMasterAction] = useState<null | { readonly kind: 'provision' } | { readonly kind: 'rotate'; readonly version: number }>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ readonly id: string; readonly label: string } | null>(null);
 
   const [credQuery, setCredQuery] = useState('');
   const [credPage, setCredPage] = useState(1);
@@ -350,6 +395,36 @@ export function AiManagementPanel({
   const concurrencyLimitId = useId();
 
   const requestSeq = useRef(0);
+  const syncFormFromPolicy = useCallback((policy: PolicyState | null) => {
+    if (policy === null) {
+      setRotationStrategy('health_aware');
+      setChainStrategy('fallback');
+      setCostMode('throughput');
+      setPrimaryProviderId('');
+      setDefaultModel('');
+      setFallbackProviderId('');
+      setFallbackModel('');
+      setMaxRetries('3');
+      setPerKeyRetryLimit('2');
+      setCooldownDurationSec('300');
+      setTimeoutSec('60');
+      setConcurrencyLimit('100');
+      return;
+    }
+    setRotationStrategy(policy.rotationStrategy);
+    setChainStrategy(policy.chainStrategy);
+    setCostMode(policy.costMode);
+    setPrimaryProviderId(policy.primaryProviderId ?? '');
+    setDefaultModel(policy.defaultModel);
+    setFallbackProviderId(policy.fallbackProviderId ?? '');
+    setFallbackModel(policy.fallbackModel);
+    setMaxRetries(String(policy.maxRetries));
+    setPerKeyRetryLimit(String(policy.perKeyRetryLimit));
+    setCooldownDurationSec(String(policy.cooldownDurationSec));
+    setTimeoutSec(String(Math.round(policy.requestTimeoutMs / 1000)));
+    setConcurrencyLimit(String(policy.globalConcurrencyLimit));
+  }, []);
+
   const reload = useCallback(async () => {
     const seq = ++requestSeq.current;
     setBusy(true);
@@ -361,24 +436,14 @@ export function AiManagementPanel({
       if (parsed === null) throw new Error('Bad payload');
       if (seq !== requestSeq.current) return;
       setOverview(parsed);
-      setRotationStrategy(parsed.policy.rotationStrategy);
-      setChainStrategy(parsed.policy.chainStrategy);
-      setPrimaryProviderId(parsed.policy.primaryProviderId ?? '');
-      setDefaultModel(parsed.policy.defaultModel);
-      setFallbackProviderId(parsed.policy.fallbackProviderId ?? '');
-      setFallbackModel(parsed.policy.fallbackModel);
-      setMaxRetries(String(parsed.policy.maxRetries));
-      setPerKeyRetryLimit(String(parsed.policy.perKeyRetryLimit));
-      setCooldownDurationSec(String(parsed.policy.cooldownDurationSec));
-      setTimeoutSec(String(Math.round(parsed.policy.requestTimeoutMs / 1000)));
-      setConcurrencyLimit(String(parsed.policy.globalConcurrencyLimit));
+      syncFormFromPolicy(parsed.policy);
     } catch {
       if (seq !== requestSeq.current) return;
       setError('Gagal memuat kontrol AI.');
     } finally {
       if (seq === requestSeq.current) setBusy(false);
     }
-  }, [organizationId]);
+  }, [organizationId, syncFormFromPolicy]);
 
   useEffect(() => {
     void Promise.resolve().then(() => reload());
@@ -393,7 +458,9 @@ export function AiManagementPanel({
       setNotice(success);
       await reload();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Perintah AI gagal dijalankan.');
+      const message = err instanceof Error ? err.message : 'Perintah AI gagal dijalankan.';
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -405,7 +472,11 @@ export function AiManagementPanel({
       return;
     }
     const parsedPriority = Number.parseInt(priority, 10);
-    const provider = providerId.trim().toLowerCase() === '' ? 'gemini' : providerId.trim().toLowerCase();
+    const provider = providerId.trim().toLowerCase();
+    if (provider === '') {
+      setError('Pilih provider dulu.');
+      return;
+    }
     void runCommand(
       'ai.credential.create',
       { label: label.trim(), apiKey: apiKey.trim(), priority: Number.isFinite(parsedPriority) ? parsedPriority : 1, providerId: provider },
@@ -438,18 +509,22 @@ export function AiManagementPanel({
       return;
     }
     const modelOwner = new Map((overview?.models ?? []).map((model) => [model.modelName, model.providerId] as const));
-    const defModel = defaultModel.trim() === '' ? 'gemini-2.5-flash' : defaultModel.trim();
-    const fbModel = fallbackModel.trim() === '' ? 'gemini-2.5-flash' : fallbackModel.trim();
-    const effectivePrimary = primary ?? overview?.policy.primaryProviderId ?? null;
+    const defModel = defaultModel.trim() === '' ? (overview?.policy?.defaultModel ?? '') : defaultModel.trim();
+    const fbModel = fallbackModel.trim() === '' ? (overview?.policy?.fallbackModel ?? '') : fallbackModel.trim();
+    const effectivePrimary = primary ?? overview?.policy?.primaryProviderId ?? null;
     const defOwner = modelOwner.get(defModel);
     if (effectivePrimary !== null && defOwner !== undefined && defOwner !== '' && defOwner !== effectivePrimary) {
-      setError(`Model default ${defModel} milik ${defOwner}, bukan ${effectivePrimary}.`);
+      const defMismatch = `Model default ${defModel} milik ${defOwner}, bukan ${effectivePrimary}.`;
+      setError(defMismatch);
+      toast.error(defMismatch);
       return;
     }
     const fbOwner = modelOwner.get(fbModel);
     const effectiveFallback = fallback ?? effectivePrimary;
     if (fallback !== null && effectiveFallback !== null && fbOwner !== undefined && fbOwner !== '' && fbOwner !== effectiveFallback) {
-      setError(`Model fallback ${fbModel} milik ${fbOwner}, bukan ${effectiveFallback}.`);
+      const fbMismatch = `Model fallback ${fbModel} milik ${fbOwner}, bukan ${effectiveFallback}.`;
+      setError(fbMismatch);
+      toast.error(fbMismatch);
       return;
     }
     const parsedPerKey = Number.parseInt(perKeyRetryLimit, 10);
@@ -472,6 +547,7 @@ export function AiManagementPanel({
       {
         rotationStrategy,
         chainStrategy,
+        costMode,
         primaryProviderId: primary,
         defaultModel: defModel,
         fallbackProviderId: fallback,
@@ -487,14 +563,22 @@ export function AiManagementPanel({
   };
 
   const handleProvisionMaster = () => {
-    if (!window.confirm('Provision master secret baru? Nilai plain tidak pernah ditampilkan.')) return;
-    void runCommand('ai.master.provision', {}, 'Master secret diprovision.');
+    setMasterAction({ kind: 'provision' });
   };
 
   const handleRotateMaster = (version: number | null) => {
     if (version === null) return;
-    if (!window.confirm(`Rotate master secret dari v${version}? Kunci lama dinonaktifkan.`)) return;
-    void runCommand('ai.master.provision', { rotate: true, expectedVersion: version }, 'Master secret dirotate.');
+    setMasterAction({ kind: 'rotate', version });
+  };
+
+  const confirmMasterAction = () => {
+    if (masterAction === null) return;
+    if (masterAction.kind === 'rotate') {
+      void runCommand('ai.master.provision', { rotate: true, expectedVersion: masterAction.version }, 'Master secret dirotate.');
+    } else {
+      void runCommand('ai.master.provision', {}, 'Master secret diprovision.');
+    }
+    setMasterAction(null);
   };
 
   const handleResolveInsight = (id: string) => {
@@ -533,16 +617,7 @@ export function AiManagementPanel({
 
   const stats = overview?.stats;
   const successRate = stats !== undefined && stats.totalRequests > 0 ? Math.round((stats.successfulRequests / stats.totalRequests) * 100) : 100;
-  const modelOptions = overview !== null && overview.models.length > 0 ? overview.models : [{ providerId: 'gemini', modelName: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' }];
-  const providerOptions = overview !== null && overview.providers.length > 0
-    ? overview.providers
-    : [{ id: 'gemini', name: 'Google Gemini', isActive: true, supportsChat: true }, { id: 'openrouter', name: 'OpenRouter', isActive: true, supportsChat: true }, { id: 'vercel-gateway', name: 'Vercel AI Gateway', isActive: true, supportsChat: true }];
-  const withCurrentModel = (current: string): readonly { readonly providerId: string; readonly modelName: string; readonly displayName: string }[] =>
-    modelOptions.some((model) => model.modelName === current)
-      ? modelOptions
-      : [...modelOptions, { providerId: '', modelName: current, displayName: `${current} (tidak di katalog)` }];
-  const defaultModelOptions = withCurrentModel(defaultModel.trim() === '' ? 'gemini-2.5-flash' : defaultModel.trim());
-  const fallbackModelOptions = withCurrentModel(fallbackModel.trim() === '' ? 'gemini-2.5-flash' : fallbackModel.trim());
+  const providerOptions = overview?.providers ?? [];
   const activeCredentialProviders = useMemo(() => {
     const active = new Set<string>();
     for (const row of overview?.credentials ?? []) {
@@ -553,14 +628,17 @@ export function AiManagementPanel({
   const chainWarnings = useMemo(() => {
     const warnings: string[] = [];
     const policy = overview?.policy;
-    if (policy === undefined) return warnings;
-    const primary = primaryProviderId.trim() === '' ? (policy.primaryProviderId ?? 'gemini') : primaryProviderId.trim().toLowerCase();
+    if (policy === undefined || policy === null) {
+      warnings.push('Routing AI belum dikonfigurasi di database.');
+      return warnings;
+    }
+    const primary = primaryProviderId.trim() === '' ? (policy.primaryProviderId ?? '') : primaryProviderId.trim().toLowerCase();
     const fallback = fallbackProviderId.trim() === '' ? null : fallbackProviderId.trim().toLowerCase();
-    if (!activeCredentialProviders.has(primary)) warnings.push(`Tidak ada kredensial aktif untuk provider primer ${primary}.`);
+    if (primary === '' || !activeCredentialProviders.has(primary)) warnings.push(`Tidak ada kredensial aktif untuk provider primer ${primary === '' ? '(belum diatur)' : primary}.`);
     if (fallback !== null && !activeCredentialProviders.has(fallback)) warnings.push(`Tidak ada kredensial aktif untuk provider fallback ${fallback}.`);
     if (chainStrategy === 'round_robin' && fallback === null) {
-      const defModel = defaultModel.trim() === '' ? 'gemini-2.5-flash' : defaultModel.trim();
-      const fbModel = fallbackModel.trim() === '' ? 'gemini-2.5-flash' : fallbackModel.trim();
+      const defModel = defaultModel.trim() === '' ? (policy.defaultModel ?? '') : defaultModel.trim();
+      const fbModel = fallbackModel.trim() === '' ? (policy.fallbackModel ?? '') : fallbackModel.trim();
       if (fbModel === defModel) warnings.push('Round robin butuh 2 entri rantai: isi provider fallback atau bedakan model fallback (ditolak backend saat disimpan).');
     }
     return warnings;
@@ -571,12 +649,21 @@ export function AiManagementPanel({
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
 
+      <Tabs defaultValue="ringkasan">
+        <TabsList aria-label="Bagian pengaturan AI">
+          <TabsTrigger value="ringkasan"><Activity className="h-3.5 w-3.5" aria-hidden="true" /><span>Ringkasan</span></TabsTrigger>
+          <TabsTrigger value="kredensial"><KeyRound className="h-3.5 w-3.5" aria-hidden="true" /><span>Kredensial</span></TabsTrigger>
+          <TabsTrigger value="routing"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" /><span>Routing</span></TabsTrigger>
+          <TabsTrigger value="katalog"><Database className="h-3.5 w-3.5" aria-hidden="true" /><span>Katalog</span></TabsTrigger>
+          <TabsTrigger value="aktivitas"><ScrollText className="h-3.5 w-3.5" aria-hidden="true" /><span>Aktivitas</span></TabsTrigger>
+        </TabsList>
+        <TabsContent value="ringkasan" className="grid items-start gap-4">
       <section aria-label="Statistik AI" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {[
           { label: 'Total request', value: (stats?.totalRequests ?? 0).toLocaleString('id-ID'), icon: Activity },
           { label: 'Kunci aktif', value: String(stats?.activeKeys ?? 0), icon: CheckCircle2 },
           { label: 'Kunci cooldown', value: String(stats?.cooldownKeys ?? 0), icon: Clock },
-          { label: 'Success rate', value: `${successRate}%`, icon: TrendingUp },
+          { label: 'Success rate', value: `${successRate}%`, icon: TrendingUp, progress: busy || overview === null ? undefined : successRate },
           { label: 'Rata-rata latency', value: `${stats?.avgLatencyMs ?? 0} ms`, icon: Zap },
         ].map((stat) => (
           <div key={stat.label} className="rounded border border-hairline bg-bg-raised p-3">
@@ -584,10 +671,61 @@ export function AiManagementPanel({
               <span className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">{stat.label}</span>
               <stat.icon className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
             </div>
-            <p className="m-0 mt-1.5 font-sans text-lg font-semibold tracking-tight text-paper">{busy && overview === null ? '…' : stat.value}</p>
+            {busy && overview === null ? (
+              <Skeleton className="mt-1.5 h-6 w-16" />
+            ) : (
+              <p className="m-0 mt-1.5 font-sans text-lg font-semibold tracking-tight text-paper">{stat.value}</p>
+            )}
+            {stat.progress !== undefined ? <Progress value={stat.progress} aria-label={`Success rate ${stat.progress} persen`} className="mt-2" /> : null}
           </div>
         ))}
       </section>
+
+      <SectionCard icon={Zap} title="Rantai aktif tersimpan" eyebrow="Routing">
+        {overview?.policy == null ? (
+          <EmptyState compact title={busy ? 'Memuat rantai…' : 'Routing belum dikonfigurasi di database.'} />
+        ) : (overview?.chainHealth.length ?? 0) === 0 ? (
+          <EmptyState compact title={busy ? 'Memuat rantai…' : 'Primer belum diatur — rantai kosong.'} />
+        ) : (
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-stretch">
+            {(overview?.chainHealth ?? []).map((entry, index) => (
+              <div key={`${entry.providerId}:${entry.modelName}`} className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-stretch">
+                {index > 0 ? (
+                  <div className="flex items-center justify-center" aria-hidden="true">
+                    <ArrowRight className="h-4 w-4 rotate-90 text-brass sm:rotate-0" />
+                  </div>
+                ) : null}
+                <Card size="sm" className="flex-1 border-hairline bg-bg">
+                  <CardHeader>
+                    <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                      {entry.role === 'primary' ? 'Primer' : 'Fallback'}
+                    </CardDescription>
+                    <CardTitle className="font-mono text-xs text-paper">{entry.providerId}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1.5">
+                    <p className="m-0 font-mono text-[11px] text-paper-dim">{entry.modelName}</p>
+                    <p className="m-0 flex flex-wrap items-center gap-1.5">
+                      {entry.tripped ? (
+                        <Badge variant="outline" className="font-mono text-[10px] uppercase text-error">trip · {entry.failCount} gagal</Badge>
+                      ) : (
+                        <Badge variant="outline" className="font-mono text-[10px] uppercase text-signal">sehat</Badge>
+                      )}
+                      {!entry.hasCredential ? (
+                        <Badge variant="outline" className="font-mono text-[10px] uppercase text-brass">tanpa kredensial</Badge>
+                      ) : null}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="m-0 mt-2 font-sans text-[11px] leading-relaxed text-paper-faint">
+          Strategi rantai tersimpan: {overview?.policy?.chainStrategy ?? 'fallback'}. Ubah lewat tab Routing.
+        </p>
+      </SectionCard>
+        </TabsContent>
+        <TabsContent value="kredensial" className="grid items-start gap-4">
 
       <SectionCard icon={ShieldCheck} title="Master Secret" eyebrow="Envelope">
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
@@ -612,7 +750,6 @@ export function AiManagementPanel({
         </div>
       </SectionCard>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
         <SectionCard icon={KeyRound} title="Tambah API Key" eyebrow="Kredensial">
           <div className="space-y-3 pt-1">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -651,143 +788,6 @@ export function AiManagementPanel({
             </Button>
           </div>
         </SectionCard>
-
-        <SectionCard icon={SlidersHorizontal} title="Kebijakan Rotasi & Failover" eyebrow="Routing">
-          <div className="space-y-3 pt-1">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="ai-rotation" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Strategi rotasi</Label>
-                <DashboardSelect
-                  id="ai-rotation"
-                  value={rotationStrategy}
-                  disabled={busy}
-                  placeholder="Pilih strategi"
-                  ariaLabel="Strategi rotasi kunci"
-                  onValueChange={(next) => { if (next !== null) setRotationStrategy(next); }}
-                >
-                  {Object.entries(ROTATION_OPTIONS).map(([value, text]) => (
-                    <DashboardSelectItem key={value} value={value}>{text}</DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor={primaryProviderIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider primer</Label>
-                <DashboardSelect
-                  id={primaryProviderIdInputId}
-                  value={primaryProviderId}
-                  disabled={busy}
-                  placeholder="Pilih provider primer"
-                  ariaLabel="Provider primer"
-                  onValueChange={(next) => { if (next !== null) setPrimaryProviderId(next); }}
-                >
-                  <DashboardSelectItem value="">Ikut kebijakan tersimpan</DashboardSelectItem>
-                  {providerOptions.map((provider) => (
-                    <DashboardSelectItem key={provider.id} value={provider.id}>{provider.name}</DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ai-model" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Model default</Label>
-              <DashboardSelect
-                id="ai-model"
-                value={defaultModel}
-                disabled={busy}
-                placeholder="Pilih model"
-                ariaLabel="Model default"
-                onValueChange={(next) => { if (next !== null) setDefaultModel(next); }}
-              >
-                {defaultModelOptions.map((model) => (
-                  <DashboardSelectItem key={model.modelName} value={model.modelName}>{model.displayName}</DashboardSelectItem>
-                ))}
-              </DashboardSelect>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ai-chain" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Strategi rantai model</Label>
-              <DashboardSelect
-                id="ai-chain"
-                value={chainStrategy}
-                disabled={busy}
-                placeholder="Pilih strategi rantai"
-                ariaLabel="Strategi rantai model"
-                onValueChange={(next) => { if (next !== null) setChainStrategy(next); }}
-              >
-                {Object.entries(CHAIN_OPTIONS).map(([value, text]) => (
-                  <DashboardSelectItem key={value} value={value}>{text}</DashboardSelectItem>
-                ))}
-              </DashboardSelect>
-              <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">Fallback mencoba sesuai urutan saat gagal; Round Robin memutar model awal tiap request untuk menyebar beban.</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor={maxRetriesId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Retry/entri (1–10)</Label>
-                <Input id={maxRetriesId} type="number" min={1} max={10} value={maxRetries} onChange={(event) => setMaxRetries(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor={perKeyRetryLimitId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Retry per key (1–5)</Label>
-                <Input id={perKeyRetryLimitId} type="number" min={1} max={5} value={perKeyRetryLimit} onChange={(event) => setPerKeyRetryLimit(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor={cooldownId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Cooldown detik (10–3600)</Label>
-                <Input id={cooldownId} type="number" min={10} max={3600} value={cooldownDurationSec} onChange={(event) => setCooldownDurationSec(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor={timeoutSecId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Timeout detik (1–300)</Label>
-                <Input id={timeoutSecId} type="number" min={1} max={300} value={timeoutSec} onChange={(event) => setTimeoutSec(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor={concurrencyLimitId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Konkurensi global (1–1000)</Label>
-                <Input id={concurrencyLimitId} type="number" min={1} max={1000} value={concurrencyLimit} onChange={(event) => setConcurrencyLimit(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor={fallbackProviderIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider fallback</Label>
-                <DashboardSelect
-                  id={fallbackProviderIdInputId}
-                  value={fallbackProviderId}
-                  disabled={busy}
-                  placeholder="Tanpa fallback"
-                  ariaLabel="Provider fallback"
-                  onValueChange={(next) => { if (next !== null) setFallbackProviderId(next); }}
-                >
-                  <DashboardSelectItem value="">Tanpa fallback (satu provider)</DashboardSelectItem>
-                  {providerOptions.map((provider) => (
-                    <DashboardSelectItem key={provider.id} value={provider.id}>{provider.name}</DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor={fallbackModelId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Model fallback</Label>
-                <DashboardSelect
-                  id={fallbackModelId}
-                  value={fallbackModel}
-                  disabled={busy}
-                  placeholder="Pilih model fallback"
-                  ariaLabel="Model fallback"
-                  onValueChange={(next) => { if (next !== null) setFallbackModel(next); }}
-                >
-                  {fallbackModelOptions.map((model) => (
-                    <DashboardSelectItem key={model.modelName} value={model.modelName}>{model.displayName}</DashboardSelectItem>
-                  ))}
-                </DashboardSelect>
-              </div>
-            </div>
-            <p className="m-0 font-mono text-[11px] leading-relaxed text-paper-faint">
-              Rantai aktif ({overview?.policy.chainStrategy ?? 'fallback'}): {overview?.policy.primaryProviderId ?? 'gemini'}/{overview?.policy.defaultModel ?? defaultModel}
-              {overview?.policy.fallbackProviderId ? ` → ${overview.policy.fallbackProviderId}/${overview.policy.fallbackModel}` : ' → (tanpa fallback, satu provider)'}
-            </p>
-            {chainWarnings.map((warning) => (
-              <p key={warning} className="m-0 font-sans text-[11px] leading-relaxed text-brass">{warning}</p>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={handleSavePolicy} disabled={busy} className="w-full">
-              <span>Simpan kebijakan</span>
-            </Button>
-          </div>
-        </SectionCard>
-      </div>
 
       <SectionCard icon={KeyRound} title={`Pool Kredensial (${filteredCredentials.length})`} eyebrow="Keys">
         <div className="space-y-3 pt-1">
@@ -844,7 +844,7 @@ export function AiManagementPanel({
                           </Button>
                         </AppTooltip>
                         <AppTooltip label="Hapus" side="top">
-                          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus ${row.label}`} disabled={busy} className="hover:text-error" onClick={() => { if (window.confirm(`Hapus kredensial ${row.label}?`)) void runCommand('ai.credential.delete', { credentialId: row.id }, 'Kredensial dihapus.'); }}>
+                          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Hapus ${row.label}`} disabled={busy} className="hover:text-error" onClick={() => setPendingDelete({ id: row.id, label: row.label })}>
                             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                           </Button>
                         </AppTooltip>
@@ -866,6 +866,155 @@ export function AiManagementPanel({
           />
         </div>
       </SectionCard>
+        </TabsContent>
+        <TabsContent value="routing" className="grid items-start gap-4">
+
+        <SectionCard icon={SlidersHorizontal} title="Kebijakan Rotasi & Failover" eyebrow="Routing">
+          <div className="space-y-3 pt-1">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="ai-rotation" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Strategi rotasi</Label>
+                <DashboardSelect
+                  id="ai-rotation"
+                  value={rotationStrategy}
+                  disabled={busy}
+                  placeholder="Pilih strategi"
+                  ariaLabel="Strategi rotasi kunci"
+                  onValueChange={(next) => { if (next !== null) setRotationStrategy(next); }}
+                >
+                  {Object.entries(ROTATION_OPTIONS).map(([value, text]) => (
+                    <DashboardSelectItem key={value} value={value}>{text}</DashboardSelectItem>
+                  ))}
+                </DashboardSelect>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={primaryProviderIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider primer</Label>
+                <DashboardSelect
+                  id={primaryProviderIdInputId}
+                  value={primaryProviderId}
+                  disabled={busy}
+                  placeholder="Pilih provider primer"
+                  ariaLabel="Provider primer"
+                  onValueChange={(next) => { if (next !== null) setPrimaryProviderId(next); }}
+                >
+                  <DashboardSelectItem value="">Tetap seperti tersimpan</DashboardSelectItem>
+                  {providerOptions.map((provider) => (
+                    <DashboardSelectItem key={provider.id} value={provider.id}>{provider.name}</DashboardSelectItem>
+                  ))}
+                </DashboardSelect>
+              </div>
+            </div>
+            <AiModelCombobox
+              id="ai-model"
+              label="Model default"
+              value={defaultModel}
+              options={overview?.models ?? []}
+              providers={overview?.providers ?? []}
+              placeholder="Cari atau pilih model"
+              ariaLabel="Model default"
+              disabled={busy}
+              onValueChange={(next) => setDefaultModel(next)}
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-chain" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Strategi rantai model</Label>
+              <DashboardSelect
+                id="ai-chain"
+                value={chainStrategy}
+                disabled={busy}
+                placeholder="Pilih strategi rantai"
+                ariaLabel="Strategi rantai model"
+                onValueChange={(next) => { if (next !== null) setChainStrategy(next); }}
+              >
+                {Object.entries(CHAIN_OPTIONS).map(([value, text]) => (
+                  <DashboardSelectItem key={value} value={value}>{text}</DashboardSelectItem>
+                ))}
+              </DashboardSelect>
+              <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">Fallback mencoba sesuai urutan saat gagal; Round Robin memutar model awal tiap request untuk menyebar beban.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-cost" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Prioritas biaya</Label>
+              <DashboardSelect
+                id="ai-cost"
+                value={costMode}
+                disabled={busy}
+                placeholder="Pilih prioritas biaya"
+                ariaLabel="Prioritas biaya"
+                onValueChange={(next) => { if (next === 'throughput' || next === 'price') setCostMode(next); }}
+              >
+                <DashboardSelectItem value="throughput">Throughput — tercepat dulu</DashboardSelectItem>
+                <DashboardSelectItem value="price">Hemat — termurah dulu (OpenRouter)</DashboardSelectItem>
+              </DashboardSelect>
+              <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">Hemat meminta endpoint termurah ke gateway; throughput meminta yang tercepat.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={maxRetriesId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Retry/entri (1–10)</Label>
+                <Input id={maxRetriesId} type="number" min={1} max={10} value={maxRetries} onChange={(event) => setMaxRetries(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={perKeyRetryLimitId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Retry per key (1–5)</Label>
+                <Input id={perKeyRetryLimitId} type="number" min={1} max={5} value={perKeyRetryLimit} onChange={(event) => setPerKeyRetryLimit(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={cooldownId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Cooldown detik (10–3600)</Label>
+                <Input id={cooldownId} type="number" min={10} max={3600} value={cooldownDurationSec} onChange={(event) => setCooldownDurationSec(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={timeoutSecId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Timeout detik (1–300)</Label>
+                <Input id={timeoutSecId} type="number" min={1} max={300} value={timeoutSec} onChange={(event) => setTimeoutSec(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={concurrencyLimitId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Konkurensi global (1–1000)</Label>
+                <Input id={concurrencyLimitId} type="number" min={1} max={1000} value={concurrencyLimit} onChange={(event) => setConcurrencyLimit(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={fallbackProviderIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider fallback</Label>
+                <DashboardSelect
+                  id={fallbackProviderIdInputId}
+                  value={fallbackProviderId}
+                  disabled={busy}
+                  placeholder="Tanpa fallback"
+                  ariaLabel="Provider fallback"
+                  onValueChange={(next) => { if (next !== null) setFallbackProviderId(next); }}
+                >
+                  <DashboardSelectItem value="">Tanpa fallback (satu provider)</DashboardSelectItem>
+                  {providerOptions.map((provider) => (
+                    <DashboardSelectItem key={provider.id} value={provider.id}>{provider.name}</DashboardSelectItem>
+                  ))}
+                </DashboardSelect>
+              </div>
+              <AiModelCombobox
+                id={fallbackModelId}
+                label="Model fallback"
+                value={fallbackModel}
+                options={overview?.models ?? []}
+                providers={overview?.providers ?? []}
+                placeholder="Cari atau pilih model fallback"
+                ariaLabel="Model fallback"
+                disabled={busy}
+                onValueChange={(next) => setFallbackModel(next)}
+              />
+            </div>
+            {chainWarnings.map((warning) => (
+              <p key={warning} className="m-0 font-sans text-[11px] leading-relaxed text-brass">{warning}</p>
+            ))}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" size="sm" onClick={handleSavePolicy} disabled={busy} className="w-full">
+                <span>Simpan kebijakan</span>
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => syncFormFromPolicy(overview?.policy ?? null)} disabled={busy} className="w-full">
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Reset ke tersimpan</span>
+              </Button>
+            </div>
+          </div>
+        </SectionCard>
+        </TabsContent>
+        <TabsContent value="katalog" className="grid items-start gap-4">
 
       <SectionCard icon={SlidersHorizontal} title={`Katalog Model (${overview?.models.length ?? 0})`} eyebrow="Limits">
         <div className="space-y-3 pt-1">
@@ -886,9 +1035,8 @@ export function AiManagementPanel({
               </TableHeader>
               <TableBody>
                 {(overview?.models ?? []).map((model) => {
-                  const unlimited = model.rpmLimit === null && model.tpmLimit === null;
                   return (
-                    <TableRow key={model.modelName}>
+                    <TableRow key={model.id}>
                       <TableCell>
                         <p className="m-0 font-mono text-[11px] text-paper">{model.modelName}</p>
                         <p className="m-0 mt-0.5 font-sans text-[11px] text-paper-faint">{model.displayName}{model.isDefault ? ' · default' : ''}</p>
@@ -902,7 +1050,14 @@ export function AiManagementPanel({
                         <Badge variant="outline" className={`font-mono text-[10px] uppercase ${model.supportsTools ? 'border-signal/50 text-signal' : ''}`}>{model.supportsTools ? 'ya' : 'tidak'}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(unlimited ? 'success' : 'open')}`}>{unlimited ? 'unlimited' : 'limited'}</Badge>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(model.isActive ? 'success' : 'open')}`}>{model.isActive ? 'aktif' : 'nonaktif'}</Badge>
+                          <AppTooltip label={model.isActive ? 'Nonaktifkan model' : 'Aktifkan model'} side="top">
+                            <Button type="button" variant="ghost" size="icon-sm" aria-label={`${model.isActive ? 'Nonaktifkan' : 'Aktifkan'} ${model.modelName}`} disabled={busy} onClick={() => void runCommand('ai.model.toggle', { modelId: model.id, isActive: !model.isActive }, `Model ${model.isActive ? 'dinonaktifkan' : 'diaktifkan'}.`)}>
+                              <Power className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Button>
+                          </AppTooltip>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -947,6 +1102,8 @@ export function AiManagementPanel({
           <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">Provider baru didaftarkan lewat migrasi seed; kredensial tiap provider ditambah di form atas.</p>
         </div>
       </SectionCard>
+        </TabsContent>
+        <TabsContent value="aktivitas" className="grid items-start gap-4">
 
       <SectionCard icon={TrendingUp} title={`Token per Organisasi (${overview?.tokenUsageByOrg.length ?? 0})`} eyebrow="7 hari">
         <div className="space-y-3 pt-1">
@@ -1096,6 +1253,45 @@ export function AiManagementPanel({
           />
         </div>
       </SectionCard>
+        </TabsContent>
+      </Tabs>
+
+      <AlertDialog open={masterAction !== null} onOpenChange={(open) => { if (!open) setMasterAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{masterAction?.kind === 'rotate' ? `Rotate master secret dari v${masterAction.version}?` : 'Provision master secret baru?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {masterAction?.kind === 'rotate'
+                ? 'Kunci lama dinonaktifkan. Kredensial yang dienkripsi dengan kunci lama tetap bisa dibaca selama rotasi.'
+                : 'Nilai plain tidak pernah ditampilkan; hanya versi dan fingerprint yang tercatat.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMasterAction}>Ya, lanjutkan</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => { if (!open) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus kredensial{pendingDelete === null ? '' : ` ${pendingDelete.label}`}?</AlertDialogTitle>
+            <AlertDialogDescription>Kunci terhapus permanen dari pool dan tidak bisa dikembalikan. Request berjalan yang memakai kunci ini akan gagal.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingDelete !== null) void runCommand('ai.credential.delete', { credentialId: pendingDelete.id }, 'Kredensial dihapus.');
+                setPendingDelete(null);
+              }}
+            >
+              Ya, hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { sql } from 'drizzle-orm';
 
+import { asRecord } from '@/core/guards';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
 import type { AiRateLimitStore } from '@/modules/ai/ai-rate-limit';
 import type {
@@ -17,26 +18,10 @@ import type {
 } from '@/modules/ai/ai-types';
 
 /**
- * Routing policy used when no `ai_routing_policies` row is armed.
- *
- * @remarks Fail-closed static default: rotation stays health-aware and the
- * request path reports exhaustion instead of inventing credentials.
+ * No static routing policy exists: provider and model resolution is
+ * database-driven from `ai_routing_policies`. Callers treat a missing row
+ * as unconfigured and report exhaustion instead of inventing a provider.
  */
-export const DEFAULT_AI_ROUTING_POLICY: AiRoutingPolicy = {
-  id: 'default',
-  rotationStrategy: 'health_aware',
-  chainStrategy: 'fallback',
-  primaryProviderId: 'gemini',
-  fallbackProviderId: null,
-  defaultModel: 'gemini-3.8-flash',
-  fallbackModel: 'gemini-3.6-flash',
-  maxRetries: 5,
-  perKeyRetryLimit: 2,
-  cooldownDurationSec: 60,
-  requestTimeoutMs: 60000,
-  globalConcurrencyLimit: 100,
-  updatedAt: '1970-01-01T00:00:00.000Z',
-};
 
 /**
  * Batas retry untuk panggilan interaktif yang menunggu respons.
@@ -156,8 +141,8 @@ function toStatusOrFallback(value: unknown, fallback: AiCredentialStatus): AiCre
 }
 
 function toCredentialRow(value: unknown): AiCredentialRecord | null {
-  if (typeof value !== 'object' || value === null) return null;
-  const row = value as Record<string, unknown>;
+  const row = asRecord(value);
+  if (row === null) return null;
   const id = toStringOrNull(row.id);
   const providerId = toStringOrNull(row.provider_id);
   const keyEncrypted = toStringOrNull(row.key_encrypted);
@@ -199,13 +184,11 @@ function toRowArray(value: unknown): readonly unknown[] {
  *
  * @param channel - Access channel driving the default budget.
  * @param userThinkingConfig - Explicit caller override, honoured first.
- * @param _promptLength - Reserved for length-aware budgets; channel-driven today.
  * @returns Thinking configuration, or undefined when the adapter default applies.
  */
 export function resolveThinkingBudget(
   channel?: AiAccessChannel | undefined,
   userThinkingConfig?: AiThinkingConfig | undefined,
-  _promptLength = 0,
 ): AiThinkingConfig | undefined {
   if (userThinkingConfig?.thinkingBudget !== undefined) return userThinkingConfig;
   switch (channel) {
@@ -256,27 +239,33 @@ export function resolveTaskThinkingBudget(
   if (userOverride?.thinkingBudget !== undefined) return userOverride;
   const budget = (AI_TASK_THINKING_BUDGET as Record<string, number>)[task];
   if (typeof budget === 'number') return { thinkingBudget: budget, includeThoughts: true };
-  return resolveThinkingBudget(channel, undefined, 0);
+  return resolveThinkingBudget(channel, undefined);
 }
 
 /**
  * Read the armed routing policy.
  *
  * @param db - Runtime database port.
- * @returns Stored `default` policy, or the static default when no row is armed.
+ * @returns Stored `default` policy, or null when no row is armed or the read fails.
  */
-export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy> {
+export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy | null> {
   try {
     const value = await db.execute(
-      sql`select id, rotation_strategy, chain_strategy, primary_provider_id, fallback_provider_id, default_model, fallback_model, max_retries, per_key_retry_limit, cooldown_duration_sec, request_timeout_ms, global_concurrency_limit, updated_at from ai_routing_policies where id = 'default' limit 1`,
+      sql`select id, rotation_strategy, chain_strategy, cost_mode, primary_provider_id, fallback_provider_id, default_model, fallback_model, max_retries, per_key_retry_limit, cooldown_duration_sec, request_timeout_ms, global_concurrency_limit, updated_at from ai_routing_policies where id = 'default' limit 1`,
     );
-    const row = toRowArray(value)[0];
-    if (typeof row !== 'object' || row === null) return DEFAULT_AI_ROUTING_POLICY;
-    const record = row as Record<string, unknown>;
+    const record = asRecord(toRowArray(value)[0]);
+    if (record === null) return null;
+    const id = toStringOrNull(record.id);
+    const defaultModel = toStringOrNull(record.default_model);
+    const fallbackModel = toStringOrNull(record.fallback_model);
+    if (id === null || defaultModel === null || defaultModel === '' || fallbackModel === null || fallbackModel === '') {
+      return null;
+    }
     const strategy = toStringOrNull(record.rotation_strategy);
     const chainStrategy = toStringOrNull(record.chain_strategy);
+    const costMode = toStringOrNull(record.cost_mode);
     return {
-      id: toStringOrNull(record.id) ?? DEFAULT_AI_ROUTING_POLICY.id,
+      id,
       rotationStrategy:
         strategy === 'round_robin' ||
         strategy === 'random' ||
@@ -285,34 +274,34 @@ export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy>
         strategy === 'priority_based' ||
         strategy === 'health_aware'
           ? strategy
-          : DEFAULT_AI_ROUTING_POLICY.rotationStrategy,
-      chainStrategy: chainStrategy === 'round_robin' ? chainStrategy : DEFAULT_AI_ROUTING_POLICY.chainStrategy,
+          : 'health_aware',
+      chainStrategy: chainStrategy === 'round_robin' ? chainStrategy : 'fallback',
+      costMode: costMode === 'price' ? costMode : 'throughput',
       primaryProviderId: toStringOrNull(record.primary_provider_id),
       fallbackProviderId: toStringOrNull(record.fallback_provider_id),
-      defaultModel: toStringOrNull(record.default_model) ?? DEFAULT_AI_ROUTING_POLICY.defaultModel,
-      fallbackModel:
-        toStringOrNull(record.fallback_model) ?? DEFAULT_AI_ROUTING_POLICY.fallbackModel,
-      maxRetries: toNumberOrFallback(record.max_retries, DEFAULT_AI_ROUTING_POLICY.maxRetries),
+      defaultModel,
+      fallbackModel,
+      maxRetries: toNumberOrFallback(record.max_retries, 5),
       perKeyRetryLimit: toNumberOrFallback(
         record.per_key_retry_limit,
-        DEFAULT_AI_ROUTING_POLICY.perKeyRetryLimit,
+        2,
       ),
       cooldownDurationSec: toNumberOrFallback(
         record.cooldown_duration_sec,
-        DEFAULT_AI_ROUTING_POLICY.cooldownDurationSec,
+        60,
       ),
       requestTimeoutMs: toNumberOrFallback(
         record.request_timeout_ms,
-        DEFAULT_AI_ROUTING_POLICY.requestTimeoutMs,
+        60000,
       ),
       globalConcurrencyLimit: toNumberOrFallback(
         record.global_concurrency_limit,
-        DEFAULT_AI_ROUTING_POLICY.globalConcurrencyLimit,
+        100,
       ),
       updatedAt: toStringOrNull(record.updated_at) ?? new Date().toISOString(),
     };
   } catch {
-    return DEFAULT_AI_ROUTING_POLICY;
+    return null;
   }
 }
 
@@ -327,9 +316,9 @@ export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy>
 export async function getModelOwnerProvider(db: AiDb, modelName: string): Promise<string | null> {
   try {
     const value = await db.execute(sql`select provider_id from ai_models where model_name = ${modelName} limit 1`);
-    const row = toRowArray(value)[0];
-    if (typeof row !== 'object' || row === null) return null;
-    return toStringOrNull((row as Record<string, unknown>).provider_id);
+    const record = asRecord(toRowArray(value)[0]);
+    if (record === null) return null;
+    return toStringOrNull(record.provider_id);
   } catch {
     return null;
   }
@@ -349,19 +338,22 @@ export interface AiModelChainEntry {
  * @param policy - Kebijakan routing aktif dari database.
  * @param modelOverride - Model khusus modalitas (sampul, TTS, transkripsi); bila diisi, rantai hanya berisi override tersebut.
  * @param providerOverride - Provider pemilik override dari katalog; bila diisi, override berjalan di provider itu bukan primary.
- * @returns Satu atau dua entri; fallback ditambahkan bila provider atau modelnya berbeda dari primary.
- * @remarks `fallback_provider_id` yang null dibaca sebagai provider primary, sehingga `fallback_model` yang berbeda tetap menyelamatkan query saat model utama kelebihan beban.
+ * @returns Satu atau dua entri, atau kosong bila primary belum diatur di database.
+ * @remarks `fallback_provider_id` yang null dibaca sebagai provider primary, sehingga `fallback_model` yang berbeda tetap menyelamatkan query saat model utama kelebihan beban. Primary null berarti rantai kosong: pemanggil melaporkan exhaustion, bukan menebak provider.
  */
 export function resolveAiModelChain(
   policy: AiRoutingPolicy,
   modelOverride?: string | undefined,
   providerOverride?: string | undefined,
 ): readonly AiModelChainEntry[] {
-  const primaryProviderId = policy.primaryProviderId ?? 'gemini';
+  const primaryProviderId = policy.primaryProviderId;
   const targetModel = modelOverride ?? policy.defaultModel;
   if (modelOverride !== undefined) {
-    return [{ providerId: providerOverride ?? primaryProviderId, modelName: targetModel }];
+    const owner = providerOverride ?? primaryProviderId;
+    if (owner === null) return [];
+    return [{ providerId: owner, modelName: targetModel }];
   }
+  if (primaryProviderId === null) return [];
   const fallbackProviderId = policy.fallbackProviderId ?? primaryProviderId;
   if (fallbackProviderId === primaryProviderId && policy.fallbackModel === targetModel) {
     return [{ providerId: primaryProviderId, modelName: targetModel }];
@@ -484,6 +476,32 @@ function parseBreakerValue(value: unknown): { readonly count: number; readonly t
 }
 
 /**
+ * Live breaker counters for one model.
+ */
+export interface AiModelBreakerState {
+  /** True while consecutive infra failures keep the model cut off. */
+  readonly tripped: boolean;
+  /** Consecutive infra failures counted in the current window. */
+  readonly failCount: number;
+}
+
+/**
+ * Read one model's breaker state from a raw counter value.
+ *
+ * @param raw - Raw store value (`count` or `"count:epochMs"`).
+ * @param nowMs - Clock in epoch ms; defaults to current time.
+ * @returns Trip verdict with the consecutive failure count; unknown shapes fail open to healthy.
+ */
+export function readModelBreakerState(raw: unknown, nowMs: number = Date.now()): AiModelBreakerState {
+  const { count, tripAt } = parseBreakerValue(raw);
+  if (count < AI_BREAKER_TRIP_THRESHOLD) return { tripped: false, failCount: count };
+  if (tripAt !== null && nowMs - tripAt > AI_BREAKER_WINDOW_SECONDS * 1000) {
+    return { tripped: false, failCount: count };
+  }
+  return { tripped: true, failCount: count };
+}
+
+/**
  * Check whether one model is temporarily cut off.
  *
  * @param store - Counter Redis; undefined means fail-open (healthy).
@@ -601,7 +619,7 @@ export async function recordModelSuccess(
  */
 export async function getAvailableCredentials(
   db: AiDb,
-  providerId = 'gemini',
+  providerId: string,
   scope?: AiCredentialScope | undefined,
 ): Promise<AiCredentialRecord[]> {
   const nowIso = (scope?.now ?? new Date()).toISOString();
@@ -858,7 +876,7 @@ export async function recordKeyFailure(
  */
 export async function resolveApiKey(
   db: AiDb,
-  providerId = 'gemini',
+  providerId: string,
   scope?: AiCredentialScope | undefined,
 ): Promise<string | null> {
   const credentials = await getAvailableCredentials(db, providerId, scope);

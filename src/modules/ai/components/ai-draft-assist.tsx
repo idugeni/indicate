@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import { Flag, Sparkles, ThumbsDown } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,7 +96,9 @@ export function AiDraftAssist({
       if (draft === null) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
       applyDraft(draft);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      const message = err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.';
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }

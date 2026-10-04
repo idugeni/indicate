@@ -3,6 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type * as schema from '@/data/schema';
 import { statusChecks, statusDaily, statusIncidents } from '@/data/schema/status';
+import type { ComponentHealth } from '@/modules/status/status-probe';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -12,7 +13,7 @@ const DAILY_READ_MAX_ROWS = 700;
 
 export interface StatusCheckInput {
   readonly component: string;
-  readonly health: string;
+  readonly health: ComponentHealth;
   readonly latencyMs: number | null;
   readonly detail: string | null;
   readonly checkedAt: Date;
@@ -84,7 +85,7 @@ export class DrizzleStatusRepository {
       .map((row) => ({
         id: row.id,
         component: row.component,
-        health: row.health,
+        health: row.health === 'ok' || row.health === 'degraded' || row.health === 'down' ? row.health : 'ok',
         latencyMs: row.latency_ms,
         detail: row.detail,
         checkedAt: row.checked_at,

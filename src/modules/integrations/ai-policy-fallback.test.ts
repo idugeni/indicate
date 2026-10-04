@@ -31,6 +31,7 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
     getPolicy: async () => ({
       rotationStrategy: 'health_aware',
       chainStrategy: 'fallback',
+      costMode: 'throughput',
       primaryProviderId: 'gemini',
       defaultModel: 'gemini-2.5-flash',
       fallbackProviderId: null,
@@ -43,11 +44,12 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
       version: 1,
       updatedAt: '2026-09-30T00:00:00.000Z',
     }),
-    upsertPolicy: async (_actor, input) => {
+    upsertPolicy: async (actor, input) => {
       captured.policyInput = { ...input };
       return {
         rotationStrategy: input.rotationStrategy,
         chainStrategy: input.chainStrategy,
+        costMode: input.costMode,
         primaryProviderId: input.primaryProviderId,
         defaultModel: input.defaultModel,
         fallbackProviderId: input.fallbackProviderId,
@@ -62,6 +64,8 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
       };
     },
     listModels: async () => [],
+    listAllModels: async () => [],
+    updateModelActive: async () => true,
     listProviders: async () => [
       { id: 'gemini', name: 'Google Gemini', isActive: true, supportsChat: true },
       { id: 'openrouter', name: 'OpenRouter', isActive: true, supportsChat: true },
@@ -79,10 +83,22 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
 }
 
 describe('aiPolicyUpdateSchema fallback terkonfigurasi', () => {
+  it('mewajibkan fallbackModel eksplisit tanpa default statis', () => {
+    expect(() =>
+      aiPolicyUpdateSchema.parse({
+        rotationStrategy: 'health_aware',
+        defaultModel: 'openai/gpt-4o-mini',
+        maxRetries: 3,
+        cooldownDurationSec: 60,
+      }),
+    ).toThrow();
+  });
+
   it('menerima chainStrategy fallback sebagai default', () => {
     const parsed = aiPolicyUpdateSchema.parse({
       rotationStrategy: 'health_aware',
-      defaultModel: 'gemini-2.5-flash',
+      defaultModel: 'openai/gpt-4o-mini',
+      fallbackModel: 'inclusionai/ling-3.1-flash-free',
       maxRetries: 3,
       cooldownDurationSec: 60,
     });
@@ -91,7 +107,7 @@ describe('aiPolicyUpdateSchema fallback terkonfigurasi', () => {
     expect(parsed.requestTimeoutMs).toBe(60000);
     expect(parsed.globalConcurrencyLimit).toBe(100);
     expect(parsed.fallbackProviderId).toBeNull();
-    expect(parsed.fallbackModel).toBe('gemini-3.6-flash');
+    expect(parsed.fallbackModel).toBe('inclusionai/ling-3.1-flash-free');
   });
 
   it('menerima rantai fallback eksplisit', () => {

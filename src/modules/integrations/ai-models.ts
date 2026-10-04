@@ -4,6 +4,8 @@ export type AiRotationStrategy = 'health_aware' | 'round_robin' | 'least_used' |
 
 export type AiChainStrategy = 'fallback' | 'round_robin';
 
+export type AiCostMode = 'throughput' | 'price';
+
 export interface AiCredentialProjection {
   readonly id: string;
   readonly providerId: string;
@@ -27,6 +29,7 @@ export interface AiCredentialProjection {
 export interface AiRoutingPolicy {
   readonly rotationStrategy: AiRotationStrategy;
   readonly chainStrategy: AiChainStrategy;
+  readonly costMode: AiCostMode;
   readonly primaryProviderId: string | null;
   readonly defaultModel: string;
   readonly fallbackProviderId: string | null;
@@ -88,22 +91,25 @@ export interface AiOrgTokenUsage {
 }
 
 export interface AiModelEntry {
+  readonly id: string;
   readonly providerId: string;
   readonly modelName: string;
   readonly displayName: string;
   readonly releaseStage: string | null;
   readonly contextWindow: number;
   readonly outputTokenLimit: number | null;
+  readonly supportedModalities: readonly string[];
   readonly rpmLimit: number | null;
   readonly tpmLimit: number | null;
   readonly rpdLimit: number | null;
   readonly supportsTools: boolean;
   readonly isDefault: boolean;
+  readonly isActive: boolean;
 }
 
 export interface AiOverview {
   readonly credentials: readonly AiCredentialProjection[];
-  readonly policy: AiRoutingPolicy;
+  readonly policy: AiRoutingPolicy | null;
   readonly models: readonly AiModelEntry[];
   readonly providers: readonly AiProviderEntry[];
   readonly recentLogs: readonly AiRequestLogRow[];

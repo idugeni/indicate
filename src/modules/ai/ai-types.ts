@@ -104,10 +104,13 @@ export interface AiCredentialRecord {
   readonly updatedAt: string;
 }
 
+export type AiCostMode = 'throughput' | 'price';
+
 export interface AiRoutingPolicy {
   readonly id: string;
   readonly rotationStrategy: AiRotationStrategy;
   readonly chainStrategy: AiChainStrategy;
+  readonly costMode: AiCostMode;
   readonly primaryProviderId: string | null;
   readonly fallbackProviderId: string | null;
   readonly defaultModel: string;
@@ -216,6 +219,7 @@ export interface AiChatPrompt {
   readonly callerRole?: AiCallerRole | undefined;
   readonly correlationId?: string | undefined;
   readonly modelOverride?: string | undefined;
+  readonly costMode?: 'throughput' | 'price' | undefined;
 }
 
 export interface AiGenerationResult {

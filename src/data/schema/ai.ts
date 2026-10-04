@@ -17,6 +17,10 @@ import { organizations } from '@/data/schema/identity';
 
 export const aiCredentialStatus = pgEnum('ai_credential_status', ['active', 'inactive', 'disabled', 'exhausted', 'invalid', 'cooldown']);
 export const aiRotationStrategy = pgEnum('ai_rotation_strategy', ['round_robin', 'random', 'least_used', 'lowest_error_rate', 'priority_based', 'health_aware']);
+export const aiChainStrategy = pgEnum('ai_chain_strategy', ['fallback', 'round_robin']);
+export const aiCostMode = pgEnum('ai_cost_mode', ['throughput', 'price']);
+export const aiRequestStatus = pgEnum('ai_request_status', ['success', 'failed', 'blocked']);
+export const aiInsightStatus = pgEnum('ai_insight_status', ['open', 'resolved']);
 
 export const aiProviders = pgTable('ai_providers', {
   id: text('id').primaryKey(),
@@ -107,7 +111,8 @@ export const aiRoutingPolicies = pgTable('ai_routing_policies', {
   cooldownDurationSec: integer('cooldown_duration_sec').default(60).notNull(),
   requestTimeoutMs: integer('request_timeout_ms').default(60000).notNull(),
   globalConcurrencyLimit: integer('global_concurrency_limit').default(100).notNull(),
-  chainStrategy: text('chain_strategy').default('fallback').notNull(),
+  chainStrategy: aiChainStrategy('chain_strategy').default('fallback').notNull(),
+  costMode: aiCostMode('cost_mode').default('throughput').notNull(),
   version: integer('version').default(1).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
@@ -116,7 +121,6 @@ export const aiRoutingPolicies = pgTable('ai_routing_policies', {
   check('ai_routing_policies_cooldown_bounds', sql`${table.cooldownDurationSec} BETWEEN 10 AND 3600`),
   check('ai_routing_policies_timeout_bounds', sql`${table.requestTimeoutMs} BETWEEN 1000 AND 300000`),
   check('ai_routing_policies_concurrency_bounds', sql`${table.globalConcurrencyLimit} BETWEEN 1 AND 1000`),
-  check('ai_routing_policies_chain_known', sql`${table.chainStrategy} IN ('fallback', 'round_robin')`),
   check('ai_routing_policies_version_positive', sql`${table.version} > 0`),
 ]);
 
@@ -128,7 +132,7 @@ export const aiRequestLogs = pgTable('ai_request_logs', {
   modelName: text('model_name').notNull(),
   credentialId: uuid('credential_id').references(() => aiCredentials.id, { onDelete: 'set null' }),
   organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
-  status: text('status').notNull(),
+  status: aiRequestStatus('status').notNull(),
   retryCount: integer('retry_count').default(0).notNull(),
   latencyMs: integer('latency_ms').default(0).notNull(),
   promptTokens: integer('prompt_tokens').default(0).notNull(),
@@ -142,7 +146,6 @@ export const aiRequestLogs = pgTable('ai_request_logs', {
   index('ai_request_logs_created_status_idx').on(table.createdAt, table.status),
   index('ai_request_logs_credential_idx').on(table.credentialId),
   index('ai_request_logs_org_created_idx').on(table.organizationId, table.createdAt.desc()),
-  check('ai_request_logs_status_known', sql`${table.status} IN ('success', 'failed', 'blocked')`),
   check('ai_request_logs_counters_nonnegative', sql`${table.retryCount} >= 0 AND ${table.latencyMs} >= 0 AND ${table.promptTokens} >= 0 AND ${table.completionTokens} >= 0 AND ${table.totalTokens} >= 0`),
 ]);
 
@@ -150,7 +153,7 @@ export const aiQueryInsights = pgTable('ai_query_insights', {
   id: uuid('id').primaryKey().defaultRandom(),
   query: text('query').notNull(),
   channel: text('channel').default('web').notNull(),
-  status: text('status').default('open').notNull(),
+  status: aiInsightStatus('status').default('open').notNull(),
   feedbackReason: text('feedback_reason'),
   modelUsed: text('model_used'),
   suggestedAction: text('suggested_action'),

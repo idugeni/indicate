@@ -73,7 +73,9 @@ export function AiSeoAssist({
       setSuggestion({ titles, metaDescription, excerpt });
       toast.success('Saran SEO siap. Tinjau sebelum diterapkan.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      const message = err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.';
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -92,7 +94,9 @@ export function AiSeoAssist({
       setSuggestion({ ...suggestion, titles });
       toast.success('Varian judul baru siap.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+      const message = err instanceof Error ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.';
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }

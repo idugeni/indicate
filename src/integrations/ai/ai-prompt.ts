@@ -61,6 +61,7 @@ export interface AiChatPrompt {
   readonly audio?: readonly AiChatAudio[] | undefined;
   readonly responseModalities?: readonly AiResponseModality[] | undefined;
   readonly speechVoiceName?: string | undefined;
+  readonly costMode?: 'throughput' | 'price' | undefined;
 }
 
 export interface AiTokensUsage {

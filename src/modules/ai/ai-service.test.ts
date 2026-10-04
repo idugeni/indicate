@@ -97,7 +97,7 @@ function depsFor(fake: FakeDb, extra?: Partial<AiServiceDeps>, failModels: reado
       recordAiTokenUsage: async () => {},
     },
     resolveAdapter: (providerId: string) => ({
-      execute: async (_apiKey: string, modelName: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+      execute: async (apiKey: string, modelName: string) => {
         fake.adapterCalls.push({ providerId, modelName });
         if (failing.has(modelName)) throw new Error('Gemini request failed (http 503: unavailable).');
         return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] };
@@ -284,7 +284,7 @@ describe('executeAiQuery strategi rantai', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: (_apiKey: string, _model: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => new Promise<never>(() => {}),
+          execute: () => new Promise<never>(() => {}),
         }),
       }),
       PROMPT,
@@ -482,7 +482,7 @@ describe('executeAiQuery cache dan redactor', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         cache: {
-          lookup: async (_prompt: string, modelName: string) => {
+          lookup: async (prompt: string, modelName: string) => {
             queried.push(modelName);
             return modelName === 'gemini-3.6-flash'
               ? { responseText: 'Jawaban cache fallback yang cukup panjang.', modelName }
@@ -505,7 +505,7 @@ describe('executeAiQuery cache dan redactor', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, _model: string, prompt: { readonly prompt: string }, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+          execute: async (apiKey: string, model: string, prompt: { readonly prompt: string }) => {
             sent.push(prompt.prompt);
             return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
           },
@@ -561,7 +561,7 @@ describe('executeAiQuery teks kosong', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, name: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+          execute: async (apiKey: string, name: string) => {
             calls.push(name);
             if (name === 'gemini-3.8-flash') return { text: '', toolCallsExecuted: [] as string[] };
             return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
@@ -583,7 +583,7 @@ describe('executeAiQuery teks kosong', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, name: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+          execute: async (apiKey: string, name: string) => {
             calls.push(name);
             return { text: '', toolCallsExecuted: [] as string[] };
           },
@@ -602,7 +602,7 @@ describe('executeAiQuery teks kosong', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, _model: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => ({
+          execute: async () => ({
             text: '',
             toolCallsExecuted: [] as string[],
             inlineData: [{ mimeType: 'image/png', base64: 'AAA' }],
@@ -632,7 +632,7 @@ describe('executeAiQuery abort signal', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, _model: string, _prompt: unknown, opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+          execute: async (apiKey: string, model: string, prompt: unknown, opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
             signals.push(opts?.signal);
             return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
           },
@@ -659,7 +659,10 @@ describe('executeAiQuery batas upaya total dan deadline', () => {
   };
 
   function tenCredentials(prefix: string): Record<string, unknown>[] {
-    return Array.from({ length: 10 }, (_, index) => credentialRow(`${prefix}-${index}`, 'gemini'));
+    return Array.from({ length: 10 }, (slot, index) => {
+      void slot;
+      return credentialRow(`${prefix}-${index}`, 'gemini');
+    });
   }
 
   it('berhenti setelah cap attempt total', async () => {
@@ -807,7 +810,7 @@ describe('executeAiQuery global concurrency gate', () => {
     const deps = depsFor(fake, {
       sleep: async () => {},
       resolveAdapter: () => ({
-        execute: async (_apiKey: string, _model: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+        execute: async () => {
           started += 1;
           const call = started;
           events.push(`start-${call}`);
@@ -837,5 +840,16 @@ describe('executeAiQuery global concurrency gate', () => {
     const result = await executeAiQuery(depsFor(fake), PROMPT);
     expect(result.providerId).toBe('gemini');
     expect(getAiConcurrencyUsage()).toEqual({ active: 0, queued: 0 });
+  });
+});
+
+describe('executeAiQuery tanpa policy', () => {
+  it('fail-closed saat routing belum dikonfigurasi di database', async () => {
+    const adapterCalls: { readonly providerId: string; readonly modelName: string }[] = [];
+    const db = { execute: async (): Promise<readonly unknown[]> => [] } as AiDb;
+    const result = await executeAiQuery(depsFor({ db, adapterCalls, logs: [] }), PROMPT);
+    expect(result.providerId).toBe('exhausted');
+    expect(result.error).toBe('ROUTING_UNCONFIGURED');
+    expect(adapterCalls).toHaveLength(0);
   });
 });

@@ -22,6 +22,7 @@ function actorWith(platform: readonly string[]): AuthorizedTenantActorContext {
 const POLICY: AiRoutingPolicy = {
   rotationStrategy: 'health_aware',
   chainStrategy: 'fallback',
+  costMode: 'throughput',
   primaryProviderId: 'gemini',
   defaultModel: 'gemini-2.5-flash',
   fallbackProviderId: null,
@@ -63,21 +64,26 @@ function fakeRepository(rows: AiCredentialProjection[] = [credentialRow('1111111
   return {
     calls,
     listCredentials: async () => [...rows],
-    createCredential: async (_actor, input) => {
+    createCredential: async (actor, input) => {
       counter += 1;
       return { ...credentialRow(`cred-new-${counter}`), providerId: input.providerId, label: input.label, keyMasked: input.keyMasked, priority: input.priority };
     },
-    updateCredentialStatus: async (_actor, credentialId, status) => {
+    updateCredentialStatus: async (actor, credentialId, status) => {
       const target = rows.find((row) => row.id === credentialId);
       return target === undefined ? null : { ...target, status };
     },
-    deleteCredential: async (_actor, credentialId) => rows.some((row) => row.id === credentialId),
-    decryptCredentialKey: async (_actor, credentialId) => (rows.some((row) => row.id === credentialId) ? 'plain-key' : null),
+    deleteCredential: async (actor, credentialId) => rows.some((row) => row.id === credentialId),
+    decryptCredentialKey: async (actor, credentialId) => (rows.some((row) => row.id === credentialId) ? 'plain-key' : null),
     recordCredentialTest: async () => { calls.push('recordCredentialTest'); },
     recordBlockedCredential: async () => { calls.push('recordBlockedCredential'); },
     getPolicy: async () => POLICY,
-    upsertPolicy: async (_actor, input) => ({ ...POLICY, ...input, version: POLICY.version + 1, updatedAt: '2026-09-30T01:00:00.000Z' }),
+    upsertPolicy: async (actor, input) => ({ ...POLICY, ...input, version: POLICY.version + 1, updatedAt: '2026-09-30T01:00:00.000Z' }),
     listModels: async () => [],
+    listAllModels: async () => [],
+    updateModelActive: async (actor, modelId, isActive) => {
+      calls.push(`updateModelActive:${modelId}:${isActive ? 'on' : 'off'}`);
+      return true;
+    },
     listProviders: async () => [
       { id: 'gemini', name: 'Google Gemini', isActive: true, supportsChat: true },
       { id: 'openrouter', name: 'OpenRouter', isActive: true, supportsChat: true },
@@ -87,7 +93,7 @@ function fakeRepository(rows: AiCredentialProjection[] = [credentialRow('1111111
     getTokenUsageByOrg: async () => [],
     getMasterStatus: async () => ({ provisioned: false, version: null, fingerprint: null, rotatedAt: null, createdAt: null }),
     provisionMaster: async () => 1,
-    createInsight: async (_actor, input) => ({
+    createInsight: async (actor, input) => ({
       id: '33333333-3333-4333-8333-333333333333',
       query: input.query,
       channel: input.channel,
@@ -95,7 +101,7 @@ function fakeRepository(rows: AiCredentialProjection[] = [credentialRow('1111111
       feedbackReason: input.feedbackReason ?? null,
       createdAt: '2026-09-30T00:00:00.000Z',
     }),
-    resolveInsight: async (_actor, id) => ({
+    resolveInsight: async (actor, id) => ({
       id,
       query: 'q',
       channel: 'web',
@@ -135,10 +141,10 @@ describe('AI service permission gating', () => {
   it('menolak create/toggle/delete/policy/test tanpa grant', async () => {
     const { service: target, repository } = setupAi();
     const actor = actorWith([]);
-    expect((await target.createCredential(actor, { label: 'x', apiKey: 'AIza-valid-key-1234567890', priority: 1 })).ok).toBe(false);
+    expect((await target.createCredential(actor, { label: 'x', apiKey: 'AIza-valid-key-1234567890', priority: 1, providerId: 'openrouter' })).ok).toBe(false);
     expect((await target.toggleCredential(actor, { credentialId: '11111111-1111-4111-8111-111111111111', status: 'disabled' })).ok).toBe(false);
     expect((await target.deleteCredential(actor, { credentialId: '11111111-1111-4111-8111-111111111111' })).ok).toBe(false);
-    expect((await target.updatePolicy(actor, { rotationStrategy: 'round_robin', chainStrategy: 'fallback', primaryProviderId: 'gemini', defaultModel: 'gemini-2.5-flash', maxRetries: 3, cooldownDurationSec: 60 })).ok).toBe(false);
+    expect((await target.updatePolicy(actor, { rotationStrategy: 'round_robin', chainStrategy: 'fallback', primaryProviderId: 'gemini', defaultModel: 'gemini-2.5-flash', fallbackModel: 'gemini-2.5-flash', maxRetries: 3, cooldownDurationSec: 60 })).ok).toBe(false);
     expect((await target.testCredential(actor, { credentialId: '11111111-1111-4111-8111-111111111111' })).ok).toBe(false);
     expect(repository.calls.filter((call) => call === 'recordDenial').length).toBe(5);
   });
@@ -170,6 +176,17 @@ describe('AI service permission gating', () => {
     const result = await target.toggleCredential(actorWith([INTEGRATIONS_PERMISSIONS.aiManage]), { credentialId: '22222222-2222-4222-8222-222222222222', status: 'disabled' });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('toggle model meneruskan flag aktif dan menolak tanpa grant', async () => {
+    const { service: target, repository } = setupAi();
+    const actor = actorWith([INTEGRATIONS_PERMISSIONS.aiManage]);
+    const result = await target.toggleModel(actor, { modelId: 'openrouter-gpt-4o-mini', isActive: false });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toEqual({ modelId: 'openrouter-gpt-4o-mini', isActive: false });
+    expect(repository.calls).toContain('updateModelActive:openrouter-gpt-4o-mini:off');
+    expect((await target.toggleModel(actorWith([]), { modelId: 'x', isActive: true })).ok).toBe(false);
+    expect((await target.toggleModel(actor, { modelId: '', isActive: true })).ok).toBe(false);
   });
 
   it('test mencatat sukses saat provider menjawab OK', async () => {
@@ -204,7 +221,7 @@ describe('AI service permission gating', () => {
 
   it('updatePolicy menolak model default milik provider lain', async () => {
     const repo = fakeRepository();
-    repo.listModels = async () => [{ providerId: 'gemini', modelName: 'gemini-2.5-flash', displayName: 'Gemini', releaseStage: null, contextWindow: 1000, outputTokenLimit: null, rpmLimit: null, tpmLimit: null, rpdLimit: null, supportsTools: false, isDefault: false }];
+    repo.listModels = async () => [{ id: 'gemini-2.5-flash', providerId: 'gemini', modelName: 'gemini-2.5-flash', displayName: 'Gemini', releaseStage: null, contextWindow: 1000, outputTokenLimit: null, supportedModalities: ['text'], rpmLimit: null, tpmLimit: null, rpdLimit: null, supportsTools: false, isDefault: false, isActive: true }];
     const { service: target } = setupAi(repo);
     const actor = actorWith([INTEGRATIONS_PERMISSIONS.aiManage]);
     const result = await target.updatePolicy(actor, {
@@ -271,7 +288,7 @@ describe('AI service permission gating', () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }));
     vi.stubGlobal('fetch', fetchMock);
     const repo = fakeRepository();
-    repo.listModels = async () => [{ providerId: 'gemini', modelName: 'gemini-3.6-flash', displayName: 'G', releaseStage: null, contextWindow: 1000, outputTokenLimit: null, rpmLimit: null, tpmLimit: null, rpdLimit: null, supportsTools: false, isDefault: false }];
+    repo.listModels = async () => [{ id: 'gemini-3.6-flash', providerId: 'gemini', modelName: 'gemini-3.6-flash', displayName: 'G', releaseStage: null, contextWindow: 1000, outputTokenLimit: null, supportedModalities: ['text'], rpmLimit: null, tpmLimit: null, rpdLimit: null, supportsTools: false, isDefault: false, isActive: true }];
     const { service: target } = setupAi(repo);
     const result = await target.testCredential(actorWith([INTEGRATIONS_PERMISSIONS.aiManage]), { credentialId: '11111111-1111-4111-8111-111111111111' });
     expect(result.ok).toBe(true);

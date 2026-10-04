@@ -1849,6 +1849,27 @@
       "when": 1791180000000,
       "tag": "20261004171400_audit_chain_exceptions",
       "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1791244800000,
+      "tag": "20261005000000_ai_routing_cost_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1791331200000,
+      "tag": "20261006000000_ai_status_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1791334800000,
+      "tag": "20261006010000_invalidation_intent_status",
+      "breakpoints": true
     }
   ]
 }

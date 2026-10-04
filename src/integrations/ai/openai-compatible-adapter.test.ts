@@ -124,6 +124,12 @@ describe('OpenAiCompatibleAdapter', () => {
     expect(lastBody()).toMatchObject({ provider: { sort: 'throughput', allow_fallbacks: true } });
   });
 
+  it('costMode price menimpa sort menjadi termurah', async () => {
+    const adapter = new OpenAiCompatibleAdapter('openrouter', 'https://openrouter.ai/api/v1', {}, { sort: 'throughput', allowFallbacks: true });
+    await adapter.execute('router-key', 'model', { prompt: 'hai', costMode: 'price' });
+    expect(lastBody()).toMatchObject({ provider: { sort: 'price', allow_fallbacks: true } });
+  });
+
   it('menyalakan require_parameters otomatis untuk request terstruktur', async () => {
     const adapter = new OpenAiCompatibleAdapter('openrouter', 'https://openrouter.ai/api/v1');
     await adapter.execute('router-key', 'model', {

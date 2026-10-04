@@ -262,7 +262,10 @@ async function handleDraftArticleStream(
     return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Layanan AI sedang sibuk. Silakan coba lagi.', requestId));
   }
   const policy = await getActiveRoutingPolicy(deps.db);
-  const primaryProviderId = policy.primaryProviderId ?? 'gemini';
+  if (policy === null || policy.primaryProviderId === null) {
+    return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Routing AI belum dikonfigurasi. Silakan coba lagi.', requestId));
+  }
+  const primaryProviderId = policy.primaryProviderId;
   const timeoutMs = Math.min(Math.max(policy.requestTimeoutMs || 60000, 1000), 300000);
   const breakerStore = deps.rateLimit?.store;
   const chainStartIndex = policy.chainStrategy === 'round_robin' ? await nextChainStartIndex(breakerStore) : 0;
@@ -361,6 +364,7 @@ async function handleDraftArticleStream(
               maxOutputTokens: 2048,
               responseMimeType: 'application/json',
               responseSchema: ARTICLE_DRAFT_SCHEMA,
+              costMode: policy.costMode,
             };
             const succeed = async (text: string, tokens: AiAdapterResult['tokensUsage']): Promise<void> => {
               const latencyMs = Date.now() - startedAt;

@@ -44,6 +44,7 @@ function statefulRepository(): AiRepositoryPort & { masters: MasterRow[]; insigh
     getPolicy: async () => ({
       rotationStrategy: 'health_aware',
       chainStrategy: 'fallback',
+      costMode: 'throughput',
       primaryProviderId: 'gemini',
       defaultModel: 'gemini-2.5-flash',
       fallbackProviderId: null,
@@ -58,6 +59,8 @@ function statefulRepository(): AiRepositoryPort & { masters: MasterRow[]; insigh
     }),
     upsertPolicy: async () => { throw new Error('unused'); },
     listModels: async () => [],
+    listAllModels: async () => [],
+    updateModelActive: async () => true,
     listProviders: async () => [],
     listRequestLogs: async () => [],
     listQueryInsights: async () => [...insights],
@@ -69,7 +72,7 @@ function statefulRepository(): AiRepositoryPort & { masters: MasterRow[]; insigh
       }
       return { provisioned: true, version: active.version, fingerprint: 'deadbeef', rotatedAt: null, createdAt: '2026-09-30T00:00:00.000Z' };
     },
-    provisionMaster: async (_actor, input) => {
+    provisionMaster: async (actor, input) => {
       const active = masters.find((row) => row.active);
       if (active !== undefined && !input.rotate) throw new Error('AI_MASTER_CONFLICT');
       if (active !== undefined && input.rotate && input.expectedVersion !== active.version) throw new Error('AI_MASTER_CONFLICT');
@@ -78,7 +81,7 @@ function statefulRepository(): AiRepositoryPort & { masters: MasterRow[]; insigh
       masters.push({ version, active: true });
       return version;
     },
-    createInsight: async (_actor, input) => {
+    createInsight: async (actor, input) => {
       insightCounter += 1;
       const row: AiQueryInsightRow = {
         id: `40000000-4000-4000-8000-${String(insightCounter).padStart(12, '0')}`,
@@ -91,7 +94,7 @@ function statefulRepository(): AiRepositoryPort & { masters: MasterRow[]; insigh
       insights.push(row);
       return row;
     },
-    resolveInsight: async (_actor, id) => {
+    resolveInsight: async (actor, id) => {
       const target = insights.find((row) => row.id === id);
       if (target === undefined) return null;
       const resolved: AiQueryInsightRow = { ...target, status: 'resolved' };
