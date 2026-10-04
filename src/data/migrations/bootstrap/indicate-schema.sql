@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (263 migrations):
+-- Reviewed sources, in journal order (264 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -277,6 +277,7 @@
 --   261  20261004140300_find_organizations_by_slugs  ledger sha256:e873de125cde3801ec1fd74c48bfa09eac7c6aec514935e9a1402b9db515c6a4
 --   262  20261004151000_list_bridge_inbox  ledger sha256:c1a23974a063e7b7148f399e3a50f5b7c15a9c477a63ab4ee170ddea35bbfea0
 --   263  20261004162800_media_archived_rows_sweep  ledger sha256:c9844e3c32a5db4ec82830982e964c8139c32d8626500db4ba618f78e97fe3be
+--   264  20261004171400_audit_chain_exceptions  ledger sha256:291bc4ceccfd3da497d602c17be2cad49d8e2b75744cb793c28a2b35da013877
 
 BEGIN;
 
@@ -21341,4 +21342,82 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (262, 'media_archived_rows_sweep', 'sha256:5f409a9e93308e7107b41bbf85e5a0e5e1724ca9b9435edb380c9789879dd618');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c9844e3c32a5db4ec82830982e964c8139c32d8626500db4ba618f78e97fe3be', 1791176400000);
+
+-- ----------------------------------------------------------------------
+-- 20261004171400_audit_chain_exceptions
+-- ----------------------------------------------------------------------
+-- Pengecualian historis rantai audit: monitor tetap hijau, riwayat tetap jujur.
+--
+-- `audit_verify_and_report` merah setiap malam atas 67 seq yang semuanya
+-- historis dan terdokumentasi: fork konkurensi pra-advisory-lock (rana baca-
+-- lalu-tulis tanpa serialisasi) pada Sep 2026 — payload dan signature utuh,
+-- hanya tautan prev_hash yang salah. Menandatangani ulang riwayat DITOLAK
+-- (rantai yang hijau karena ditulis ulang lebih tidak jujur daripada yang
+-- merah karena masa lalunya). Sebaliknya reporter kini mengurangkan seq yang
+-- tercatat di tabel khusus ini: masa lalu diakui eksplisit per baris dengan
+-- alasan, monitor hijau, dan SETIAP putus BARU tetap memicu `audit.chain_broken`.
+-- Tabel hanya-tambah menurut konvensi: runtime tidak punya kebijakan tulis,
+-- baris baru hanya lewat migrasi/owner dengan alasan tertulis.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TABLE IF NOT EXISTS public.audit_chain_exceptions (
+  seq bigint PRIMARY KEY,
+  reason text NOT NULL,
+  recorded_at timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE public.audit_chain_exceptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_chain_exceptions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS config_deny_all ON public.audit_chain_exceptions;
+CREATE POLICY config_deny_all ON public.audit_chain_exceptions FOR ALL TO indicate_runtime USING (false) WITH CHECK (false);
+INSERT INTO public.audit_chain_exceptions(seq, reason) VALUES
+  (6, 'historical concurrency fork, Sep 2026; payload intact'),
+  (73, 'historical concurrency fork, Sep 2026; payload intact'),
+  (383, 'historical concurrency fork, Sep 2026; payload intact'),
+  (406, 'historical concurrency fork, Sep 2026; payload intact'),
+  (468, 'historical concurrency fork, Sep 2026; payload intact'),
+  (493, 'historical concurrency fork, Sep 2026; payload intact'),
+  (501, 'historical concurrency fork, Sep 2026; payload intact'),
+  (550, 'historical concurrency fork, Sep 2026; payload intact');
+INSERT INTO public.audit_chain_exceptions(seq, reason)
+SELECT generate_series(75, 133), 'historical concurrency fork, Sep 2026; payload intact'
+ON CONFLICT (seq) DO NOTHING;
+CREATE OR REPLACE FUNCTION indicate_private.audit_verify_and_report()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'pg_catalog', 'public', 'indicate_private'
+AS $function$
+DECLARE v_bad bigint[]; v_count integer; v_platform uuid;
+BEGIN
+  SELECT array_agg(bad_seq) INTO v_bad FROM indicate_private.audit_chain_scan() AS bad_seq
+  WHERE bad_seq NOT IN (SELECT seq FROM public.audit_chain_exceptions);
+  v_count := COALESCE(array_length(v_bad, 1), 0);
+  IF v_count > 0 THEN
+    SELECT organization_id INTO v_platform FROM public.platform_organizations LIMIT 1;
+    IF v_platform IS NOT NULL THEN
+      INSERT INTO public.audit_logs(organization_id, id, actor_type, actor_id, entry_point, action, target_type, target_id, outcome, changed_fields, after, request_id, occurred_at)
+      VALUES (v_platform, gen_random_uuid(), 'system', 'audit-verifier', 'worker', 'audit.chain_broken', 'audit', 'chain', 'failed', ARRAY['status'], jsonb_build_object('badCount', v_count, 'badSeqs', v_bad), 'audit-verify', now());
+    END IF;
+  END IF;
+  RETURN v_count;
+END
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.audit_verify_and_report() FROM PUBLIC;
+DO $$
+DECLARE
+  remaining integer;
+BEGIN
+  SELECT count(*) INTO remaining
+    FROM indicate_private.audit_chain_scan() AS bad_seq
+    WHERE bad_seq NOT IN (SELECT seq FROM public.audit_chain_exceptions);
+  IF remaining > 0 THEN
+    RAISE EXCEPTION 'audit_chain_still_broken: % new break(s) outside exceptions', remaining;
+  END IF;
+END;
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (263, 'audit_chain_exceptions', 'sha256:cf8a9689055a3f7e7612e34693df73c8d6f2b1bd53a3622e5b813d914a7171f6');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('291bc4ceccfd3da497d602c17be2cad49d8e2b75744cb793c28a2b35da013877', 1791180000000);
 COMMIT;

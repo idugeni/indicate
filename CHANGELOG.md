@@ -32,7 +32,11 @@ npm-facing.
 - Pembersih baris arsip media otomatis (v262): kategori sweep
   `media_archived_rows` menghapus baris `archived` >90 hari yang tak dirujuk
   artikel/brand/override mana pun — byte-nya sudah dikuras duluan oleh
-  reconciler, jadi tidak ada yatim R2 baru.- Terms and privacy consent on the two forms that take personal data. The
+  reconciler, jadi tidak ada yatim R2 baru.
+- Pengecualian historis rantai audit (v263): 67 putus pra-advisory-lock
+  dicatat eksplisit di `audit_chain_exceptions` (payload utuh, riwayat tak
+  ditulis ulang); monitor malam hijau kembali dan putus BARU tetap memicu
+  `audit.chain_broken`.- Terms and privacy consent on the two forms that take personal data. The
   tenant report form now ships a shadcn `Checkbox` that must be ticked before
   the report is sent, linking to that tenant's own `/syarat-ketentuan` and
   `/kebijakan-privasi`; `/sign-up` does the same against `/terms` and

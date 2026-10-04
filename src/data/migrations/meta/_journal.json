@@ -1842,6 +1842,13 @@
       "when": 1791176400000,
       "tag": "20261004162800_media_archived_rows_sweep",
       "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1791180000000,
+      "tag": "20261004171400_audit_chain_exceptions",
+      "breakpoints": true
     }
   ]
 }
