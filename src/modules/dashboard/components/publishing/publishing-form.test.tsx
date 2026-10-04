@@ -174,7 +174,7 @@ describe('PublishingForm suggest and status', () => {
 });
 
 describe('PublishingForm daftar situs tujuan', () => {
-  const SITES = Array.from({ length: 120 }, (_, index) => ({
+  const SITES = Array.from({ length: 120 }, (slot, index) => ({
     id: `site-${index}`,
     normalizedHostname: `wilayah-${String(index).padStart(3, '0')}.contoh.id`,
   }));
@@ -201,7 +201,7 @@ describe('PublishingForm daftar situs tujuan', () => {
     fireEvent.click(screen.getByRole('button', { name: /kirim penerbitan/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'publication.request',
-      expect.objectContaining({ siteIds: Array.from({ length: 10 }, (_, index) => `site-${110 + index}`) }),
+      expect.objectContaining({ siteIds: Array.from({ length: 10 }, (slot, index) => `site-${110 + index}`) }),
       { refresh: true },
     ));
   });

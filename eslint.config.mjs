@@ -90,9 +90,8 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
+          args: 'after-used',
+          caughtErrors: 'all',
         },
       ],
       '@typescript-eslint/no-unused-expressions': 'warn',

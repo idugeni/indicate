@@ -35,20 +35,20 @@ function repository(): AdsRepository & { calls: string[] } {
       calls.push('overview');
       return { sites: [], slots: [], settings: [], advertisers: [], campaigns: [], creatives: [], placements: [] };
     },
-    saveTenantSetting: async (_actor, input) => {
+    saveTenantSetting: async (actor, input) => {
       calls.push('saveTenantSetting');
       if (input.expectedVersion === 9) throw new AdsConflictError();
       return { version: (input.expectedVersion ?? 0) + 1 };
     },
     createAdvertiser: async () => { calls.push('createAdvertiser'); return { id: 'adv-1' }; },
-    updateAdvertiser: async (_actor, input) => {
+    updateAdvertiser: async (actor, input) => {
       calls.push('updateAdvertiser');
       if (input.expectedVersion === 9) throw new AdsConflictError();
       return { version: input.expectedVersion + 1 };
     },
     deleteAdvertiser: async () => { calls.push('deleteAdvertiser'); },
     createCreative: async () => { calls.push('createCreative'); return { id: 'cre-1' }; },
-    updateCreative: async (_actor, input) => {
+    updateCreative: async (actor, input) => {
       calls.push('updateCreative');
       if (input.expectedVersion === 9) throw new AdsConflictError();
       return { version: input.expectedVersion + 1 };
@@ -56,7 +56,7 @@ function repository(): AdsRepository & { calls: string[] } {
     updateCreativeStatus: async () => { calls.push('updateCreativeStatus'); return { version: 2 }; },
     deleteCreative: async () => { calls.push('deleteCreative'); },
     createCampaign: async () => { calls.push('createCampaign'); return { id: 'cam-1' }; },
-    updateCampaign: async (_actor, input) => {
+    updateCampaign: async (actor, input) => {
       calls.push('updateCampaign');
       if (input.expectedVersion === 9) throw new AdsConflictError();
       return { version: input.expectedVersion + 1 };

@@ -102,7 +102,7 @@ describe('useAiStream abort', () => {
   it('abort menghentikan stream dan mengembalikan null tanpa fallback error', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (_url: unknown, init?: RequestInit) => new Promise<never>((_resolve, reject) => {
+      vi.fn(async (url: unknown, init?: RequestInit) => new Promise<never>((resolve, reject) => {
         init?.signal?.addEventListener('abort', () => reject(new DOMException('dibatalkan', 'AbortError')));
       })),
     );

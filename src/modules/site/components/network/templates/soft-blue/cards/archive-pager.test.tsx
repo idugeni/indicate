@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 function artikel(n: number) {
-  return Array.from({ length: n }, (_, i) =>
+  return Array.from({ length: n }, (slot, i) =>
     makeNetworkArticle({ id: `a-${i}`, slug: `b-${i}`, title: `Berita ${i}`, attribution: 'Redaksi' }),
   );
 }

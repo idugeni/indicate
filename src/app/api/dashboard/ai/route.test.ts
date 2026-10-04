@@ -20,7 +20,7 @@ vi.mock('@/modules/auth/authenticate-dashboard', () => ({
 }));
 
 vi.mock('@/core/observability/api-access', () => ({
-  withApiAccess: (_operation: string, handler: unknown) => handler,
+  withApiAccess: (operation: string, handler: unknown) => handler,
 }));
 
 import { asStreamCapableAdapter } from '@/app/api/dashboard/ai/route';

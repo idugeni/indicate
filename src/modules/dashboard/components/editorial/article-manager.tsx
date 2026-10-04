@@ -42,6 +42,8 @@ import { Label } from '@/components/ui/label';
 import { STATUS_BADGE_TONE, resolveStatus } from '@/modules/dashboard/components/data-view-format';
 import { getEditorConfig, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
+import { LiveblogUpdates } from '@/modules/dashboard/components/editorial/liveblog-updates';
+import { articleTypeLabel, normalizeArticleType } from '@/modules/site/article-type';
 import { ForOrgInbox } from '@/modules/dashboard/components/editorial/inbox-panel';
 
 interface ArchiveArticle {
@@ -63,6 +65,24 @@ interface ArchiveArticle {
   readonly createdAt?: string | null;
   readonly updatedAt?: string | null;
   readonly scheduledAt?: string | null;
+  readonly type?: string | undefined;
+  readonly isSponsored?: boolean | undefined;
+}
+
+/**
+ * Lencana mode artikel di baris arsip; standar tidak menampilkan apa pun.
+ *
+ * @param type - Mode mentah baris; tak dikenal menjadi standar.
+ * @returns Lencana kuningan, atau null untuk standar.
+ */
+function ModeBadge({ type }: { readonly type: string | undefined }) {
+  const mode = normalizeArticleType(type);
+  if (mode === 'standard') return null;
+  return (
+    <Badge variant="outline" className="border-brass/50 font-mono text-[10px] uppercase tracking-wider text-brass">
+      {articleTypeLabel(mode)}
+    </Badge>
+  );
 }
 
 interface ArchiveCategory {
@@ -600,6 +620,7 @@ export function ArticleManager({
                         >
                           {STATUS_LABELS[article.status] ?? article.status}
                         </Badge>
+                        <ModeBadge type={article.type} />
                       </div>
                       <PortalList hostnames={portalNames} />
                     </div>
@@ -711,6 +732,7 @@ export function ArticleManager({
                         >
                           {STATUS_LABELS[article.status] ?? article.status}
                         </Badge>
+                        <ModeBadge type={article.type} />
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -803,6 +825,7 @@ export function ArticleManager({
                       >
                         {STATUS_LABELS[article.status] ?? article.status}
                       </Badge>
+                      <ModeBadge type={article.type} />
                     </div>
 
                     <div className="flex items-center justify-end gap-0.5">
@@ -878,6 +901,9 @@ export function ArticleManager({
                         onCancel={() => setEditingId(null)}
                         onSubmit={async (act, payload) => (command === undefined ? null : command(act, payload))}
                       />
+                      {normalizeArticleType(article.type) === 'liveblog' && command !== undefined ? (
+                        <LiveblogUpdates articleId={article.id} articleTitle={article.title} command={command} />
+                      ) : null}
                     </div>
                   )}
                 </li>

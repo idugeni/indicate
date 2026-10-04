@@ -33,11 +33,11 @@ function harness(repoOverrides: Record<string, unknown> = {}) {
     createInvitation: vi.fn(async () => 'invite-1'),
     redeemInvitation: vi.fn(async () => 'org-9'),
     listInvoices: vi.fn(async () => [{ id: 'inv-1' }]),
-    createInvoice: vi.fn(async (_actor: unknown, input: unknown) => ({ id: 'inv-1', ...(input as object) })),
+    createInvoice: vi.fn(async (actor: unknown, input: unknown) => ({ id: 'inv-1', ...(input as object) })),
     voidInvoice: vi.fn(async () => ({ id: 'inv-1', status: 'void' })),
     reissueInvoice: vi.fn(async () => ({ id: 'inv-2', status: 'paid' })),
-    issueInvoice: vi.fn(async (_actor: unknown, input: unknown) => ({ id: 'inv-3', status: 'unpaid', ...(input as object) })),
-    payInvoice: vi.fn(async (_actor: unknown, input: unknown) => ({ id: 'inv-3', status: 'paid', ...(input as object) })),
+    issueInvoice: vi.fn(async (actor: unknown, input: unknown) => ({ id: 'inv-3', status: 'unpaid', ...(input as object) })),
+    payInvoice: vi.fn(async (actor: unknown, input: unknown) => ({ id: 'inv-3', status: 'paid', ...(input as object) })),
     ...repoOverrides,
   };
   const service = new BillingService(repository as never, { now: () => NOW });

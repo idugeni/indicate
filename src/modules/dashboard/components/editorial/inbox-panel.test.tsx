@@ -28,7 +28,7 @@ const ROW = {
 describe('ForOrgInbox', () => {
   it('tampil hanya bila ada draf dan menerbitkan per baris', async () => {
     const user = userEvent.setup();
-    const command = vi.fn(async (action: string, _payload: unknown) => {
+    const command = vi.fn(async (action: string) => {
       if (action === 'article.inbox.list') return [ROW];
       if (action === 'article.bridge.requestAuto') return { bridgeIds: ['b-1'], slug: 'berita-upt', siteCount: 3 };
       throw new Error(`unexpected ${action}`);

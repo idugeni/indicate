@@ -99,7 +99,7 @@ describe('TaxonomyManager', () => {
 
   it('membagi daftar panjang menjadi halaman 12', async () => {
     const user = userEvent.setup();
-    const many = Array.from({ length: 13 }, (_, index) => ({
+    const many = Array.from({ length: 13 }, (slot, index) => ({
       id: `c-${index}`, name: `Kanal ${index}`, slug: `kanal-${index}`, status: 'active', version: 1, articleCount: 0,
     }));
     render(<TaxonomyManager data={{ categories: many, tags: [] }} command={async () => ({})} />);

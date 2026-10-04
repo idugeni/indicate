@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 
 function buat(n: number) {
-  return Array.from({ length: n }, (_, i) =>
+  return Array.from({ length: n }, (slot, i) =>
     makeNetworkArticle({ id: `a-${i + 1}`, slug: `berita-${i + 1}`, title: `Judul ${i + 1}` }),
   );
 }

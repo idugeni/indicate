@@ -38,7 +38,7 @@ function actor(): AuthorizedTenantActorContext {
 
 function serviceWith(calls: string[]): AdsService {
   const repository = new Proxy({}, {
-    get: (_target, property) => async () => {
+    get: (target, property) => async () => {
       calls.push(String(property));
       return { ok: true as const };
     },

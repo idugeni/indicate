@@ -27,7 +27,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}, invalidat
   const state: Record<string, unknown> = { organizationId: 'org-1' };
   for (const key of COLLECTIONS) state[key] = [...(collections[key] ?? [])];
   const repository = {
-    execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+    execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
       return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn(), refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
@@ -134,7 +134,7 @@ describe('TenantBusinessService saveSiteSettings', () => {
   });
 
   it('membatalkan cache organisasi setelah menyimpan pengaturan', async () => {
-    const revalidateTags = vi.fn(async (_tags: readonly string[]) => undefined);
+    const revalidateTags = vi.fn(async () => undefined);
     const { service } = harness({ sites: [site] }, { revalidateTags });
     const result = await service.saveSiteSettings(actor, settingsInput);
     expect(result.ok).toBe(true);
@@ -143,7 +143,7 @@ describe('TenantBusinessService saveSiteSettings', () => {
   });
 
   it('tidak menyentuh cache saat validasi pengaturan gagal', async () => {
-    const revalidateTags = vi.fn(async (_tags: readonly string[]) => undefined);
+    const revalidateTags = vi.fn(async () => undefined);
     const { service } = harness({ sites: [site] }, { revalidateTags });
     const result = await service.saveSiteSettings(actor, { siteId: ID, name: 'Portal Fakta', description: 'Deskripsi portal yang informatif.' });
     expect(result.ok).toBe(false);

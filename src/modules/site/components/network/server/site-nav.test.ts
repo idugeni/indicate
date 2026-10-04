@@ -59,7 +59,7 @@ describe('getSiteCategoryNav', () => {
   it('membatasi navigasi eksplisit sesuai limit', async () => {
     const site = makeNetworkSite(
       [],
-      Array.from({ length: 9 }, (_, i) => ({ label: `Kanal ${i}`, path: `/kanal-${i}` })),
+      Array.from({ length: 9 }, (slot, i) => ({ label: `Kanal ${i}`, path: `/kanal-${i}` })),
     );
     await expect(getSiteCategoryNav(site, 2)).resolves.toHaveLength(2);
     await expect(getSiteCategoryNav(site)).resolves.toHaveLength(7);

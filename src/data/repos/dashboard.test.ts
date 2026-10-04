@@ -9,14 +9,14 @@ describe('Pemotongan sisipan massal', () => {
   });
 
   it('mempertahankan seluruh baris dan urutannya', () => {
-    const rows = Array.from({ length: 134 }, (_, index) => ({ id: `a-${index}` }));
+    const rows = Array.from({ length: 134 }, (slot, index) => ({ id: `a-${index}` }));
     const flat = [...insertChunks(rows)].flat();
     expect(flat).toHaveLength(134);
     expect(flat.map((row) => row.id)).toEqual(rows.map((row) => row.id));
   });
 
   it('memecah menjadi beberapa pernyataan untuk koleksi besar', () => {
-    const rows = Array.from({ length: 250 }, (_, index) => ({ id: `a-${index}` }));
+    const rows = Array.from({ length: 250 }, (slot, index) => ({ id: `a-${index}` }));
     const chunks = [...insertChunks(rows)];
     expect(chunks.length).toBe(2);
     expect(chunks[0]).toHaveLength(200);
@@ -52,6 +52,11 @@ describe('Deteksi perubahan artikel', () => {
     source: '',
     tags: [],
     status: 'active',
+    type: 'standard',
+    isSponsored: false,
+    videoUrl: null,
+    audioUrl: null,
+    durationSeconds: null,
     publishedAt: null,
     scheduledAt: null,
     archivedAt: null,

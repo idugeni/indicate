@@ -32,7 +32,7 @@ function harness(options: {
   const transaction = new Proxy(
     {},
     {
-      get(_target, prop) {
+      get(target, prop) {
         if (prop === 'execute') return async () => [];
         if (prop === 'insert') return () => ({ values: async (row: unknown) => { auditLog.push(row); return []; } });
         if (prop === 'update') {

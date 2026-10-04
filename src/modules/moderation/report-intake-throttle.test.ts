@@ -10,7 +10,8 @@ const HOST_POLICY = { allowance: 60, windowSeconds: 60 };
 function limiter(options: { readonly limitedClasses?: readonly string[]; readonly failingClasses?: readonly string[] } = {}) {
   const limited = new Set(options.limitedClasses ?? []);
   const failing = new Set(options.failingClasses ?? []);
-  const enforce = vi.fn(async (key: string, _policy: RateLimitPolicy): Promise<Result<RateLimitDecision, PublicErrorEnvelope>> => {
+  const enforce = vi.fn(async (key: string, policy: RateLimitPolicy): Promise<Result<RateLimitDecision, PublicErrorEnvelope>> => {
+    void policy;
     const endpointClass = key.split(':')[0] ?? '';
     if (failing.has(endpointClass)) {
       return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Request protection is temporarily unavailable.', 'req-1') };

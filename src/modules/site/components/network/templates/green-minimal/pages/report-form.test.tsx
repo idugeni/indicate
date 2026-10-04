@@ -33,7 +33,7 @@ async function solveChallenge(token: string) {
   });
   let renders = 0;
   window.turnstile = {
-    render: (_element, options) => {
+    render: (element, options) => {
       renders += 1;
       options.callback(token);
       return 'widget-1';

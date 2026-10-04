@@ -24,7 +24,8 @@ function article(
     id, organizationId: ORG, regionId: 'r-1', publisherId: partial.publisherId, categoryId: null,
     categoryIds: [], authorId: null, leadMediaId: null, coverImageUrl: null, slug: id, title: partial.title, excerpt: null, canonicalUrl: null,
     body: 'isi', bodyJson: null, source: 'redaksi', tags: [],
-    status: partial.status, publishedAt: null, scheduledAt: null, archivedAt: null, version: 1,
+    status: partial.status, type: 'standard' as const, isSponsored: false, videoUrl: null, audioUrl: null,
+    durationSeconds: null, publishedAt: null, scheduledAt: null, archivedAt: null, version: 1,
     createdAt: partial.createdAt, updatedAt: partial.createdAt,
   } as const;
 }

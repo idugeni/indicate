@@ -31,10 +31,10 @@ function harness(repoOverrides: Record<string, unknown> = {}) {
   const repository = {
     listCustomers: vi.fn(async () => [{ id: ORG }]),
     readCustomer: vi.fn(async () => ({ id: ORG })),
-    createCustomer: vi.fn(async (_actor: unknown, input: unknown) => input),
-    updateCustomer: vi.fn(async (_actor: unknown, input: unknown) => input),
+    createCustomer: vi.fn(async (actor: unknown, input: unknown) => input),
+    updateCustomer: vi.fn(async (actor: unknown, input: unknown) => input),
     readSubscription: vi.fn(async () => ({ status: 'active' })),
-    updateSubscription: vi.fn(async (_actor: unknown, input: unknown) => input),
+    updateSubscription: vi.fn(async (actor: unknown, input: unknown) => input),
     assignFirstAdminMember: vi.fn(async () => ({ userId: 'user-9', roleId: 'role-9' })),
     recordDenial: vi.fn(async () => undefined),
     ...repoOverrides,

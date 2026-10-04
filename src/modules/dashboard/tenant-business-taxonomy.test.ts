@@ -59,7 +59,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
         parentRegionId: (region.parentRegionId ?? null) as string | null,
       })),
     })),
-    execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+    execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
       return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
@@ -205,7 +205,7 @@ describe('TenantBusinessService category cache invalidation', () => {
     const appendAudit = vi.fn();
     const repository = {
       readTaxonomyScope: vi.fn(async () => ({ articles: [], categories: [], regions: [] })),
-      execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+      execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
         const op = operation as (transaction: unknown) => unknown;
         return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
       }),
@@ -223,7 +223,7 @@ describe('TenantBusinessService category cache invalidation', () => {
   }
 
   it('merevalidasi tag org saat kategori dibuat', async () => {
-    const revalidateTags = vi.fn(async (_tags: readonly string[]) => undefined);
+    const revalidateTags = vi.fn(async () => undefined);
     const { service } = harnessWithInvalidator({}, { revalidateTags });
     const result = await service.createCategory(actor, { name: 'Ekonomi', slug: 'ekonomi', status: 'active' });
     expect(result.ok).toBe(true);
@@ -232,7 +232,7 @@ describe('TenantBusinessService category cache invalidation', () => {
   });
 
   it('merevalidasi tag org saat kategori diubah dan dihapus', async () => {
-    const revalidateTags = vi.fn(async (_tags: readonly string[]) => undefined);
+    const revalidateTags = vi.fn(async () => undefined);
     const { service } = harnessWithInvalidator({ categories: [category()] }, { revalidateTags });
     const updated = await service.updateCategory(actor, { id: ID, name: 'Politik Baru', slug: 'politik', status: 'active', expectedVersion: 1 });
     expect(updated.ok).toBe(true);
@@ -243,7 +243,7 @@ describe('TenantBusinessService category cache invalidation', () => {
   });
 
   it('tidak menyentuh cache saat mutasi non-kategori', async () => {
-    const revalidateTags = vi.fn(async (_tags: readonly string[]) => undefined);
+    const revalidateTags = vi.fn(async () => undefined);
     const { service } = harnessWithInvalidator({ articles: [article()] }, { revalidateTags });
     const result = await service.renameTag(actor, { from: 'Harga Emas', to: 'logam-mulia' });
     expect(result.ok).toBe(true);
@@ -253,7 +253,7 @@ describe('TenantBusinessService category cache invalidation', () => {
   it('mutasi tetap berhasil saat revalidasi gagal', async () => {
     const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
-      const revalidateTags = vi.fn(async (_tags: readonly string[]): Promise<void> => { throw new Error('tag store down'); });
+      const revalidateTags = vi.fn(async (): Promise<void> => { throw new Error('tag store down'); });
       const { service, state } = harnessWithInvalidator({}, { revalidateTags });
       const result = await service.createCategory(actor, { name: 'Ekonomi', slug: 'ekonomi', status: 'active' });
       expect(result.ok).toBe(true);

@@ -120,7 +120,8 @@ export async function withQueryDeadline<T>(label: string, read: () => Promise<T>
   try {
     return await Promise.race([
       read(),
-      new Promise<never>((_, reject) => {
+      new Promise<never>((resolve, reject) => {
+        void resolve;
         timer = setTimeout(() => {
           reject(new Error(`query_deadline_exceeded: ${label} did not settle within ${deadlineMs}ms`));
         }, deadlineMs);

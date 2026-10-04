@@ -9,6 +9,8 @@ import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
+import { ArticleAudioPlayer, ArticleModeBadge, ArticleVideoPlayer, LiveblogTimeline, SponsoredDisclosure } from '@/modules/site/components/article-mode-blocks';
+import { youtubeThumbnailFallbackUrl } from '@/modules/site/article-type';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
@@ -135,6 +137,7 @@ export function GreenMinimalArticle({
             alt={article.title}
             caption={article.title}
             captionClassName="sr-only"
+            fallbackSrc={youtubeThumbnailFallbackUrl(article.type === 'video' ? article.videoUrl : null)}
             width={article.imageWidth}
             height={article.imageHeight}
             focalX={article.imageFocalX}
@@ -143,6 +146,17 @@ export function GreenMinimalArticle({
             figureClassName="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm"
           />
           <AdSlot site={site} slot="in-content" />
+          {article.type === 'standard' ? null : (
+            <p className="m-0 mt-4 flex items-center gap-2">
+              <ArticleModeBadge type={article.type} />
+            </p>
+          )}
+          {article.type === 'video' ? (
+            <ArticleVideoPlayer videoUrl={article.videoUrl} durationSeconds={article.durationSeconds} title={article.title} />
+          ) : null}
+          {article.type === 'audio' ? (
+            <ArticleAudioPlayer audioUrl={article.audioUrl} durationSeconds={article.durationSeconds} title={article.title} />
+          ) : null}
 
           <div className="mt-8 space-y-6">
             <ArticleRichBodyView
@@ -153,6 +167,8 @@ export function GreenMinimalArticle({
             />
           </div>
           <ArticleGallery images={article.gallery} title={article.title} />
+          <LiveblogTimeline updates={article.updates} />
+          <SponsoredDisclosure isSponsored={article.isSponsored} attribution={article.attribution} />
           <AdSlot site={site} slot="content-middle" />
 
           {article.tags.length > 0 ? (

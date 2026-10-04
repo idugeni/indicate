@@ -5,7 +5,7 @@ vi.mock('next/server', () => ({
 }));
 
 vi.mock('@/core/observability/api-access', () => ({
-  withApiAccess: (_operation: string, handler: (request: Request) => Promise<Response>) => handler,
+  withApiAccess: (operation: string, handler: (request: Request) => Promise<Response>) => handler,
 }));
 
 describe('GET /brand/logo.png', () => {

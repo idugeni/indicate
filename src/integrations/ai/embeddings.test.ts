@@ -99,7 +99,7 @@ describe('rankSemanticCandidates', () => {
   });
 
   it('membatasi topK dan mengembalikan kosong bila semua vektor kosong', () => {
-    const candidates = Array.from({ length: 30 }, (_, index) => ({
+    const candidates = Array.from({ length: 30 }, (slot, index) => ({
       id: `c${index}`,
       articleId: null as string | null,
       excerpt: 'e',

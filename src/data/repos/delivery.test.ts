@@ -90,7 +90,7 @@ function chainable(rows: readonly unknown[], limitLog?: number[]): unknown {
   return new Proxy(
     {},
     {
-      get(_target, prop) {
+      get(target, prop) {
         if (prop === 'then') return (resolve: (value: unknown) => void) => resolve(rows);
         if (prop === 'limit' && limitLog !== undefined) {
           return (bound: number) => {
@@ -122,6 +122,7 @@ function harness(handlers: {
   readonly placements?: readonly unknown[];
   readonly bridgeAssignments?: readonly unknown[];
   readonly bridgeDetails?: readonly unknown[];
+  readonly updates?: readonly unknown[];
 }) {
   const selectLog: SelectLog[] = [];
   const limitLog: number[] = [];
@@ -139,7 +140,7 @@ function harness(handlers: {
   const transaction = new Proxy(
     {},
     {
-      get(_target, prop) {
+      get(target, prop) {
         if (prop === 'execute') return async () => handlers.bridgeDetails ?? [];
         if (prop === 'select')
           return (projection: Record<string, unknown>) => {
@@ -150,6 +151,7 @@ function harness(handlers: {
             if (only('body') || only('body', 'bodyJson')) return chainable(body, limitLog);
             if (keys.includes('sourceArticleId')) return chainable(handlers.bridgeAssignments ?? [], limitLog);
             if (keys.includes('sortOrder')) return chainable(gallery, limitLog);
+            if (keys.includes('publishedAt') && !keys.includes('slug')) return chainable(handlers.updates ?? [], limitLog);
             if (only('mediaId')) {
               const set = brandSets[Math.min(brandCursor, brandSets.length - 1)] ?? [];
               brandCursor += 1;
@@ -415,6 +417,57 @@ describe('readSite projection', () => {
     }
   });
 
+  it('memakai thumbnail YouTube sebagai sampul video tanpa sampul', async () => {
+    const { repository } = harness({
+      articles: [articleRow({ type: 'video', coverImageUrl: null, videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })],
+      body: [{ body: 'Naskah pendamping video.' }],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+    expect(site?.articles[0]?.imageUrl).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg');
+  });
+
+  it('mendahulukan sampul eksplisit daripada thumbnail YouTube', async () => {
+    const { repository } = harness({
+      articles: [articleRow({ type: 'video', coverImageUrl: 'https://portal.example/cover.jpg', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]?.imageUrl).toBe('https://portal.example/cover.jpg');
+  });
+
+  it('memakai foto galeri pertama sebagai sampul galeri tanpa sampul', async () => {
+    const { repository } = harness({
+      articles: [articleRow({ type: 'gallery', coverImageUrl: null })],
+      body: [{ body: 'Rangkaian foto.' }],
+      gallery: [{ id: 'g1', objectKey: 'o/o1/p/article-inline/y=2026/m=09/article/a1/14-g1-0123456789abcdef.webp', thumbObjectKey: null, altText: null, caption: null, widthPx: 800, heightPx: 600, mediaType: 'image/webp', sortOrder: 0 }],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+    const item = site?.articles[0];
+    expect(item).toBeDefined();
+    if (item !== undefined && isNetworkArticle(item)) {
+      expect(item.imageUrl).toBe('https://portal.example/api/network/media/g1');
+    } else {
+      throw new Error('expected detail article with gallery fallback');
+    }
+  });
+
+  it('memuat linimasa liveblog hanya untuk mode liveblog', async () => {
+    const updates = [{ id: 'u-1', body: 'Gol pertama.', publishedAt: new Date('2026-10-04T07:00:00.000Z'), updatedAt: new Date('2026-10-04T07:00:00.000Z') }];
+    const live = harness({
+      articles: [articleRow({ type: 'liveblog' })],
+      body: [{ body: 'Ringkasan.' }],
+      updates,
+    });
+    const liveSite = await live.repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+    const liveItem = liveSite?.articles[0];
+    if (liveItem === undefined || !isNetworkArticle(liveItem)) throw new Error('expected liveblog detail');
+    expect(liveItem.updates).toEqual([{ id: 'u-1', body: 'Gol pertama.', publishedAt: '2026-10-04T07:00:00.000Z' }]);
+    const standard = harness({ body: [{ body: 'Isi.' }] });
+    const standardSite = await standard.repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+    const standardItem = standardSite?.articles[0];
+    if (standardItem === undefined || !isNetworkArticle(standardItem)) throw new Error('expected standard detail');
+    expect(standardItem.updates).toEqual([]);
+  });
+
   it('memetakan galeri organisasi lewat jalur referensi bodyJson', async () => {
     const doc = { type: 'doc', content: [{ type: 'image', attrs: { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Potret' } }] };
     const { repository } = harness({
@@ -533,7 +586,7 @@ describe('public bundle and category nav reads', () => {
 
   it('baca kanal dibatasi di SQL sesuai jumlah kanal yang dirender', async () => {
     const { repository, limitLog } = harness({
-      categories: Array.from({ length: 64 }, (_, i) => ({ slug: `kanal-${i}`, name: `Kanal ${i}`, articleCount: 4, lastUpdatedAt: null })),
+      categories: Array.from({ length: 64 }, (slot, i) => ({ slug: `kanal-${i}`, name: `Kanal ${i}`, articleCount: 4, lastUpdatedAt: null })),
     });
     await expect(repository.loadSiteCategories({ ...CONTEXT }, 6)).resolves.toHaveLength(6);
     expect(limitLog).toContain(6);

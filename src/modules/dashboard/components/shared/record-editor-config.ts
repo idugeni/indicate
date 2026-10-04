@@ -4,6 +4,7 @@ import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
 import { SOCIAL_FIELD_DEFS, SOCIAL_ORDER } from '@/modules/site/company-contact';
+import { ARTICLE_TYPES, articleTypeLabel } from '@/modules/site/article-type';
 
 /**
  * Generic record-editor configuration registry for DataView.
@@ -81,6 +82,8 @@ const ARTICLE_STATUS_OPTIONS: readonly EditorOption[] = [
   { value: 'scheduled', label: 'Terjadwal' },
   { value: 'active', label: 'Aktif' },
 ];
+
+const ARTICLE_TYPE_OPTIONS: readonly EditorOption[] = ARTICLE_TYPES.map((value) => ({ value, label: articleTypeLabel(value) }));
 
 const PUBLISHER_TYPE_OPTIONS: readonly EditorOption[] = [
   { value: 'government_institution', label: 'Institusi pemerintah' },
@@ -184,12 +187,17 @@ const EDITOR_CONFIGS: Readonly<Record<string, EditorConfig>> = {
     title: 'Ubah Artikel',    fields: [
       { key: 'title', label: 'Judul', kind: 'text', required: true },
       { key: 'slug', label: 'Slug URL', kind: 'text', required: true, pattern: '[a-z0-9-]+' },
+      { key: 'type', label: 'Mode artikel', kind: 'select', required: true, options: ARTICLE_TYPE_OPTIONS },
       { key: 'regionId', label: 'Wilayah', kind: 'select', optionSource: 'regions', allowEmpty: true, emptyLabel: 'Nasional — semua apex' },
       { key: 'publisherId', label: 'Penerbit', kind: 'select', optionSource: 'publishers', allowEmpty: true, emptyLabel: 'Tanpa penerbit' },
       { key: 'categoryId', label: 'Kategori', kind: 'select', optionSource: 'categories', allowEmpty: true, emptyLabel: 'Tanpa kategori' },
       { key: 'authorId', label: 'Penulis', kind: 'select', optionSource: 'authors', allowEmpty: true, emptyLabel: 'Tanpa penulis' },
       { key: 'source', label: 'Sumber', kind: 'text', required: false, placeholder: 'Kosong = tidak dinyatakan' },
       { key: 'status', label: 'Status', kind: 'select', required: true, options: ARTICLE_STATUS_OPTIONS },
+      { key: 'videoUrl', label: 'URL video (mode video)', kind: 'text', placeholder: 'https://…' },
+      { key: 'audioUrl', label: 'URL audio (mode audio)', kind: 'text', placeholder: 'https://…' },
+      { key: 'durationSeconds', label: 'Durasi detik (video/audio)', kind: 'text', placeholder: 'cth: 180', pattern: '[0-9]+' },
+      { key: 'isSponsored', label: 'Konten bersponsor', kind: 'checkbox' },
       { key: 'excerpt', label: 'Deskripsi (opsional)', kind: 'textarea', placeholder: 'Ringkasan ≤ 500 karakter; kosong = dari isi' },
       { key: 'canonicalUrl', label: 'URL kanonis (opsional)', kind: 'text', placeholder: 'https://…' },
       { key: 'scheduledAt', label: 'Jadwal terbit (ISO, opsional)', kind: 'text', placeholder: '2026-10-01T07:00:00.000Z' },
@@ -339,12 +347,18 @@ export function buildUpdatePayload(
         const value = text(key);
         return value === '' ? null : value;
       };
+      const durationRaw = text('durationSeconds');
+      const durationParsed = durationRaw === '' ? null : Number(durationRaw);
       return {
         id, expectedVersion, regionId: nullableId('regionId'), publisherId: nullableId('publisherId'),
         categoryId: nullableId('categoryId'), authorId: nullableId('authorId'), slug: lower('slug'),
         title: text('title'), excerpt: optionalText('excerpt'),
         canonicalUrl: optionalText('canonicalUrl'), source: text('source'),
         status: text('status'), scheduledAt: optionalText('scheduledAt'),
+        type: text('type') === '' ? undefined : text('type'),
+        videoUrl: optionalText('videoUrl'), audioUrl: optionalText('audioUrl'),
+        durationSeconds: durationParsed === null || !Number.isInteger(durationParsed) ? null : durationParsed,
+        isSponsored: values.isSponsored === true,
       };
     }
     case 'roles':

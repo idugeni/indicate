@@ -59,7 +59,7 @@ describe('Pengalih organisasi', () => {
 
   it('memberitahu induk saat peralihan disetujui server', async () => {
     const user = userEvent.setup();
-    actionMock.mockImplementation(async (_previous: unknown, data: FormData) => ({
+    actionMock.mockImplementation(async (previous: unknown, data: FormData) => ({
       status: 'ok',
       organizationId: String(data.get('organizationId')),
     }));

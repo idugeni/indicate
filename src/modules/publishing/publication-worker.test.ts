@@ -296,7 +296,7 @@ describe('PublicationWorker reconcile', () => {
   });
 
   it('lease beracun tidak menghentikan pemulihan lease lain', async () => {
-    const recoverExpiredLease = vi.fn(async (_organizationId: string, jobId: string) => {
+    const recoverExpiredLease = vi.fn(async (organizationId: string, jobId: string) => {
       if (jobId === 'job-1') throw new Error('poison_lease');
     });
     const repository = repositoryStub({

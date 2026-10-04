@@ -17,7 +17,7 @@ vi.mock('@/core/config/runtime/runtime-context', () => ({
 }));
 
 vi.mock('@/core/observability/api-access', () => ({
-  withApiAccess: (_operation: string, handler: () => Promise<Response>) => handler,
+  withApiAccess: (operation: string, handler: () => Promise<Response>) => handler,
 }));
 
 async function healthBody(): Promise<Record<string, unknown>> {

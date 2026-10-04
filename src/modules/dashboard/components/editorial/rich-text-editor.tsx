@@ -67,6 +67,9 @@ function fileStem(name: string): string {
  * @param polishBusy - AI polish in flight.
  * @param polishDisabled - Disable the polish button even when idle.
  * @param polishLabel - Button caption; defaults to `Poles isi`.
+ * @param stickyToolbar - Pin the toolbar under the header on narrow screens.
+ *   The host owns the swap: it passes true only after its own action bar
+ *   released sticky, so the two bars never stack.
  * @param labelledBy - ID of the visible label describing this editor.
  * @param disabled - Disables toolbar and canvas during submission.
  * @returns Toolbar plus canvas styled with Shadcn and Tailwind tokens.
@@ -81,6 +84,7 @@ export function RichTextEditor({
   polishBusy = false,
   polishDisabled = false,
   polishLabel = 'Poles isi',
+  stickyToolbar = false,
   labelledBy,
   disabled = false,
 }: {
@@ -93,6 +97,7 @@ export function RichTextEditor({
   readonly polishBusy?: boolean;
   readonly polishDisabled?: boolean;
   readonly polishLabel?: string;
+  readonly stickyToolbar?: boolean;
   readonly labelledBy?: string;
   readonly disabled?: boolean;
 }) {
@@ -300,7 +305,7 @@ export function RichTextEditor({
 
   return (
     <div className="overflow-hidden rounded border border-hairline-strong bg-bg transition-colors duration-180 focus-within:border-brass hover:border-hairline">
-      <div id={toolbarId} role="toolbar" aria-label="Format teks" className="flex flex-wrap items-center gap-1.5 border-b border-hairline bg-bg-raised p-2">
+      <div id={toolbarId} role="toolbar" aria-label="Format teks" className={`flex flex-wrap items-center gap-1.5 border-b border-hairline bg-bg-raised p-2 ${stickyToolbar ? 'max-sm:sticky max-sm:top-[60px] max-sm:z-20 max-sm:shadow-md' : ''}`}>
         {editor === null ? null : (
           <>
             <div role="group" aria-label="Gaya dasar" className="flex min-w-0 flex-wrap items-center gap-1">

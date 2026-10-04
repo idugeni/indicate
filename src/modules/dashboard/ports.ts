@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { ActivationAttemptRecord, AnalyticsProjection, AuditFilter, AuditRecord, ConfigurationScope, DashboardProjection, DashboardTenantState, EditorialScope, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, NetworkArticlesScope, OperationsProjection, PublisherClaimScope, PublisherScope, RetentionRunRecord, TaxonomyScope } from '@/modules/dashboard/models';
+import type { ActivationAttemptRecord, AnalyticsProjection, ArticleUpdateRecord, AuditFilter, AuditRecord, ConfigurationScope, DashboardProjection, DashboardTenantState, EditorialScope, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, NetworkArticlesScope, OperationsProjection, PublisherClaimScope, PublisherScope, RetentionRunRecord, TaxonomyScope } from '@/modules/dashboard/models';
 
 export type MutableTenantState = {
   -readonly [Key in keyof DashboardTenantState]: DashboardTenantState[Key] extends readonly (infer Item)[] ? Item[] : DashboardTenantState[Key];
@@ -138,6 +138,14 @@ export interface DashboardRepository {
    * @returns Id baris bridge, slug, dan jumlah portal.
    */
   requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }>;
+  /** List liveblog entries of one article, oldest first, bounded. */
+  listArticleUpdates(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string }): Promise<readonly ArticleUpdateRecord[]>;
+  /** Append one liveblog entry; sort order continues the article max. */
+  createArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string; readonly body: string }): Promise<ArticleUpdateRecord>;
+  /** Rewrite one liveblog entry body under optimistic concurrency. */
+  updateArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number; readonly body: string }): Promise<ArticleUpdateRecord>;
+  /** Remove one liveblog entry under optimistic concurrency. */
+  deleteArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number }): Promise<{ readonly id: string }>;
 }
 
 export class DashboardAccessDeniedError extends Error {

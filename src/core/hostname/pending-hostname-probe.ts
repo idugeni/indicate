@@ -103,7 +103,8 @@ function fetchPinned(
         port: 443,
         path,
         method: 'GET',
-        lookup: (_host, lookupOptions, callback) => {
+        lookup: (host, lookupOptions, callback) => {
+          void host;
           if (pinned.length === 0) {
             callback(new Error('no_pinned_address'), '', 4);
             return;

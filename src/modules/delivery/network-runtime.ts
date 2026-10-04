@@ -5,7 +5,8 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { buildSeoDocument, CATEGORY_INDEX_MINIMUM, indexableRobots, nonIndexableRobots, tenantBrand, tenantFavicon } from '@/modules/site/seo';
-import type { NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
+import { extractYouTubeId, isSafeMediaSrc } from '@/modules/site/tiptap-document';
+import type { ArticleListItem, NetworkContentQuery, NetworkSiteData, RequestClassification, ResolvedSiteContext } from '@/modules/delivery/models';
 import type { RobotsDirective } from '@/modules/site/seo';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { activeDeliveryComposition, deliveryComposition } from '@/modules/delivery';
@@ -229,6 +230,36 @@ function socialCardImages(image: string, alt: string, width = 1200, height = 630
  */
 function isDeclaredImageType(mediaType: string | null | undefined): mediaType is string {
   return typeof mediaType === 'string' && /^image\/[a-z0-9.+-]+$/iu.test(mediaType.trim());
+}
+
+/**
+ * Entri `og:video` untuk mode video berkas langsung.
+ *
+ * @param article - Artikel detail, atau undefined di luar halaman artikel.
+ * @returns Satu entri URL tanpa tebakan MIME, atau kosong. YouTube dikecualikan:
+ * halaman tontonnya membawa metanya sendiri dan URL tonton bukan media yang
+ * bisa diputar inline.
+ */
+export function articleVideoEntries(
+  article: Pick<ArticleListItem, 'type' | 'videoUrl'> | undefined,
+): readonly { readonly url: string }[] {
+  if (article?.type !== 'video' || article.videoUrl === null) return [];
+  if (!isSafeMediaSrc(article.videoUrl) || extractYouTubeId(article.videoUrl) !== null) return [];
+  return [{ url: article.videoUrl }];
+}
+
+/**
+ * Entri `og:audio` untuk mode audio.
+ *
+ * @param article - Artikel detail, atau undefined di luar halaman artikel.
+ * @returns Satu entri URL tanpa tebakan MIME, atau kosong.
+ */
+export function articleAudioEntries(
+  article: Pick<ArticleListItem, 'type' | 'audioUrl'> | undefined,
+): readonly { readonly url: string }[] {
+  if (article?.type !== 'audio' || article.audioUrl === null) return [];
+  if (!isSafeMediaSrc(article.audioUrl)) return [];
+  return [{ url: article.audioUrl }];
 }
 
 /**
@@ -460,6 +491,8 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
             authors: [article.authorDisplayName ?? article.authorName ?? article.attribution],
             section: article.categoryName ?? undefined,
             tags: article.tags.length === 0 ? undefined : [...article.tags],
+            ...(articleVideoEntries(article).length === 0 ? {} : { videos: [...articleVideoEntries(article)] }),
+            ...(articleAudioEntries(article).length === 0 ? {} : { audio: [...articleAudioEntries(article)] }),
           }),
     },
     twitter: seo.twitter

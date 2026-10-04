@@ -103,7 +103,7 @@ describe('reconcileMediaObjectKeys', () => {
   });
 
   it('membatasi jumlah drift yang dilaporkan tanpa kehilangan hitungan kelas', async () => {
-    const objects = Array.from({ length: 10 }, (_, index) => stored({ key: `o/o1/p/site-logo/y=2026/${index}.png` }));
+    const objects = Array.from({ length: 10 }, (slot, index) => stored({ key: `o/o1/p/site-logo/y=2026/${index}.png` }));
     const report = await reconcileMediaObjectKeys(storage(objects), async () => [], () => NOW, { maxReportedDrift: 3 });
     expect(report.drift).toHaveLength(3);
     expect(report.storedObjects).toBe(10);

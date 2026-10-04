@@ -189,9 +189,15 @@ describe('buildUpdatePayload', () => {
         body: ' Isi. ',
         source: 'Redaksi',
         status: 'draft',
+        type: 'video',
+        videoUrl: 'https://video.example/tonton',
+        audioUrl: '',
+        durationSeconds: '180',
+        isSponsored: true,
       },
     );
     expect(articlePayload).toMatchObject({ regionId: 'r1', publisherId: null, authorId: null, slug: 'judul-utama', title: 'Judul Utama' });
+    expect(articlePayload).toMatchObject({ type: 'video', videoUrl: 'https://video.example/tonton', audioUrl: null, durationSeconds: 180, isSponsored: true });
     expect(articlePayload).not.toHaveProperty('body');
     expect(
       buildUpdatePayload('articles', { id: 'a1', version: 3 }, { regionId: '', title: 'T', slug: 's', body: 'B', source: '', status: 'draft' }),

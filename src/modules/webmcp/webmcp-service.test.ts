@@ -44,6 +44,11 @@ function makeItem(overrides: Partial<ArticleListItem> & { readonly slug: string 
     updatedAt: '2026-09-30T11:00:00.000Z',
     articleSiteId: `as-${slug}`,
     viewCount: 7,
+    type: 'standard',
+    isSponsored: false,
+    videoUrl: null,
+    audioUrl: null,
+    durationSeconds: null,
     imageUrl: null,
     thumbnailUrl: null,
     imageMediaType: null,
@@ -85,14 +90,14 @@ function makeSite(articles: readonly ArticleListItem[]): NetworkSiteData {
 }
 
 function makeDetail(slug: string, body: string): NetworkArticle {
-  return { ...makeItem({ slug }), body, gallery: [] };
+  return { ...makeItem({ slug }), body, gallery: [], updates: [] };
 }
 
 function makeDeps(site: NetworkSiteData | null, throttle: WebMcpThrottle = { allowed: true }): WebMcpServiceDeps & {
   readonly load: ReturnType<typeof vi.fn>;
 } {
   const load = vi.fn(async () => site);
-  const loadSiteCategories = vi.fn(async (_context: ResolvedSiteContext, limit: number) =>
+  const loadSiteCategories = vi.fn(async (context: ResolvedSiteContext, limit: number) =>
     [
       { slug: 'politik', name: 'Politik', articleCount: 5, lastUpdatedAt: '2026-01-02T00:00:00.000Z' },
       { slug: 'ekonomi', name: 'Ekonomi', articleCount: 0, lastUpdatedAt: null },

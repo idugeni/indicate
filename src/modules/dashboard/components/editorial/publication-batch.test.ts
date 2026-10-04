@@ -53,14 +53,17 @@ describe('Pemecahan batch penerbitan', () => {
   });
 
   it('memecah tepat di batas server dan menyisakan sisanya', () => {
-    const ids = Array.from({ length: 134 }, (_, index) => `site-${index}`);
+    const ids = Array.from({ length: 134 }, (slot, index) => {
+      void slot;
+      return `site-${index}`;
+    });
     const batches = chunkPublicationTargets(ids);
     expect(batches.map((batch) => batch.length)).toEqual([100, 34]);
     expect(batches.flat()).toEqual(ids);
   });
 
   it('tidak melewati ceiling pada jumlah tepat kelipatan', () => {
-    const ids = Array.from({ length: 200 }, (_, index) => `site-${index}`);
+    const ids = Array.from({ length: 200 }, (slot, index) => `site-${index}`);
     expect(chunkPublicationTargets(ids).map((batch) => batch.length)).toEqual([100, 100]);
   });
 

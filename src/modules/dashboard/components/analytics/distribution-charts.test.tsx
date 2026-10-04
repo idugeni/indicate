@@ -28,7 +28,7 @@ afterEach(() => {
 
 describe('Pohon volume', () => {
   it('memangkas total ke 12 teratas, bukan seluruh baris', () => {
-    const rows = Array.from({ length: 15 }, (_, index) => ({ key: `situs-${index}`, count: index + 1 }));
+    const rows = Array.from({ length: 15 }, (slot, index) => ({ key: `situs-${index}`, count: index + 1 }));
     render(<TreeMap title="Pohon penerbit" rows={rows} emptyText="Belum ada data penerbit." />);
     expect(screen.getByText('114 total')).toBeDefined();
   });

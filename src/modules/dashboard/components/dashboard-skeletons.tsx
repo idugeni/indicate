@@ -47,7 +47,9 @@ export function DashboardFormSkeleton() {
 export function DashboardStatsSkeleton({ count = 8 }: { readonly count?: number }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
-      {Array.from({ length: count }, (_, index) => (
+      {Array.from({ length: count }, (slot, index) => {
+        void slot;
+        return (
         <div key={index} className="rounded-lg border border-hairline bg-bg-raised p-5">
           <div className="flex items-center gap-1.5">
             <Skeleton className="h-3.5 w-3.5 bg-bg-raised-2" />
@@ -55,7 +57,8 @@ export function DashboardStatsSkeleton({ count = 8 }: { readonly count?: number 
           </div>
           <Skeleton className="mt-1.5 h-6 w-24 bg-bg-raised-2" />
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }
@@ -174,9 +177,12 @@ function FormsGridBare({ columns, count }: { readonly columns: 1 | 2 | 3; readon
       aria-hidden="true"
       className={`grid items-start gap-6 ${columns === 3 ? 'md:grid-cols-3' : columns === 2 ? 'md:grid-cols-2' : ''}`}
     >
-      {Array.from({ length: count }, (_, index) => (
+      {Array.from({ length: count }, (slot, index) => {
+        void slot;
+        return (
         <DashboardFormCardSkeleton key={index} />
-      ))}
+      );
+      })}
     </div>
   );
 }
@@ -205,9 +211,12 @@ function TablesGridBare({ columns, count }: { readonly columns: 1 | 2 | 3; reado
       aria-hidden="true"
       className={`grid items-start gap-6 ${columns === 3 ? 'lg:grid-cols-3' : columns === 2 ? 'lg:grid-cols-2' : ''}`}
     >
-      {Array.from({ length: count }, (_, index) => (
+      {Array.from({ length: count }, (slot, index) => {
+        void slot;
+        return (
         <DashboardTableSkeleton key={index} />
-      ))}
+      );
+      })}
     </div>
   );
 }
@@ -234,7 +243,9 @@ export function DashboardTilesSkeleton({ count = 8 }: { readonly count?: number 
       aria-hidden="true"
       className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
     >
-      {Array.from({ length: count }, (_, index) => (
+      {Array.from({ length: count }, (slot, index) => {
+        void slot;
+        return (
         <div key={index} className="overflow-hidden rounded-md border border-hairline bg-bg">
           <Skeleton className="aspect-square w-full rounded-none bg-bg-raised-2" />
           <div className="space-y-1 p-2">
@@ -243,7 +254,8 @@ export function DashboardTilesSkeleton({ count = 8 }: { readonly count?: number 
             <Skeleton className="h-2.5 w-2/3 bg-bg-raised-2" />
           </div>
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }
@@ -255,7 +267,9 @@ export function DashboardMiniCardsSkeleton({ count = 8 }: { readonly count?: num
       aria-hidden="true"
       className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
-      {Array.from({ length: count }, (_, index) => (
+      {Array.from({ length: count }, (slot, index) => {
+        void slot;
+        return (
         <div key={index} className="rounded-md border border-hairline bg-bg p-3">
           <div className="flex items-start justify-between gap-1.5">
             <Skeleton className="h-3.5 w-2/3 bg-bg-raised-2" />
@@ -270,7 +284,8 @@ export function DashboardMiniCardsSkeleton({ count = 8 }: { readonly count?: num
             </div>
           </div>
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }

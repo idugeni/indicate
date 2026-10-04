@@ -59,6 +59,66 @@ describe('serializeRss enclosure', () => {
       }),
     ).toContain('type="image/jpeg"');
   });
+
+  it('memakai enclosure audio untuk mode audio', () => {
+    const articles = [
+      makeNetworkArticle({
+        type: 'audio',
+        audioUrl: 'https://audio.portalberita.id/rekaman.mp3',
+      }),
+    ];
+    const site = makeNetworkSite(articles);
+    expect(
+      serializeRss({
+        context: site.context,
+        siteName: site.settings.name,
+        description: site.settings.description,
+        articles,
+      }),
+    ).toContain('<enclosure url="https://audio.portalberita.id/rekaman.mp3" type="audio/mpeg" />');
+  });
+
+  it('menandai disclosure sponsor di RSS', () => {
+    const articles = [
+      makeNetworkArticle({ isSponsored: true, description: 'Inti berita.' }),
+    ];
+    const site = makeNetworkSite(articles);
+    expect(
+      serializeRss({
+        context: site.context,
+        siteName: site.settings.name,
+        description: site.settings.description,
+        articles,
+      }),
+    ).toContain('<description>Inti berita. (Konten bersponsor.)</description>');
+  });
+
+  it('memakai media RSS untuk mode video', () => {
+    const fileArticles = [
+      makeNetworkArticle({ type: 'video', videoUrl: 'https://video.portalberita.id/liputan.mp4' }),
+    ];
+    const fileSite = makeNetworkSite(fileArticles);
+    expect(
+      serializeRss({
+        context: fileSite.context,
+        siteName: fileSite.settings.name,
+        description: fileSite.settings.description,
+        articles: fileArticles,
+      }),
+    ).toContain('<media:content url="https://video.portalberita.id/liputan.mp4" medium="video" />');
+    const tubeArticles = [
+      makeNetworkArticle({ type: 'video', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }),
+    ];
+    const tubeSite = makeNetworkSite(tubeArticles);
+    expect(
+      serializeRss({
+        context: tubeSite.context,
+        siteName: tubeSite.settings.name,
+        description: tubeSite.settings.description,
+        articles: tubeArticles,
+      }),
+    ).toContain('<media:player url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />');
+  });
 });
 
 describe('absoluteSiteAssetUrl', () => {
@@ -220,6 +280,85 @@ describe('buildSeoDocument', () => {
     });
     expect(document.description).toBe('Deskripsi portal. Melayani wilayah Jawa Tengah.');
     expect(document.openGraph?.description).toBe('Deskripsi portal. Melayani wilayah Jawa Tengah.');
+  });
+
+  it('menyematkan VideoObject untuk mode video dengan durasi ISO 8601', () => {
+    const article = makeNetworkArticle({
+      type: 'video',
+      videoUrl: 'https://video.portalberita.id/liputan.mp4',
+      durationSeconds: 150,
+    });
+    const document = buildSeoDocument(makeNetworkSite([article]), { path: '/berita-utama', article });
+    const video = document.jsonLd.find((node) => node['@type'] === 'VideoObject');
+    expect(video).toMatchObject({
+      name: article.title,
+      contentUrl: 'https://video.portalberita.id/liputan.mp4',
+      duration: 'PT2M30S',
+    });
+  });
+
+  it('menyematkan embedUrl dan hitungan tonton untuk URL YouTube', () => {
+    const article = makeNetworkArticle({
+      type: 'video',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      durationSeconds: 150,
+    });
+    const document = buildSeoDocument(makeNetworkSite([article]), { path: '/berita-utama', article });
+    const video = document.jsonLd.find((node) => node['@type'] === 'VideoObject');
+    expect(video).toMatchObject({
+      embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+      interactionStatistic: {
+        '@type': 'InteractionCounter',
+        userInteractionCount: 0,
+      },
+    });
+  });
+
+  it('menyematkan LiveBlogPosting dengan entri berpenanda waktu untuk mode liveblog', () => {
+    const article = makeNetworkArticle({
+      type: 'liveblog',
+      updates: [
+        { id: 'u-2', body: 'Gol kedua.\nSkor 2-0.', publishedAt: '2026-10-04T08:00:00.000Z' },
+        { id: 'u-1', body: 'Gol pertama.', publishedAt: '2026-10-04T07:00:00.000Z' },
+      ],
+    });
+    const document = buildSeoDocument(makeNetworkSite([article]), { path: '/berita-utama', article });
+    const liveblog = document.jsonLd.find((node) => node['@type'] === 'LiveBlogPosting');
+    expect(liveblog).toMatchObject({
+      coverageStartTime: article.publishedAt,
+      liveBlogUpdate: [
+        { '@type': 'BlogPosting', headline: 'Gol kedua.', datePublished: '2026-10-04T08:00:00.000Z' },
+        { '@type': 'BlogPosting', headline: 'Gol pertama.', datePublished: '2026-10-04T07:00:00.000Z' },
+      ],
+    });
+    expect(document.jsonLd.some((node) => node['@type'] === 'NewsArticle')).toBe(false);
+  });
+
+  it('memakai LiveBlogPosting hanya bila ada entri dan galeri di image NewsArticle', () => {
+    const empty = makeNetworkArticle({ type: 'liveblog', updates: [] });
+    const emptyDocument = buildSeoDocument(makeNetworkSite([empty]), { path: '/berita-utama', article: empty });
+    expect(emptyDocument.jsonLd.some((node) => node['@type'] === 'NewsArticle')).toBe(true);
+    const galleryArticle = makeNetworkArticle({
+      gallery: [
+        { id: 'g1', url: 'https://portal.example/api/network/media/g1', thumbnailUrl: null, alt: null, caption: null, width: null, height: null, mediaType: 'image/webp' },
+        { id: 'g2', url: 'https://portal.example/api/network/media/g2', thumbnailUrl: null, alt: null, caption: null, width: null, height: null, mediaType: 'image/webp' },
+      ],
+    });
+    const galleryDocument = buildSeoDocument(makeNetworkSite([galleryArticle]), { path: '/berita-utama', article: galleryArticle });
+    const news = galleryDocument.jsonLd.find((node) => node['@type'] === 'NewsArticle');
+    expect(news?.['image']).toHaveLength(3);
+  });
+
+  it('menyematkan AudioObject untuk mode audio dan bukan untuk standar', () => {
+    const audio = makeNetworkArticle({ type: 'audio', audioUrl: 'https://audio.portalberita.id/rekaman.mp3', durationSeconds: 65 });
+    const audioDocument = buildSeoDocument(makeNetworkSite([audio]), { path: '/berita-utama', article: audio });
+    expect(audioDocument.jsonLd.find((node) => node['@type'] === 'AudioObject')).toMatchObject({
+      contentUrl: 'https://audio.portalberita.id/rekaman.mp3',
+      duration: 'PT1M5S',
+    });
+    const standardDocument = buildSeoDocument(makeNetworkSite(), { path: '/berita-utama', article: makeNetworkArticle() });
+    expect(standardDocument.jsonLd.some((node) => node['@type'] === 'VideoObject')).toBe(false);
+    expect(standardDocument.jsonLd.some((node) => node['@type'] === 'AudioObject')).toBe(false);
   });
 });
 

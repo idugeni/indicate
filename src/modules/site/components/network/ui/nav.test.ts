@@ -47,7 +47,7 @@ describe('categoryNav', () => {
 
 describe('splitCategoryNav', () => {
   it('bagi tiga inline dan sisanya ke lainnya', () => {
-    const items = Array.from({ length: 7 }, (_, i) => ({ label: `Kat ${i + 1}`, href: `/kat-${i + 1}` }));
+    const items = Array.from({ length: 7 }, (slot, i) => ({ label: `Kat ${i + 1}`, href: `/kat-${i + 1}` }));
     const { visible, overflow } = splitCategoryNav(items);
     expect(visible).toHaveLength(3);
     expect(overflow).toHaveLength(4);

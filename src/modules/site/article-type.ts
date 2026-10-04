@@ -10,6 +10,7 @@
  * tanpa menyelaraskannya dengan skema basis data.
  */
 import type { ArticleType } from '@/data/schema/editorial';
+import { extractYouTubeId } from '@/modules/site/tiptap-document';
 
 export type { ArticleType };
 
@@ -144,6 +145,34 @@ export function describeArticleTypeProblem(input: {
     return 'Mode audio wajib memiliki URL audio.';
   }
   return null;
+}
+
+/**
+ * Sampul otomatis resolusi penuh dari URL video YouTube.
+ *
+ * @param videoUrl - URL tonton/berkas luar; non-YouTube menghasilkan null.
+ * @returns `https://i.ytimg.com/vi/{id}/maxresdefault.jpg`, atau null bila bukan YouTube.
+ * @remarks Dipakai delivery sebagai sampul cadangan saat artikel mode `video`
+ * tanpa sampul terunggah maupun URL sampul luar. `maxresdefault` bisa 404
+ * untuk video lama beresolusi rendah; pasangkan dengan
+ * {@link youtubeThumbnailFallbackUrl} sebagai `fallbackSrc`.
+ */
+export function youtubeThumbnailUrl(videoUrl: string | null | undefined): string | null {
+  if (videoUrl === null || videoUrl === undefined) return null;
+  const id = extractYouTubeId(videoUrl.trim());
+  return id === null ? null : `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
+}
+
+/**
+ * Sampul cadangan YouTube yang dijamin ada untuk tiap video publik.
+ *
+ * @param videoUrl - URL tonton/berkas luar; non-YouTube menghasilkan null.
+ * @returns `https://i.ytimg.com/vi/{id}/hqdefault.jpg` (480x360, selalu ada), atau null.
+ */
+export function youtubeThumbnailFallbackUrl(videoUrl: string | null | undefined): string | null {
+  if (videoUrl === null || videoUrl === undefined) return null;
+  const id = extractYouTubeId(videoUrl.trim());
+  return id === null ? null : `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 }
 
 /**

@@ -161,6 +161,35 @@ satu round-trip `loadSiteTemplateId` per request ikut hilang.
 2. `MASTER_TEMPLATE_PRESETS` (`src/ui/themes.ts`) — validasi dashboard.
 3. `template_presets` (DB) — katalog dashboard + seed migration.
 
+## Mode artikel (kontrak tampil per mode)
+
+Sumber mode: `articles.type` (`standard`, `video`, `gallery`, `audio`,
+`liveblog`, `short`) + `is_sponsored` + `video_url`/`audio_url` +
+`duration_seconds` + `article_updates`. Dashboard menulisnya lewat
+`article.create`/`article.update` (validasi silang
+`describeArticleTypeProblem`), delivery memproyeksikannya di
+`ArticleListItem`/`NetworkArticle`, dan 10 `*/pages/article-page.tsx`
+merender blok yang sama lewat komponen netral-tema di
+`src/modules/site/components/article-mode-blocks.tsx` (pola yang sama
+seperti `ArticleGallery` bersama).
+
+| Mode | Yang tampil di halaman artikel |
+|---|---|
+| `standard` | Baseline: sampul, isi, galeri bila ada, JSON-LD `NewsArticle`. |
+| `video` | Lencana Video + pemutar 16:9 di bawah sampul (sematan YouTube-no-cookie bila URL-nya YouTube, elemen `<video>` bila berkas `https`) + label durasi + JSON-LD `VideoObject` (`embedUrl` YouTube, `interactionStatistic` tontonan) + `og:video` (berkas langsung; YouTube memakai metanya sendiri) + `<media:content>` (berkas) / `<media:player>` (YouTube) di RSS. URL YouTube tanpa sampul otomatis memakai thumbnail `maxresdefault.jpg` sebagai featured image (kartu listing, hero, `og:image`, RSS) dengan fallback `hqdefault.jpg` bila resolusi penuh 404; sampul eksplisit (unggahan/URL luar) selalu menang. Sitemap video khusus tidak ada — `VideoObject` di halaman adalah sinyal kanonis agar tidak menyentuh edge rules, robots, dan skrip GSC. |
+| `gallery` | Lencana Galeri + galeri foto dari media milik artikel (sama untuk semua mode bila ada); foto pertama jadi sampul cadangan saat sampul kosong (khusus detail) + URL galeri ikut dalam array `image` JSON-LD. |
+| `audio` | Lencana Audio + pemutar `<audio>` di bawah sampul + label durasi + JSON-LD `AudioObject` + `og:audio` + `<enclosure audio/mpeg>` di RSS. |
+| `liveblog` | Lencana Liveblog + isi sebagai ringkasan pembuka + linimasa entri `article_updates` (terbaru dulu, maksimal 100, muat ulang otomatis 60 detik saat tab terlihat) + JSON-LD `LiveBlogPosting` (`coverageStartTime`, `liveBlogUpdate` maksimal 20 entri; tanpa entri kembali ke `NewsArticle`) + invalidasi `article.changed` tiap tulis/hapus entri. Entri jembatan lintas-org tidak ikut terproyeksi (hanya isi). |
+| `short` | Lencana Short; batas 500 karakter ditegakkan saat tulis, tanpa pemotongan tampil. |
+| `isSponsored` | Baris disclosure "Konten bersponsor oleh …" di semua mode + penanda `(Konten bersponsor.)` di deskripsi RSS. |
+
+Batasan yang disengaja: byte video/audio tidak masuk R2 — `MEDIA_PURPOSES`
+tetap `article-inline`/`article-cover`/brand (`src/modules/publishing/object-key.ts`),
+jadi mode `video`/`audio` selalu menunjuk URL luar (`https` publik;
+host privat/`javascript:`/`data:` ditolak `isSafeMediaSrc`). Kartu
+listing tidak memuat lencana mode (grid kartu per-template tetap
+kategori + tag).
+
 ## Checklist template baru
 
 1. Duplikat pola `clean-blue/` (chrome, 8 halaman di `pages/`, tanpa loader di `ui/`).

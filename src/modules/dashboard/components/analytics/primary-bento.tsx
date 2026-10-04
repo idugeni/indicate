@@ -108,7 +108,8 @@ export function ViewsLine({ series }: { readonly series: readonly ViewDay[] }) {
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  labelFormatter={(_, payload) => {
+                  labelFormatter={(label, payload) => {
+                    void label;
                     const first = payload?.[0]?.payload as { hari?: string } | undefined;
                     return first?.hari === undefined ? null : weekdayLabel(first.hari);
                   }}
@@ -328,7 +329,8 @@ export function ViewsBubbles({ rows, label }: { readonly rows: readonly ViewsPoi
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  labelFormatter={(_, payload) => {
+                  labelFormatter={(label, payload) => {
+                    void label;
                     const first = payload?.[0]?.payload as ViewsBubble | undefined;
                     return first === undefined ? null : truncateLabel(first.name, 32);
                   }}

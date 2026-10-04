@@ -12,7 +12,10 @@ const CONTEXT = {
   contentVersion: 1,
 };
 
-const load = vi.fn(async (..._args: readonly unknown[]) => makeNetworkSite([makeNetworkArticle()]));
+const load = vi.fn(async (...args: readonly unknown[]) => {
+  void args;
+  return makeNetworkSite([makeNetworkArticle()]);
+});
 
 vi.mock('next/headers', () => ({
   headers: async () => new Headers({ 'x-forwarded-host': 'portal.example' }),

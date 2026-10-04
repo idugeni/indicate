@@ -47,7 +47,7 @@ describe('zoneForHostname pagination', () => {
   });
 
   it('menemukan zone induk di halaman berikutnya untuk subdomain', async () => {
-    const page1 = Array.from({ length: 50 }, (_, index) => zone(`old-${index}`, `a${index}.example`));
+    const page1 = Array.from({ length: 50 }, (slot, index) => zone(`old-${index}`, `a${index}.example`));
     const { adapter, calls } = harness([], [page1, [zone('z9', 'fakta01.my.id')]]);
     await adapter.purgeHostname('wonosobo.fakta01.my.id');
     expect(calls.some((call) => call.url === 'https://api.cloudflare.com/client/v4/zones/z9/purge_cache')).toBe(true);
@@ -106,7 +106,7 @@ describe('ensureCrawlerSkipRule', () => {
 describe('purgeExactUrls batching', () => {
   it('memecah file per 30 URL dan tidak pernah memakai purge_everything', async () => {
     const { adapter, calls } = harness([zone('z1', 'fakta01.my.id')], []);
-    const urls = Array.from({ length: 65 }, (_, index) => `https://fakta01.my.id/page-${index}`);
+    const urls = Array.from({ length: 65 }, (slot, index) => `https://fakta01.my.id/page-${index}`);
     await adapter.purgeExactUrls(urls);
     const purges = calls.filter((call) => call.url.includes('/purge_cache'));
     expect(purges).toHaveLength(3);
@@ -119,7 +119,7 @@ describe('purgeExactUrls batching', () => {
 
   it('melanjutkan chunk lain saat satu chunk gagal lalu melaporkan parsial', async () => {
     const { adapter, calls } = harness([zone('z1', 'fakta01.my.id')], [], [2]);
-    const urls = Array.from({ length: 65 }, (_, index) => `https://fakta01.my.id/page-${index}`);
+    const urls = Array.from({ length: 65 }, (slot, index) => `https://fakta01.my.id/page-${index}`);
     await expect(adapter.purgeExactUrls(urls)).rejects.toThrow('cloudflare_partial_purge:30');
     expect(calls.filter((call) => call.url.includes('/purge_cache'))).toHaveLength(3);
   });

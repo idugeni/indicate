@@ -71,7 +71,7 @@ describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan mem
   });
 
   it('menyatakan batas server sebagai "terbaru", bukan sebagai total', () => {
-    const rows = Array.from({ length: 500 }, (_unused, index) => ({
+    const rows = Array.from({ length: 500 }, (unused, index) => ({
       id: `log-${index}`,
       action: 'media.access.authorize',
       targetType: 'media',
@@ -328,7 +328,7 @@ describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan mem
 
   it('berpindah halaman saat koleksi melebihi satu halaman', () => {
     const handlePageChange = vi.fn();
-    const manySites = Array.from({ length: 11 }, (_, i) => ({
+    const manySites = Array.from({ length: 11 }, (slot, i) => ({
       id: `s-${i + 1}`,
       normalizedHostname: `portal-${i + 1}.example`,
       status: 'active',

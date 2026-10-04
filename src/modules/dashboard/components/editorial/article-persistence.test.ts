@@ -23,6 +23,11 @@ const SNAPSHOT: ArticleFormSnapshot = {
   authorId: 'a-1',
   categoryIds: ['c-1'],
   leadMediaId: null,
+  type: 'standard',
+  isSponsored: false,
+  videoUrl: '',
+  audioUrl: '',
+  durationSeconds: '',
 };
 
 describe('buildArticlePayload', () => {
@@ -64,5 +69,35 @@ describe('buildArticlePayload', () => {
   it('membuang jadwal saat status bukan terjadwal', () => {
     const payload = buildArticlePayload({ ...SNAPSHOT, status: 'active', rawSchedule: '2026-10-01T07:00' }, []);
     expect(payload.scheduledAt).toBeNull();
+  });
+
+  it('mengirim mode standar bawaan tanpa URL dan sponsor', () => {
+    const payload = buildArticlePayload(SNAPSHOT, []);
+    expect(payload).toMatchObject({
+      type: 'standard',
+      isSponsored: false,
+      videoUrl: null,
+      audioUrl: null,
+      durationSeconds: null,
+    });
+  });
+
+  it('mengirim URL dan durasi untuk mode video serta audio', () => {
+    const video = buildArticlePayload(
+      { ...SNAPSHOT, type: 'video', videoUrl: 'https://video.example/tonton', durationSeconds: '180' },
+      [],
+    );
+    expect(video).toMatchObject({ type: 'video', videoUrl: 'https://video.example/tonton', durationSeconds: 180 });
+
+    const audio = buildArticlePayload(
+      { ...SNAPSHOT, type: 'audio', audioUrl: 'https://cdn.example/rekaman.mp3', durationSeconds: 'abc' },
+      [],
+    );
+    expect(audio).toMatchObject({ type: 'audio', audioUrl: 'https://cdn.example/rekaman.mp3', durationSeconds: null });
+  });
+
+  it('menandai konten bersponsor', () => {
+    const payload = buildArticlePayload({ ...SNAPSHOT, isSponsored: true }, []);
+    expect(payload.isSponsored).toBe(true);
   });
 });

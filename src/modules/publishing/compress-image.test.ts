@@ -59,7 +59,7 @@ function stubEncoder(source: { readonly width: number; readonly height: number }
         width: 0,
         height: 0,
         getContext: () => ({ drawImage: () => undefined }),
-        toBlob: (callback: (blob: Blob) => void, _type: string, quality: number) => {
+        toBlob: (callback: (blob: Blob) => void, type: string, quality: number) => {
           const attempt = { width: canvas.width, height: canvas.height, quality };
           attempts.push(attempt);
           // A real browser substitutes image/png when it cannot encode the

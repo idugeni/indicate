@@ -119,7 +119,7 @@ vi.mock('@/data/repos/tenancy/authorization', () => ({
 }));
 
 vi.mock('@/modules/auth/dashboard-access-keys/resolve-access-key-actor', () => ({
-  resolveAccessKeyActor: async (_db: unknown, bearer: string) =>
+  resolveAccessKeyActor: async (db: unknown, bearer: string) =>
     shared.bearer && bearer === 'proof-bearer' ? proofResolved() : null,
 }));
 

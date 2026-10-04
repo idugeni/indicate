@@ -8,7 +8,7 @@ import { status as v1Status } from '@/app/api/v1/commands/route';
 describe.each([
   ['resend', resendStatus],
   ['generic', genericStatus],
-] as const)('%s webhook status', (_name, status) => {
+] as const)('%s webhook status', (name, status) => {
   it('memetakan input, rate limit, konflik, dan dependency', () => {
     expect(status(createPublicError('INVALID_INPUT', 'x', 'req-1'))).toBe(400);
     expect(status(createPublicError('RATE_LIMITED', 'x', 'req-1'))).toBe(429);

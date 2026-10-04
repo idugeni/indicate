@@ -48,7 +48,7 @@ function storageHarness(options: { readonly failRepo?: boolean } = {}) {
     },
   };
   const repository: AdCreativeUploadRepository = {
-    createUploadedCreative: async (_actor: unknown, input: unknown) => {
+    createUploadedCreative: async (actor: unknown, input: unknown) => {
       created.push(input);
       if (options.failRepo === true) throw new Error('transaksi gagal');
       return { id: 'cre-1' };

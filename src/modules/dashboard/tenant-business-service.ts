@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { orgTag } from '@/modules/dashboard/cache-tags';
 import type {
-  ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, ArticleSiteRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
+  ActivationAttemptRecord, AnalyticsProjection, ArticleFilter, ArticleRecord, ArticleSiteRecord, ArticleUpdateRecord, AuditFilter, AuditRecord, AuthorRecord, CategoryRecord,
   DashboardProjection, DomainRecord, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, MembershipRecord, OfficialAffiliationRecord, OperationsProjection, PublisherRecord, NetworkPublisherClaim,
   RegionRecord, RetentionRunRecord, RoleRecord, SiteLevel, SiteRecord, SiteSettingsRecord, ConfigurationScope, DashboardTenantState,
 } from '@/modules/dashboard/models';
@@ -31,11 +31,12 @@ import {
   assignmentDigest, changedFields, defined, publicRecord, replaceById, requirePublisherNameAvailable,
   requireRecord, requireValidBodyJson, requireVersion, roleJson,
 } from '@/modules/dashboard/tenant-service-records';
+import { describeArticleTypeProblem, normalizeArticleType, type ArticleType } from '@/modules/site/article-type';
 import {
   articleInScope, regionLock, requireArticleInScope, requireLockedRegionValue, requireSiteInScope, requireUnrestrictedRegion, siteInScope,
 } from '@/modules/dashboard/tenant-service-scope';
 import {
-  affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleDeleteSchema, articleFilterSchema, articleTransitionSchema, articleUpdateSchema, assignmentSchema,
+  affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleDeleteSchema, articleFilterSchema, articleTransitionSchema, articleUpdateCreateSchema, articleUpdateDeleteSchema, articleUpdateListSchema, articleUpdateSchema, articleUpdateUpdateSchema, assignmentSchema,
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
@@ -913,9 +914,56 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
     const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds ?? []);
     const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
-    const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), source: value.source ?? '', scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
+    const mode = this.requireArticleMode({ ...value, leadMediaId });
+    const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), source: value.source ?? '', scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null, ...mode };
     transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
     return record;
+  }
+
+  /**
+   * Normalize and cross-check the presentation-mode columns of one article write.
+   *
+   * @param value - Parsed payload plus the resolved cover ids for the mode check.
+   * @param before - Existing record on update; absent on create.
+   * @returns Mode columns ready to persist, with off-mode URLs nulled.
+   */
+  private requireArticleMode(value: {
+    readonly type?: unknown;
+    readonly body?: string | null | undefined;
+    readonly bodyJson?: unknown;
+    readonly leadMediaId?: string | null | undefined;
+    readonly coverImageUrl?: string | null | undefined;
+    readonly videoUrl?: string | null | undefined;
+    readonly audioUrl?: string | null | undefined;
+    readonly durationSeconds?: number | null | undefined;
+    readonly isSponsored?: boolean | undefined;
+  }, before?: ArticleRecord): { readonly type: ArticleType; readonly isSponsored: boolean; readonly videoUrl: string | null; readonly audioUrl: string | null; readonly durationSeconds: number | null } {
+    const type = normalizeArticleType(value.type ?? before?.type);
+    const body = value.body ?? before?.body;
+    const bodyJson = value.bodyJson === undefined ? before?.bodyJson : value.bodyJson;
+    const problem = describeArticleTypeProblem({
+      type,
+      ...(body === undefined ? {} : { body }),
+      ...(bodyJson === undefined ? {} : { bodyJson }),
+      leadMediaId: value.leadMediaId ?? before?.leadMediaId ?? null,
+      coverImageUrl: value.coverImageUrl ?? before?.coverImageUrl ?? null,
+      videoUrl: value.videoUrl ?? before?.videoUrl ?? null,
+      audioUrl: value.audioUrl ?? before?.audioUrl ?? null,
+    });
+    if (problem !== null) {
+      const field = type === 'short' ? 'body' : type === 'video' ? 'videoUrl' : type === 'audio' ? 'audioUrl' : type === 'liveblog' ? 'bodyJson' : 'type';
+      throw new DashboardValidationError({ [field]: [problem] });
+    }
+    const cleanUrl = (raw: string | null | undefined): string | null => {
+      const trimmed = (raw ?? '').trim();
+      return trimmed === '' ? null : trimmed;
+    };
+    const videoUrl = type === 'video' ? cleanUrl(value.videoUrl ?? before?.videoUrl) : null;
+    const audioUrl = type === 'audio' ? cleanUrl(value.audioUrl ?? before?.audioUrl) : null;
+    const durationSeconds = type === 'video' || type === 'audio'
+      ? (value.durationSeconds ?? before?.durationSeconds ?? null)
+      : null;
+    return { type, isSponsored: value.isSponsored ?? before?.isSponsored ?? false, videoUrl, audioUrl, durationSeconds };
   }
 
   /**
@@ -1094,7 +1142,8 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         ? (value.categoryId === before.categoryId ? existingCategoryIds : (value.categoryId === null ? [] : [value.categoryId]))
         : value.categoryIds);
       const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId', 'article-cover');
-      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body ?? before.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source ?? before.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now };
+      const mode = this.requireArticleMode({ ...value, leadMediaId }, before);
+      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body ?? before.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source ?? before.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now, ...mode };
       replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, distinctCategoryIds); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
     }});
   }
@@ -1413,6 +1462,95 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, action, targetType);
       return this.internal(actor, error, 'dashboard.query.failed', action, targetType);
+    }
+  }
+
+  /**
+   * List entri liveblog milik satu artikel dalam cakupan aktor.
+   *
+   * @param actor - Konteks tenant terotorisasi.
+   * @param raw - `{ articleId }` yang divalidasi `articleUpdateListSchema`.
+   * @returns Entri terurut tampil, maksimal 200 baris.
+   */
+  async listArticleUpdates(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<readonly ArticleUpdateRecord[], PublicErrorEnvelope>> {
+    const parsed = articleUpdateListSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    return this.summarize(actor, 'article.updates.list', 'article', (repository) =>
+      repository.listArticleUpdates(actor, DASHBOARD_PERMISSIONS.articleManage, { articleId: parsed.data.articleId }));
+  }
+
+  /**
+   * Tambah satu entri liveblog di bawah artikel induknya.
+   *
+   * @param actor - Konteks tenant terotorisasi.
+   * @param raw - `{ articleId, body }` yang divalidasi `articleUpdateCreateSchema`.
+   * @returns Entri yang tersimpan beserta urutannya.
+   */
+  async createArticleUpdate(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ArticleUpdateRecord, PublicErrorEnvelope>> {
+    const parsed = articleUpdateCreateSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.createArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
+        articleId: parsed.data.articleId,
+        body: parsed.data.body,
+      });
+      return { ok: true, value } as const;
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.create', 'article');
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.updates.create', 'article', DASHBOARD_PERMISSIONS.articleManage);
+    }
+  }
+
+  /**
+   * Tulis ulang isi satu entri liveblog dengan cek versi optimistis.
+   *
+   * @param actor - Konteks tenant terotorisasi.
+   * @param raw - `{ id, expectedVersion, body }` yang divalidasi `articleUpdateUpdateSchema`.
+   * @returns Entri yang diperbarui.
+   */
+  async updateArticleUpdate(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ArticleUpdateRecord, PublicErrorEnvelope>> {
+    const parsed = articleUpdateUpdateSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.updateArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
+        id: parsed.data.id,
+        expectedVersion: parsed.data.expectedVersion,
+        body: parsed.data.body,
+      });
+      return { ok: true, value } as const;
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.update', 'article');
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.updates.update', 'article', DASHBOARD_PERMISSIONS.articleManage);
+    }
+  }
+
+  /**
+   * Hapus permanen satu entri liveblog dengan cek versi optimistis.
+   *
+   * @param actor - Konteks tenant terotorisasi.
+   * @param raw - `{ id, expectedVersion }` yang divalidasi `articleUpdateDeleteSchema`.
+   * @returns Id entri yang dihapus.
+   */
+  async deleteArticleUpdate(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly id: string }, PublicErrorEnvelope>> {
+    const parsed = articleUpdateDeleteSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.deleteArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
+        id: parsed.data.id,
+        expectedVersion: parsed.data.expectedVersion,
+      });
+      return { ok: true, value } as const;
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.delete', 'article');
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.updates.delete', 'article', DASHBOARD_PERMISSIONS.articleManage);
     }
   }
 }

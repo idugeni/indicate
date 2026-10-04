@@ -24,7 +24,10 @@ function scale(value: number, max: number): number {
 export function ActivityHeatmap({ cells }: { readonly cells: readonly ActivityHour[] }) {
   const cellMap = new Map(cells.map((point) => [`${point.hari}:${point.jam}`, point.jumlah]));
   const max = Math.max(...cells.map((point) => point.jumlah), 1);
-  const hours = Array.from({ length: 24 }, (_, value) => value);
+  const hours = Array.from({ length: 24 }, (slot, value) => {
+    void slot;
+    return value;
+  });
   return (
     <section
       aria-label="Peta panas"

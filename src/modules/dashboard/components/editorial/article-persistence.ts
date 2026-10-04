@@ -29,6 +29,16 @@ export interface ArticleFormSnapshot {
   readonly authorId: string | null;
   readonly categoryIds: readonly string[];
   readonly leadMediaId: string | null;
+  /** Presentation mode; mirrors the `article_type` enum. */
+  readonly type: string;
+  /** Paid-content flag for the sponsored disclosure. */
+  readonly isSponsored: boolean;
+  /** Canonical external watch/file URL for `video` mode. */
+  readonly videoUrl: string;
+  /** Canonical external listen/file URL for `audio` mode. */
+  readonly audioUrl: string;
+  /** Playback length in whole seconds for `video`/`audio` modes. */
+  readonly durationSeconds: string;
   /** Org pemilik yang dituju; diisi saat penerbit cermin org lain dipilih. */
   readonly ownerOrganizationId?: string | null;
 }
@@ -50,6 +60,7 @@ export function buildArticlePayload(
   categoryIds: readonly string[],
 ): Record<string, unknown> {
   const scheduledAt = snapshot.status === 'scheduled' ? localDateTimeToIso(snapshot.rawSchedule) : null;
+  const duration = snapshot.durationSeconds.trim() === '' ? null : Number(snapshot.durationSeconds.trim());
   return {
     regionId: snapshot.cityId ?? snapshot.provinceId,
     publisherId: snapshot.publisherId,
@@ -68,5 +79,10 @@ export function buildArticlePayload(
     tags: normalizeTagList(snapshot.tags).slice(0, TAG_MAX_COUNT),
     status: snapshot.status,
     scheduledAt,
+    type: snapshot.type,
+    isSponsored: snapshot.isSponsored,
+    videoUrl: optionalText(snapshot.videoUrl) ?? null,
+    audioUrl: optionalText(snapshot.audioUrl) ?? null,
+    durationSeconds: Number.isInteger(duration) && (duration as number) >= 1 ? duration : null,
   };
 }

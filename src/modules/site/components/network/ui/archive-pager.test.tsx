@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 const articles = (count: number) =>
-  Array.from({ length: count }, (_, index) =>
+  Array.from({ length: count }, (slot, index) =>
     makeNetworkArticle({ id: `a-${index + 1}`, slug: `berita-${index + 1}`, title: `Berita ${index + 1}` }),
   );
 

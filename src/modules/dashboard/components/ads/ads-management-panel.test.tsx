@@ -49,7 +49,8 @@ describe('AdsManagementPanel', () => {
 
   it('menyimpan draft slot ke seluruh situs hanya saat tombol Simpan ditekan', async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn(async (url: unknown, _init?: { readonly method?: string; readonly body?: string }) => {
+    const fetchMock = vi.fn(async (url: unknown, init?: { readonly method?: string; readonly body?: string }) => {
+      void init;
       if (typeof url === 'string' && url.includes('scope=overview')) return { ok: true, json: async () => OVERVIEW };
       return { ok: true, json: async () => ({ creativeId: null, savedSites: 2 }) };
     });

@@ -13,8 +13,8 @@ afterEach(() => {
 
 const DATA = {
   articles: [
-    { id: 'a-1', title: 'Banjir Wonosobo', slug: 'banjir-wonosobo', status: 'active', publishedAt: '2026-09-20T00:00:00.000Z', updatedAt: '2026-09-22T00:00:00.000Z', tags: ['bencana', 'wonosobo'], categoryIds: ['c-1'], regionId: 'r-1', version: 2, body: 'Isi banjir.', excerpt: 'Ringkasan banjir.', canonicalUrl: null, publisherId: null, authorId: null, categoryId: 'c-1' },
-    { id: 'a-2', title: 'APBD Jateng', slug: 'apbd-jateng', status: 'draft', publishedAt: null, updatedAt: '2026-09-21T00:00:00.000Z', tags: ['ekonomi'], categoryIds: [], regionId: 'r-1', version: 1, body: 'Isi APBD.', excerpt: null, canonicalUrl: null, publisherId: null, authorId: null, categoryId: null },
+    { id: 'a-1', title: 'Banjir Wonosobo', slug: 'banjir-wonosobo', status: 'active', type: 'standard', publishedAt: '2026-09-20T00:00:00.000Z', updatedAt: '2026-09-22T00:00:00.000Z', tags: ['bencana', 'wonosobo'], categoryIds: ['c-1'], regionId: 'r-1', version: 2, body: 'Isi banjir.', excerpt: 'Ringkasan banjir.', canonicalUrl: null, publisherId: null, authorId: null, categoryId: 'c-1' },
+    { id: 'a-2', title: 'APBD Jateng', slug: 'apbd-jateng', status: 'draft', type: 'standard', publishedAt: null, updatedAt: '2026-09-21T00:00:00.000Z', tags: ['ekonomi'], categoryIds: [], regionId: 'r-1', version: 1, body: 'Isi APBD.', excerpt: null, canonicalUrl: null, publisherId: null, authorId: null, categoryId: null },
   ],
   categories: [{ id: 'c-1', name: 'Bencana' }],
   sites: [{ id: 's-1', normalizedHostname: 'fakta01.my.id' }],
@@ -90,6 +90,27 @@ describe('ArticleManager', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith('article.delete', { id: 'a-2', expectedVersion: 1 }, { refresh: true }));
   });
 
+  it('menampilkan lencana mode dan panel liveblog untuk artikel liveblog', async () => {
+    const user = userEvent.setup();
+    const command = vi.fn(async (action: string) => (action === 'article.updates.list' ? [] : { id: 'a-9', version: 2 }));
+    render(
+      <ArticleManager
+        data={{
+          ...DATA,
+          articles: [
+            { id: 'a-9', title: 'Live Skor', slug: 'live-skor', status: 'draft', type: 'liveblog', publishedAt: null, updatedAt: '2026-10-04T00:00:00.000Z', tags: [], categoryIds: [], regionId: 'r-1', version: 1, body: 'Ringkasan.', excerpt: null, canonicalUrl: null, publisherId: null, authorId: null, categoryId: null },
+          ],
+        }}
+        command={command}
+      />,
+    );
+    await user.clear(screen.getByLabelText('Status'));
+    expect(screen.getByText('Liveblog')).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Ubah artikel Live Skor' }));
+    expect(await screen.findByLabelText('Pembaruan langsung Live Skor')).toBeDefined();
+    expect(command).toHaveBeenCalledWith('article.updates.list', { articleId: 'a-9' });
+  });
+
   it('menawarkan pulihkan untuk baris arsip', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'a-3', version: 2 }));
@@ -149,7 +170,7 @@ describe('ArticleManager', () => {
   });
 
   it('menampilkan badge 134 portal tanpa menumpuk baris', () => {
-    const sites = Array.from({ length: 134 }, (_, index) => ({ id: `s-${index}`, normalizedHostname: `portal-${index}.example.id` }));
+    const sites = Array.from({ length: 134 }, (slot, index) => ({ id: `s-${index}`, normalizedHostname: `portal-${index}.example.id` }));
     render(
       <ArticleManager
         data={{
@@ -211,7 +232,7 @@ describe('ArticleManager', () => {
 });
 
 function makeServerArticles(count: number, prefix = 'srv'): Array<Record<string, unknown>> {
-  return Array.from({ length: count }, (_, index) => ({
+  return Array.from({ length: count }, (slot, index) => ({
     id: `${prefix}-${index}`,
     title: `Judul ${prefix} ${String(index).padStart(2, '0')}`,
     slug: `slug-${prefix}-${index}`,

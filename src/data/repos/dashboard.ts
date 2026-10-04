@@ -4,13 +4,13 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { extractTipTapImages } from '@/modules/site/tiptap-document';
 import { regionScopeCovers } from '@/modules/site/region-scope';
-import type { ActivityHour, ArticleRecord, RecentActivity, AnalyticsProjection, ConfigurationScope, EditorialScope, NetworkArticlesScope, PublisherClaimScope, PublisherScope, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay, TaxonomyScope } from '@/modules/dashboard/models';
+import type { ActivityHour, ArticleRecord, ArticleUpdateRecord, RecentActivity, AnalyticsProjection, ConfigurationScope, EditorialScope, NetworkArticlesScope, PublisherClaimScope, PublisherScope, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay, TaxonomyScope } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type DashboardCollectionName, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { redact } from '@/core/security/redaction';
 import { DashboardValidationError } from '@/modules/dashboard/tenant-service-errors';
 import {
-  apiKeys, articleCategories, articleRevisions, articleSites, articles, auditLogs, authors, cacheBypasses, categories, contentReports, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
+  apiKeys, articleCategories, articleRevisions, articleSites, articleUpdates, articles, auditLogs, authors, cacheBypasses, categories, contentReports, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
   permissions, portalAssignments, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, users, webhookReplayClaims,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
@@ -134,7 +134,8 @@ export function articleUnchanged(prior: ArticleRecord, row: ArticleRecord): bool
     && prior.coverImageUrl === row.coverImageUrl && prior.slug === row.slug && prior.title === row.title
     && prior.excerpt === row.excerpt && prior.canonicalUrl === row.canonicalUrl && prior.body === row.body
     && prior.source === row.source && prior.status === row.status && prior.publishedAt === row.publishedAt
-    && prior.scheduledAt === row.scheduledAt
+    && prior.scheduledAt === row.scheduledAt && prior.type === row.type && prior.isSponsored === row.isSponsored
+    && prior.videoUrl === row.videoUrl && prior.audioUrl === row.audioUrl && prior.durationSeconds === row.durationSeconds
     && prior.archivedAt === row.archivedAt && prior.version === row.version && prior.updatedAt === row.updatedAt
     && sameJson(prior.bodyJson ?? null, row.bodyJson ?? null) && sameJson(prior.tags, row.tags);
 }
@@ -239,7 +240,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     if (organization[0] === undefined) throw new DashboardAccessDeniedError();
     const want = (name: DashboardCollectionName): boolean => only === undefined || only.has(name);
     const articleRows = want('articles')
-      ? (await transaction.select({ id: articles.id, regionId: articles.regionId, publisherId: articles.publisherId, categoryId: articles.categoryId, authorId: articles.authorId, leadMediaId: articles.leadMediaId, coverImageUrl: articles.coverImageUrl, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, source: articles.source, tags: articles.tags, status: articles.status, publishedAt: articles.publishedAt, scheduledAt: articles.scheduledAt, archivedAt: articles.archivedAt, version: articles.version, createdAt: articles.createdAt, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.organizationId, organizationId))).map((row) => ({ ...row, body: '', bodyJson: null as unknown | null }))
+      ? (await transaction.select({ id: articles.id, regionId: articles.regionId, publisherId: articles.publisherId, categoryId: articles.categoryId, authorId: articles.authorId, leadMediaId: articles.leadMediaId, coverImageUrl: articles.coverImageUrl, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, source: articles.source, tags: articles.tags, status: articles.status, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, publishedAt: articles.publishedAt, scheduledAt: articles.scheduledAt, archivedAt: articles.archivedAt, version: articles.version, createdAt: articles.createdAt, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.organizationId, organizationId))).map((row) => ({ ...row, body: '', bodyJson: null as unknown | null }))
       : [];
     const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, publisherRows, affiliationRows, categoryRows, authorRows, articleCategoryRows, assignmentRows, mediaRows, jobRows, targetRows] = await Promise.all([
       want('domains') ? transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, cloudflareZoneId: domains.cloudflareZoneId, siteTopology: domains.siteTopology, routingVersion: domains.routingVersion, version: domains.version, createdAt: domains.createdAt, updatedAt: domains.updatedAt }).from(domains).where(eq(domains.organizationId, organizationId)) : [],
@@ -276,7 +277,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       authors: authorRows.map((row) => ({ id: row.id, organizationId, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
-      articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, categoryIds: articleCategoryRows.filter((link) => link.articleId === row.id).sort((a, b) => a.position - b.position).map((link) => link.categoryId), authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as unknown | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: optionalIso(row.publishedAt), scheduledAt: optionalIso(row.scheduledAt), archivedAt: optionalIso(row.archivedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+      articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, categoryIds: articleCategoryRows.filter((link) => link.articleId === row.id).sort((a, b) => a.position - b.position).map((link) => link.categoryId), authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as unknown | null, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: optionalIso(row.publishedAt), scheduledAt: optionalIso(row.scheduledAt), archivedAt: optionalIso(row.archivedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       articleCategories: articleCategoryRows.map((row) => ({ articleId: row.articleId, categoryId: row.categoryId, position: row.position })),
       articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource as 'manual' | 'auto', expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       media: mediaRows.map((row) => ({ id: row.id, organizationId, state: row.state, purpose: row.purpose, mediaType: row.mediaType })),
@@ -1044,13 +1045,17 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       type ArticleRow = {
         id: string; region_id: string | null; publisher_id: string | null; category_id: string | null; author_id: string | null;
         lead_media_id: string | null; cover_image_url: string | null; slug: string; title: string; excerpt: string | null;
-        canonical_url: string | null; source: string; tags: string[]; status: string; published_at: Date | null;
+        canonical_url: string | null; source: string; tags: string[]; status: string; type: ArticleRecord['type']; is_sponsored: boolean;
+        video_url: string | null; audio_url: string | null; duration_seconds: number | null;
+        published_at: Date | null;
         scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
       };
       const [articleRows, totalRows, tagRows, categoryRows, authorRows, publisherRows, regionRows, siteRows, domainRows] = await Promise.all([
         limit === 0 ? [] : transaction.execute<ArticleRow>(sql`
           SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
-            a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.published_at, a.scheduled_at,
+            a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.type, a.is_sponsored,
+            a.video_url, a.audio_url, a.duration_seconds,
+            a.published_at, a.scheduled_at,
             a.archived_at, a.version, a.created_at, a.updated_at
           FROM articles a
           WHERE ${whereAll} AND ${keyPredicate}
@@ -1084,7 +1089,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         list.push(link.categoryId);
         categoryIdsByArticle.set(link.articleId, list);
       }
-      const articles = pageRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at), archivedAt: optionalIsoOf(row.archived_at), version: row.version, createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at) }));
+      const articles = pageRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], type: row.type, isSponsored: row.is_sponsored, videoUrl: row.video_url, audioUrl: row.audio_url, durationSeconds: row.duration_seconds, publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at), archivedAt: optionalIsoOf(row.archived_at), version: row.version, createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at) }));
       const lastConsumed = articles.length > 0 ? (articleIds[articleIds.length - 1] as string) : null;
       return {
         articles,
@@ -1148,11 +1153,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const articleRows = await transaction.execute<{
         id: string; region_id: string | null; publisher_id: string | null; category_id: string | null; author_id: string | null;
         lead_media_id: string | null; cover_image_url: string | null; slug: string; title: string; excerpt: string | null;
-        canonical_url: string | null; source: string; tags: string[]; status: string; published_at: Date | null;
+        canonical_url: string | null; source: string; tags: string[]; status: string; type: ArticleRecord['type']; is_sponsored: boolean;
+        published_at: Date | null;
         scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
       }>(sql`
         SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
-          a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.published_at, a.scheduled_at,
+          a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.type, a.is_sponsored,
+          a.published_at, a.scheduled_at,
           a.archived_at, a.version, a.created_at, a.updated_at
         FROM articles a
         WHERE a.organization_id = ${organizationId}
@@ -1179,7 +1186,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       }
       return {
         ...emptyScope,
-        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at), archivedAt: optionalIsoOf(row.archived_at), version: row.version, createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at) })),
+        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], type: row.type, isSponsored: row.is_sponsored, videoUrl: null, audioUrl: null, durationSeconds: null, publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at), archivedAt: optionalIsoOf(row.archived_at), version: row.version, createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at) })),
       };
     });
   }
@@ -1381,6 +1388,181 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       }
       await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'publication.bridge.unpublish', targetType: 'portal_assignment', targetId: input.articleId, outcome: 'succeeded', changedFields: ['state'], requestId: actor.requestId, before: null, after: { ownerOrganizationId: input.ownerOrganizationId, articleId: input.articleId } });
       return { unpublished: unpublished.length };
+    });
+  }
+
+  /**
+   * Resolve a parent article for liveblog entry operations within actor scope.
+   *
+   * @param transaction - Tenant transaction with context already established.
+   * @param actor - Calling actor; region-locked actors see only covered regions.
+   * @param articleId - Parent article id.
+   * @returns Parent id and slug for invalidation.
+   */
+  private async requireUpdateParentArticle(transaction: Transaction, actor: AuthorizedTenantActorContext, articleId: string): Promise<{ readonly id: string; readonly slug: string }> {
+    const articleRows = await transaction.select({ id: articles.id, regionId: articles.regionId, slug: articles.slug })
+      .from(articles)
+      .where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, articleId)))
+      .limit(1);
+    const article = articleRows[0];
+    if (article === undefined) throw new DashboardAccessDeniedError();
+    const lock = actor.regionScopeId ?? null;
+    if (article.regionId === null) {
+      if (lock !== null) throw new DashboardAccessDeniedError();
+    } else {
+      const geography = await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId })
+        .from(regions)
+        .where(eq(regions.organizationId, actor.organizationId))
+        .limit(2000);
+      if (!regionScopeCovers(lock, article.regionId, geography)) throw new DashboardAccessDeniedError();
+    }
+    return { id: article.id, slug: article.slug };
+  }
+
+  private toArticleUpdateRecord(organizationId: string, row: { readonly id: string; readonly articleId: string; readonly body: string; readonly sortOrder: number; readonly publishedAt: Date | null; readonly createdBy: string; readonly version: number; readonly createdAt: Date; readonly updatedAt: Date }): ArticleUpdateRecord {
+    return {
+      id: row.id, organizationId, articleId: row.articleId, body: row.body, sortOrder: row.sortOrder,
+      publishedAt: optionalIso(row.publishedAt), createdBy: row.createdBy, version: row.version,
+      createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt),
+    };
+  }
+
+  /**
+   * Touch the parent article and fan out delivery invalidation after an entry write.
+   *
+   * @param transaction - Tenant transaction with context already established.
+   * @param actor - Calling actor for audit attribution.
+   * @param parent - Parent article id and slug.
+   * @param now - Write timestamp shared by the touch and the audit row.
+   * @param action - Audit action (`article.updates.create|update|delete`).
+   * @param targetId - Entry id for audit targeting.
+   * @param before - Previous entry body, or null on create/delete.
+   * @param after - New entry body, or null on delete.
+   */
+  private async touchArticleForUpdates(transaction: Transaction, actor: AuthorizedTenantActorContext, parent: { readonly id: string; readonly slug: string }, now: Date, action: 'article.updates.create' | 'article.updates.update' | 'article.updates.delete', targetId: string, before: string | null, after: string | null): Promise<void> {
+    await transaction.update(articles).set({ updatedAt: now })
+      .where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, parent.id)));
+    const assignmentRows = await transaction.select({ siteId: articleSites.siteId })
+      .from(articleSites)
+      .where(and(eq(articleSites.organizationId, actor.organizationId), eq(articleSites.articleId, parent.id), eq(articleSites.state, 'published'), eq(articleSites.active, true), isNotNull(articleSites.publishedAt)))
+      .limit(1000);
+    const siteIds = [...new Set(assignmentRows.map((row) => row.siteId))];
+    if (siteIds.length > 0) {
+      const hostRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname })
+        .from(sites)
+        .where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, siteIds)))
+        .limit(siteIds.length);
+      for (const site of hostRows) {
+        await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, reason: 'article.changed', articleSlugs: [parent.slug] }) as never);
+      }
+    }
+    await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action, targetType: 'article', targetId, outcome: 'succeeded', changedFields: ['body'], requestId: actor.requestId, before: before === null ? null : { body: before }, after: after === null ? null : { body: after } });
+  }
+
+  /**
+   * List liveblog entries of one article, oldest first, bounded.
+   *
+   * @param actor - Calling actor; parent article must be in region scope.
+   * @param permission - Membership permission to enforce.
+   * @param input - Parent article id.
+   * @returns At most 200 entries in display order.
+   */
+  async listArticleUpdates(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string }): Promise<readonly ArticleUpdateRecord[]> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const parent = await this.requireUpdateParentArticle(transaction, actor, input.articleId);
+      const rows = await transaction.select({ id: articleUpdates.id, articleId: articleUpdates.articleId, body: articleUpdates.body, sortOrder: articleUpdates.sortOrder, publishedAt: articleUpdates.publishedAt, createdBy: articleUpdates.createdBy, version: articleUpdates.version, createdAt: articleUpdates.createdAt, updatedAt: articleUpdates.updatedAt })
+        .from(articleUpdates)
+        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.articleId, parent.id)))
+        .orderBy(articleUpdates.sortOrder, articleUpdates.createdAt)
+        .limit(200);
+      return rows.map((row) => this.toArticleUpdateRecord(actor.organizationId, row));
+    });
+  }
+
+  /**
+   * Append one liveblog entry; sort order continues the article max.
+   *
+   * @param actor - Calling actor; parent article must be in region scope.
+   * @param permission - Membership permission to enforce.
+   * @param input - Parent article id and entry body.
+   * @returns The persisted entry.
+   */
+  async createArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string; readonly body: string }): Promise<ArticleUpdateRecord> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      await this.enforceWritableSubscription(transaction, actor);
+      const parent = await this.requireUpdateParentArticle(transaction, actor, input.articleId);
+      const tail = await transaction.select({ sortOrder: articleUpdates.sortOrder })
+        .from(articleUpdates)
+        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.articleId, parent.id)))
+        .orderBy(desc(articleUpdates.sortOrder))
+        .limit(1);
+      const now = new Date();
+      const id = crypto.randomUUID();
+      await transaction.insert(articleUpdates).values({ organizationId: actor.organizationId, id, articleId: parent.id, body: input.body, sortOrder: (tail[0]?.sortOrder ?? 0) + 1, publishedAt: now, createdBy: actor.actorId, version: 1, createdAt: now, updatedAt: now });
+      await this.touchArticleForUpdates(transaction, actor, parent, now, 'article.updates.create', id, null, input.body);
+      return this.toArticleUpdateRecord(actor.organizationId, { id, articleId: parent.id, body: input.body, sortOrder: (tail[0]?.sortOrder ?? 0) + 1, publishedAt: now, createdBy: actor.actorId, version: 1, createdAt: now, updatedAt: now });
+    });
+  }
+
+  /**
+   * Rewrite one liveblog entry body under optimistic concurrency.
+   *
+   * @param actor - Calling actor; parent article must be in region scope.
+   * @param permission - Membership permission to enforce.
+   * @param input - Entry id, expected version, and new body.
+   * @returns The updated entry.
+   */
+  async updateArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number; readonly body: string }): Promise<ArticleUpdateRecord> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      await this.enforceWritableSubscription(transaction, actor);
+      const existing = await transaction.select({ id: articleUpdates.id, articleId: articleUpdates.articleId, body: articleUpdates.body, sortOrder: articleUpdates.sortOrder, publishedAt: articleUpdates.publishedAt, createdBy: articleUpdates.createdBy, version: articleUpdates.version, createdAt: articleUpdates.createdAt })
+        .from(articleUpdates)
+        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, input.id)))
+        .limit(1);
+      const before = existing[0];
+      if (before === undefined) throw new DashboardAccessDeniedError();
+      if (before.version !== input.expectedVersion) throw new DashboardConflictError();
+      const parent = await this.requireUpdateParentArticle(transaction, actor, before.articleId);
+      const now = new Date();
+      await transaction.update(articleUpdates).set({ body: input.body, version: before.version + 1, updatedAt: now })
+        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, before.id)));
+      await this.touchArticleForUpdates(transaction, actor, parent, now, 'article.updates.update', before.id, before.body, input.body);
+      return this.toArticleUpdateRecord(actor.organizationId, { ...before, body: input.body, version: before.version + 1, updatedAt: now });
+    });
+  }
+
+  /**
+   * Remove one liveblog entry under optimistic concurrency.
+   *
+   * @param actor - Calling actor; parent article must be in region scope.
+   * @param permission - Membership permission to enforce.
+   * @param input - Entry id and expected version.
+   * @returns The removed entry id.
+   */
+  async deleteArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number }): Promise<{ readonly id: string }> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      await this.enforceWritableSubscription(transaction, actor);
+      const existing = await transaction.select({ id: articleUpdates.id, articleId: articleUpdates.articleId, body: articleUpdates.body, version: articleUpdates.version })
+        .from(articleUpdates)
+        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, input.id)))
+        .limit(1);
+      const before = existing[0];
+      if (before === undefined) throw new DashboardAccessDeniedError();
+      if (before.version !== input.expectedVersion) throw new DashboardConflictError();
+      const parent = await this.requireUpdateParentArticle(transaction, actor, before.articleId);
+      await transaction.delete(articleUpdates)
+        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, before.id)));
+      const now = new Date();
+      await this.touchArticleForUpdates(transaction, actor, parent, now, 'article.updates.delete', before.id, before.body, null);
+      return { id: before.id };
     });
   }
 
@@ -1675,7 +1857,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       changedArticles.push(row);
       const contentTrusted = row.body !== '' || (row.bodyJson !== null && row.bodyJson !== undefined);
       const hydratedContent = contentTrusted ? { body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null } : {};
-      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, tags: [...row.tags], status: row.status, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
     if (want('articleCategories') && !sameJson(
       [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),

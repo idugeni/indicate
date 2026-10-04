@@ -19,6 +19,12 @@ export function isKnownTemplateId(value: unknown): value is string {
 const id = z.uuid();
 const expectedVersion = z.int().positive();
 const lifecycleStatus = z.enum(['active', 'inactive', 'archived']);
+const articleMode = z.enum(['standard', 'video', 'gallery', 'audio', 'liveblog', 'short']);
+/** Playback seconds; empty generic-editor text arrives as `''` and stays null. */
+const durationSecondsField = z.preprocess(
+  (value) => (value === '' || value === undefined ? null : value),
+  z.union([z.null(), z.coerce.number().int().min(1).max(86400)]),
+);
 
 function normalizeSlugInput(value: unknown): unknown {
   if (typeof value !== 'string' || !/[a-z0-9]/i.test(value)) return value;
@@ -133,36 +139,115 @@ export const tagRenameSchema = z.object({ from: canonicalTag, to: canonicalTag }
 export const tagRemoveSchema = z.object({ tag: canonicalTag }).strict();
 export const authorCreateSchema = z.object({ displayName: z.string().trim().min(1).max(160), byline: z.string().trim().min(1).max(200), status: lifecycleStatus.default('active') }).strict();
 export const authorUpdateSchema = authorCreateSchema.extend({ id, expectedVersion });
-export const articleCreateSchema = z.object({
+
+/** Shared article shape; create applies entry defaults, update keeps absences as "keep current". */
+const articleBaseFields = {
   regionId: id.nullable(),
-  publisherId: id.nullable().default(null),
   /**
    * Org pemilik yang diminta klien; server selalu menurunkan ulang dari
    * penerbit cermin dan menolak bila tidak cocok (anti-bingung org).
    */
   ownerOrganizationId: id.nullish(),
-  categoryId: id.nullable().default(null),
   /** Ordered category set; first entry is the primary `categoryId` mirror. Omitted on update preserves existing rows. */
   categoryIds: z.array(id).max(10).optional(),
-  authorId: id.nullable().default(null),
   leadMediaId: id.nullable().optional(),
   coverImageUrl: z.string().trim().max(2000).nullish(),
   slug: articleSlug,
   title: z.string().trim().min(1).max(ARTICLE_TITLE_MAX),
   excerpt: z.string().trim().min(1).max(500).nullish(),
   canonicalUrl: z.string().trim().max(2000).nullish(),
-  body: z.string().trim().min(1).max(200_000),
   /** Optional TipTap JSON; strictly validated in the service, legacy `body` stays required for search/RSS. */
   bodyJson: z.unknown().nullish(),
   /** Free-text provenance; optional so a piece can be filed without one. An absent field means "not stated" on create and "keep current" on update. */
   source: z.string().trim().max(500).optional(),
+  scheduledAt: z.iso.datetime({ offset: true }).nullish(),
+  /** Canonical external watch/file URL for `video` mode; null for other modes. */
+  videoUrl: z.string().trim().max(2000).nullish(),
+  /** Canonical external listen/file URL for `audio` mode; null otherwise. */
+  audioUrl: z.string().trim().max(2000).nullish(),
+  /** Playback length in whole seconds for `video`/`audio` modes; null otherwise. */
+  durationSeconds: durationSecondsField,
+};
+
+/** Cross-check presentation mode against body, cover, and mode URLs. */
+function refineArticleMode(
+  value: {
+    readonly type?: 'standard' | 'video' | 'gallery' | 'audio' | 'liveblog' | 'short' | undefined;
+    readonly body?: string | undefined;
+    readonly bodyJson?: unknown;
+    readonly leadMediaId?: string | null | undefined;
+    readonly coverImageUrl?: string | null | undefined;
+    readonly videoUrl?: string | null | undefined;
+    readonly audioUrl?: string | null | undefined;
+    readonly durationSeconds?: number | null | undefined;
+  },
+  ctx: z.core.$RefinementCtx,
+): void {
+  if (value.type === 'short' && typeof value.body === 'string' && value.body.trim().length > 500) {
+    ctx.addIssue({ code: 'custom', path: ['body'], message: 'Mode short maksimal 500 karakter; pangkas isi atau ganti ke mode standar.' });
+  }
+  if (value.type === 'video' && (value.videoUrl ?? '').trim() === '' && (value.leadMediaId ?? null) === null && (value.coverImageUrl ?? '').trim() === '') {
+    ctx.addIssue({ code: 'custom', path: ['videoUrl'], message: 'Mode video wajib memiliki URL video, sampul terunggah, atau URL sampul luar.' });
+  }
+  if (value.type === 'audio' && (value.audioUrl ?? '').trim() === '') {
+    ctx.addIssue({ code: 'custom', path: ['audioUrl'], message: 'Mode audio wajib memiliki URL audio.' });
+  }
+  if (value.type === 'liveblog' && value.bodyJson === null) {
+    ctx.addIssue({ code: 'custom', path: ['bodyJson'], message: 'Mode liveblog wajib memakai editor terstruktur (isi JSON tidak boleh kosong).' });
+  }
+  for (const field of ['videoUrl', 'audioUrl'] as const) {
+    const url = value[field];
+    if (url !== undefined && url !== null && url.trim() !== '' && !/^https?:\/\//i.test(url.trim())) {
+      ctx.addIssue({ code: 'custom', path: [field], message: 'URL harus diawali http:// atau https://.' });
+    }
+  }
+  if (value.durationSeconds !== undefined && value.durationSeconds !== null && value.type !== 'video' && value.type !== 'audio') {
+    ctx.addIssue({ code: 'custom', path: ['durationSeconds'], message: 'Durasi hanya berlaku untuk mode video atau audio.' });
+  }
+}
+
+export const articleCreateSchema = z.object({
+  ...articleBaseFields,
+  publisherId: id.nullable().default(null),
+  categoryId: id.nullable().default(null),
+  authorId: id.nullable().default(null),
+  body: z.string().trim().min(1).max(200_000),
   tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).default([]),
   status: z.enum(['draft', 'in_review', 'scheduled', 'active']).default('draft'),
-  scheduledAt: z.iso.datetime({ offset: true }).nullish(),
-}).strict();
-export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVersion, body: z.string().trim().min(1).max(200_000).optional() });
+  /** Presentation mode; mirrors the `article_type` enum (`standard` for legacy rows). */
+  type: articleMode.default('standard'),
+  /** Paid-content flag driving the sponsored disclosure on delivery surfaces. */
+  isSponsored: z.boolean().default(false),
+}).strict().superRefine(refineArticleMode);
+export const articleUpdateSchema = z.object({
+  ...articleBaseFields,
+  publisherId: id.nullable().default(null),
+  categoryId: id.nullable().default(null),
+  authorId: id.nullable().default(null),
+  id,
+  expectedVersion,
+  body: z.string().trim().min(1).max(200_000).optional(),
+  tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).default([]),
+  status: z.enum(['draft', 'in_review', 'scheduled', 'active']).default('draft'),
+  /** Update omits defaults: absent mode fields mean "keep current", never "reset to standard". */
+  type: articleMode.optional(),
+  isSponsored: z.boolean().optional(),
+}).strict().superRefine(refineArticleMode);
 export const articleTransitionSchema = z.object({ id, expectedVersion }).strict();
 export const articleDeleteSchema = z.object({ id, expectedVersion }).strict();
+/** List entri liveblog milik satu artikel mode `liveblog`. */
+export const articleUpdateListSchema = z.object({ articleId: id }).strict();
+/** Tambah satu entri liveblog; `sortOrder` diisi server sebagai max+1. */
+export const articleUpdateCreateSchema = z.object({
+  articleId: id,
+  body: z.string().trim().min(1).max(20000),
+}).strict();
+export const articleUpdateUpdateSchema = z.object({
+  id,
+  expectedVersion,
+  body: z.string().trim().min(1).max(20000),
+}).strict();
+export const articleUpdateDeleteSchema = z.object({ id, expectedVersion }).strict();
 export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).max(200) }).strict();
 /**
  * Terbitkan artikel milik org lain ke portal org aktif (jembatan lintas-org).

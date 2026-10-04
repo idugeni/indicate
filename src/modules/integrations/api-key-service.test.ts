@@ -47,10 +47,10 @@ function storedKey(overrides: Record<string, unknown> = {}) {
 
 function harness(repoOverrides: Record<string, unknown> = {}) {
   const repository = {
-    createApiKey: vi.fn(async (_actor: unknown, stored: unknown) => ({ ...(stored as object), status: 'active', version: 1 })),
+    createApiKey: vi.fn(async (actor: unknown, stored: unknown) => ({ ...(stored as object), status: 'active', version: 1 })),
     findApiKeyByLookupId: vi.fn(async () => null),
     listApiKeys: vi.fn(async () => []),
-    rotateApiKey: vi.fn(async (_actor: unknown, _id: unknown, _version: unknown, stored: unknown) => ({ ...(stored as object), status: 'active', version: 2 })),
+    rotateApiKey: vi.fn(async (actor: unknown, id: unknown, version: unknown, stored: unknown) => ({ ...(stored as object), status: 'active', version: 2 })),
     revokeApiKey: vi.fn(async () => storedKey({ status: 'revoked' })),
     recordDenial: vi.fn(async () => undefined),
     recordApiKeyUse: vi.fn(async () => undefined),

@@ -42,7 +42,8 @@ function harness(options: {
     loadNetworkFeed: vi.fn(async () => options.feed ?? []),
   };
   const cache = {
-    read: vi.fn(async (identity: unknown, _tags: readonly string[]) => {
+    read: vi.fn(async (identity: unknown, tags: readonly string[]) => {
+      void tags;
       if (options.cachedEntry !== undefined) return options.cachedEntry;
       return { identity, data: options.cachedFeed ?? siteData };
     }),

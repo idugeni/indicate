@@ -109,7 +109,7 @@ describe('Penyaluran artikel pada jaringan besar', () => {
     sites: [
       { id: 's-apex-1', normalizedHostname: 'fakta01.my.id', domainId: 'd-1' },
       { id: 's-apex-2', normalizedHostname: 'fakta02.my.id', domainId: 'd-2' },
-      ...Array.from({ length: 198 }, (_, index) => ({
+      ...Array.from({ length: 198 }, (slot, index) => ({
         id: `s-${index}`,
         normalizedHostname: `kota-${index}.${index < 99 ? 'fakta01' : 'fakta02'}.my.id`,
         domainId: index < 99 ? 'd-1' : 'd-2',

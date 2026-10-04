@@ -456,6 +456,11 @@ A Media record uses exactly one ownership mode: Article owner, Site owner, or Or
   with `{owner}` = `article/{articleId}`, `site/{siteId}`, or `organization` and `purpose` from the canonical enum
   (`article-inline`, `article-cover`, `site-logo`, `site-favicon`, `site-default`, `organization-asset`).
   Covers are `article-cover`; body images are `article-inline` (the retired `article-image` purpose backfills to it).
+  Video/audio article modes (`video`, `audio`) never store bytes here on purpose:
+  `articles.video_url`/`audio_url` point at external `https` URLs (YouTube/CDN),
+  so there is no `article-video`/`article-audio` purpose, no transcode pipeline,
+  and no `pub/` immutable route for them. Migration comments that name those
+  purposes describe a rejected future, not a contract.
   Gallery editorial fields (`alt_text`, `caption`, `sort_order`, `focal_x`/`focal_y`) travel on the media row;
   article saves sync them from TipTap image nodes in document order (fill nulls, never overwrite).
   Thumbnails append `-thumb` before the extension and are derived server-side.

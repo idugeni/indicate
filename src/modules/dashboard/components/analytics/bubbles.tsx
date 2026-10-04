@@ -83,7 +83,8 @@ export function SiteBubbles({ results }: { readonly results: readonly AnalyticsP
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  labelFormatter={(_, payload) => {
+                  labelFormatter={(label, payload) => {
+                    void label;
                     const first = payload?.[0]?.payload as Bubble | undefined;
                     return first === undefined ? null : first.site;
                   }}

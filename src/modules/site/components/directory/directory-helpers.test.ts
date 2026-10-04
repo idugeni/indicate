@@ -135,7 +135,7 @@ describe('filterSites', () => {
 
 describe('capDirectoryResults', () => {
   it('memotong hasil dan melaporkan sisa secara jujur', () => {
-    const many = Array.from({ length: DIRECTORY_RESULT_LIMIT + 7 }, (_unused, index) => ({
+    const many = Array.from({ length: DIRECTORY_RESULT_LIMIT + 7 }, (unused, index) => ({
       hostname: `semarang${index}.fakta01.my.id`,
       siteName: `Fakta01 Semarang ${index}`,
       siteLevel: 'city' as const,

@@ -48,7 +48,7 @@
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
     "check:bootstrap-identity": "node scripts/check-bootstrap-identity.mjs",
-    "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
+    "check:no-any": "node scripts/check-no-any.mjs",    "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
     "hygiene:network": "node scripts/db-network-coverage.mjs",
     "audit:gsc": "node scripts/gsc-verification-audit.mjs",
     "audit:gsc:verify": "node scripts/gsc-verification-audit.mjs --verify",
@@ -66,7 +66,7 @@
     "@shadcn/react": "^0.3.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
-    "@tanstack/react-table": "^9.2.5",
+    "@tanstack/react-table": "^9.2.6",
     "@tiptap/extension-color": "^3.31.4",
     "@tiptap/extension-highlight": "^3.31.4",
     "@tiptap/extension-image": "^3.31.4",
@@ -142,12 +142,12 @@
     "vitest": "^5.0.3"
   },
   "allowScripts": {
-    "@google/genai@2.26.0": true,
     "esbuild@0.18.20": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
     "protobufjs@7.6.6": true,
-    "unrs-resolver@1.12.2": true
+    "unrs-resolver@1.12.2": true,
+    "@google/genai@2.27.0": true
   },
   "overrides": {
     "next": "16.4.0-canary.52"

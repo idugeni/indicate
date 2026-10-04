@@ -203,7 +203,7 @@ describe('validateTipTapDoc', () => {
     expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'paragraph', attrs: { textAlign: 'diagonal' }, content: [] }] }).ok).toBe(false);
     const badColor = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x', marks: [{ type: 'textStyle', attrs: { color: 'red;evil' } }] }] }] };
     expect(validateTipTapDoc(badColor).ok).toBe(false);
-    const wide = { type: 'tableRow', content: Array.from({ length: 13 }, (_, index) => cell(String(index))) };
+    const wide = { type: 'tableRow', content: Array.from({ length: 13 }, (slot, index) => cell(String(index))) };
     expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'table', content: [wide] }] }).ok).toBe(false);
   });
 

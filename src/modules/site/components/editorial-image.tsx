@@ -18,6 +18,7 @@
 export function EditorialImage({
   src,
   thumbSrc = null,
+  fallbackSrc = null,
   alt,
   caption = null,
   width = null,
@@ -31,6 +32,8 @@ export function EditorialImage({
 }: {
   readonly src: string;
   readonly thumbSrc?: string | null;
+  /** URL cadangan sekali-pakai bila `src` gagal dimuat (mis. thumbnail YouTube resolusi penuh). */
+  readonly fallbackSrc?: string | null;
   readonly alt: string;
   readonly caption?: string | null;
   readonly width?: number | null;
@@ -60,6 +63,16 @@ export function EditorialImage({
         decoding="async"
         className={className}
         {...(objectPosition === undefined ? {} : { style: { objectPosition } })}
+        {...(fallbackSrc === null
+          ? {}
+          : {
+              onError: (event) => {
+                const target = event.currentTarget;
+                if (target.dataset.fallbackApplied === 'true' || target.src === fallbackSrc) return;
+                target.dataset.fallbackApplied = 'true';
+                target.src = fallbackSrc;
+              },
+            })}
       />
       {caption === null ? null : <figcaption className={captionClassName}>{caption}</figcaption>}
     </figure>

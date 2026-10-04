@@ -11,7 +11,10 @@ afterEach(() => {
 
 function harness(options: { readonly rowsPerTable?: number; readonly existing?: readonly string[]; readonly fetchStatus?: number } = {}) {
   const puts = new Map<string, Uint8Array>();
-  const dbRows = Array.from({ length: options.rowsPerTable ?? 0 }, (_, index) => ({ audit_worm_fetch: { id: index + 1 } }));
+  const dbRows = Array.from({ length: options.rowsPerTable ?? 0 }, (slot, index) => {
+    void slot;
+    return ({ audit_worm_fetch: { id: index + 1 } });
+  });
   const db = { execute: vi.fn(async () => dbRows) };
   const storage = {
     headExact: vi.fn(async (key: string) => ((options.existing ?? []).includes(key) ? { contentLength: 1 } : null)),

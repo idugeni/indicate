@@ -45,7 +45,7 @@ describe('isDeadSessionError', () => {
     ['error biasa', new Error('boom')],
     ['null', null],
     ['string', 'refresh_token_not_found'],
-  ])('menolak %s', async (_label, value) => {
+  ])('menolak %s', async (label, value) => {
     const { isDeadSessionError } = await freshModule();
     expect(isDeadSessionError(value)).toBe(false);
   });

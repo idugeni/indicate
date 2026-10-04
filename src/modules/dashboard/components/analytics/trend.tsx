@@ -108,7 +108,8 @@ export function PublicationTrend({ series }: { readonly series: readonly TaskDay
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  labelFormatter={(_, payload) => {
+                  labelFormatter={(label, payload) => {
+                    void label;
                     const first = payload?.[0]?.payload as SeriesRow | undefined;
                     return first === undefined ? null : weekdayLabel(first.hari);
                   }}
@@ -166,7 +167,8 @@ export function MetricComparison({ series }: { readonly series: readonly TaskDay
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  labelFormatter={(_, payload) => {
+                  labelFormatter={(label, payload) => {
+                    void label;
                     const first = payload?.[0]?.payload as SeriesRow | undefined;
                     return first === undefined ? null : weekdayLabel(first.hari);
                   }}

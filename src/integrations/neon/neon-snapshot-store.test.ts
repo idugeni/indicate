@@ -31,7 +31,7 @@ describe('NeonSnapshotStore snapshot terkompresi', () => {
     const model = {
       environment: 'test',
       configurationVersion: 7,
-      sites: Array.from({ length: 200 }, (_, index) => ({
+      sites: Array.from({ length: 200 }, (slot, index) => ({
         siteId: `site-${index}-berita-example-indicate-website`,
         hostname: `kota-${index}.berita.example`,
       })),

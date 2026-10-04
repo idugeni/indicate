@@ -147,7 +147,10 @@ describe('Dashboard workspace', () => {
   });
 
   it('skips the analytics fetch when the snapshot already carries it', async () => {
-    const fetchMock = vi.fn(async (_url: unknown) => ({ ok: true, json: async () => ({}) }));
+    const fetchMock = vi.fn(async (url: unknown) => {
+      void url;
+      return { ok: true, json: async () => ({}) };
+    });
     vi.stubGlobal('fetch', fetchMock);
     render(
       <DashboardWorkspace
@@ -163,7 +166,10 @@ describe('Dashboard workspace', () => {
   });
 
   it('fetches analytics when the snapshot does not carry it yet', async () => {
-    const fetchMock = vi.fn(async (_url: unknown) => ({ ok: true, json: async () => ({}) }));
+    const fetchMock = vi.fn(async (url: unknown) => {
+      void url;
+      return { ok: true, json: async () => ({}) };
+    });
     vi.stubGlobal('fetch', fetchMock);
     render(
       <DashboardWorkspace

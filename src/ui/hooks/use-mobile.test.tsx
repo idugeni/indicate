@@ -13,10 +13,10 @@ function installMatchMedia(width: number) {
   const listeners = new Set<() => void>();
   const mql = {
     matches: width < 768,
-    addEventListener: vi.fn((_type: string, handler: () => void) => {
+    addEventListener: vi.fn((type: string, handler: () => void) => {
       listeners.add(handler);
     }),
-    removeEventListener: vi.fn((_type: string, handler: () => void) => {
+    removeEventListener: vi.fn((type: string, handler: () => void) => {
       listeners.delete(handler);
     }),
   };

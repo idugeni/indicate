@@ -7,6 +7,8 @@ import {
   isArticleType,
   normalizeArticleType,
   withArticleTypeNote,
+  youtubeThumbnailFallbackUrl,
+  youtubeThumbnailUrl,
 } from '@/modules/site/article-type';
 
 describe('article-type', () => {
@@ -58,5 +60,17 @@ describe('article-type', () => {
     expect(withArticleTypeNote('dasar', undefined)).toBe('dasar');
     expect(withArticleTypeNote('dasar', 'short')).toContain('Mode short');
     expect(withArticleTypeNote('dasar', 'video')).toContain('Mode video');
+  });
+
+  it('menurunkan thumbnail YouTube resolusi penuh plus cadangan', () => {
+    expect(youtubeThumbnailUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+    );
+    expect(youtubeThumbnailFallbackUrl('https://youtu.be/dQw4w9WgXcQ')).toBe(
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    );
+    expect(youtubeThumbnailUrl('https://video.portalberita.id/liputan.mp4')).toBeNull();
+    expect(youtubeThumbnailFallbackUrl(null)).toBeNull();
+    expect(youtubeThumbnailUrl('javascript:alert(1)')).toBeNull();
   });
 });

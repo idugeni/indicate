@@ -106,6 +106,16 @@ export interface ArticleListItem {
   readonly updatedAt: string;
   readonly articleSiteId: string;
   readonly viewCount: number;
+  /** Presentation mode; mirrors the `article_type` enum. */
+  readonly type: 'standard' | 'video' | 'gallery' | 'audio' | 'liveblog' | 'short';
+  /** Paid-content flag driving the sponsored disclosure on delivery surfaces. */
+  readonly isSponsored: boolean;
+  /** Canonical external watch/file URL for `video` mode; null otherwise. */
+  readonly videoUrl: string | null;
+  /** Canonical external listen/file URL for `audio` mode; null otherwise. */
+  readonly audioUrl: string | null;
+  /** Playback length in whole seconds for `video`/`audio` modes; null otherwise. */
+  readonly durationSeconds: number | null;
   readonly imageUrl: string | null;
   readonly thumbnailUrl: string | null;
   /** Main image MIME type when from R2 media; null for external hotlinks. */
@@ -123,6 +133,15 @@ export interface NetworkArticle extends ArticleListItem {
   readonly bodyJson?: unknown | null;
   /** Article-owned gallery (active image-type media, ordered by upload time); empty when none. */
   readonly gallery: readonly ArticleGalleryImage[];
+  /** Liveblog timeline (newest first, bounded); non-empty only for `liveblog` mode. */
+  readonly updates: readonly ArticleLiveblogEntry[];
+}
+
+/** One public liveblog timeline entry; body only, no authorship metadata. */
+export interface ArticleLiveblogEntry {
+  readonly id: string;
+  readonly body: string;
+  readonly publishedAt: string;
 }
 
 /**
@@ -148,6 +167,14 @@ export interface FeedArticle {
   readonly imageMediaType: string | null;
   readonly publishedAt: string;
   readonly categoryName: string | null;
+  /** Presentation mode; mirrors the `article_type` enum. */
+  readonly type: 'standard' | 'video' | 'gallery' | 'audio' | 'liveblog' | 'short';
+  /** Paid-content flag driving the sponsored disclosure, including the feed. */
+  readonly isSponsored: boolean;
+  /** Canonical external watch/file URL for `video` mode; null otherwise. */
+  readonly videoUrl: string | null;
+  /** Canonical external listen/file URL for `audio` mode; null otherwise. */
+  readonly audioUrl: string | null;
 }
 
 export interface ArticleGalleryImage {

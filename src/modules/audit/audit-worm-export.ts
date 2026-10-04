@@ -13,7 +13,12 @@ const sha256Hex = (bytes: Uint8Array): string => createHash('sha256').update(byt
 
 const toJsonLines = (rows: readonly Record<string, unknown>[]): { readonly bytes: Uint8Array; readonly rows: number } => {
   const text = rows
-    .map((row) => JSON.stringify(row, (_key, value: unknown) => (value instanceof Date ? value.toISOString() : value)))
+    .map((row) =>
+      JSON.stringify(row, (key, value: unknown) => {
+        void key;
+        return value instanceof Date ? value.toISOString() : value;
+      }),
+    )
     .join('\n');
   return { bytes: new TextEncoder().encode(text.length > 0 ? `${text}\n` : ''), rows: rows.length };
 };

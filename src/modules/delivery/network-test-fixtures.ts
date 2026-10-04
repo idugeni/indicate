@@ -31,6 +31,11 @@ export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): Net
     updatedAt: '2026-09-14T10:00:00.000Z',
     articleSiteId: 'as1',
     viewCount: 0,
+    type: 'standard',
+    isSponsored: false,
+    videoUrl: null,
+    audioUrl: null,
+    durationSeconds: null,
     imageUrl: null,
     thumbnailUrl: null,
     imageMediaType: null,
@@ -39,6 +44,7 @@ export function makeNetworkArticle(overrides: Partial<NetworkArticle> = {}): Net
     imageFocalX: null,
     imageFocalY: null,
     gallery: [],
+    updates: [],
     ...overrides,
   };
 }

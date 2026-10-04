@@ -38,7 +38,7 @@ describe('resolveDisqusShortname', () => {
     ['newline', 'indicate\n.evil.com', false],
     ['label tepat 63 karakter', `a${'b'.repeat(62)}`, true],
     ['label 64 karakter', `a${'b'.repeat(63)}`, false],
-  ])('%s -> %s', (_label, value, accepted) => {
+  ])('%s -> %s', (label, value, accepted) => {
     expect(resolveDisqusShortname({ NEXT_PUBLIC_DISQUS_SHORTNAME: value })).toBe(accepted ? value : undefined);
   });
 });

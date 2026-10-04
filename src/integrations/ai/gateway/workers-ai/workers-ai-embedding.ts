@@ -66,7 +66,10 @@ function extractMatrix(body: unknown, expected: number): Array<readonly number[]
   if (typeof result !== 'object' || result === null) return fallback;
   const data = (result as { readonly data?: unknown }).data;
   if (!Array.isArray(data)) return fallback;
-  return Array.from({ length: expected }, (_, index) => toFiniteVector(data[index] ?? null));
+  return Array.from({ length: expected }, (slot, index) => {
+    void slot;
+    return toFiniteVector(data[index] ?? null);
+  });
 }
 
 /**

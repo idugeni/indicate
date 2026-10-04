@@ -39,7 +39,7 @@ beforeEach(() => {
   tanganiDesktop = null;
   const mql = {
     matches: false,
-    addEventListener: vi.fn((_jenis: string, rawat: DesktopHandler) => {
+    addEventListener: vi.fn((jenis: string, rawat: DesktopHandler) => {
       tanganiDesktop = rawat;
     }),
     removeEventListener: vi.fn(),

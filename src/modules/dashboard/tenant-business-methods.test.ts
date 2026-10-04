@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
+import { DashboardAccessDeniedError, DashboardConflictError } from '@/modules/dashboard/ports';
 
 const ID = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 const ID2 = '0199a2b3-4c5d-7e8f-9012-3456789abcdf';
@@ -44,7 +45,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   const state = stateWith(collections);
   const appendAudit = vi.fn();
   const repository = {
-    execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+    execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
       return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
@@ -474,5 +475,69 @@ describe('TenantBusinessService articles assignments', () => {
     if (!second.ok) throw new Error('expected ok');
     expect(second.value).toHaveLength(0);
     expect((state.articleSites as { active: boolean }[]).every((row) => row.active === false)).toBe(true);
+  });
+});
+
+describe('TenantBusinessService article updates', () => {
+  const ENTRY_ID = '0199a2b3-4c5d-7e8f-9012-3456789abce2';
+  const ENTRY = {
+    id: ENTRY_ID,
+    organizationId: 'org-1',
+    articleId: ID,
+    body: 'Gol pembuka.',
+    sortOrder: 1,
+    publishedAt: NOW.toISOString(),
+    createdBy: 'user-1',
+    version: 1,
+    createdAt: NOW.toISOString(),
+    updatedAt: NOW.toISOString(),
+  };
+
+  function updatesHarness(repo: Record<string, unknown>) {
+    const repository = { recordDenied: vi.fn(async () => undefined), ...repo };
+    const service = new TenantBusinessService(repository as never, { create: () => ID }, { now: () => NOW });
+    return { repository, service };
+  }
+
+  it('mendelegasikan list ke repositori', async () => {
+    const listArticleUpdates = vi.fn(async () => [ENTRY]);
+    const { service } = updatesHarness({ listArticleUpdates });
+    const result = await service.listArticleUpdates(actor, { articleId: ID });
+    expect(result.ok).toBe(true);
+    expect(listArticleUpdates).toHaveBeenCalledWith(actor, 'article.manage', { articleId: ID });
+  });
+
+  it('menolak create tanpa body dan id artikel tak valid', async () => {
+    const { service } = updatesHarness({ createArticleUpdate: vi.fn() });
+    const empty = await service.createArticleUpdate(actor, { articleId: ID, body: '   ' });
+    expect(empty.ok).toBe(false);
+    const badId = await service.createArticleUpdate(actor, { articleId: 'bukan-uuid', body: 'Gol.' });
+    expect(badId.ok).toBe(false);
+  });
+
+  it('membuat entri lewat repositori', async () => {
+    const createArticleUpdate = vi.fn(async () => ENTRY);
+    const { service } = updatesHarness({ createArticleUpdate });
+    const result = await service.createArticleUpdate(actor, { articleId: ID, body: 'Gol pembuka.' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value).toMatchObject({ articleId: ID, body: 'Gol pembuka.' });
+  });
+
+  it('memetakan konflik versi saat update', async () => {
+    const updateArticleUpdate = vi.fn(async () => { throw new DashboardConflictError(); });
+    const { service } = updatesHarness({ updateArticleUpdate });
+    const result = await service.updateArticleUpdate(actor, { id: ENTRY_ID, expectedVersion: 1, body: 'Gol revisi.' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('CONFLICT');
+  });
+
+  it('memetakan penolakan akses saat hapus', async () => {
+    const deleteArticleUpdate = vi.fn(async () => { throw new DashboardAccessDeniedError(); });
+    const { service, repository } = updatesHarness({ deleteArticleUpdate });
+    const result = await service.deleteArticleUpdate(actor, { id: ENTRY_ID, expectedVersion: 1 });
+    expect(result.ok).toBe(false);
+    expect(repository.recordDenied).toHaveBeenCalled();
   });
 });

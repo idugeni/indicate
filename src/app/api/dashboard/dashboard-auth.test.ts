@@ -82,7 +82,7 @@ vi.mock('next/headers', () => ({
 
 vi.mock('@/modules/auth/authenticate-dashboard', () => ({
   authenticateDashboardUser: async () => (shared.loggedIn ? proofUser() : null),
-  authorizeDashboardOrganization: async (_db: unknown, _user: unknown, organizationId: string) =>
+  authorizeDashboardOrganization: async (db: unknown, user: unknown, organizationId: string) =>
     shared.loggedIn ? proofActor(organizationId) : null,
   authorizeDashboardPlatform: async () =>
     shared.loggedIn
@@ -133,7 +133,7 @@ vi.mock('@/modules/publishing/media-service', () => ({
 
 vi.mock('@/modules/publishing/publication-service', () => ({
   PublicationService: class {
-    constructor(..._args: unknown[]) {}
+    constructor() {}
   },
 }));
 
@@ -145,7 +145,7 @@ vi.mock('@/integrations/redis/upstash-publication-queue', async () => {
   return {
     ...actual,
     UpstashPublicationQueueAdapter: class {
-      constructor(..._args: unknown[]) {}
+      constructor() {}
     },
   };
 });

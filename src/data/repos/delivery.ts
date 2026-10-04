@@ -1,10 +1,11 @@
-import { aliasedTable, and, eq, gt, inArray, isNotNull, notInArray, or, sql } from 'drizzle-orm';
+import { aliasedTable, and, desc, eq, gt, inArray, isNotNull, notInArray, or, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { ActivationAttempt, ArticleListItem, FeedArticle, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 import { articleBodyText } from '@/modules/site/article-markup';
+import { youtubeThumbnailUrl } from '@/modules/site/article-type';
 import { isTipTapDoc, extractTipTapImages, tiptapToText } from '@/modules/site/tiptap-document';
 import { pickPublisherSocials } from '@/modules/site/company-contact';
 import { isPublicObjectKey } from '@/modules/publishing/object-key';
@@ -12,7 +13,7 @@ import { parseTenantAdOverrides, safeTemplateId } from '@/modules/ads/config';
 import { mapPlacementRows, mapTenantAdRows } from '@/modules/ads/db-mapping';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle, type SiteCategory } from '@/modules/delivery/ports';
 import { sqlStringArray } from '@/data/repos/shared/sql-array';
-import { articleSites, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, portalAssignments, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
+import { articleSites, articleUpdates, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, portalAssignments, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -138,6 +139,16 @@ function robotsDirectiveFor(value: 'index,follow' | 'noindex,nofollow' | null): 
   if (value === 'noindex,nofollow') return 'noindex, nofollow';
   if (value === 'index,follow') return 'index, follow';
   return null;
+}
+
+/**
+ * Normalize a bridge owner `article_type` into the delivery mode union.
+ *
+ * @param value - Raw owner type string from `fetch_assigned_article_details`.
+ * @returns Known mode, or `standard` for unknown legacy values.
+ */
+function bridgeArticleType(value: string): ArticleListItem['type'] {
+  return value === 'video' || value === 'gallery' || value === 'audio' || value === 'liveblog' || value === 'short' ? value : 'standard';
 }
 
 /**
@@ -465,7 +476,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       if (query.search !== undefined) conditions.push(or(sql`${articles.title} ILIKE ${`%${query.search}%`}`, sql`${articles.body} ILIKE ${`%${query.search}%`}`)!);
       const customMedia = aliasedTable(media, 'custom_media');
       const originSite = aliasedTable(sites, 'origin_site');
-       const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, originHost: originSite.normalizedHostname, tags: articles.tags, regionId: articles.regionId, categoryId: articles.categoryId, categorySlug: categories.slug, categoryName: categories.name, authorName: authors.byline, authorDisplayName: authors.displayName, authorBio: authors.bio, authorAvatarUrl: authors.avatarUrl, publisherName: publishers.name, attribution: publishers.attributionLabel, publisherLogoUrl: sql<string | null>`(${publishers.contacts}->>'logoUrl')`, publisherCity: sql<string | null>`(${publishers.contacts}->>'city')`, publisherBio: sql<string | null>`(${publishers.contacts}->>'bio')`, publisherContacts: publishers.contacts, publisherType: publishers.type, publisherVerification: publishers.verificationStatus, publishedAt: articleSites.publishedAt, updatedAt: articles.updatedAt, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, leadObjectKey: media.objectKey, leadMediaWidth: media.widthPx, leadMediaHeight: media.heightPx, leadMediaFocalX: media.focalX, leadMediaFocalY: media.focalY, coverImageUrl: articles.coverImageUrl, mediaState: media.state, leadThumbKey: media.thumbObjectKey, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription, robotsDirective: articleSites.seoRobotsDirective, bodyExcerpt: sql<string | null>`CASE WHEN ${articleSites.customDescription} IS NULL THEN substring(${articles.body} from 1 for 600) ELSE NULL END`, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, customObjectKey: customMedia.objectKey, customMediaWidth: customMedia.widthPx, customMediaHeight: customMedia.heightPx, customMediaFocalX: customMedia.focalX, customMediaFocalY: customMedia.focalY, customThumbKey: customMedia.thumbObjectKey, affiliationInstitution: officialAffiliations.institutionName, articleSiteId: articleSites.id, viewCount: articleSites.viewCount })
+       const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, originHost: originSite.normalizedHostname, tags: articles.tags, regionId: articles.regionId, categoryId: articles.categoryId, categorySlug: categories.slug, categoryName: categories.name, authorName: authors.byline, authorDisplayName: authors.displayName, authorBio: authors.bio, authorAvatarUrl: authors.avatarUrl, publisherName: publishers.name, attribution: publishers.attributionLabel, publisherLogoUrl: sql<string | null>`(${publishers.contacts}->>'logoUrl')`, publisherCity: sql<string | null>`(${publishers.contacts}->>'city')`, publisherBio: sql<string | null>`(${publishers.contacts}->>'bio')`, publisherContacts: publishers.contacts, publisherType: publishers.type, publisherVerification: publishers.verificationStatus, publishedAt: articleSites.publishedAt, updatedAt: articles.updatedAt, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, leadObjectKey: media.objectKey, leadMediaWidth: media.widthPx, leadMediaHeight: media.heightPx, leadMediaFocalX: media.focalX, leadMediaFocalY: media.focalY, coverImageUrl: articles.coverImageUrl, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, mediaState: media.state, leadThumbKey: media.thumbObjectKey, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription, robotsDirective: articleSites.seoRobotsDirective, bodyExcerpt: sql<string | null>`CASE WHEN ${articleSites.customDescription} IS NULL THEN substring(${articles.body} from 1 for 600) ELSE NULL END`, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, customObjectKey: customMedia.objectKey, customMediaWidth: customMedia.widthPx, customMediaHeight: customMedia.heightPx, customMediaFocalX: customMedia.focalX, customMediaFocalY: customMedia.focalY, customThumbKey: customMedia.thumbObjectKey, affiliationInstitution: officialAffiliations.institutionName, articleSiteId: articleSites.id, viewCount: articleSites.viewCount })
         .from(articleSites).innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .innerJoin(originSite, and(eq(originSite.organizationId, articleSites.organizationId), eq(originSite.id, articleSites.siteId)))
         .leftJoin(categories, and(eq(categories.organizationId, articles.organizationId), eq(categories.id, articles.categoryId), eq(categories.status, 'active')))
@@ -479,6 +490,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       let detailBody: string | null = null;
       let detailBodyJson: unknown | null = null;
       let detailGallery: readonly { readonly id: string; readonly url: string; readonly thumbnailUrl: string | null; readonly alt: string | null; readonly caption: string | null; readonly width: number | null; readonly height: number | null; readonly mediaType: string }[] = [];
+      let detailUpdates: readonly { readonly id: string; readonly body: string; readonly publishedAt: string }[] = [];
       if (detailTarget !== undefined) {
         const bodyRows = await transaction.select({ body: articles.body, bodyJson: articles.bodyJson })
           .from(articles)
@@ -497,6 +509,14 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
             : (publicMediaUrl(this.publicHost, galleryRow.thumbObjectKey) ?? `${absoluteMediaUrl(context, galleryRow.id)}?variant=thumb`);
           return { id: galleryRow.id, url, thumbnailUrl: thumbUrl, alt: galleryRow.altText, caption: galleryRow.caption, width: galleryRow.widthPx, height: galleryRow.heightPx, mediaType: galleryRow.mediaType };
         });
+        if (detailTarget.type === 'liveblog') {
+          const updateRows = await transaction.select({ id: articleUpdates.id, body: articleUpdates.body, publishedAt: articleUpdates.publishedAt, updatedAt: articleUpdates.updatedAt })
+            .from(articleUpdates)
+            .where(and(eq(articleUpdates.organizationId, context.organizationId), eq(articleUpdates.articleId, detailTarget.id)))
+            .orderBy(desc(articleUpdates.publishedAt), desc(articleUpdates.sortOrder))
+            .limit(100);
+          detailUpdates = updateRows.map((row) => ({ id: row.id, body: row.body, publishedAt: iso(row.publishedAt ?? row.updatedAt) }));
+        }
       }
       const settings = shell.settings;
       const bridgePairs = await this.readBridgePairs(transaction, context, query);
@@ -517,7 +537,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           canonicalUrl: detail.canonical_url ?? null,
           robotsDirective: null,
           ...(isBridgeDetail
-            ? { body: detail.body, bodyJson: isTipTapDoc(detail.body_json) ? detail.body_json : null, gallery: [] as const }
+            ? { body: detail.body, bodyJson: isTipTapDoc(detail.body_json) ? detail.body_json : null, gallery: [] as const, updates: [] as const }
             : {}),
           tags: [...detail.tags],
           regionId: detail.region_id,
@@ -542,8 +562,13 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           updatedAt: iso(detail.updated_at),
           articleSiteId: pair.bridgeId,
           viewCount: 0,
+          type: bridgeArticleType(detail.article_type),
+          isSponsored: detail.is_sponsored,
+          videoUrl: detail.video_url,
+          audioUrl: detail.audio_url,
+          durationSeconds: detail.duration_seconds,
           imageMediaType: null,
-          imageUrl: detail.cover_image_url,
+          imageUrl: detail.cover_image_url ?? (detail.article_type === 'video' ? youtubeThumbnailUrl(detail.video_url) : null),
           thumbnailUrl: null,
           imageWidth: null,
           imageHeight: null,
@@ -555,7 +580,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           const isDetail = detailTarget !== undefined && detailBody !== null && row.id === detailTarget.id;
           const richText = isDetail && isTipTapDoc(detailBodyJson) ? tiptapToText(detailBodyJson) : '';
           const description = row.customDescription ?? row.excerpt ?? (richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(articleBodyText(row.bodyExcerpt ?? ''), 180));
-          return { id: row.id, slug: row.slug, title: row.customTitle ?? row.title, href: originHref(row.originHost, context, row.slug), canonicalUrl: row.canonicalUrl, robotsDirective: robotsDirectiveFor(row.robotsDirective), description, ...(isDetail ? { body: detailBody, bodyJson: isTipTapDoc(detailBodyJson) ? detailBodyJson : null, gallery: detailGallery } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: resolvePublisherAttribution(row.attribution ?? row.publisherName ?? settings.name, settings.name), publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customObjectKey) ?? absoluteMediaUrl(context, row.customImageMediaId)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadObjectKey) ?? absoluteMediaUrl(context, row.leadMediaId)) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customThumbKey) ?? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadThumbKey) ?? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`)) : null, imageWidth: row.customImageMediaId !== null ? row.customMediaWidth : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaWidth : null, imageHeight: row.customImageMediaId !== null ? row.customMediaHeight : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaHeight : null, imageFocalX: row.customImageMediaId !== null ? row.customMediaFocalX : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalX : null, imageFocalY: row.customImageMediaId !== null ? row.customMediaFocalY : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalY : null };
+          return { id: row.id, slug: row.slug, title: row.customTitle ?? row.title, href: originHref(row.originHost, context, row.slug), canonicalUrl: row.canonicalUrl, robotsDirective: robotsDirectiveFor(row.robotsDirective), description, ...(isDetail ? { body: detailBody, bodyJson: isTipTapDoc(detailBodyJson) ? detailBodyJson : null, gallery: detailGallery, updates: detailUpdates } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: resolvePublisherAttribution(row.attribution ?? row.publisherName ?? settings.name, settings.name), publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customObjectKey) ?? absoluteMediaUrl(context, row.customImageMediaId)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadObjectKey) ?? absoluteMediaUrl(context, row.leadMediaId)) : (row.coverImageUrl ?? (row.type === 'video' ? youtubeThumbnailUrl(row.videoUrl) : null) ?? (isDetail && row.type === 'gallery' && detailGallery.length > 0 ? detailGallery[0]?.url ?? null : null)), thumbnailUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customThumbKey) ?? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadThumbKey) ?? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`)) : null, imageWidth: row.customImageMediaId !== null ? row.customMediaWidth : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaWidth : null, imageHeight: row.customImageMediaId !== null ? row.customMediaHeight : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaHeight : null, imageFocalX: row.customImageMediaId !== null ? row.customMediaFocalX : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalX : null, imageFocalY: row.customImageMediaId !== null ? row.customMediaFocalY : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalY : null, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds };
         });
       const merged = [...ownItems, ...bridgeItems].sort(
         (left, right) => new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime(),
@@ -716,7 +741,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       await this.publicTenant(transaction, context);
       const customMedia = aliasedTable(media, 'custom_media');
       const feedOrigin = aliasedTable(sites, 'origin_site');
-      const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, originHost: feedOrigin.normalizedHostname, description: articleSites.customDescription, body: articles.body, coverImageUrl: articles.coverImageUrl, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, mediaState: media.state, publishedAt: articleSites.publishedAt, categoryName: categories.name })
+      const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, originHost: feedOrigin.normalizedHostname, description: articleSites.customDescription, body: articles.body, coverImageUrl: articles.coverImageUrl, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, mediaState: media.state, publishedAt: articleSites.publishedAt, categoryName: categories.name, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl })
         .from(articleSites)
         .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .innerJoin(feedOrigin, and(eq(feedOrigin.organizationId, articleSites.organizationId), eq(feedOrigin.id, articleSites.siteId)))
@@ -733,10 +758,14 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         href: originHref(row.originHost, context, row.slug),
         description: row.description ?? excerptForDescription(articleBodyText(row.body), 180),
         body: row.body,
-        imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : row.coverImageUrl,
+        imageUrl: row.customImageMediaId !== null ? absoluteMediaUrl(context, row.customImageMediaId) : row.leadMediaId !== null && row.mediaState === 'active' ? absoluteMediaUrl(context, row.leadMediaId) : (row.coverImageUrl ?? (row.type === 'video' ? youtubeThumbnailUrl(row.videoUrl) : null)),
         imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null,
         publishedAt: iso(row.publishedAt!),
         categoryName: row.categoryName,
+        type: row.type,
+        isSponsored: row.isSponsored,
+        videoUrl: row.videoUrl,
+        audioUrl: row.audioUrl,
       }));
     });
   }

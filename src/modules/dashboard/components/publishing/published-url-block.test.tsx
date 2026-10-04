@@ -12,7 +12,9 @@ afterEach(() => {
 });
 
 function stubClipboard() {
-  const writeText = vi.fn(async (_text: string) => {});
+  const writeText = vi.fn(async (text: string) => {
+    void text;
+  });
   Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
   return writeText;
 }
@@ -54,7 +56,10 @@ describe('PublishedUrlBlock', () => {
 
   it('menyalin blok lengkap ke clipboard', async () => {
     const writeText = stubClipboard();
-    const urls = Array.from({ length: 500 }, (_, index) => `https://portal-${index}.example/slug`);
+    const urls = Array.from({ length: 500 }, (slot, index) => {
+      void slot;
+      return `https://portal-${index}.example/slug`;
+    });
     render(<PublishedUrlBlock title="Judul Berita" urls={urls} />);
     fireEvent.click(screen.getByRole('button', { name: /salin siaran/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -65,7 +70,7 @@ describe('PublishedUrlBlock', () => {
 
   it('memberi tahu saat clipboard ditolak browser', async () => {
     Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn(async (_text: string) => { throw new Error('ditolak'); }) },
+      value: { writeText: vi.fn(async () => { throw new Error('ditolak'); }) },
       configurable: true,
     });
     const { toast } = await import('sonner');

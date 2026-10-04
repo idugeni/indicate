@@ -116,7 +116,7 @@ describe('TenantBusinessService listConfiguration', () => {
   });
 
   it('membatasi daftar portal dan melaporkan totalnya secara jujur', async () => {
-    const sites = Array.from({ length: 260 }, (_unused, index) => ({
+    const sites = Array.from({ length: 260 }, (unused, index) => ({
       id: `site-${index}`, organizationId: 'org-1', domainId: 'd-1', regionId: null, siteLevel: 'city' as const,
       parentSiteId: null, normalizedHostname: `kota-${index}.portal.test`, status: 'active' as const,
       activationState: 'active' as const, version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
@@ -132,7 +132,7 @@ describe('TenantBusinessService listConfiguration', () => {
   });
 
   it('menemukan portal spesifik lewat pencarian', async () => {
-    const sites = Array.from({ length: 260 }, (_unused, index) => ({
+    const sites = Array.from({ length: 260 }, (unused, index) => ({
       id: `site-${index}`, organizationId: 'org-1', domainId: 'd-1', regionId: null, siteLevel: 'city' as const,
       parentSiteId: null, normalizedHostname: `kota-${index}.portal.test`, status: 'active' as const,
       activationState: 'active' as const, version: 1, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),

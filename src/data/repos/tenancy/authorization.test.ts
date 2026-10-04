@@ -14,7 +14,7 @@ type Database = ConstructorParameters<typeof DrizzleAuthorizationRepository>[0];
 function fakeDatabase() {
   const statements: string[] = [];
   const execute = vi.fn(async (statement: unknown) => {
-    const text = JSON.stringify(statement, (_key, value) => (value === undefined ? '<param>' : value));
+    const text = JSON.stringify(statement, (key, value) => (value === undefined ? '<param>' : value));
     statements.push(text);
     return text.includes('permission_list_platform') ? [{ name: 'platform.super_admin' }] : [];
   });

@@ -113,7 +113,7 @@ describe('MediaService reserveUpload', () => {
   it('memberi prefix publik untuk purpose artikel dan privat untuk lainnya', async () => {
     const seen: string[] = [];
     const capture = {
-      reserveMediaCandidate: vi.fn(async (_actor: unknown, input: { objectKey: string }) => {
+      reserveMediaCandidate: vi.fn(async (actor: unknown, input: { objectKey: string }) => {
         seen.push(input.objectKey);
         return { kind: 'reserved', reservation: { id: 'res-9' } };
       }),

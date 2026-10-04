@@ -128,9 +128,9 @@ function auditEdgeDeny(request: NextRequest, event: string): void {
 /** Inbound tenant headers are never trusted: resolution derives from host. */
 function stripTenantHeaders(headers: Headers): void {
   const condemned: string[] = [];
-  headers.forEach((_value, name) => {
+  for (const name of headers.keys()) {
     if (name.toLowerCase().startsWith('x-tenant-')) condemned.push(name);
-  });
+  }
   for (const name of condemned) headers.delete(name);
 }
 

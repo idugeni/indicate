@@ -103,7 +103,7 @@ describe('PublishedUrlBoard', () => {
   });
 });
 
-const pagedArticles = Array.from({ length: 25 }, (_unused, index) => ({
+const pagedArticles = Array.from({ length: 25 }, (unused, index) => ({
   id: `art-${index}`,
   title: `Berita ${String(index).padStart(2, '0')}`,
   slug: `berita-${String(index).padStart(2, '0')}`,

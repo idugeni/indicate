@@ -66,7 +66,7 @@ describe('TurnstileChallenge', () => {
       if (found === null) throw new Error('turnstile_script_missing');
       return found;
     });
-    window.turnstile = { render: (_element, options) => { options.callback('token-uji'); return 'widget-1'; }, remove: () => {} };
+    window.turnstile = { render: (element, options) => { options.callback('token-uji'); return 'widget-1'; }, remove: () => {} };
     script.dispatchEvent(new Event('load'));
     await waitFor(() => expect(onToken).toHaveBeenCalledWith('token-uji'));
   });
@@ -94,7 +94,7 @@ describe('TurnstileChallenge', () => {
     );
     const script = document.head.querySelector<HTMLScriptElement>('script[src*="turnstile"]');
     if (script === null) throw new Error('turnstile_script_missing');
-    window.turnstile = { render: (_element, options) => { options.callback('token-uji'); return 'widget-1'; }, remove: () => {} };
+    window.turnstile = { render: (element, options) => { options.callback('token-uji'); return 'widget-1'; }, remove: () => {} };
     script.dispatchEvent(new Event('load'));
     await waitFor(() => expect(onToken).toHaveBeenCalledWith('token-uji'));
   });

@@ -26,7 +26,7 @@ describe('controlPlaneLlmsFull', () => {
 
 describe('tenantLlmsFull', () => {
   it('melewati batas 30 artikel versi ringkas dan menautkan feed', () => {
-    const articles = Array.from({ length: 40 }, (_, index) => ({ title: `A${index}`, slug: `a-${index}`, href: `/a-${index}` }));
+    const articles = Array.from({ length: 40 }, (slot, index) => ({ title: `A${index}`, slug: `a-${index}`, href: `/a-${index}` }));
     const body = tenantLlmsFull('portal.example', 'Portal', 'Kabar terkini', ['Teknologi'], articles);
     expect(body).toContain('## Liputan lengkap');
     expect(body).toContain('a-30');
@@ -36,7 +36,7 @@ describe('tenantLlmsFull', () => {
   });
 
   it('membatasi liputan pada 100 artikel', () => {
-    const articles = Array.from({ length: 110 }, (_, index) => ({ title: `A${index}`, slug: `a-${index}`, href: `/a-${index}` }));
+    const articles = Array.from({ length: 110 }, (slot, index) => ({ title: `A${index}`, slug: `a-${index}`, href: `/a-${index}` }));
     const body = tenantLlmsFull('portal.example', 'Portal', 'Deskripsi', [], articles);
     expect(body).toContain('a-99');
     expect(body).not.toContain('a-100');

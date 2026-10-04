@@ -623,7 +623,7 @@ describe('Formulir tulis artikel', () => {
 
   it('memecah penerbitan mengikuti jumlah apex portal yang tersedia', async () => {
     const user = userEvent.setup();
-    const apexSites = Array.from({ length: 134 }, (_, index) => ({ id: `apex-${index}`, siteLevel: 'apex', status: 'active', activationState: 'active' }));
+    const apexSites = Array.from({ length: 134 }, (slot, index) => ({ id: `apex-${index}`, siteLevel: 'apex', status: 'active', activationState: 'active' }));
     const seen: number[] = [];
     const { container } = render(
       <ArticleCreateForm
@@ -898,10 +898,13 @@ describe('Formulir tulis artikel', () => {
   function mockAiFetch(handler: (body: Record<string, unknown>) => unknown) {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (_url: unknown, init?: { readonly body?: unknown }) => ({
-        ok: true,
-        json: async () => handler(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>),
-      })),
+      vi.fn(async (url: unknown, init?: { readonly body?: unknown }) => {
+        void url;
+        return {
+          ok: true,
+          json: async () => handler(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>),
+        };
+      }),
     );
   }
 
@@ -933,10 +936,14 @@ describe('Formulir tulis artikel', () => {
 
   it('menyempurnakan deskripsi yang sudah terisi', async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn(async (_url: unknown, _init?: { readonly body?: unknown }) => ({
-      ok: true,
-      json: async () => ({ metaDescription: 'Air di Wonosobo telah surut total.' }),
-    }));
+    const fetchMock = vi.fn(async (url: unknown, init?: { readonly body?: unknown }) => {
+      void url;
+      void init;
+      return {
+        ok: true,
+        json: async () => ({ metaDescription: 'Air di Wonosobo telah surut total.' }),
+      };
+    });
     vi.stubGlobal('fetch', fetchMock);
     setup({ organizationId: 'org-1' });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
@@ -1168,15 +1175,18 @@ describe('Formulir tulis artikel', () => {
       await user.upload(picker, new File(['isi-gambar'], 'sampul.png', { type: 'image/png' }));
       await waitFor(() => expect(screen.queryByLabelText('Teks alt sampul')).not.toBeNull());
 
-      const aiMock = vi.fn(async (_url: unknown, init?: { readonly body?: unknown }) => ({
-        ok: true,
-        json: async () => {
-          const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
-          return body.action === 'cover-caption'
-            ? { caption: { alt: 'Suasana pasar pagi.', caption: 'Pedagang menata dagangan.' } }
-            : {};
-        },
-      }));
+      const aiMock = vi.fn(async (url: unknown, init?: { readonly body?: unknown }) => {
+        void url;
+        return {
+          ok: true,
+          json: async () => {
+            const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+            return body.action === 'cover-caption'
+              ? { caption: { alt: 'Suasana pasar pagi.', caption: 'Pedagang menata dagangan.' } }
+              : {};
+          },
+        };
+      });
       vi.stubGlobal('fetch', aiMock);
       await user.click(screen.getByRole('button', { name: 'Isi alt dan caption otomatis' }));
       await waitFor(() =>
@@ -1194,5 +1204,104 @@ describe('Formulir tulis artikel', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('menampilkan pemilih mode dengan enam varian dan bawaan standar', async () => {
+    const { submit, container } = setup({});
+    expect(screen.getByRole('combobox', { name: 'Mode artikel' })).toBeDefined();
+    expect(screen.getByText('Naskah berita biasa tanpa syarat tambahan.')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'standard', isSponsored: false, videoUrl: null, audioUrl: null }),
+      ),
+    );
+  });
+
+  it('menolak mode video tanpa URL dan sampul', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Video' }));
+    expect(screen.getByLabelText('URL video')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).not.toHaveBeenCalled());
+    expect(screen.getByText(/Mode video wajib/)).toBeDefined();
+  });
+
+  it('mengirim URL video dan durasi untuk mode video', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Video' }));
+    fireEvent.change(screen.getByLabelText('URL video'), { target: { value: 'https://video.example/tonton' } });
+    fireEvent.change(screen.getByLabelText('Durasi (detik, opsional)'), { target: { value: '180' } });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'video', videoUrl: 'https://video.example/tonton', durationSeconds: 180 }),
+      ),
+    );
+  });
+
+  it('menampilkan pratinjau sampul otomatis untuk URL YouTube', async () => {
+    const user = userEvent.setup();
+    setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Video' }));
+    fireEvent.change(screen.getByLabelText('URL video'), { target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } });
+    expect(await screen.findByAltText('Pratinjau sampul otomatis YouTube')).toBeDefined();
+    expect(screen.getByText(/Thumbnail YouTube dipakai otomatis/)).toBeDefined();
+  });
+
+  it('mewajibkan URL audio untuk mode audio', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Audio' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).not.toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText(/URL audio/), { target: { value: 'https://cdn.example/rekaman.mp3' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'audio', audioUrl: 'https://cdn.example/rekaman.mp3' }),
+      ),
+    );
+  });
+
+  it('membatasi isi mode short sampai 500 karakter', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Short' }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'x'.repeat(501) } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).not.toHaveBeenCalled());
+  });
+
+  it('menandai konten bersponsor saat dicentang', async () => {
+    const user = userEvent.setup();
+    const { submit, container } = setup({});
+    await user.click(screen.getByRole('checkbox', { name: /Konten bersponsor/ }));
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ isSponsored: true })));
   });
 });

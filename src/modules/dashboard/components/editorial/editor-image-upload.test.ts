@@ -83,7 +83,11 @@ describe('uploadEditorImage', () => {
       throw new Error(`unexpected ${action}`);
     });
     const onConverting = vi.fn();
-    const prepare = vi.fn((_file: File, _options?: unknown) => Promise.resolve(mockPrepare()));
+    const prepare = vi.fn((file: File, options?: unknown) => {
+      void file;
+      void options;
+      return Promise.resolve(mockPrepare());
+    });
     const convert = vi.fn(async () => new Blob([new Uint8Array(64)], { type: 'image/jpeg' }));
     const fetchFn = vi.fn(async () => ({ ok: true }) as Response);
     const heic = new File([new Uint8Array([1, 2, 3])], 'IMG_0001.HEIC', { type: 'image/heic' });

@@ -27,7 +27,7 @@ afterEach(() => {
 });
 
 function days(count: number): TaskDay[] {
-  return Array.from({ length: count }, (_, index) => ({
+  return Array.from({ length: count }, (slot, index) => ({
     hari: `2026-09-${String(index + 1).padStart(2, '0')}`,
     diterbitkan: 1,
     gagal: 0,

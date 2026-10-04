@@ -31,7 +31,7 @@ describe('AiSeoAssist', () => {
 
   it('menampilkan saran tanpa menerapkan otomatis lalu menerapkan pilihan editor', async () => {
     const mocked = vi.mocked(callAi);
-    mocked.mockImplementation(async (_org: string, action: string) => {
+    mocked.mockImplementation(async (org: string, action: string) => {
       if (action === 'seo-titles') return { titles: SUGGESTION.titles };
       if (action === 'seo-meta') return { metaDescription: SUGGESTION.metaDescription };
       return { excerpt: SUGGESTION.excerpt };
@@ -69,7 +69,7 @@ describe('AiSeoAssist', () => {
 
   it('meminta varian baru saat tombol buat ulang diklik', async () => {
     const mocked = vi.mocked(callAi);
-    mocked.mockImplementation(async (_org: string, action: string) => {
+    mocked.mockImplementation(async (org: string, action: string) => {
       if (action === 'seo-titles') return { titles: SUGGESTION.titles };
       if (action === 'seo-meta') return { metaDescription: SUGGESTION.metaDescription };
       return { excerpt: SUGGESTION.excerpt };

@@ -42,7 +42,7 @@ describe('UpstashSnapshotStore cache-aside', () => {
 
   it('writeKey mengompresi nilai besar dan readKey mendekodenya', async () => {
     const model = {
-      sites: Array.from({ length: 200 }, (_, index) => ({
+      sites: Array.from({ length: 200 }, (slot, index) => ({
         siteId: `site-${index}-berita-example-indicate-website`,
         hostname: `kota-${index}.berita.example`,
       })),
@@ -58,7 +58,7 @@ describe('UpstashSnapshotStore cache-aside', () => {
 
   it('readMany mendekode campuran polos, gzip, dan miss', async () => {
     const small = { activeSites: 1 };
-    const big = { rows: Array.from({ length: 200 }, (_, index) => `baris-panjang-berulang-${index}`) };
+    const big = { rows: Array.from({ length: 200 }, (slot, index) => `baris-panjang-berulang-${index}`) };
     await store().writeKey('kecil', small, 180);
     await store().writeKey('besar', big, 180);
     const [, storedSmall] = set.mock.calls[0] as [string, string];
@@ -78,7 +78,7 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
     const model = {
       environment: 'test',
       configurationVersion: 7,
-      sites: Array.from({ length: 200 }, (_, index) => ({
+      sites: Array.from({ length: 200 }, (slot, index) => ({
         siteId: `site-${index}-berita-example-indicate-website`,
         hostname: `kota-${index}.berita.example`,
         locale: 'id-ID',

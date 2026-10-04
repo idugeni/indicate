@@ -187,6 +187,16 @@ export interface ArticleRecord extends VersionedRecord {
   readonly source: string;
   readonly tags: readonly string[];
   readonly status: ArticleStatus;
+  /** Presentation mode; mirrors the `article_type` enum. */
+  readonly type: 'standard' | 'video' | 'gallery' | 'audio' | 'liveblog' | 'short';
+  /** Paid-content flag driving the sponsored disclosure on delivery surfaces. */
+  readonly isSponsored: boolean;
+  /** Canonical external watch/file URL for `video` mode; null otherwise. */
+  readonly videoUrl: string | null;
+  /** Canonical external listen/file URL for `audio` mode; null otherwise. */
+  readonly audioUrl: string | null;
+  /** Playback length in whole seconds for `video`/`audio` modes; null otherwise. */
+  readonly durationSeconds: number | null;
   readonly publishedAt: string | null;
   readonly scheduledAt: string | null;
   readonly archivedAt: string | null;
@@ -204,6 +214,8 @@ export interface ArticleUpdateRecord extends VersionedRecord {
   readonly body: string;
   readonly sortOrder: number;
   readonly publishedAt: string | null;
+  /** Actor id that wrote the entry; shown nowhere public, kept for audit. */
+  readonly createdBy: string;
 }
 
 export interface ArticleSiteRecord extends VersionedRecord {

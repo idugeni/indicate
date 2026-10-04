@@ -78,7 +78,7 @@ describe('kebijakan masa berlaku kunci akses', () => {
       updatedAt: input.now,
     });
     return {
-      createAccessKey: async (_actor, input) => {
+      createAccessKey: async (actor, input) => {
         captured.input = input;
         return record(input);
       },

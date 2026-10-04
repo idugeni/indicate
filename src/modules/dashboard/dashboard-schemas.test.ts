@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   ARTICLE_TITLE_MAX,
   articleCreateSchema,
+  articleUpdateCreateSchema,
+  articleUpdateDeleteSchema,
+  articleUpdateListSchema,
+  articleUpdateSchema,
+  articleUpdateUpdateSchema,
   assignmentSchema,
   categoryCreateSchema,
   categoryDeleteSchema,
@@ -89,7 +94,55 @@ describe('articleCreateSchema', () => {
 
   it('menolak tag non-string dan lebih dari 10 tag unik', () => {
     expect(articleCreateSchema.safeParse({ ...article, tags: ['baik', 42] }).success).toBe(false);
-    expect(articleCreateSchema.safeParse({ ...article, tags: Array.from({ length: 11 }, (_, i) => `topik-${i}`) }).success).toBe(false);
+    expect(articleCreateSchema.safeParse({ ...article, tags: Array.from({ length: 11 }, (slot, i) => `topik-${i}`) }).success).toBe(false);
+  });
+
+  it('memberi default mode standar dan tanpa sponsor', () => {
+    const parsed = articleCreateSchema.safeParse(article);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data.type).toBe('standard');
+    expect(parsed.data.isSponsored).toBe(false);
+  });
+
+  it('mewajibkan URL audio untuk mode audio', () => {
+    expect(articleCreateSchema.safeParse({ ...article, type: 'audio' }).success).toBe(false);
+    const parsed = articleCreateSchema.safeParse({ ...article, type: 'audio', audioUrl: 'https://cdn.example/rekaman.mp3' });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('mewajibkan sampul atau URL untuk mode video', () => {
+    expect(articleCreateSchema.safeParse({ ...article, type: 'video' }).success).toBe(false);
+    expect(articleCreateSchema.safeParse({ ...article, type: 'video', videoUrl: 'https://video.example/tonton' }).success).toBe(true);
+  });
+
+  it('membatasi isi mode short sampai 500 karakter', () => {
+    expect(articleCreateSchema.safeParse({ ...article, type: 'short', body: 'x'.repeat(501) }).success).toBe(false);
+    expect(articleCreateSchema.safeParse({ ...article, type: 'short', body: 'x'.repeat(500) }).success).toBe(true);
+  });
+
+  it('menolak URL tanpa skema dan durasi di luar mode video/audio', () => {
+    expect(articleCreateSchema.safeParse({ ...article, type: 'video', videoUrl: 'tanpa-skema' }).success).toBe(false);
+    expect(articleCreateSchema.safeParse({ ...article, type: 'standard', durationSeconds: 120 }).success).toBe(false);
+    expect(articleCreateSchema.safeParse({ ...article, type: 'audio', audioUrl: 'https://cdn.example/a.mp3', durationSeconds: 120 }).success).toBe(true);
+  });
+
+  it('memvalidasi daftar, tambah, ubah, dan hapus entri liveblog', () => {
+    expect(articleUpdateListSchema.safeParse({ articleId: ID }).success).toBe(true);
+    expect(articleUpdateListSchema.safeParse({ articleId: 'bukan-uuid' }).success).toBe(false);
+    expect(articleUpdateCreateSchema.safeParse({ articleId: ID, body: 'Gol pembuka.' }).success).toBe(true);
+    expect(articleUpdateCreateSchema.safeParse({ articleId: ID, body: '   ' }).success).toBe(false);
+    expect(articleUpdateCreateSchema.safeParse({ articleId: ID, body: 'x'.repeat(20001) }).success).toBe(false);
+    expect(articleUpdateUpdateSchema.safeParse({ id: ID, expectedVersion: 1, body: 'Gol revisi.' }).success).toBe(true);
+    expect(articleUpdateUpdateSchema.safeParse({ id: ID, expectedVersion: 0, body: 'Gol revisi.' }).success).toBe(false);
+    expect(articleUpdateDeleteSchema.safeParse({ id: ID, expectedVersion: 1 }).success).toBe(true);
+  });
+
+  it('menjaga mode pada update sebagai opsional tanpa reset standar', () => {
+    const parsed = articleUpdateSchema.safeParse({ id: ID, expectedVersion: 1, regionId: ID, slug: 'x', title: 'T', status: 'draft' });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error('expected ok');
+    expect(parsed.data.type).toBeUndefined();
   });
 });
 

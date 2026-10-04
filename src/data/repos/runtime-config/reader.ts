@@ -110,7 +110,10 @@ export class DrizzleRuntimeConfigRepository implements RuntimeConfigReadReposito
   private toCanonicalRow(value: Record<string, unknown>): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const [key, entry] of Object.entries(value)) {
-      const camel = key.replace(/_([a-z0-9])/g, (_, char: string) => char.toUpperCase());
+      const camel = key.replace(/_([a-z0-9])/g, (match, char: string) => {
+        void match;
+        return char.toUpperCase();
+      });
       out[camel] = entry instanceof Date ? entry.toISOString() : entry;
     }
     return out;

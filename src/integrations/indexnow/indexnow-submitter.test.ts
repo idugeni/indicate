@@ -9,7 +9,7 @@ function okResponse(status = 200): Response {
 describe('HttpIndexNowSubmitter', () => {
   it('mengelompokkan url per host dan menelan kegagalan per-host', async () => {
     const seen: Array<{ host: string; urls: readonly string[] }> = [];
-    const fetchFn = vi.fn(async (_url: unknown, init: unknown) => {
+    const fetchFn = vi.fn(async (url: unknown, init: unknown) => {
       const body = JSON.parse(String((init as { body: string }).body)) as { host: string; urlList: string[] };
       seen.push({ host: body.host, urls: body.urlList });
       if (body.host === 'gagal.test') return okResponse(500);

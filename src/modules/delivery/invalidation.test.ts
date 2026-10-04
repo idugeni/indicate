@@ -107,7 +107,10 @@ describe('InvalidationDispatcher', () => {
   });
 
   it('menjalankan task batch secara tumpang tindih agar muat dalam lease', async () => {
-    const tasks = Array.from({ length: 12 }, (_, index) => task(`task-${index}`, []));
+    const tasks = Array.from({ length: 12 }, (slot, index) => {
+      void slot;
+      return task(`task-${index}`, []);
+    });
     let inFlight = 0;
     let peak = 0;
     const repository = {
@@ -121,7 +124,7 @@ describe('InvalidationDispatcher', () => {
       failInvalidation: vi.fn(async () => {}),
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
     const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300);
     await expect(dispatcher.dispatch(new Date(), 100)).resolves.toEqual({ completed: 12, failed: 0, stranded: 0 });
     expect(peak).toBeGreaterThan(1);
@@ -139,7 +142,7 @@ describe('InvalidationDispatcher', () => {
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
     const cloudflare = {
-      purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {
+      purgeExactUrls: vi.fn(async () => {
         order.push('purge');
         await new Promise((resolve) => setTimeout(resolve, 50));
       }),
@@ -157,14 +160,22 @@ describe('InvalidationDispatcher', () => {
 
   it('membatasi jumlah url purge per dispatch dan melaporkan sisanya', async () => {
     logMock.mockClear();
-    const urls = Array.from({ length: 400 }, (_, index) => `https://tenant.example/p-${index}`);
+    const urls = Array.from({ length: 400 }, (slot, index) => {
+      void slot;
+      return `https://tenant.example/p-${index}`;
+    });
     const repository = {
       claimInvalidations: vi.fn(async () => [{ ...task('task-1', urls), tags: ['site:site-1'] }]),
       completeInvalidation: vi.fn(async () => {}),
       failInvalidation: vi.fn(async () => {}),
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
+    const cloudflare = {
+      purgeExactUrls: vi.fn(async (urls: readonly string[]) => {
+        void urls;
+      }),
+      purgeHostname: vi.fn(async () => {}),
+    };
     const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300);
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
     const purged = vi.mocked(cloudflare.purgeExactUrls).mock.calls[0]?.[0] as readonly string[];
@@ -176,14 +187,22 @@ describe('InvalidationDispatcher', () => {
 
   it('memprioritaskan url artikel saat anggaran purge harus memotong', async () => {
     const articleUrl = 'https://tenant.example/slug-a';
-    const urls = [articleUrl, ...Array.from({ length: 400 }, (_, index) => `https://tenant.example/p-${index}`)];
+    const urls = [articleUrl, ...Array.from({ length: 400 }, (slot, index) => {
+      void slot;
+      return `https://tenant.example/p-${index}`;
+    })];
     const repository = {
       claimInvalidations: vi.fn(async () => [{ ...task('task-1', urls), tags: ['site:site-1', 'host:tenant.example', 'article:slug-a'] }]),
       completeInvalidation: vi.fn(async () => {}),
       failInvalidation: vi.fn(async () => {}),
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
+    const cloudflare = {
+      purgeExactUrls: vi.fn(async (urls: readonly string[]) => {
+        void urls;
+      }),
+      purgeHostname: vi.fn(async () => {}),
+    };
     const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300);
     await dispatcher.dispatch(new Date(), 10);
     const purged = vi.mocked(cloudflare.purgeExactUrls).mock.calls[0]?.[0] as readonly string[];
@@ -198,13 +217,13 @@ describe('InvalidationDispatcher', () => {
       failInvalidation: vi.fn(async () => {}),
     };
     const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
-    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
-    const warmer = { prewarm: vi.fn(async (_urls: readonly string[]) => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async () => {}), purgeHostname: vi.fn(async () => {}) };
+    const warmer = { prewarm: vi.fn(async () => {}) };
     const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300, warmer);
     await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
     expect(warmer.prewarm).toHaveBeenCalledTimes(1);
     expect(warmer.prewarm).toHaveBeenCalledWith(['https://tenant.example/slug-a']);
-    const failing = { prewarm: vi.fn(async (_urls: readonly string[]): Promise<void> => { throw new Error('warmer down'); }) };
+    const failing = { prewarm: vi.fn(async (): Promise<void> => { throw new Error('warmer down'); }) };
     const resilient = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300, failing);
     await expect(resilient.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
   });

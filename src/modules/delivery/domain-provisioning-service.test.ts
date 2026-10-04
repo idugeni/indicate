@@ -125,7 +125,7 @@ describe('DomainProvisioningService db-only regional', () => {
 
   function dbOnlyHarness() {
     const repository = {
-      updateActivation: vi.fn(async (_a: unknown, _id: string, state: string) => attempt({ activationState: state, externalStatus: { apexHostname: 'fakta01.my.id' } })),
+      updateActivation: vi.fn(async (a: unknown, id: string, state: string) => attempt({ activationState: state, externalStatus: { apexHostname: 'fakta01.my.id' } })),
       completeActivation: vi.fn(async () => ({ normalizedHostname: 'kota.fakta01.my.id' })),
       failActivation: vi.fn(async () => undefined),
     };

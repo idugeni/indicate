@@ -48,7 +48,7 @@ describe('tenantLlms', () => {
   });
 
   it('membatasi liputan pada 30 artikel', () => {
-    const articles = Array.from({ length: 35 }, (_, index) => ({ title: `A${index}`, slug: `a-${index}`, href: `/a-${index}` }));
+    const articles = Array.from({ length: 35 }, (slot, index) => ({ title: `A${index}`, slug: `a-${index}`, href: `/a-${index}` }));
     const body = tenantLlms('portal.example', 'Portal', 'Deskripsi', [], articles);
     expect(body).toContain('a-29');
     expect(body).not.toContain('a-30');

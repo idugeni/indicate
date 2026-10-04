@@ -4,7 +4,7 @@ import type { SiteCategory } from '@/modules/delivery/ports';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import { deriveAboutPublisher } from '@/modules/site/about-profile';
 import { articleBodyText } from '@/modules/site/article-markup';
-import { isTipTapDoc, tiptapToText } from '@/modules/site/tiptap-document';
+import { extractYouTubeId, isSafeMediaSrc, isTipTapDoc, tiptapToText } from '@/modules/site/tiptap-document';
 
 function absoluteSiteUrl(context: ResolvedSiteContext, path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -61,6 +61,22 @@ export function excerptForDescription(body: string, maxLength = 180): string {
 }
 
 export type RobotsDirective = 'index, follow' | 'noindex, nofollow' | 'noindex, nofollow, nosnippet';
+
+/**
+ * Format detik pemutaran menjadi durasi ISO 8601 untuk JSON-LD.
+ *
+ * @param totalSeconds - Durasi detik; null berarti tidak ada durasi.
+ * @returns Durasi `PT…S`, atau null bila tidak valid.
+ */
+export function isoDuration(totalSeconds: number | null): string | null {
+  if (totalSeconds === null || !Number.isInteger(totalSeconds) || totalSeconds < 1) return null;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `PT${hours}H${minutes}M${seconds}S`;
+  if (minutes > 0) return `PT${minutes}M${seconds}S`;
+  return `PT${seconds}S`;
+}
 
 export interface SeoDocument {
   readonly title: string;
@@ -258,18 +274,68 @@ export function buildSeoDocument(site: NetworkSiteData, options: { readonly path
   if (article !== undefined) {
     const richText = 'bodyJson' in article && isTipTapDoc(article.bodyJson) ? tiptapToText(article.bodyJson) : '';
     const wordCount = (richText !== '' ? richText : stripHtml(article.body)).split(/\s+/u).filter(Boolean).length;
-    jsonLd.push({
-      '@context': 'https://schema.org', '@type': 'NewsArticle', '@id': `${canonical}#article`, headline: article.title, description: article.description,
-      datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
-      image: [image], inLanguage: 'id', isAccessibleForFree: true, wordCount,
-      ...(article.categoryName === null ? {} : { articleSection: article.categoryName }),
-      ...(article.tags.length === 0 ? {} : { keywords: article.tags.join(', ') }),
-      ...((article.authorDisplayName ?? article.authorName) === null
-        ? {}
-        : { author: { '@type': 'Person', name: article.authorDisplayName ?? article.authorName ?? article.attribution } }),
-      publisher: { '@id': organizationId },
-      isPartOf: { '@id': websiteId },
-    });
+    const galleryImages = article.gallery.slice(0, 9).map((image) => image.url);
+    const isLiveblog = article.type === 'liveblog' && article.updates.length > 0;
+    if (isLiveblog) {
+      const updates = article.updates.slice(0, 20);
+      jsonLd.push({
+        '@context': 'https://schema.org', '@type': 'LiveBlogPosting', '@id': `${canonical}#liveblog`, headline: article.title, description: article.description,
+        datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+        image: [image, ...galleryImages], inLanguage: 'id', isAccessibleForFree: true, wordCount,
+        coverageStartTime: article.publishedAt,
+        ...(article.categoryName === null ? {} : { articleSection: article.categoryName }),
+        ...(article.tags.length === 0 ? {} : { keywords: article.tags.join(', ') }),
+        ...((article.authorDisplayName ?? article.authorName) === null
+          ? {}
+          : { author: { '@type': 'Person', name: article.authorDisplayName ?? article.authorName ?? article.attribution } }),
+        publisher: { '@id': organizationId },
+        isPartOf: { '@id': websiteId },
+        liveBlogUpdate: updates.map((entry) => {
+          const text = entry.body.trim();
+          const firstLine = text.split('\n')[0]?.trim().slice(0, 150) ?? '';
+          return {
+            '@type': 'BlogPosting',
+            headline: firstLine === '' ? article.title : firstLine,
+            datePublished: entry.publishedAt,
+            articleBody: text.slice(0, 5000),
+          };
+        }),
+      });
+    } else {
+      jsonLd.push({
+        '@context': 'https://schema.org', '@type': 'NewsArticle', '@id': `${canonical}#article`, headline: article.title, description: article.description,
+        datePublished: article.publishedAt, dateModified: article.updatedAt, mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+        image: [image, ...galleryImages], inLanguage: 'id', isAccessibleForFree: true, wordCount,
+        ...(article.categoryName === null ? {} : { articleSection: article.categoryName }),
+        ...(article.tags.length === 0 ? {} : { keywords: article.tags.join(', ') }),
+        ...((article.authorDisplayName ?? article.authorName) === null
+          ? {}
+          : { author: { '@type': 'Person', name: article.authorDisplayName ?? article.authorName ?? article.attribution } }),
+        publisher: { '@id': organizationId },
+        isPartOf: { '@id': websiteId },
+      });
+    }
+    if (article.type === 'video' && article.videoUrl !== null && isSafeMediaSrc(article.videoUrl)) {
+      const youtubeId = extractYouTubeId(article.videoUrl);
+      jsonLd.push({
+        '@context': 'https://schema.org', '@type': 'VideoObject', '@id': `${canonical}#video`, name: article.title, description: article.description,
+        thumbnailUrl: image, uploadDate: article.publishedAt, contentUrl: article.videoUrl, inLanguage: 'id',
+        ...(youtubeId === null ? {} : { embedUrl: `https://www.youtube.com/embed/${youtubeId}` }),
+        ...(isoDuration(article.durationSeconds) === null ? {} : { duration: isoDuration(article.durationSeconds) }),
+        interactionStatistic: {
+          '@type': 'InteractionCounter',
+          interactionType: { '@type': 'WatchAction' },
+          userInteractionCount: article.viewCount,
+        },
+      });
+    }
+    if (article.type === 'audio' && article.audioUrl !== null && isSafeMediaSrc(article.audioUrl)) {
+      jsonLd.push({
+        '@context': 'https://schema.org', '@type': 'AudioObject', '@id': `${canonical}#audio`, name: article.title, description: article.description,
+        uploadDate: article.publishedAt, contentUrl: article.audioUrl, inLanguage: 'id',
+        ...(isoDuration(article.durationSeconds) === null ? {} : { duration: isoDuration(article.durationSeconds) }),
+      });
+    }
     jsonLd.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Beranda', item: absoluteSiteUrl(site.context, '/') }, ...(article.categoryName === null || article.categorySlug === null ? [] : [{ '@type': 'ListItem', position: 2, name: article.categoryName, item: absoluteSiteUrl(site.context, `/categories/${article.categorySlug}`) }]), { '@type': 'ListItem', position: article.categoryName === null ? 2 : 3, name: article.title, item: canonical }] });
   }
   const authorName = article === undefined ? undefined : (article.authorDisplayName ?? article.authorName ?? article.attribution);
@@ -552,7 +618,17 @@ export function serializeRss(channel: {
   const feedChannel = absoluteSiteUrl(channel.context, '/');
   return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>${xml(channel.siteName)}</title><link>${xml(feedChannel)}</link><description>${xml(channel.description)}</description><language>id-ID</language>${channel.articles.map((article) => {
     const link = article.href;
-    const enclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(channel.context, article.imageUrl))}"${article.imageMediaType === null ? ' type="image/jpeg"' : ` type="${xml(article.imageMediaType)}"`} />`;
-    return `<item><title>${xml(article.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><description>${xml(article.description)}</description><content:encoded>${xml(article.body)}</content:encoded>${enclosure}<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>${article.categoryName === null ? '' : `<category>${xml(article.categoryName)}</category>`}</item>`;
+    const imageEnclosure = article.imageUrl === null ? '' : `<enclosure url="${xml(absoluteSiteAssetUrl(channel.context, article.imageUrl))}"${article.imageMediaType === null ? ' type="image/jpeg"' : ` type="${xml(article.imageMediaType)}"`} />`;
+    const audioEnclosure = article.type !== 'audio' || article.audioUrl === null || !isSafeMediaSrc(article.audioUrl)
+      ? ''
+      : `<enclosure url="${xml(article.audioUrl)}" type="audio/mpeg" />`;
+    const videoMedia = article.type !== 'video' || article.videoUrl === null || !isSafeMediaSrc(article.videoUrl)
+      ? ''
+      : extractYouTubeId(article.videoUrl) === null
+        ? `<media:content url="${xml(article.videoUrl)}" medium="video" />`
+        : `<media:player url="${xml(article.videoUrl)}" />`;
+    const enclosure = audioEnclosure !== '' ? audioEnclosure : imageEnclosure;
+    const description = article.isSponsored ? `${article.description} (Konten bersponsor.)` : article.description;
+    return `<item><title>${xml(article.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><description>${xml(description)}</description><content:encoded>${xml(article.body)}</content:encoded>${enclosure}${videoMedia}<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>${article.categoryName === null ? '' : `<category>${xml(article.categoryName)}</category>`}</item>`;
   }).join('')}</channel></rss>`;
 }

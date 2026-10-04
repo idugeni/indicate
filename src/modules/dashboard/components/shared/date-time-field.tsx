@@ -64,8 +64,14 @@ export function formatDateTimeValue(parts: DateParts): string {
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}T${pad(parts.hour)}:${pad(parts.minute)}`;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
-const MINUTES = Array.from({ length: 60 }, (_, minute) => minute);
+const HOURS = Array.from({ length: 24 }, (slot, hour) => {
+  void slot;
+  return hour;
+});
+const MINUTES = Array.from({ length: 60 }, (slot, minute) => {
+  void slot;
+  return minute;
+});
 
 const NAV_START = (() => {
   const date = new Date();

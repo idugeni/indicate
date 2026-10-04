@@ -38,7 +38,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   }
   const appendAudit = vi.fn();
   const repository = {
-    execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+    execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
       return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
@@ -266,7 +266,7 @@ describe('TenantBusinessService affiliations memberships articles', () => {
     const state: Record<string, unknown> = { organizationId: 'org-1', regions: [{ id: ID2, status: 'active' }], categories: [{ id: ID4, name: 'Berita', slug: 'berita', status: 'active' }], articles: [] as unknown[] };
     for (const key of COLLECTIONS) state[key] ??= [];
     const repository = {
-      execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+      execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
         const op = operation as (transaction: unknown) => unknown;
         return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn(), refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
       }),
@@ -672,7 +672,7 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
       ...target,
     };
     const appendAudit = vi.fn();
-    const executeForOrganization = vi.fn(async (_ownerActor: unknown, _orgId: unknown, operation: unknown) => {
+    const executeForOrganization = vi.fn(async (ownerActor: unknown, orgId: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
       return op({ state: targetState, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     });
@@ -682,7 +682,7 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
       }),
       executeForOrganization,
       readEditorialScope: vi.fn(async () => operatorScope),
-      findOrganizationBySlug: vi.fn(async (_calledActor: unknown, slug: unknown) => (slug === 'rutan-kelas-ii-b-wonosobo' ? OWNER_ORG : null)),
+      findOrganizationBySlug: vi.fn(async (calledActor: unknown, slug: unknown) => (slug === 'rutan-kelas-ii-b-wonosobo' ? OWNER_ORG : null)),
       recordDenied: vi.fn(async () => undefined),
     };
     const notifyArticleCreated = vi.fn(async () => undefined);

@@ -45,7 +45,7 @@ function harness(options: { readonly collections?: Record<string, readonly unkno
   const state: Record<string, unknown> = { organizationId: 'org-1' };
   for (const key of COLLECTIONS) state[key] = [...(options.collections?.[key] ?? [])];
   const repository = {
-    execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: unknown) => {
+    execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
       return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit: vi.fn(), refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
     }),
@@ -68,7 +68,7 @@ function harness(options: { readonly collections?: Record<string, readonly unkno
       sites: editorialState.sites,
       regions: editorialState.regions,
     })),
-    readPublisherClaimScope: vi.fn(async (_actor: unknown, _permission: unknown, publisherId: string) => {
+    readPublisherClaimScope: vi.fn(async (actor: unknown, permission: unknown, publisherId: string) => {
       const publisher = (editorialState.publishers as readonly Record<string, unknown>[]).find((row) => row.id === publisherId);
       if (publisher === undefined) throw new DashboardAccessDeniedError();
       return { publisher, affiliations: [] };

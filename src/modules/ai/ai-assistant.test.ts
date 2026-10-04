@@ -15,7 +15,7 @@ describe('buildAssistantPrompt', () => {
   });
 
   it('hanya memakai enam pesan terakhir', () => {
-    const messages = Array.from({ length: 8 }, (_, index) => ({ role: 'user' as const, text: `pesan redaksi ${index}` }));
+    const messages = Array.from({ length: 8 }, (slot, index) => ({ role: 'user' as const, text: `pesan redaksi ${index}` }));
     const prompt = buildAssistantPrompt(messages);
     expect(prompt).not.toContain('pesan redaksi 0');
     expect(prompt).not.toContain('pesan redaksi 1');
@@ -85,7 +85,7 @@ describe('TASK_MODEL_PROFILE dan taskThinkingOverride chat', () => {
   });
 
   it('memotong kepala riwayat dan menjaga pertanyaan plus grounding utuh', () => {
-    const messages = Array.from({ length: 8 }, (_, index) => ({
+    const messages = Array.from({ length: 8 }, (slot, index) => ({
       role: 'user' as const,
       text: `MSG${index}-${'h'.repeat(900)}`,
     }));

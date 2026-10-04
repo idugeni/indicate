@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { pruneAnalyticsLabels } from '@/data/repos/dashboard-analytics-labels';
 
 const EMPTY_INPUT = {
-  siteLabelRows: Array.from({ length: 50 }, (_, index) => ({ id: `s-${index}`, name: `situs-${index}.example` })),
+  siteLabelRows: Array.from({ length: 50 }, (slot, index) => ({ id: `s-${index}`, name: `situs-${index}.example` })),
   categoryLabelRows: [{ id: 'k-1', name: 'Umum' }],
-  publisherLabelRows: Array.from({ length: 20 }, (_, index) => ({ id: `p-${index}`, name: `Penerbit ${index}` })),
+  publisherLabelRows: Array.from({ length: 20 }, (slot, index) => ({ id: `p-${index}`, name: `Penerbit ${index}` })),
   regionLabelRows: [{ id: 'w-1', name: 'Jawa Tengah' }],
   siteViewRows: [],
   articleViewRows: [],

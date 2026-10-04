@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 function kanal(n: number) {
-  return Array.from({ length: n }, (_, i) => ({ label: `Kat ${i + 1}`, href: `/kat-${i + 1}` }));
+  return Array.from({ length: n }, (slot, i) => ({ label: `Kat ${i + 1}`, href: `/kat-${i + 1}` }));
 }
 
 describe('GreenMinimalDesktopNav', () => {

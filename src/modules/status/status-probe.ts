@@ -67,7 +67,8 @@ async function runOne(
   try {
     const latencyMs = await Promise.race([
       check(),
-      new Promise<never>((_, reject) => {
+      new Promise<never>((resolve, reject) => {
+        void resolve;
         timer = setTimeout(() => reject(new Error('batas waktu terlampaui')), timeoutMs);
       }),
     ]);
