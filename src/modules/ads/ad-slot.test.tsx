@@ -25,7 +25,7 @@ describe('AdSlot', () => {
   });
 
   it('tidak merender slot di luar peta template', () => {
-    const html = renderToStaticMarkup(<AdSlot site={siteFor('clean-blue')} slot="sidebar-top" />);
+    const html = renderToStaticMarkup(<AdSlot site={siteFor('clean-blue')} slot="sidebar-middle" />);
     expect(html).toBe('');
   });
 
@@ -40,6 +40,13 @@ describe('AdSlot', () => {
     expect(html).toContain('Iklan');
     expect(html).toContain('data-ad-state="empty"');
     expect(html).toContain('aspect-[');
+  });
+
+  it('menampilkan CTA house-ad tanpa teks label terlihat saat slot kosong', () => {
+    const html = renderToStaticMarkup(<AdSlot site={siteFor('clean-blue')} slot="leaderboard" />);
+    expect(html).toContain('Pasang Iklan');
+    expect(html).toContain('href="/kontak"');
+    expect(html).not.toContain('tracking-[0.14em]');
   });
 
   it('merender kreatif gambar dengan tautan bersponsor dan lazy loading', () => {
@@ -100,6 +107,19 @@ describe('AdSlot', () => {
       />,
     );
     expect(html).toContain('aspect-ratio:728 / 90');
+  });
+
+  it('tidak meregangkan kreatif kotak di slot lebar: dibatasi lebar intrinsik dan terpusat', () => {
+    const html = renderToStaticMarkup(
+      <AdSlot
+        site={siteFor('clean-blue', {
+          'content-middle': { creative: { kind: 'image', imageUrl: 'https://cdn.example/box.png', width: 336, height: 280 } },
+        })}
+        slot="content-middle"
+      />,
+    );
+    expect(html).toContain('max-width:336px');
+    expect(html).toContain('mx-auto');
   });
 });
 

@@ -42,8 +42,8 @@ describe('resolveAdSlot', () => {
   it('menonaktifkan slot yang tidak dipetakan walau tenant menyalakannya', () => {
     const resolved = resolveAdSlot({
       templateId: 'clean-blue',
-      overrides: { 'sidebar-top': { enabled: true } },
-      slot: 'sidebar-top',
+      overrides: { 'sidebar-middle': { enabled: true } },
+      slot: 'sidebar-middle',
     });
     expect(resolved.enabled).toBe(false);
     expect(resolved.mapped).toBe(false);
@@ -74,7 +74,7 @@ describe('resolveAdSlot', () => {
 describe('isSlotMapped', () => {
   it('membedakan slot terpetakan dan slot cadangan', () => {
     expect(isSlotMapped('clean-blue', 'leaderboard')).toBe(true);
-    expect(isSlotMapped('clean-blue', 'sidebar-bottom')).toBe(false);
+    expect(isSlotMapped('clean-blue', 'sidebar-middle')).toBe(false);
     expect(isSlotMapped('dark-navy', 'sidebar-top')).toBe(true);
   });
 });

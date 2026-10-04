@@ -23,89 +23,98 @@ export interface TemplateAdZones {
 
 /**
  * Per-template placement map: every template keeps its character, every
- * placement stays a registry lookup. Sidebar slots stay unmapped until a
- * template ships a real page-level rail column; forcing them into the
- * current single-column pages would break each template's identity.
+ * placement stays a registry lookup.
+ *
+ * @remarks
+ * The `article` zone is identical across templates by design: article pages
+ * are structural clones, so ad topology is not template character — palette
+ * and spacing are. The `mobile-banner` anchor lives in every shell
+ * (site-wide, ponsel saja) so it is mapped in `listing`, `article`, and
+ * `channel` everywhere. `sidebar-bottom` ships only where a rail column
+ * exists (`article` semua template, `listing` dark-navy). Per-template
+ * character lives in `header`, `top`, `listing`, `channel`, and `footer`.
+ * Keep `article` uniform; gate page-level experiments behind a new slot id
+ * instead of forking one template.
  */
 export const TEMPLATE_AD_MAP: Record<TemplateId, TemplateAdZones> = {
   'clean-blue': {
     header: [],
     top: ['leaderboard'],
-    listing: ['hero-ad', 'in-feed'],
-    article: ['in-content', 'content-middle', 'content-bottom'],
-    channel: ['content-middle'],
+    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'black-lime': {
     header: [],
     top: ['top-banner'],
-    listing: ['hero-ad', 'in-feed'],
-    article: ['in-content', 'content-middle'],
-    channel: ['in-feed'],
+    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'dark-navy': {
     header: [],
     top: ['below-navigation'],
-    listing: ['hero-ad', 'sidebar-top'],
-    article: ['in-content', 'content-middle', 'mobile-banner'],
-    channel: ['content-middle'],
+    listing: ['hero-ad', 'sidebar-top', 'sidebar-bottom', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'glassy-blue': {
     header: ['header-top'],
     top: [],
-    listing: ['in-feed'],
-    article: ['in-content', 'content-bottom'],
-    channel: ['in-feed'],
+    listing: ['in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'green-minimal': {
     header: [],
     top: ['leaderboard'],
-    listing: ['in-feed'],
-    article: ['in-content', 'content-bottom'],
-    channel: ['content-middle'],
+    listing: ['in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'orange-modern': {
     header: [],
     top: ['top-banner'],
-    listing: ['hero-ad', 'in-feed'],
-    article: ['in-content', 'content-middle', 'content-bottom'],
-    channel: ['in-feed'],
+    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'purple-editorial': {
     header: [],
     top: ['below-navigation'],
-    listing: ['hero-ad'],
-    article: ['in-content', 'content-middle'],
-    channel: ['content-middle'],
+    listing: ['hero-ad', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'red-editorial': {
     header: ['header-top'],
     top: [],
-    listing: ['in-feed'],
-    article: ['in-content', 'content-bottom', 'mobile-banner'],
-    channel: ['in-feed'],
+    listing: ['in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'soft-blue': {
     header: [],
     top: ['leaderboard'],
-    listing: ['hero-ad', 'in-feed'],
-    article: ['in-content', 'content-middle'],
-    channel: ['content-middle'],
+    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle', 'mobile-banner'],
     footer: ['footer-banner'],
   },
   'warm-editorial': {
     header: [],
     top: ['below-navigation'],
-    listing: ['in-feed'],
-    article: ['in-content', 'content-bottom'],
-    channel: ['in-feed'],
+    listing: ['in-feed', 'mobile-banner'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed', 'mobile-banner'],
     footer: ['footer-banner'],
   },
 };

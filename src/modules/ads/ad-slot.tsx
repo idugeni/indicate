@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import type { NetworkSiteData } from '@/modules/delivery/models';
 
 import { AD_SLOTS, type AdSlotId } from '@/modules/ads/slots';
@@ -14,13 +16,14 @@ interface AdSlotProps {
 
 function AdLabel() {
   return (
-    <p className="m-0 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+    <p className="sr-only">
       Iklan
     </p>
   );
 }
 
 function AdImage({ creative, eager }: { readonly creative: Extract<AdCreative, { kind: 'image' }>; readonly eager: boolean }) {
+  const intrinsic = creative.width !== undefined && creative.width > 0 ? { maxWidth: creative.width } : {};
   const img = (
     // eslint-disable-next-line @next/next/no-img-element -- plain img is deliberate: images.unoptimized is true and creative hosts are unknown at build time, so next/image adds no optimization while native loading/decoding keeps zero client JS
     <img
@@ -30,7 +33,8 @@ function AdImage({ creative, eager }: { readonly creative: Extract<AdCreative, {
       decoding="async"
       {...(creative.width === undefined ? {} : { width: creative.width })}
       {...(creative.height === undefined ? {} : { height: creative.height })}
-      className="h-auto w-full object-contain"
+      {...(Object.keys(intrinsic).length === 0 ? {} : { style: intrinsic })}
+      className="mx-auto h-auto w-full object-contain"
     />
   );
   if (creative.href === undefined) return img;
@@ -65,10 +69,22 @@ function AdProvider({ creative, slot }: { readonly creative: Extract<AdCreative,
   );
 }
 
-function AdEmpty({ slot }: { readonly slot: AdSlotId }) {
+function AdEmpty({ slot, siteName }: { readonly slot: AdSlotId; readonly siteName: string }) {
   return (
-    <div data-ad-state="empty" className="flex min-h-full min-w-0 flex-col items-center justify-center border border-dashed border-slate-300 p-3 text-center">
-      <p className="m-0 font-sans text-xs text-slate-400">
+    <div data-ad-state="empty" className="flex min-h-full min-w-0 flex-col items-center justify-center gap-1.5 bg-[var(--tpl-primary,#1a5fd0)]/[0.06] p-4 text-center ring-1 ring-inset ring-[var(--tpl-primary,#1a5fd0)]/15">
+      <p className="m-0 font-sans text-sm font-extrabold tracking-tight text-[var(--tpl-ink,#0f172a)]">
+        Ruang ini tersedia untuk promosi Anda
+      </p>
+      <p className="m-0 font-sans text-xs leading-relaxed text-[var(--tpl-muted,#475569)]">
+        Jangkau pembaca setia {siteName}.
+      </p>
+      <Link
+        href="/kontak"
+        className="mt-1 inline-flex items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] px-4 py-2 font-sans text-xs font-bold text-[var(--tpl-on-primary,#ffffff)] transition-colors hover:bg-[var(--tpl-primary-dark,#155cb8)]"
+      >
+        Pasang Iklan
+      </Link>
+      <p className="sr-only">
         Ruang {slot} tersedia.
       </p>
     </div>
@@ -112,7 +128,7 @@ export function AdSlot({ site, slot, eager = false, campaign }: AdSlotProps) {
           {...(creativeRatio === null ? {} : { style: { aspectRatio: creativeRatio } })}
         >
           {resolved.creative === null ? (
-            <AdEmpty slot={slot} />
+            <AdEmpty slot={slot} siteName={site.settings.name} />
           ) : resolved.creative.kind === 'image' ? (
             <AdImage creative={resolved.creative} eager={eager} />
           ) : resolved.creative.kind === 'html' ? (
@@ -167,7 +183,7 @@ export function AdHeaderTop({ site, campaign }: { readonly site: NetworkSiteData
     <ZoneSlots
       site={site}
       slots={TEMPLATE_AD_MAP[templateId].header}
-      className="mx-auto w-full min-w-0 max-w-6xl px-4 pt-3 sm:px-6"
+      className="mx-auto w-full min-w-0 max-w-7xl px-4 pt-3 sm:px-6"
       eager
       campaign={campaign}
     />
@@ -187,7 +203,7 @@ export function AdShellTop({ site, campaign }: { readonly site: NetworkSiteData;
     <ZoneSlots
       site={site}
       slots={TEMPLATE_AD_MAP[templateId].top}
-      className="mx-auto w-full min-w-0 max-w-6xl px-4 pt-4 sm:px-6 md:pt-6"
+      className="mx-auto w-full min-w-0 max-w-7xl px-4 pt-4 sm:px-6 md:pt-6"
       eager
       campaign={campaign}
     />
@@ -207,7 +223,7 @@ export function AdShellBottom({ site, campaign }: { readonly site: NetworkSiteDa
     <ZoneSlots
       site={site}
       slots={TEMPLATE_AD_MAP[templateId].footer}
-      className="mx-auto w-full min-w-0 max-w-6xl px-4 pb-4 sm:px-6 md:pb-6"
+      className="mx-auto w-full min-w-0 max-w-7xl px-4 pb-4 sm:px-6 md:pb-6"
       campaign={campaign}
     />
   );

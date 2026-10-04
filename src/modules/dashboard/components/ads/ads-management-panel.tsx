@@ -15,6 +15,7 @@ import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/compon
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { AD_SLOT_IDS, AD_SLOTS, type AdSlotId } from '@/modules/ads/slots';
+import { isSlotMapped, safeTemplateId } from '@/modules/ads/config';
 import { TEMPLATE_AD_MAP } from '@/modules/ads/placement-map';
 import { TEMPLATE_IDS, type TemplateId } from '@/modules/site/components/network/templates/listing-shared';
 
@@ -125,6 +126,7 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
   }, [overview, siteId]);
 
   const activeSite = overview?.sites.find((site) => site.id === siteId) ?? null;
+  const activeTemplateId = activeSite === null ? null : safeTemplateId(activeSite.templateId);
 
   return (
     <div className="space-y-6">
@@ -178,11 +180,17 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
                     const setting = settingsBySlot.get(slot);
                     const enabled = setting?.enabled ?? true;
                     const templates = templatesForSlot(slot);
+                    const mappedForSite = activeTemplateId === null || isSlotMapped(activeTemplateId, slot);
                     return (
                       <TableRow key={slot}>
                         <TableCell>
                           <p className="m-0 font-sans text-[13px] font-semibold text-paper">{AD_SLOTS[slot].label}</p>
                           <p className="m-0 font-mono text-[11px] text-paper-faint">{slot}</p>
+                          {mappedForSite || activeTemplateId === null ? null : (
+                            <p className="m-0 mt-1 font-sans text-[11px] text-paper-faint">
+                              {`Tidak tersedia di template ${activeTemplateId}.`}
+                            </p>
+                          )}
                         </TableCell>
                         <TableCell>
                           <span className="flex flex-wrap gap-1">
@@ -197,8 +205,8 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
                         <TableCell>
                           <Checkbox
                             checked={enabled}
-                            disabled={busy}
-                            aria-label={`Aktifkan slot ${slot}`}
+                            disabled={busy || !mappedForSite}
+                            aria-label={mappedForSite ? `Aktifkan slot ${slot}` : `Slot ${slot} tidak tersedia di template situs ini`}
                             onCheckedChange={(checked) => {
                               void mutate('ads.tenant_setting.save', {
                                 siteId, slotId: slot, enabled: checked === true,
@@ -212,7 +220,7 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
                           <DashboardSelect
                             id={`ads-creative-${slot}`}
                             value={setting?.creativeId ?? ''}
-                            disabled={busy}
+                            disabled={busy || !mappedForSite}
                             placeholder="Bawaan kampanye"
                             onValueChange={(next) => {
                               void mutate('ads.tenant_setting.save', {
