@@ -64,10 +64,10 @@ export function ArticlePrintButton({ title }: { readonly title: string }) {
       onClick={handlePrint}
       aria-label={`Cetak artikel: ${title}`}
       data-print-button="true"
-      className="inline-flex h-9 flex-none items-center gap-2 rounded-full px-3.5 font-sans text-xs font-bold text-[var(--tpl-muted,#64748b)] ring-1 ring-[var(--tpl-ring,#e2e8f0)] transition-colors hover:text-[var(--tpl-primary,#1a5fd0)] print:hidden"
+      className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full text-[var(--tpl-muted,#64748b)] ring-1 ring-[var(--tpl-ring,#e2e8f0)] transition-colors hover:text-[var(--tpl-primary,#1a5fd0)] sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 print:hidden"
     >
       <Printer className="h-4 w-4" aria-hidden="true" />
-      Cetak / PDF
+      <span className="hidden font-sans text-xs font-bold sm:inline">Cetak / PDF</span>
     </button>
   );
 }
