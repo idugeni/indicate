@@ -118,6 +118,8 @@ function harness(handlers: {
   readonly brand?: readonly unknown[] | readonly (readonly unknown[])[];
   readonly publicHost?: string | null;
   readonly reportSitekey?: readonly unknown[];
+  readonly adSettings?: readonly unknown[];
+  readonly placements?: readonly unknown[];
 }) {
   const selectLog: SelectLog[] = [];
   const limitLog: number[] = [];
@@ -150,6 +152,8 @@ function harness(handlers: {
               brandCursor += 1;
               return chainable(set, limitLog);
             }
+            if (keys.includes('slotId') && keys.includes('enabled')) return chainable(handlers.adSettings ?? [], limitLog);
+            if (keys.includes('slotId')) return chainable(handlers.placements ?? [], limitLog);
             if (keys.includes('logoMediaId')) return chainable(settings, limitLog);
             if (keys.includes('bodyExcerpt')) return chainable(articles, limitLog);
             if (keys.includes('body') && keys.includes('slug')) return chainable(feed, limitLog);
@@ -193,7 +197,7 @@ describe('readSite projection', () => {
     expect(articleKeys).toHaveLength(1);
     expect(articleKeys[0]).not.toContain('body');
     expect(selectLog.filter((entry) => entry.keys.includes('sortOrder'))).toHaveLength(0);
-    expect(selectLog).toHaveLength(2);
+    expect(selectLog).toHaveLength(4);
     const item = site?.articles[0];
     expect(item).toBeDefined();
     expect(item).not.toHaveProperty('body');
@@ -213,6 +217,29 @@ describe('readSite projection', () => {
     expect(site?.articles[0]?.href).toBe('https://kota.apex.example/berita-utama');
   });
 
+  it('memenangkan baris tenant_ad_settings atas carrier seo', async () => {
+    const { repository } = harness({
+      adSettings: [
+        {
+          slotId: 'leaderboard',
+          enabled: false,
+          kind: null,
+          imageUrl: null,
+          href: null,
+          altText: null,
+          widthPx: null,
+          heightPx: null,
+          html: null,
+          provider: null,
+          providerClientId: null,
+          providerSlotId: null,
+        },
+      ],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.settings.ads).toEqual({ leaderboard: { enabled: false, creative: null } });
+  });
+
   it('detail artikel tunggal membawa body penuh dan galeri', async () => {
     const { repository, selectLog } = harness({
       body: [{ body: 'Isi penuh artikel untuk halaman detail.' }],
@@ -223,7 +250,7 @@ describe('readSite projection', () => {
     expect(item).toBeDefined();
     expect(item).toHaveProperty('body', 'Isi penuh artikel untuk halaman detail.');
     expect(item).toHaveProperty('gallery');
-    expect(selectLog).toHaveLength(4);
+    expect(selectLog).toHaveLength(6);
     expectTypeOf(item).toEqualTypeOf<ArticleListItem | undefined>();
     if (item !== undefined && isNetworkArticle(item)) {
       expectTypeOf(item).toEqualTypeOf<NetworkArticle>();
@@ -446,7 +473,7 @@ describe('loadSiteShell', () => {
     expect(shell).not.toBe(null);
     expect(shell?.articles).toEqual([]);
     expect(shell?.settings.name).toBe('Portal');
-    expect(selectLog).toHaveLength(1);
+    expect(selectLog).toHaveLength(3);
     expect(selectLog.some((entry) => entry.keys.includes('slug') || entry.keys.includes('body'))).toBe(false);
   });
 

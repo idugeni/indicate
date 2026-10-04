@@ -8,8 +8,10 @@ import { articleBodyText } from '@/modules/site/article-markup';
 import { isTipTapDoc, extractTipTapImages, tiptapToText } from '@/modules/site/tiptap-document';
 import { pickPublisherSocials } from '@/modules/site/company-contact';
 import { isPublicObjectKey } from '@/modules/publishing/object-key';
+import { parseTenantAdOverrides, safeTemplateId } from '@/modules/ads/config';
+import { mapPlacementRows, mapTenantAdRows } from '@/modules/ads/db-mapping';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle, type SiteCategory } from '@/modules/delivery/ports';
-import { articleSites, articles, auditLogs, authors, cacheBypasses, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, publishers, regions, sites, siteSettings } from '@/data/schema';
+import { articleSites, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -181,6 +183,66 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         }
       }
       if (logoMediaId === null) return null;
+      const templateId = safeTemplateId(settings.colors.templateId);
+      const adSettingRows = await transaction.select({
+        slotId: tenantAdSettings.slotId,
+        enabled: tenantAdSettings.enabled,
+        kind: adCreatives.kind,
+        imageUrl: adCreatives.imageUrl,
+        href: adCreatives.href,
+        altText: adCreatives.altText,
+        widthPx: adCreatives.widthPx,
+        heightPx: adCreatives.heightPx,
+        html: adCreatives.html,
+        provider: adCreatives.provider,
+        providerClientId: adCreatives.providerClientId,
+        providerSlotId: adCreatives.providerSlotId,
+      })
+        .from(tenantAdSettings)
+        .leftJoin(adCreatives, and(eq(adCreatives.organizationId, tenantAdSettings.organizationId), eq(adCreatives.id, tenantAdSettings.creativeId), eq(adCreatives.status, 'active')))
+        .innerJoin(adSlots, and(eq(adSlots.id, tenantAdSettings.slotId), eq(adSlots.active, true)))
+        .where(and(eq(tenantAdSettings.organizationId, context.organizationId), eq(tenantAdSettings.siteId, context.siteId)))
+        .limit(32);
+      const placementRows = await transaction.select({
+        slotId: adPlacements.slotId,
+        templateId: adPlacements.templateId,
+        device: adPlacements.device,
+        kind: adCreatives.kind,
+        imageUrl: adCreatives.imageUrl,
+        href: adCreatives.href,
+        altText: adCreatives.altText,
+        widthPx: adCreatives.widthPx,
+        heightPx: adCreatives.heightPx,
+        html: adCreatives.html,
+        provider: adCreatives.provider,
+        providerClientId: adCreatives.providerClientId,
+        providerSlotId: adCreatives.providerSlotId,
+      })
+        .from(adPlacements)
+        .innerJoin(campaigns, and(eq(campaigns.organizationId, adPlacements.organizationId), eq(campaigns.id, adPlacements.campaignId), eq(campaigns.status, 'active'), or(sql`${campaigns.startsAt} IS NULL`, sql`${campaigns.startsAt} <= now()`), or(sql`${campaigns.endsAt} IS NULL`, sql`${campaigns.endsAt} > now()`)))
+        .innerJoin(adCreatives, and(eq(adCreatives.organizationId, adPlacements.organizationId), eq(adCreatives.id, adPlacements.creativeId), eq(adCreatives.status, 'active')))
+        .innerJoin(adSlots, and(eq(adSlots.id, adPlacements.slotId), eq(adSlots.active, true)))
+        .where(and(
+          eq(adPlacements.organizationId, context.organizationId),
+          or(eq(adPlacements.siteId, context.siteId), sql`${adPlacements.siteId} IS NULL`),
+          eq(adPlacements.active, true),
+          or(sql`${adPlacements.startsAt} IS NULL`, sql`${adPlacements.startsAt} <= now()`),
+          or(sql`${adPlacements.endsAt} IS NULL`, sql`${adPlacements.endsAt} > now()`),
+        ))
+        .orderBy(sql`${adPlacements.priority} DESC`, adPlacements.createdAt)
+        .limit(64);
+      const toCreativeFields = (row: { readonly kind: string | null; readonly imageUrl: string | null; readonly href: string | null; readonly altText: string | null; readonly widthPx: number | null; readonly heightPx: number | null; readonly html: string | null; readonly provider: string | null; readonly providerClientId: string | null; readonly providerSlotId: string | null }) => ({
+        kind: row.kind,
+        imageUrl: row.imageUrl,
+        href: row.href,
+        altText: row.altText,
+        widthPx: row.widthPx,
+        heightPx: row.heightPx,
+        html: row.html,
+        provider: row.provider,
+        providerClientId: row.providerClientId,
+        providerSlotId: row.providerSlotId,
+      });
       return {
         context,
         regionName: settings.regionName,
@@ -199,6 +261,13 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           defaultImageHeight: settings.defaultMediaId === null ? null : settings.defaultMediaHeight,
           robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
           commentsEnabled: settings.commentsEnabled,
+          ads: {
+            ...parseTenantAdOverrides(settings.seo),
+            ...mapTenantAdRows(adSettingRows.map((row) => ({ slotId: row.slotId, enabled: row.enabled, creative: toCreativeFields(row) }))),
+          },
+          adCampaigns: templateId === null
+            ? {}
+            : mapPlacementRows(placementRows.map((row) => ({ slotId: row.slotId, templateId: row.templateId, device: row.device, creative: toCreativeFields(row) })), { templateId }),
         },
       };
   }

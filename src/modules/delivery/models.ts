@@ -1,4 +1,5 @@
 import type { HostnameContext } from '@/core/operation-context';
+import type { CampaignAdOverrides, TenantAdOverrides } from '@/modules/ads/config';
 
 export type PublicOutcome = 'site' | 'unknown' | 'ambiguous' | 'invalid';
 export type ControlSurface = 'dashboard' | 'api' | 'webhook';
@@ -39,6 +40,21 @@ export interface PublicSiteSettings {
   /** Natural height of the default image; null falls back to the 630 card height. */
   readonly defaultImageHeight: number | null;
   readonly robots: readonly string[];
+  /**
+   * Validated per-slot ad overrides for this site.
+   *
+   * @remarks Parsed from `site_settings.seo.ads` by the delivery read path;
+   * absent on fixtures that predate the ad system (treated as no overrides).
+   */
+  readonly ads?: TenantAdOverrides | undefined;
+  /**
+   * Winning campaign creative per slot for this render.
+   *
+   * @remarks Resolved from active `ad_placements` by the delivery read path;
+   * outranks tenant overrides per `resolveAdSlot`. Absent on fixtures that
+   * predate the ad system (treated as no campaign).
+   */
+  readonly adCampaigns?: CampaignAdOverrides | undefined;
   /**
    * Whether this site's article pages carry a reader comment thread.
    *
