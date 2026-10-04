@@ -8,6 +8,7 @@ import { SoftBlueNewsletter } from '@/modules/site/components/network/templates/
 import { SoftBlueTicker } from '@/modules/site/components/network/templates/soft-blue/cards/ticker';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -43,7 +44,9 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
               {hero ? <SoftBlueHero article={hero} /> : null}
               <SoftBluePicks articles={rest.slice(0, 4)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             </div>
+            <AdSlot site={site} slot="hero-ad" />
             <SoftBlueNewsletter />
+            <AdSlot site={site} slot="in-feed" />
             <SoftBlueArchivePager
               articles={archive}
               heading="Kabar Lainnya"

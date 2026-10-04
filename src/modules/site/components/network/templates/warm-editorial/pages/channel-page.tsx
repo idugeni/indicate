@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/warm-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { WarmEditorialPicks } from '@/modules/site/components/network/templates/warm-editorial/cards/picks';
@@ -49,6 +50,7 @@ export function WarmEditorialChannel({ site, kicker, title, description, path = 
         ) : (
           <>
             <WarmEditorialPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="in-feed" />
             <WarmEditorialArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}

@@ -7,6 +7,7 @@ import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-e
 import { RedEditorialHeader } from '@/modules/site/components/network/templates/red-editorial/chrome/site-header';
 import { RedEditorialFooter } from '@/modules/site/components/network/templates/red-editorial/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
+import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -30,12 +31,15 @@ export function RedEditorialShell({
       >
         Lewati ke konten
       </a>
+      <AdHeaderTop site={site} />
       <RedEditorialHeader site={site} path={path} />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
+        <AdShellTop site={site} />
         <CommentTargetProvider site={site}>
           {children}
         </CommentTargetProvider>
       </main>
+      <AdShellBottom site={site} />
       <RedEditorialFooter site={site} />
       <TemplateBackToTop />
     </div>

@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-navy/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
@@ -49,6 +50,7 @@ export function DarkNavyChannel({ site, kicker, title, description, path = '/', 
         ) : (
           <>
             <DarkNavyPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="content-middle" />
             <DarkNavyArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}

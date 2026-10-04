@@ -7,6 +7,7 @@ import { GreenMinimalNewsletter } from '@/modules/site/components/network/templa
 import { GreenMinimalTicker } from '@/modules/site/components/network/templates/green-minimal/cards/ticker';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { GreenMinimalEmpty } from '@/modules/site/components/network/templates/green-minimal/ui/empty';
 
 export interface ListingProps {
@@ -37,6 +38,7 @@ export function GreenMinimalListing({ site, title, description, path, indexable 
         ) : (
           <>
             <GreenMinimalLatest articles={latest} description={description ?? 'Liputan terbaru dari redaksi'} />
+            <AdSlot site={site} slot="in-feed" />
             <GreenMinimalNewsletter />
             <GreenMinimalArchivePager
               articles={archive}

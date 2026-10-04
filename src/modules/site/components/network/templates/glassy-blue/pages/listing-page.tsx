@@ -10,6 +10,7 @@ import { GlassyBlueArchivePager } from '@/modules/site/components/network/templa
 import { GlassyBlueNewsletter } from '@/modules/site/components/network/templates/glassy-blue/cards/newsletter';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { GlassyBlueEmpty } from '@/modules/site/components/network/templates/glassy-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
@@ -58,6 +59,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
               spotlight={spotlight}
               description="Kabar terkini yang baru diterbitkan"
             />
+            <AdSlot site={site} slot="in-feed" />
             <GlassyBlueNewsletter />
             <GlassyBlueArchivePager
               articles={archive}

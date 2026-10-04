@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { PurpleEditorialShell } from '@/modules/site/components/network/templates/purple-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { PurpleEditorialPicks } from '@/modules/site/components/network/templates/purple-editorial/cards/picks';
@@ -49,6 +50,7 @@ export function PurpleEditorialChannel({ site, kicker, title, description, path 
         ) : (
           <>
             <PurpleEditorialPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="content-middle" />
             <PurpleEditorialArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}

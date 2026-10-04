@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { OrangeModernPicks } from '@/modules/site/components/network/templates/orange-modern/cards/picks';
@@ -49,6 +50,7 @@ export function OrangeModernChannel({ site, kicker, title, description, path = '
         ) : (
           <>
             <OrangeModernPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="in-feed" />
             <OrangeModernArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}

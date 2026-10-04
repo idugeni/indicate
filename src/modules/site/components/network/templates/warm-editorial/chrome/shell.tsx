@@ -7,6 +7,7 @@ import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm
 import { WarmEditorialHeader } from '@/modules/site/components/network/templates/warm-editorial/chrome/site-header';
 import { WarmEditorialFooter } from '@/modules/site/components/network/templates/warm-editorial/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
+import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -30,12 +31,15 @@ export function WarmEditorialShell({
       >
         Lewati ke konten
       </a>
+      <AdHeaderTop site={site} />
       <WarmEditorialHeader site={site} path={path} />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
+        <AdShellTop site={site} />
         <CommentTargetProvider site={site}>
           {children}
         </CommentTargetProvider>
       </main>
+      <AdShellBottom site={site} />
       <WarmEditorialFooter site={site} />
       <TemplateBackToTop />
     </div>

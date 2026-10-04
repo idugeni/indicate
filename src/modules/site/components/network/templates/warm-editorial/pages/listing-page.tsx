@@ -7,6 +7,7 @@ import { WarmEditorialArchivePager } from '@/modules/site/components/network/tem
 import { WarmEditorialNewsletter } from '@/modules/site/components/network/templates/warm-editorial/cards/newsletter';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { WarmEditorialEmpty } from '@/modules/site/components/network/templates/warm-editorial/ui/empty';
 
 export interface ListingProps {
@@ -39,6 +40,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
           <>
             {hero ? <WarmEditorialHero article={hero} /> : null}
             <WarmEditorialLatest articles={latest} siteName={site.settings.name} quote={quote} description={description ?? 'Kabar terkini yang baru diterbitkan'} />
+            <AdSlot site={site} slot="in-feed" />
             <WarmEditorialNewsletter />
             <WarmEditorialArchivePager
               articles={archive}

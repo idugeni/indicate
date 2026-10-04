@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { CleanBlueShell } from '@/modules/site/components/network/templates/clean-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { CleanBluePicks } from '@/modules/site/components/network/templates/clean-blue/cards/picks';
@@ -49,6 +50,7 @@ export function CleanBlueChannel({ site, kicker, title, description, path = '/',
         ) : (
           <>
             <CleanBluePicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="content-middle" />
             <CleanBlueArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}

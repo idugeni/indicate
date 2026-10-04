@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { RedEditorialShell } from '@/modules/site/components/network/templates/red-editorial/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
@@ -49,6 +50,7 @@ export function RedEditorialChannel({ site, kicker, title, description, path = '
         ) : (
           <>
             <RedEditorialPicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="in-feed" />
             <RedEditorialArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}

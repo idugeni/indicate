@@ -8,6 +8,7 @@ import { PurpleEditorialArchivePager } from '@/modules/site/components/network/t
 import { PurpleEditorialNewsletter } from '@/modules/site/components/network/templates/purple-editorial/cards/newsletter';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { PurpleEditorialEmpty } from '@/modules/site/components/network/templates/purple-editorial/ui/empty';
 
 export interface ListingProps {
@@ -39,6 +40,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
         ) : (
           <>
             {hero ? <PurpleEditorialHero article={hero} /> : null}
+            <AdSlot site={site} slot="hero-ad" />
             <PurpleEditorialQuotePanel siteName={site.settings.name} quote={quote} />
             <PurpleEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
             <PurpleEditorialNewsletter />

@@ -9,6 +9,7 @@ import { DarkNavyArchivePager } from '@/modules/site/components/network/template
 import { DarkNavyNewsletter } from '@/modules/site/components/network/templates/dark-navy/cards/newsletter';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-navy/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -51,6 +52,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
         ) : (
           <>
             <DarkNavyHero articles={site.articles.slice(0, 5)} />
+            <AdSlot site={site} slot="hero-ad" />
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
               <DarkNavyLatest
                 articles={latest}
@@ -59,6 +61,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
               <div className="grid min-w-0 gap-6 lg:sticky lg:top-20">
                 <DarkNavyMostRead articles={mostRead} />
                 <DarkNavyNewsletter compact />
+                <AdSlot site={site} slot="sidebar-top" />
               </div>
             </div>
             <DarkNavyArchivePager

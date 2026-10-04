@@ -8,6 +8,7 @@ import { CleanBlueNewsletter } from '@/modules/site/components/network/templates
 import { CleanBlueTicker } from '@/modules/site/components/network/templates/clean-blue/cards/ticker';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { CleanBlueEmpty } from '@/modules/site/components/network/templates/clean-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -43,7 +44,9 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
               {hero ? <CleanBlueHero article={hero} /> : null}
               <CleanBluePicks articles={rest.slice(0, 2)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             </div>
+            <AdSlot site={site} slot="hero-ad" />
             <CleanBlueNewsletter />
+            <AdSlot site={site} slot="in-feed" />
             <CleanBlueArchivePager
               articles={archive}
               heading="Jelajahi Liputan"

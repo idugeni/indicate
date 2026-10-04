@@ -15,7 +15,10 @@ import { BlackLimeShell } from '@/modules/site/components/network/templates/blac
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { BLACK_LIME } from '@/modules/site/components/network/templates/black-lime/theme';
 import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
+import { ArticlePrintButton } from '@/modules/site/components/network/ui/article-print-button';
+import { ArticlePrintFooter, ArticlePrintMasthead } from '@/modules/site/components/network/ui/article-print-sheet';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { CommentThread } from '@/modules/site/components/network/disqus/comment-thread';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
@@ -50,6 +53,12 @@ export function BlackLimeArticle({
       />
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
         <article>
+          <ArticlePrintMasthead
+            siteName={site.settings.name}
+            byline={bylineName}
+            dateLabel={formatDate(article.publishedAt, 'long')}
+            canonical={canonical}
+          />
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-[#a3ad9a]">
             <Link href="/" className="transition-colors hover:text-[#c5f82a]">
               Beranda
@@ -102,7 +111,10 @@ export function BlackLimeArticle({
                 </span>
               </span>
             </p>
-            <ShareButtons skin={BLACK_LIME.shareButtons} article={article} canonical={canonical} />
+            <span className="flex flex-wrap items-center gap-2">
+              <ShareButtons skin={BLACK_LIME.shareButtons} article={article} canonical={canonical} />
+              <ArticlePrintButton title={article.title} />
+            </span>
           </div>
           </header>
 
@@ -125,6 +137,7 @@ export function BlackLimeArticle({
             eager
             figureClassName="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm"
           />
+          <AdSlot site={site} slot="in-content" />
 
           <div className="mt-8 space-y-6">
             <ArticleRichBodyView
@@ -135,6 +148,7 @@ export function BlackLimeArticle({
             />
           </div>
           <ArticleGallery images={article.gallery} title={article.title} />
+          <AdSlot site={site} slot="content-middle" />
 
           {article.tags.length > 0 ? (
             <div className="mt-8 flex flex-wrap items-center gap-2" aria-label="Topik artikel">
@@ -149,6 +163,8 @@ export function BlackLimeArticle({
               ))}
             </div>
           ) : null}
+          <AdSlot site={site} slot="content-bottom" />
+          <AdSlot site={site} slot="mobile-banner" />
 
           <footer className="mt-8 rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-6">
             <div className="flex items-center gap-4">
@@ -228,6 +244,8 @@ export function BlackLimeArticle({
               </div>
             </dl>
           </footer>
+
+          <ArticlePrintFooter siteName={site.settings.name} canonical={canonical} />
 
           </article>
 

@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { SoftBlueEmpty } from '@/modules/site/components/network/templates/soft-blue/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
@@ -49,6 +50,7 @@ export function SoftBlueChannel({ site, kicker, title, description, path = '/', 
         ) : (
           <>
             <SoftBluePicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="content-middle" />
             <SoftBlueArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}

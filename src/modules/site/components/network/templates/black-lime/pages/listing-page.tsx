@@ -9,6 +9,7 @@ import { BlackLimeArchivePager } from '@/modules/site/components/network/templat
 import { BlackLimeNewsletter } from '@/modules/site/components/network/templates/black-lime/cards/newsletter';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -52,6 +53,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
         ) : (
           <>
             {hero ? <BlackLimeHero article={hero} /> : null}
+            <AdSlot site={site} slot="hero-ad" />
             <BlackLimePicks
               articles={picks}
               heading="Berita Terbaru"
@@ -64,6 +66,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
               <BlackLimeMostRead articles={mostRead} />
             </div>
             <BlackLimeNewsletter />
+            <AdSlot site={site} slot="in-feed" />
             <BlackLimeArchivePager
               articles={archive}
               heading="Semua Kabar"

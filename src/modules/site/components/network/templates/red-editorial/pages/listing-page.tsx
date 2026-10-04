@@ -7,6 +7,7 @@ import { RedEditorialArchivePager } from '@/modules/site/components/network/temp
 import { RedEditorialNewsletter } from '@/modules/site/components/network/templates/red-editorial/cards/newsletter';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { RedEditorialEmpty } from '@/modules/site/components/network/templates/red-editorial/ui/empty';
 
 export interface ListingProps {
@@ -38,6 +39,7 @@ export function RedEditorialListing({ site, title, description, path, indexable 
           <>
             <RedEditorialHero articles={site.articles.slice(0, 3)} />
             <RedEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />
+            <AdSlot site={site} slot="in-feed" />
             <RedEditorialNewsletter />
             <RedEditorialArchivePager
               articles={archive}

@@ -9,6 +9,7 @@ import { OrangeModernNewsletter } from '@/modules/site/components/network/templa
 import { OrangeModernTicker } from '@/modules/site/components/network/templates/orange-modern/cards/ticker';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { OrangeModernEmpty } from '@/modules/site/components/network/templates/orange-modern/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 
@@ -54,7 +55,9 @@ export function OrangeModernListing({ site, title, description, path, indexable 
                 description={description ?? 'Informasi terkurasi untuk Anda'}
               />
             </div>
+            <AdSlot site={site} slot="hero-ad" />
             <OrangeModernLatest articles={latest} siteName={site.settings.name} quote={quote} />
+            <AdSlot site={site} slot="in-feed" />
             <OrangeModernNewsletter />
             <OrangeModernArchivePager
               articles={archive}

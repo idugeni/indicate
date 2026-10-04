@@ -7,6 +7,7 @@ import { GLASSY_BLUE } from '@/modules/site/components/network/templates/glassy-
 import { GlassyBlueHeader } from '@/modules/site/components/network/templates/glassy-blue/chrome/site-header';
 import { GlassyBlueFooter } from '@/modules/site/components/network/templates/glassy-blue/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
+import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -30,12 +31,15 @@ export function GlassyBlueShell({
       >
         Lewati ke konten
       </a>
+      <AdHeaderTop site={site} />
       <GlassyBlueHeader site={site} path={path} />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
+        <AdShellTop site={site} />
         <CommentTargetProvider site={site}>
           {children}
         </CommentTargetProvider>
       </main>
+      <AdShellBottom site={site} />
       <GlassyBlueFooter site={site} />
       <TemplateBackToTop />
     </div>

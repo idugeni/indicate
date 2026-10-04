@@ -7,6 +7,7 @@ import { ORANGE_MODERN } from '@/modules/site/components/network/templates/orang
 import { OrangeModernHeader } from '@/modules/site/components/network/templates/orange-modern/chrome/site-header';
 import { OrangeModernFooter } from '@/modules/site/components/network/templates/orange-modern/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
+import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -30,12 +31,15 @@ export function OrangeModernShell({
       >
         Lewati ke konten
       </a>
+      <AdHeaderTop site={site} />
       <OrangeModernHeader site={site} path={path} />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col">
+        <AdShellTop site={site} />
         <CommentTargetProvider site={site}>
           {children}
         </CommentTargetProvider>
       </main>
+      <AdShellBottom site={site} />
       <OrangeModernFooter site={site} />
       <TemplateBackToTop />
     </div>

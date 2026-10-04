@@ -2,6 +2,7 @@ import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { BlackLimeShell } from '@/modules/site/components/network/templates/black-lime/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
+import { AdSlot } from '@/modules/ads/ad-slot';
 import { BlackLimeEmpty } from '@/modules/site/components/network/templates/black-lime/ui/empty';
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
@@ -49,6 +50,7 @@ export function BlackLimeChannel({ site, kicker, title, description, path = '/',
         ) : (
           <>
             <BlackLimePicks articles={picks} heading="Sorotan" description={`Liputan terbaru ${title}`} />
+            <AdSlot site={site} slot="in-feed" />
             <BlackLimeArchivePager articles={archive} heading="Arsip kanal" description={`Jelajahi semua liputan ${title}`} />
           </>
         )}
