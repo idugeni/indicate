@@ -115,7 +115,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "16.4.0-canary.52",
+    "@next/eslint-plugin-next": "16.4.0-canary.55",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
