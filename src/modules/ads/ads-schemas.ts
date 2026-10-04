@@ -180,3 +180,35 @@ export const adsPlacementUpdateSchema = z.object({
 export const adsPlacementDeleteSchema = z.object({
   id: uuid,
 });
+
+const adsNetworkCreativeNone = z.object({ mode: z.literal('none') });
+const adsNetworkCreativeExisting = z.object({ mode: z.literal('existing'), creativeId: uuid });
+const adsNetworkCreativeImageUrl = z.object({
+  mode: z.literal('image-url'),
+  imageUrl: z.string().trim().min(1).max(2000).refine(isTenantSafeUrl, { error: 'URL gambar harus https:// atau path /.' }),
+  href: z.string().trim().max(2000).refine((value) => value === '' || isTenantSafeUrl(value), { error: 'Tautan klik harus https:// atau path /.' }).optional(),
+  alt: z.string().trim().max(300).optional(),
+});
+const adsNetworkCreativeHtml = z.object({
+  mode: z.literal('html'),
+  html: z.string().min(1).max(50000),
+});
+const adsNetworkCreativeProvider = z.object({
+  mode: z.literal('provider'),
+  clientId: z.string().trim().max(100).optional(),
+  providerSlotId: z.string().trim().max(100).optional(),
+});
+
+/** Network-wide slot save: one slot fanned out to every active site in a single transaction. */
+export const adsNetworkSlotSchema = z.object({
+  slotId,
+  enabled: z.boolean(),
+  creative: z.discriminatedUnion('mode', [
+    adsNetworkCreativeNone,
+    adsNetworkCreativeExisting,
+    adsNetworkCreativeImageUrl,
+    adsNetworkCreativeHtml,
+    adsNetworkCreativeProvider,
+  ]),
+  expectedVersions: z.record(z.uuid(), version.nullable()).default({}),
+});

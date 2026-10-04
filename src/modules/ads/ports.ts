@@ -220,6 +220,25 @@ export interface AdsPlacementDeleteInput {
   readonly requestId: string;
 }
 
+export interface AdsNetworkCreativeRef {
+  readonly mode: 'none' | 'existing' | 'image-url' | 'html' | 'provider';
+  readonly creativeId?: string | undefined;
+  readonly imageUrl?: string | undefined;
+  readonly href?: string | undefined;
+  readonly alt?: string | undefined;
+  readonly html?: string | undefined;
+  readonly clientId?: string | undefined;
+  readonly providerSlotId?: string | undefined;
+}
+
+export interface AdsNetworkSlotInput {
+  readonly slotId: string;
+  readonly enabled: boolean;
+  readonly creative: AdsNetworkCreativeRef;
+  readonly expectedVersions: Readonly<Record<string, number | null>>;
+  readonly requestId: string;
+}
+
 export interface AdsUploadedCreativeInput {
   readonly campaignId: string | null;
   readonly imageUrl: string;
@@ -261,4 +280,5 @@ export interface AdsRepository {
   createPlacement(actor: AuthorizedTenantActorContext, input: AdsPlacementInput): Promise<{ readonly id: string }>;
   updatePlacement(actor: AuthorizedTenantActorContext, input: AdsPlacementUpdateInput): Promise<{ readonly version: number }>;
   deletePlacement(actor: AuthorizedTenantActorContext, input: AdsPlacementDeleteInput): Promise<void>;
+  saveNetworkSlot(actor: AuthorizedTenantActorContext, input: AdsNetworkSlotInput): Promise<{ readonly creativeId: string | null; readonly savedSites: number }>;
 }

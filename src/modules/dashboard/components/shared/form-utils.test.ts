@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findMatchingCategoryId, generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso, normalizeCategoryKey } from '@/modules/dashboard/components/shared/form-utils';
+import { findMatchingCategoryId, findPublisherHomeRegion, generateIdempotencyUuid, isoToLocalDateTimeInput, localDateTimeToIso, normalizeCategoryKey, normalizeRegionKey } from '@/modules/dashboard/components/shared/form-utils';
 import { slugify } from '@/modules/site/slugify';
 
 describe('slugify', () => {
@@ -83,5 +83,33 @@ describe('findMatchingCategoryId', () => {
   it('mengembalikan null untuk nama baru atau kosong', () => {
     expect(findMatchingCategoryId(categories, 'Olahraga')).toBeNull();
     expect(findMatchingCategoryId(categories, '   ')).toBeNull();
+  });
+});
+
+describe('normalizeRegionKey', () => {
+  it('membuang awalan kab, kabupaten, dan kota', () => {
+    expect(normalizeRegionKey('Kab. Wonosobo')).toBe('wonosobo');
+    expect(normalizeRegionKey('KABUPATEN CILACAP')).toBe('cilacap');
+    expect(normalizeRegionKey('Kota Semarang')).toBe('semarang');
+    expect(normalizeRegionKey('Wonosobo')).toBe('wonosobo');
+  });
+});
+
+describe('findPublisherHomeRegion', () => {
+  const regions = [
+    { id: 'r-1', name: 'Jawa Tengah', kind: 'region', parentRegionId: null },
+    { id: 'r-2', name: 'Wonosobo', kind: 'city', parentRegionId: 'r-1' },
+    { id: 'r-3', name: 'Cilacap', kind: 'city', parentRegionId: 'r-1' },
+  ];
+
+  it('memetakan kota humas ke kota dan provinsi', () => {
+    expect(findPublisherHomeRegion(regions, 'Kab. Wonosobo')).toEqual({ cityId: 'r-2', provinceId: 'r-1' });
+    expect(findPublisherHomeRegion(regions, 'Kota Semarang')).toBeNull();
+  });
+
+  it('mengembalikan null tanpa label atau tanpa kecocokan', () => {
+    expect(findPublisherHomeRegion(regions, undefined)).toBeNull();
+    expect(findPublisherHomeRegion(regions, '   ')).toBeNull();
+    expect(findPublisherHomeRegion([], 'Kab. Wonosobo')).toBeNull();
   });
 });

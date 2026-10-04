@@ -29,6 +29,8 @@ export interface ArticleFormSnapshot {
   readonly authorId: string | null;
   readonly categoryIds: readonly string[];
   readonly leadMediaId: string | null;
+  /** Org pemilik yang dituju; diisi saat penerbit cermin org lain dipilih. */
+  readonly ownerOrganizationId?: string | null;
 }
 
 function optionalText(value: string): string | undefined {
@@ -51,6 +53,7 @@ export function buildArticlePayload(
   return {
     regionId: snapshot.cityId ?? snapshot.provinceId,
     publisherId: snapshot.publisherId,
+    ...(snapshot.ownerOrganizationId === undefined || snapshot.ownerOrganizationId === null ? {} : { ownerOrganizationId: snapshot.ownerOrganizationId }),
     categoryIds: [...categoryIds],
     authorId: snapshot.authorId,
     leadMediaId: snapshot.leadMediaId,

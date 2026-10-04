@@ -4,6 +4,8 @@ export interface PublisherEntity {
   readonly type: string;
   readonly attributionLabel: string;
   readonly contacts?: Record<string, string>;
+  /** Org pemilik bila penerbit ini cermin milik org lain; null berarti org aktif. */
+  readonly ownerOrganizationId?: string | null;
   readonly evidenceReference: string | null;
   readonly version: number;
   readonly verificationStatus: string;

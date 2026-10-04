@@ -66,6 +66,7 @@ function repository(): AdsRepository & { calls: string[] } {
     createPlacement: async () => { calls.push('createPlacement'); return { id: 'pla-1' }; },
     updatePlacement: async () => { calls.push('updatePlacement'); return { version: 2 }; },
     deletePlacement: async () => { calls.push('deletePlacement'); },
+    saveNetworkSlot: async () => { calls.push('saveNetworkSlot'); return { creativeId: null, savedSites: 1 }; },
   };
 }
 
@@ -95,6 +96,20 @@ describe('AdsService', () => {
     if (!stale.ok) expect(stale.error.error.code).toBe('CONFLICT');
     const fresh = await service.saveTenantSetting(actorWithSiteManage(), { siteId: SITE_ID, slotId: 'leaderboard', enabled: false, creativeId: null, expectedVersion: 2 }, 'req-1');
     expect(fresh).toEqual({ ok: true, value: { version: 3 } });
+  });
+
+  it('menyimpan slot jaringan dan menolak payload yang tidak valid', async () => {
+    const repo = repository();
+    const service = new AdsService(repo);
+    const actor = actorWithSiteManage();
+    const ok = await service.saveNetworkSlot(actor, { slotId: 'leaderboard', enabled: true, creative: { mode: 'none' }, expectedVersions: {} }, 'req-1');
+    expect(ok).toEqual({ ok: true, value: { creativeId: null, savedSites: 1 } });
+    const bad = await service.saveNetworkSlot(actor, { slotId: 'slot-asing', enabled: true, creative: { mode: 'none' }, expectedVersions: {} }, 'req-1');
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error.error.code).toBe('INVALID_INPUT');
+    const denied = await service.saveNetworkSlot(actorWithoutGrant(), { slotId: 'leaderboard', enabled: true, creative: { mode: 'none' }, expectedVersions: {} }, 'req-1');
+    expect(denied.ok).toBe(false);
+    expect(repo.calls).toEqual(['saveNetworkSlot']);
   });
 
   it('membuat pengiklan, kreatif, kampanye, dan penempatan', async () => {

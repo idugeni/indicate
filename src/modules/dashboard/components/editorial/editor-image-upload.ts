@@ -25,6 +25,8 @@ interface CompletedMedia {
 export interface UploadEditorImageOptions {
   /** Media purpose to reserve; defaults to `article-inline`. */
   readonly purpose?: MediaPurpose;
+  /** Target org for the bytes; set when filing on behalf of another org. */
+  readonly ownerOrganizationId?: string | null;
   /** Compression budget; defaults to the inline preset. */
   readonly compress?: CompressOptions;
   /** Called when a HEIC source starts converting, for progress copy. */
@@ -84,6 +86,7 @@ export async function uploadEditorImage(
     checksum: prepared.checksum,
     purpose: options.purpose ?? 'article-inline',
     owner,
+    ...(options.ownerOrganizationId === undefined || options.ownerOrganizationId === null ? {} : { ownerOrganizationId: options.ownerOrganizationId }),
     ...(thumbSpec === null ? {} : { thumb: thumbSpec }),
   })) as ReservationResponse | null;
   if (reserved?.reservationId === undefined || reserved.authorization?.url === undefined || reserved.authorization.requiredHeaders === undefined) {
@@ -105,7 +108,7 @@ export async function uploadEditorImage(
     prepared.width !== null && prepared.height !== null && Number.isInteger(prepared.width) && Number.isInteger(prepared.height) && prepared.width > 0 && prepared.height > 0
       ? { widthPx: prepared.width, heightPx: prepared.height }
       : undefined;
-  const completed = (await command('media.complete', { reservationId: reserved.reservationId, ...(thumbPayload === undefined ? {} : { thumb: thumbPayload }), ...(dimensions === undefined ? {} : dimensions) })) as CompletedMedia | null;
+  const completed = (await command('media.complete', { reservationId: reserved.reservationId, ...(options.ownerOrganizationId === undefined || options.ownerOrganizationId === null ? {} : { ownerOrganizationId: options.ownerOrganizationId }), ...(thumbPayload === undefined ? {} : { thumb: thumbPayload }), ...(dimensions === undefined ? {} : dimensions) })) as CompletedMedia | null;
   const mediaId = completed?.id;
   if (typeof mediaId !== 'string' || mediaId === '') throw new Error('Pemeriksaan berkas gagal. Coba unggah ulang.');
   const storedSrc = `/api/network/media/${mediaId}`;

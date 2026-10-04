@@ -4,6 +4,7 @@ import type { MediaAssetRecord } from '@/modules/publishing/models';
 import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ExactObjectAuthorization, ObjectStoragePort } from '@/integrations/storage/ports';
 import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type MediaListPage, type PublishingRepository } from '@/modules/publishing/ports';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { sanitizeError } from '@/core/security/redaction';
 import type { Result } from '@/core/result';
@@ -43,11 +44,29 @@ export class MediaService {
   }
   private failure(actor: AuthorizedTenantActorContext): Result<never, PublicErrorEnvelope> { return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The media operation could not be completed.', actor.requestId) }; }
 
+  /**
+   * Alihkan konteks tulis media ke org pemilik bila diminta.
+   *
+   * @param actor - Aktor pemanggil dasbor/API.
+   * @param ownerOrganizationId - Org pemilik yang diminta, atau null.
+   * @returns Aktor berkonteks org pemilik, atau `denied: true` bila ditolak.
+   */
+  private ownerActorFor(actor: AuthorizedTenantActorContext, ownerOrganizationId: string | null | undefined): { readonly denied: true } | { readonly denied: false; readonly actor: AuthorizedTenantActorContext } {
+    if (ownerOrganizationId === null || ownerOrganizationId === undefined || ownerOrganizationId === actor.organizationId) {
+      return { denied: false, actor };
+    }
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return { denied: true };
+    return { denied: false, actor: { ...actor, organizationId: ownerOrganizationId, regionScopeId: null } };
+  }
+
   async reserveUpload(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<UploadReservationResult, PublicErrorEnvelope>> {
     const parsed = mediaReservationSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId) };
     const value = parsed.data;
-    if (value.owner.kind === 'organization' && !isArticleScopedPurpose(value.purpose) && actor.regionScopeId !== undefined && actor.regionScopeId !== null) {
+    const routed = this.ownerActorFor(actor, value.ownerOrganizationId ?? null);
+    if (routed.denied) return this.denied(actor, 'media.upload.reserve.denied', 'media');
+    const effective = routed.actor;
+    if (value.owner.kind === 'organization' && !isArticleScopedPurpose(value.purpose) && effective.regionScopeId !== undefined && effective.regionScopeId !== null) {
       return this.denied(actor, 'media.upload.reserve.denied', 'media');
     }
     if (!this.policy.allowedTypes.includes(value.mediaType) || value.sizeBytes > this.policy.maxBytes) {
@@ -63,21 +82,21 @@ export class MediaService {
         const collisionToken = this.identifiers.create().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
         const key = buildScopedObjectKey({
           owner: value.owner,
-          organizationId: actor.organizationId,
+          organizationId: effective.organizationId,
           purpose: value.purpose,
           filename: value.filename,
           collisionToken,
           now,
           visibility: isPublicPurpose(value.purpose) ? 'public' : 'private',
         });
-        const result = await this.repository.reserveMediaCandidate(actor, {
+        const result = await this.repository.reserveMediaCandidate(effective, {
           reservationId, objectKey: key, owner: value.owner, purpose: value.purpose, expectedMediaType: value.mediaType,
           expectedSizeBytes: value.sizeBytes, expectedChecksum: value.checksum,
           expiresAt: new Date(now.getTime() + this.policy.uploadTtlSeconds * 1_000).toISOString(), now: now.toISOString(),
         });
         if (result.kind === 'occupied') continue;
         const existing = await this.storage.headExact(key);
-        if (existing !== null) { await this.repository.markReservationOccupied(actor, reservationId, now.toISOString()); continue; }
+        if (existing !== null) { await this.repository.markReservationOccupied(effective, reservationId, now.toISOString()); continue; }
         try {
           const authorization = await this.storage.authorizeExactPut(key, value.mediaType, value.checksum, this.policy.uploadTtlSeconds);
           let thumb: UploadReservationResult['thumb'] = null;
@@ -88,7 +107,7 @@ export class MediaService {
           }
           return { ok: true, value: Object.freeze({ reservationId, objectKey: key, authorization, thumb }) };
         } catch (error) {
-          await this.repository.markReservationOccupied(actor, reservationId, now.toISOString());
+          await this.repository.markReservationOccupied(effective, reservationId, now.toISOString());
           void sanitizeError(error);
           return this.failure(actor);
         }
@@ -108,22 +127,25 @@ export class MediaService {
    */
   async completeUpload(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<MediaAssetRecord, PublicErrorEnvelope>> {
     const parsed = mediaCompletionSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid upload completion.', actor.requestId) };
+    const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
+    if (routed.denied) return this.denied(actor, 'media.upload.complete.denied', 'media');
+    const effective = routed.actor;
     try {
-      const reservation = await this.repository.readReservation(actor, parsed.data.reservationId);
+      const reservation = await this.repository.readReservation(effective, parsed.data.reservationId);
       if (reservation === null || reservation.status !== 'reserved' || new Date(reservation.expiresAt) < this.clock.now()) return this.denied(actor, 'media.upload.complete.denied', 'media');
       const metadata = await this.storage.headExact(reservation.objectKey);
       const valid = metadata !== null && metadata.contentType === reservation.expectedMediaType
         && metadata.contentLength === reservation.expectedSizeBytes && metadata.checksum !== null
         && metadata.checksum === reservation.expectedChecksum;
       if (!valid || metadata === null || metadata.checksum === null) {
-        await this.repository.rejectMedia(actor, reservation.id, 'uploaded_metadata_mismatch', this.clock.now().toISOString());
+        await this.repository.rejectMedia(effective, reservation.id, 'uploaded_metadata_mismatch', this.clock.now().toISOString());
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Uploaded object metadata does not match the authorization.', actor.requestId) };
       }
       if (reservation.purpose === 'site-favicon') {
         const width = parsed.data.widthPx;
         const height = parsed.data.heightPx;
         if (width === undefined || height === undefined || width !== height || width < 48) {
-          await this.repository.rejectMedia(actor, reservation.id, 'favicon_dimensions_invalid', this.clock.now().toISOString());
+          await this.repository.rejectMedia(effective, reservation.id, 'favicon_dimensions_invalid', this.clock.now().toISOString());
           return { ok: false, error: createPublicError('INVALID_INPUT', 'Favicon must be a square image of at least 48 pixels.', actor.requestId) };
         }
       }
@@ -135,7 +157,7 @@ export class MediaService {
           thumbObjectKey = candidate;
         }
       }
-      return { ok: true, value: await this.repository.activateMedia(actor, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, widthPx: parsed.data.widthPx ?? null, heightPx: parsed.data.heightPx ?? null, altText: parsed.data.altText ?? null, caption: parsed.data.caption ?? null, sortOrder: parsed.data.sortOrder ?? null, focalX: parsed.data.focalX ?? null, focalY: parsed.data.focalY ?? null, now: this.clock.now().toISOString() }) };
+      return { ok: true, value: await this.repository.activateMedia(effective, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, widthPx: parsed.data.widthPx ?? null, heightPx: parsed.data.heightPx ?? null, altText: parsed.data.altText ?? null, caption: parsed.data.caption ?? null, sortOrder: parsed.data.sortOrder ?? null, focalX: parsed.data.focalX ?? null, focalY: parsed.data.focalY ?? null, now: this.clock.now().toISOString() }) };
     } catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.complete.denied', 'media');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengunggah media.', actor.requestId) };

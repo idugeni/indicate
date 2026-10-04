@@ -18,6 +18,7 @@ import {
   type AdsCreativeInput,
   type AdsCreativeStatusInput,
   type AdsCreativeUpdateInput,
+  type AdsNetworkSlotInput,
   type AdsOverview,
   type AdsPlacementDeleteInput,
   type AdsPlacementInput,
@@ -164,6 +165,95 @@ export class DrizzleAdsRepository implements AdsRepository {
         current === undefined ? null : { enabled: current.enabled, creativeId: current.creativeId },
         { enabled: input.enabled, creativeId: input.creativeId }, input.requestId, now);
       return { version };
+    });
+  }
+
+  async saveNetworkSlot(actor: AuthorizedTenantActorContext, input: AdsNetworkSlotInput): Promise<{ readonly creativeId: string | null; readonly savedSites: number }> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const org = actor.organizationId;
+      const now = new Date().toISOString();
+      const siteRows = await transaction.select({ id: sites.id })
+        .from(sites)
+        .where(and(eq(sites.organizationId, org), eq(sites.status, 'active')))
+        .limit(OVERVIEW_LIMITS.sites);
+      let creativeId: string | null = null;
+      const creative = input.creative;
+      if (creative.mode === 'existing') {
+        const found = await transaction.select({ id: adCreatives.id })
+          .from(adCreatives)
+          .where(and(eq(adCreatives.organizationId, org), eq(adCreatives.id, creative.creativeId ?? '')))
+          .limit(1);
+        if (found[0] === undefined) throw new AdsNotFoundError();
+        creativeId = found[0].id;
+      } else if (creative.mode === 'image-url') {
+        const id = crypto.randomUUID();
+        creativeId = id;
+        await transaction.insert(adCreatives).values({
+          organizationId: org, id, campaignId: null, kind: 'image',
+          imageUrl: creative.imageUrl ?? '', href: creative.href === undefined || creative.href === '' ? null : creative.href,
+          altText: creative.alt ?? null, widthPx: null, heightPx: null, html: null,
+          provider: null, providerClientId: null, providerSlotId: null,
+          status: 'active', version: 1, createdAt: new Date(now), updatedAt: new Date(now),
+        });
+        await this.audit(transaction, actor, 'ads.network_setting.save', 'ad_creative', id, null, { kind: 'image' }, input.requestId, now);
+      } else if (creative.mode === 'html') {
+        const id = crypto.randomUUID();
+        creativeId = id;
+        await transaction.insert(adCreatives).values({
+          organizationId: org, id, campaignId: null, kind: 'html',
+          imageUrl: null, href: null, altText: null, widthPx: null, heightPx: null, html: creative.html ?? '',
+          provider: null, providerClientId: null, providerSlotId: null,
+          status: 'active', version: 1, createdAt: new Date(now), updatedAt: new Date(now),
+        });
+        await this.audit(transaction, actor, 'ads.network_setting.save', 'ad_creative', id, null, { kind: 'html' }, input.requestId, now);
+      } else if (creative.mode === 'provider') {
+        const id = crypto.randomUUID();
+        creativeId = id;
+        await transaction.insert(adCreatives).values({
+          organizationId: org, id, campaignId: null, kind: 'provider',
+          imageUrl: null, href: null, altText: null, widthPx: null, heightPx: null, html: null,
+          provider: 'adsense', providerClientId: creative.clientId ?? null, providerSlotId: creative.providerSlotId ?? null,
+          status: 'active', version: 1, createdAt: new Date(now), updatedAt: new Date(now),
+        });
+        await this.audit(transaction, actor, 'ads.network_setting.save', 'ad_creative', id, null, { kind: 'provider' }, input.requestId, now);
+      }
+      const settingRows = await transaction.select({ siteId: tenantAdSettings.siteId, enabled: tenantAdSettings.enabled, creativeId: tenantAdSettings.creativeId, version: tenantAdSettings.version })
+        .from(tenantAdSettings)
+        .where(and(eq(tenantAdSettings.organizationId, org), eq(tenantAdSettings.slotId, input.slotId)));
+      const currentBySite = new Map(settingRows.map((row) => [row.siteId, row]));
+      for (const site of siteRows) {
+        const expected = input.expectedVersions[site.id];
+        const current = currentBySite.get(site.id);
+        if (current !== undefined && expected !== undefined && expected !== null && current.version !== expected) throw new AdsConflictError();
+      }
+      for (const site of siteRows) {
+        const current = currentBySite.get(site.id);
+        try {
+          if (current === undefined) {
+            await transaction.insert(tenantAdSettings).values({
+              organizationId: org, siteId: site.id, slotId: input.slotId,
+              enabled: input.enabled, creativeId, version: 1,
+              createdAt: new Date(now), updatedAt: new Date(now),
+            });
+          } else {
+            const updated = await transaction.update(tenantAdSettings)
+              .set({ enabled: input.enabled, creativeId, version: current.version + 1, updatedAt: new Date(now) })
+              .where(and(eq(tenantAdSettings.organizationId, org), eq(tenantAdSettings.siteId, site.id), eq(tenantAdSettings.slotId, input.slotId), eq(tenantAdSettings.version, current.version)))
+              .returning({ version: tenantAdSettings.version });
+            if (updated[0] === undefined) throw new AdsConflictError();
+          }
+        } catch (error) {
+          if (error instanceof AdsConflictError) throw error;
+          if (foreignKeyViolation(error)) throw new AdsNotFoundError();
+          if ((error as { code?: unknown })?.code === '23505') throw new AdsConflictError();
+          throw error;
+        }
+        await this.audit(transaction, actor, 'ads.network_setting.save', 'tenant_ad_setting', `${site.id}:${input.slotId}`,
+          current === undefined ? null : { enabled: current.enabled, creativeId: current.creativeId },
+          { enabled: input.enabled, creativeId }, input.requestId, now);
+      }
+      return { creativeId, savedSites: siteRows.length };
     });
   }
 

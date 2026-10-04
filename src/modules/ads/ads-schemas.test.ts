@@ -4,6 +4,7 @@ import {
   adsAdvertiserSchema,
   adsCampaignSchema,
   adsCreativeSchema,
+  adsNetworkSlotSchema,
   adsPlacementSchema,
   adsPlacementUpdateSchema,
   adsTenantSettingSchema,
@@ -66,5 +67,23 @@ describe('adsAdvertiserSchema', () => {
     expect(adsAdvertiserSchema.safeParse({ name: 'AB', contactEmail: null }).success).toBe(false);
     expect(adsAdvertiserSchema.safeParse({ name: 'Pengiklan Bagus', contactEmail: 'bukan-surel' }).success).toBe(false);
     expect(adsAdvertiserSchema.safeParse({ name: 'Pengiklan Bagus', contactEmail: 'halo@pengiklan.example' }).success).toBe(true);
+  });
+});
+
+describe('adsNetworkSlotSchema', () => {
+  it('menerima slot jaringan dengan tiap sumber konten', () => {
+    const base = { slotId: 'leaderboard', enabled: true, expectedVersions: {} };
+    expect(adsNetworkSlotSchema.safeParse({ ...base, creative: { mode: 'none' } }).success).toBe(true);
+    expect(adsNetworkSlotSchema.safeParse({ ...base, creative: { mode: 'existing', creativeId: '33333333-3333-4333-8333-333333333333' } }).success).toBe(true);
+    expect(adsNetworkSlotSchema.safeParse({ ...base, creative: { mode: 'image-url', imageUrl: 'https://cdn.example/a.png', href: '/promo' } }).success).toBe(true);
+    expect(adsNetworkSlotSchema.safeParse({ ...base, creative: { mode: 'html', html: '<div>Promo</div>' } }).success).toBe(true);
+    expect(adsNetworkSlotSchema.safeParse({ ...base, creative: { mode: 'provider', clientId: 'ca-pub-1' } }).success).toBe(true);
+  });
+
+  it('menolak slot asing, URL tidak aman, dan HTML kosong', () => {
+    const base = { slotId: 'leaderboard', enabled: true, expectedVersions: {} };
+    expect(adsNetworkSlotSchema.safeParse({ ...base, creative: { mode: 'image-url', imageUrl: 'javascript:x' } }).success).toBe(false);
+    expect(adsNetworkSlotSchema.safeParse({ ...base, creative: { mode: 'html', html: '' } }).success).toBe(false);
+    expect(adsNetworkSlotSchema.safeParse({ slotId: 'slot-asing', enabled: true, creative: { mode: 'none' }, expectedVersions: {} }).success).toBe(false);
   });
 });

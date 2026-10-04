@@ -7,6 +7,7 @@ import { AdsService } from '@/modules/ads/ads-service';
 
 const ACTIONS = [
   'ads.tenant_setting.save',
+  'ads.network_setting.save',
   'ads.advertiser.create',
   'ads.advertiser.update',
   'ads.advertiser.delete',
@@ -58,7 +59,7 @@ describe('statusFor iklan', () => {
 });
 
 describe('resolveAdsAction iklan', () => {
-  it('menyediakan handler untuk seluruh 15 action', () => {
+  it('menyediakan handler untuk seluruh 16 action', () => {
     const service = serviceWith([]);
     for (const action of ACTIONS) {
       expect(resolveAdsAction(service, actor(), 'req-1', action)).toBeDefined();

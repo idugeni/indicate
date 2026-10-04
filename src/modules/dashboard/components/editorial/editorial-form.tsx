@@ -52,7 +52,7 @@ import type {
   PublisherEntity,
   RegionEntity,
 } from '@/modules/dashboard/components/shared/types';
-import { findMatchingCategoryId, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
+import { findMatchingCategoryId, findPublisherHomeRegion, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
 import { slugify } from '@/modules/site/slugify';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { SLUG_MAX_LENGTH, TAG_MAX_COUNT, normalizeTagList } from '@/modules/site/slug-allocator';
@@ -427,6 +427,13 @@ export function ArticleCreateForm({
   );
   const bodyJsonProblem = useMemo(() => describeBodyJsonProblem(bodyJsonDraft), [bodyJsonDraft]);
 
+  const selectedPublisher = useMemo(
+    () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
+    [model?.publishers, publisherId],
+  );
+  const effectiveOwnerOrg = selectedPublisher?.ownerOrganizationId ?? null;
+  const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
+
   const formSnapshot = useMemo(() => ({
     slug,
     titleText,
@@ -443,25 +450,35 @@ export function ArticleCreateForm({
     cityId,
     publisherId,
     authorId,
+    ...(foreignOwnerOrg === null ? {} : { ownerOrganizationId: foreignOwnerOrg }),
     categoryIds: effectiveCategoryIds,
     leadMediaId: featuredId,
   }), [
     slug, titleText, descriptionText, bodyText, bodyJsonDraft, source, canonicalUrl,
     coverUrl, tags, status, rawScheduleInput, provinceId, cityId, publisherId,
-    authorId, effectiveCategoryIds, featuredId,
+    authorId, foreignOwnerOrg, effectiveCategoryIds, featuredId,
   ]);
 
-  const selectedPublisher = useMemo(
-    () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
-    [model?.publishers, publisherId],
-  );
   const selectedAuthor = activeAuthors.find((a) => a.id === authorId) ?? null;
 
   const handlePublisherChange = (next: string | null) => {
     const id = next === null || next === '' ? null : next;
     setPublisherId(id);
-    if (id !== null) setAuthorId(null);
-    else if (!touchedAuthor.current) setAuthorId(defaultAuthorId);
+    if (id !== null) {
+      setAuthorId(null);
+      const picked = (model?.publishers ?? []).find((p) => p.id === id) ?? null;
+      if (picked !== null) {
+        if (provinceId === null && cityId === null) {
+          const home = findPublisherHomeRegion(model?.regions ?? [], picked.contacts?.city);
+          if (home !== null) {
+            setProvinceId(home.provinceId);
+            setCityId(home.cityId);
+            setIsNational(false);
+          }
+        }
+        if (source.trim() === '') setSource(picked.name);
+      }
+    } else if (!touchedAuthor.current) setAuthorId(defaultAuthorId);
   };
   const handleAuthorChange = (next: string | null) => {
     touchedAuthor.current = true;
@@ -915,6 +932,7 @@ export function ArticleCreateForm({
       const { mediaId, previewUrl, storedSrc, version, sizeBytes, savingsBytes, compressedBlob, compressedMediaType } = await uploadEditorImage(file, { kind: 'organization' }, command, {
         purpose: 'article-cover',
         compress: COVER_COMPRESS,
+        ...(foreignOwnerOrg === null ? {} : { ownerOrganizationId: foreignOwnerOrg }),
         onConverting: () => setFeaturedStatus('Mengonversi HEIC ke JPEG di perangkat…'),
       });
       coverBlobRef.current = { blob: compressedBlob, mimeType: compressedMediaType };
@@ -1112,9 +1130,9 @@ export function ArticleCreateForm({
         return;
       }
       const payload = buildArticlePayload({ ...formSnapshot, status, rawSchedule }, categoryIds);
-      let created: { readonly id?: string; readonly slug?: string } | null;
+      let created: { readonly id?: string; readonly slug?: string; readonly organizationId?: string } | null;
       try {
-        created = await onSubmit(payload) as { readonly id?: string; readonly slug?: string };
+        created = await onSubmit(payload) as { readonly id?: string; readonly slug?: string; readonly organizationId?: string };
       } catch (error) {
         // The article may already exist server-side, so keep the draft instead
         // of clearing the form and reporting a rollback that never happened.
@@ -1128,7 +1146,22 @@ export function ArticleCreateForm({
       if (typeof created.slug === 'string' && created.slug !== payloadSlug) {
         toast.info(`Slug "${payloadSlug}" sudah dipakai — disimpan sebagai "${created.slug}".`);
       }
-      if (willPublish && typeof created.id === 'string') {
+      if (typeof created.organizationId === 'string' && created.organizationId !== '' && created.organizationId !== organizationId) {
+        if (willPublish && status === 'active' && typeof created.id === 'string' && command !== undefined && targetSiteIds.length > 0) {
+          try {
+            const bridged = await command('article.bridge.request', { ownerOrganizationId: created.organizationId, articleId: created.id, siteIds: targetSiteIds });
+            if (bridged !== null) {
+              toast.success(`Tersimpan di organisasi tujuan dan tayang ke ${targetSiteIds.length.toLocaleString('id-ID')} portal.`);
+            } else {
+              toast.info('Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.');
+            }
+          } catch {
+            toast.error('Tersimpan di organisasi tujuan, tetapi gagal diterbitkan. Coba lagi dari Antrean Penerbitan.');
+          }
+        } else {
+          toast.info('Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.');
+        }
+      } else if (willPublish && typeof created.id === 'string') {
         await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt, backdateIso, initialViews);
       }
       form.reset();
@@ -1507,6 +1540,7 @@ export function ArticleCreateForm({
                   initialDoc={bodyJsonDraft}
                   onDocChange={handleRichChange}
                   command={command ?? (async () => { throw new Error('Unggahan media tidak tersedia di pratinjau.'); })}
+                  ownerOrganizationId={foreignOwnerOrg}
                   labelledBy={`${bodyInputId}-label`}
                   disabled={isSubmitting}
                 />
@@ -1754,6 +1788,11 @@ export function ArticleCreateForm({
                       ? `Yang tampil: ${selectedPublisher.attributionLabel} (mengikuti penerbit).`
                       : 'Tanpa penulis dan penerbit: mengikuti nama situs.'}
                 </p>
+                {foreignOwnerOrg !== null && selectedPublisher !== null ? (
+                  <p className="m-0 font-mono text-[11px] text-brass">
+                    {`Tersimpan untuk ${selectedPublisher.attributionLabel} — artikel dan fotonya milik organisasi tersebut.`}
+                  </p>
+                ) : null}
               </div>
 
               <Separator />

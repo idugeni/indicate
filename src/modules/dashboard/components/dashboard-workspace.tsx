@@ -63,7 +63,11 @@ function hasEmbeddedAnalytics(snapshot: unknown): boolean {
   return Array.isArray((analytics as Record<string, unknown>).articlesByRegion);
 }
 
-function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations' | 'workspace' {
+function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations' | 'workspace' | 'ads' {
+  if (target === 'ads' || target.startsWith('ads.')) {
+    return 'ads';
+  }
+
   if (
     target === 'media' ||
     target === 'publishing' ||
@@ -378,6 +382,7 @@ export function DashboardWorkspace({
   }, [setView, setCurrentPage]);
 
   const refreshActiveView = useCallback(() => {
+    if (SELF_FETCHING_VIEWS.has(view)) return;
     void fetchData(view, organizationId, filterQuery);
   }, [fetchData, view, organizationId, filterQuery]);
 
@@ -540,7 +545,7 @@ export function DashboardWorkspace({
               type="button"
               variant="outline"
               size="sm"
-              disabled={busy}
+              disabled={busy || SELF_FETCHING_VIEWS.has(view)}
               onClick={refreshActiveView}
             >
               <span>{busy ? 'Memuat…' : 'Refresh'}</span>

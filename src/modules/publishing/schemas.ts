@@ -17,6 +17,11 @@ export const mediaReservationSchema = z.object({
   checksum: checksumField,
   purpose: z.enum(MEDIA_PURPOSES),
   owner: mediaOwnerSchema,
+  /**
+   * Org pemilik berkas; bila diisi dan berbeda dari org aktif, pemanggil wajib
+   * membawa grant platform super_admin (kreasi atas nama org).
+   */
+  ownerOrganizationId: z.uuid().nullish(),
   thumb: z.object({
     mediaType: z.string().trim().min(1).max(100),
     sizeBytes: z.number().int().positive(),
@@ -26,6 +31,8 @@ export const mediaReservationSchema = z.object({
 
 export const mediaCompletionSchema = z.object({
   reservationId: z.uuid(),
+  /** Wajib diisi saat reservasi dibuat untuk org lain; harus cocok dengan baris reservasi. */
+  ownerOrganizationId: z.uuid().nullish(),
   thumb: z.object({
     sizeBytes: z.number().int().positive(),
     checksum: checksumField,

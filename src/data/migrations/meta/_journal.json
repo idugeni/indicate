@@ -1765,6 +1765,69 @@
       "when": 1791136800000,
       "tag": "20261004060000_ai_perf_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1791140400000,
+      "tag": "20261004070000_article_type_modes",
+      "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1791144000000,
+      "tag": "20261004080000_article_audio_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1791147600000,
+      "tag": "20261004090000_article_updates_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1791151200000,
+      "tag": "20261004131000_upt_org_regions_authors",
+      "breakpoints": true
+    },
+    {
+      "idx": 256,
+      "version": "7",
+      "when": 1791154800000,
+      "tag": "20261004131500_find_organization_by_slug",
+      "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1791158400000,
+      "tag": "20261004132000_upt_org_default_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1791162000000,
+      "tag": "20261004133700_portal_assignments_bridge",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1791165600000,
+      "tag": "20261004134200_fetch_assigned_article_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1791169200000,
+      "tag": "20261004140300_find_organizations_by_slugs",
+      "breakpoints": true
     }
   ]
 }

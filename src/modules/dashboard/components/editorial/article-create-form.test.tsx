@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within, act } from '@testi
 import userEvent from '@testing-library/user-event';
 
 import { ArticleCreateForm } from '@/modules/dashboard/components/editorial/editorial-form';
+import type { PublisherEntity } from '@/modules/dashboard/components/shared/types';
 
 vi.mock('@/modules/dashboard/components/editorial/rich-text-editor', () => ({
   RichTextEditor: ({
@@ -77,6 +78,7 @@ function setup(overrides: {
   submit?: (payload: unknown) => Promise<unknown>;
   command?: (action: string, payload: unknown) => Promise<unknown>;
   organizationId?: string;
+  data?: unknown;
 }) {
   const submit = vi.fn(async (payload: unknown) => (overrides.submit ? overrides.submit(payload) : null));
   const cmd = vi.fn(async (action: string, payload: unknown) => {
@@ -90,7 +92,7 @@ function setup(overrides: {
     };
   });
   const { container, unmount } = render(
-    <ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} organizationId={overrides.organizationId} />,
+    <ArticleCreateForm data={overrides.data ?? DATA} onSubmit={submit} command={cmd} organizationId={overrides.organizationId} />,
   );
   return { submit, cmd, container, unmount };
 }
@@ -158,6 +160,46 @@ describe('Formulir tulis artikel', () => {
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(expect.objectContaining({ publisherId: 'p-1' })),
+    );
+  });
+
+  it('mengisi wilayah, kota, dan sumber otomatis dari penerbit humas', async () => {
+    const humas: PublisherEntity = {
+      id: 'p-humas',
+      name: 'RUTAN KELAS II B WONOSOBO',
+      type: 'correctional_institution',
+      attributionLabel: 'Humas Rutan Wonosobo',
+      contacts: { city: 'Kab. Wonosobo' },
+      evidenceReference: null,
+      version: 1,
+      verificationStatus: 'verified',
+      status: 'active',
+    };
+    const user = userEvent.setup();
+    const { submit, container } = setup({
+      data: {
+        ...DATA,
+        publishers: [humas],
+      },
+    });
+    expect(screen.queryByLabelText('Kota / kabupaten')).toBeNull();
+    await user.click(screen.getByLabelText('Penerbit'));
+    await user.click(await screen.findByRole('option', { name: 'RUTAN KELAS II B WONOSOBO' }));
+    expect(screen.getByLabelText('Kota / kabupaten')).toBeDefined();
+    expect((screen.getByLabelText('Sumber', { selector: 'input' }) as HTMLInputElement).value).toBe(
+      'RUTAN KELAS II B WONOSOBO',
+    );
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          publisherId: 'p-humas',
+          regionId: 'r-2',
+          source: 'RUTAN KELAS II B WONOSOBO',
+        }),
+      ),
     );
   });
 

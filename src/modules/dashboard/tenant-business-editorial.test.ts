@@ -631,3 +631,131 @@ describe('TenantBusinessService hapus artikel', () => {
     expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 });
+
+describe('TenantBusinessService createArticle untuk org pemilik', () => {
+  const platformActor = { ...actor, platformPermissionSet: new Set<string>(['platform.super_admin']) };
+  const OWNER_ORG = '0199a2b3-4c5d-7e8f-9012-3456789ab004';
+  const OP_PUB = '0199a2b3-4c5d-7e8f-9012-3456789ab001';
+  const OP_REG = '0199a2b3-4c5d-7e8f-9012-3456789ab002';
+  const OP_CAT = '0199a2b3-4c5d-7e8f-9012-3456789ab003';
+  const T_PUB = '0199a2b3-4c5d-7e8f-9012-3456789ab005';
+  const T_AUT = '0199a2b3-4c5d-7e8f-9012-3456789ab006';
+  const T_CAT = '0199a2b3-4c5d-7e8f-9012-3456789ab007';
+  const T_REG = '0199a2b3-4c5d-7e8f-9012-3456789ab008';
+  const forOrgPayload = {
+    regionId: OP_REG,
+    publisherId: OP_PUB,
+    categoryIds: [OP_CAT],
+    authorId: null,
+    slug: 'berita-upt',
+    title: 'Judul Artikel Yang Cukup Panjang',
+    body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+    source: 'RUTAN KELAS II B WONOSOBO',
+  };
+
+  function forOrgHarness(target: Record<string, unknown[]> = {}) {
+    const operatorScope = {
+      publishers: [{ id: OP_PUB, name: 'RUTAN KELAS II B WONOSOBO', attributionLabel: 'Humas', status: 'active' }],
+      regions: [{ id: OP_REG, name: 'Wonosobo', slug: 'wonosobo', status: 'active' }],
+      categories: [{ id: OP_CAT, name: 'Berita', slug: 'berita', status: 'active' }],
+    };
+    const targetState: Record<string, unknown> = {
+      organizationId: OWNER_ORG,
+      publishers: [{ id: T_PUB, name: 'RUTAN KELAS II B WONOSOBO', status: 'active' }],
+      authors: [{ id: T_AUT, displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active' }],
+      categories: [{ id: T_CAT, name: 'Berita', slug: 'berita', status: 'active' }],
+      regions: [{ id: T_REG, name: 'Wonosobo', slug: 'wonosobo', status: 'active' }],
+      articles: [],
+      articleCategories: [],
+      articleSites: [],
+      media: [],
+      ...target,
+    };
+    const appendAudit = vi.fn();
+    const executeForOrganization = vi.fn(async (_ownerActor: unknown, _orgId: unknown, operation: unknown) => {
+      const op = operation as (transaction: unknown) => unknown;
+      return op({ state: targetState, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });
+    });
+    const repository = {
+      execute: vi.fn(async () => {
+        throw new Error('jalur normal tidak boleh dipakai untuk penerbit cermin');
+      }),
+      executeForOrganization,
+      readEditorialScope: vi.fn(async () => operatorScope),
+      findOrganizationBySlug: vi.fn(async (_calledActor: unknown, slug: unknown) => (slug === 'rutan-kelas-ii-b-wonosobo' ? OWNER_ORG : null)),
+      recordDenied: vi.fn(async () => undefined),
+    };
+    const notifyArticleCreated = vi.fn(async () => undefined);
+    const service = new TenantBusinessService(repository as never, { create: () => ID }, { now: () => NOW }, { notifyArticleCreated });
+    return { service, targetState, repository, notifyArticleCreated };
+  }
+
+  it('mencatat artikel di org pemilik dengan atribusi terpetakan', async () => {
+    const { service, targetState, repository, notifyArticleCreated } = forOrgHarness();
+    const result = await service.createArticle(platformActor, forOrgPayload);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.organizationId).toBe(OWNER_ORG);
+    expect(result.value.publisherId).toBe(T_PUB);
+    expect(result.value.authorId).toBe(T_AUT);
+    expect(result.value.categoryIds).toEqual([T_CAT]);
+    expect(result.value.regionId).toBe(T_REG);
+    expect(result.value.leadMediaId).toBeNull();
+    expect(result.value.source).toBe('RUTAN KELAS II B WONOSOBO');
+    expect(repository.execute).not.toHaveBeenCalled();
+    expect(notifyArticleCreated).toHaveBeenCalledWith({ organizationId: OWNER_ORG, articleId: ID, title: 'Judul Artikel Yang Cukup Panjang' });
+    expect(targetState.articles as unknown[]).toHaveLength(1);
+  });
+
+  it('tetap memakai jalur normal tanpa grant platform', async () => {
+    const { service, state } = harness({
+      regions: [{ id: ID2, status: 'active' }],
+    });
+    const result = await service.createArticle(actor, {
+      regionId: ID2,
+      publisherId: null,
+      slug: 'mandiri-baru',
+      title: 'Judul Artikel Yang Cukup Panjang',
+      body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
+      source: 'Humas',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.organizationId).toBe('org-1');
+    expect(state.articles as unknown[]).toHaveLength(1);
+  });
+
+  it('menolak bila penerbit cermin tak ada di org tujuan', async () => {
+    const { service } = forOrgHarness({ publishers: [] });
+    const result = await service.createArticle(platformActor, forOrgPayload);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('menolak bridge tanpa grant platform', async () => {
+    const { service } = forOrgHarness();
+    const result = await service.requestBridgePublication(actor, { ownerOrganizationId: OWNER_ORG, articleId: ID, siteIds: [ID2] });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('meneruskan permintaan bridge steward ke repositori', async () => {
+    const { service, repository } = forOrgHarness();
+    const bridge = { bridgeIds: ['b-1'], slug: 'berita-upt' };
+    (repository as Record<string, unknown>).requestBridgePublication = vi.fn(async () => bridge);
+    const result = await service.requestBridgePublication(platformActor, { ownerOrganizationId: OWNER_ORG, articleId: ID, siteIds: [ID2] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value).toEqual(bridge);
+  });
+
+  it('menolak bridge tanpa situs tujuan', async () => {
+    const { service } = forOrgHarness();
+    const result = await service.requestBridgePublication(platformActor, { ownerOrganizationId: OWNER_ORG, articleId: ID, siteIds: [] });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+});

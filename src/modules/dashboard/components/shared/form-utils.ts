@@ -37,6 +37,44 @@ export function generateIdempotencyUuid(): string {
 }
 
 /**
+ * Samakan label kota humas (`Kab. Wonosobo`) dengan nama region (`Wonosobo`).
+ *
+ * @param input - Label kota bebas dari `publishers.contacts`.
+ * @returns Kunci kanonis huruf kecil tanpa awalan kab/kota.
+ */
+export function normalizeRegionKey(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/^(kab\.|kabupaten|kota)\s+/u, '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Cari wilayah asal satu penerbit humas untuk autofill form artikel.
+ *
+ * @param regions - Daftar wilayah tenant (id, nama, kind, parent).
+ * @param cityLabel - `contacts.city` penerbit, atau undefined bila tidak ada.
+ * @returns Pasangan kota + provinsi, atau null bila label tidak cocok.
+ */
+export function findPublisherHomeRegion(
+  regions: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly kind?: string;
+    readonly parentRegionId?: string | null;
+  }[],
+  cityLabel: string | undefined,
+): { readonly cityId: string; readonly provinceId: string | null } | null {
+  if (cityLabel === undefined) return null;
+  const key = normalizeRegionKey(cityLabel);
+  if (key === '') return null;
+  const city = regions.find((r) => r.kind === 'city' && normalizeRegionKey(r.name) === key);
+  if (city === undefined) return null;
+  return { cityId: city.id, provinceId: city.parentRegionId ?? null };
+}
+
+/**
  * Konversi nilai `datetime-local` browser menjadi timestamp ISO UTC.
  *
  * @param value - Nilai lokal `YYYY-MM-DDTHH:mm` dari input browser.

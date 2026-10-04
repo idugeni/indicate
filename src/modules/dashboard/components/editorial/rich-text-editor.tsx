@@ -62,6 +62,7 @@ function fileStem(name: string): string {
  * @param onDocChange - Emits durable JSON (presigned previews rewritten) plus plain text.
  * @param command - Dashboard dispatcher for `media.reserve`, `media.complete`, and `media.read`.
  * @param owner - Media owner for inline uploads; defaults to the organization.
+ * @param ownerOrganizationId - Target org for the bytes when filing on behalf of another org.
  * @param labelledBy - ID of the visible label describing this editor.
  * @param disabled - Disables toolbar and canvas during submission.
  * @returns Toolbar plus canvas styled with Shadcn and Tailwind tokens.
@@ -71,6 +72,7 @@ export function RichTextEditor({
   onDocChange,
   command,
   owner = { kind: 'organization' },
+  ownerOrganizationId,
   labelledBy,
   disabled = false,
 }: {
@@ -78,6 +80,7 @@ export function RichTextEditor({
   readonly onDocChange: (change: RichTextDocChange) => void;
   readonly command: CommandFn;
   readonly owner?: MediaOwner;
+  readonly ownerOrganizationId?: string | null;
   readonly labelledBy?: string;
   readonly disabled?: boolean;
 }) {
@@ -180,7 +183,9 @@ export function RichTextEditor({
     setUploading(true);
     setStatus('Mengunggah gambar…');
     try {
-      const { storedSrc, previewUrl } = await uploadEditorImage(file, owner, command);
+      const { storedSrc, previewUrl } = await uploadEditorImage(file, owner, command, {
+        ...(ownerOrganizationId === undefined || ownerOrganizationId === null ? {} : { ownerOrganizationId }),
+      });
       if (previewUrl !== storedSrc) srcMap.current.set(previewUrl, storedSrc);
       editor.chain().focus().setImage({ src: previewUrl, alt: fileStem(file.name), title: fileStem(file.name) }).run();
       setStatus('Gambar tersisip.');

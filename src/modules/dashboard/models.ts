@@ -198,6 +198,14 @@ export interface ArticleCategoryRecord {
   readonly position: number;
 }
 
+/** One ordered liveblog entry of a `liveblog`-mode article. */
+export interface ArticleUpdateRecord extends VersionedRecord {
+  readonly articleId: string;
+  readonly body: string;
+  readonly sortOrder: number;
+  readonly publishedAt: string | null;
+}
+
 export interface ArticleSiteRecord extends VersionedRecord {
   readonly articleId: string;
   readonly siteId: string;
@@ -332,7 +340,7 @@ export interface EditorialScope {
   readonly articleSites: readonly ArticleSiteRecord[];
   readonly categories: readonly CategoryRecord[];
   readonly authors: readonly AuthorRecord[];
-  readonly publishers: readonly Pick<PublisherRecord, 'id' | 'name' | 'attributionLabel' | 'status'>[];
+  readonly publishers: readonly (Pick<PublisherRecord, 'id' | 'name' | 'attributionLabel' | 'status'> & { readonly ownerOrganizationId: string | null })[];
   readonly regions: readonly RegionRecord[];
   readonly sites: readonly SiteRecord[];
   readonly domains: readonly Pick<DomainRecord, 'id' | 'normalizedHostname'>[];

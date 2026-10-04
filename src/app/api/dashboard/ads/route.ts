@@ -50,6 +50,7 @@ export function resolveAdsAction(
 ): ((payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>) | undefined {
   const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
     'ads.tenant_setting.save': (payload) => service.saveTenantSetting(actor, payload, requestId),
+    'ads.network_setting.save': (payload) => service.saveNetworkSlot(actor, payload, requestId),
     'ads.advertiser.create': (payload) => service.createAdvertiser(actor, payload, requestId),
     'ads.advertiser.update': (payload) => service.updateAdvertiser(actor, payload, requestId),
     'ads.advertiser.delete': (payload) => service.deleteAdvertiser(actor, payload, requestId),

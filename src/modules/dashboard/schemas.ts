@@ -136,6 +136,11 @@ export const authorUpdateSchema = authorCreateSchema.extend({ id, expectedVersio
 export const articleCreateSchema = z.object({
   regionId: id.nullable(),
   publisherId: id.nullable().default(null),
+  /**
+   * Org pemilik yang diminta klien; server selalu menurunkan ulang dari
+   * penerbit cermin dan menolak bila tidak cocok (anti-bingung org).
+   */
+  ownerOrganizationId: id.nullish(),
   categoryId: id.nullable().default(null),
   /** Ordered category set; first entry is the primary `categoryId` mirror. Omitted on update preserves existing rows. */
   categoryIds: z.array(id).max(10).optional(),
@@ -159,6 +164,16 @@ export const articleUpdateSchema = articleCreateSchema.extend({ id, expectedVers
 export const articleTransitionSchema = z.object({ id, expectedVersion }).strict();
 export const articleDeleteSchema = z.object({ id, expectedVersion }).strict();
 export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).max(200) }).strict();
+/**
+ * Terbitkan artikel milik org lain ke portal org aktif (jembatan lintas-org).
+ *
+ * @remarks `ownerOrganizationId` adalah org pemilik artikel (mis. UPT), bukan
+ * org aktif pemanggil. Hanya steward platform yang boleh memakainya;
+ * penerbitan satu-org tetap lewat `assignmentSchema` + antrean pekerja.
+ */
+export const bridgeRequestSchema = z.object({ ownerOrganizationId: id, articleId: id, siteIds: z.array(id).min(1).max(200) }).strict();
+/** Tarik penayangan jembatan; artikel pemilik tidak diubah. */
+export const bridgeUnpublishSchema = z.object({ ownerOrganizationId: id, articleId: id, siteIds: z.array(id).max(200) }).strict();
 export const siteViewsSchema = z.object({ articleId: id, siteId: id, viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const siteViewsBulkSchema = z.object({ articleId: id, siteIds: z.array(id).min(1).max(200), viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const articleFilterSchema = z.object({

@@ -9,6 +9,8 @@ import type {
 } from '@/modules/dashboard/models';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
+import { mapArticleForOrg, resolveOwnerOrgSlug } from '@/modules/dashboard/for-org-create';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   buildNetworkPublisherClaim,
 } from '@/modules/dashboard/policies';
@@ -37,8 +39,9 @@ import {
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
-  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteViewsBulkSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema,
+  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteViewsBulkSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema, bridgeRequestSchema, bridgeUnpublishSchema,
 } from '@/modules/dashboard/schemas';
+import type { ArticleCreateInput } from '@/modules/dashboard/schemas';
 
 interface ClockLike { now(): Date }
 interface VersionInput { readonly id: string; readonly expectedVersion: number }
@@ -866,10 +869,23 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       const sites = scope.sites.filter((site) => siteInScope(site, lock, scope.regions));
       const scopeRegion = lock === null ? null : regions.find(({ id }) => id === lock);
       const referencedDomainIds = new Set(sites.map((site) => site.domainId).filter((domainId): domainId is string => typeof domainId === 'string'));
+      const basePublishers = scope.publishers.map(({ id, name, attributionLabel, status }) => ({ id, name, attributionLabel, status }));
+      let ownerOrgs: ReadonlyMap<string, string> = new Map();
+      if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true) {
+        try {
+          ownerOrgs = await this.repository.findOrganizationsBySlugs(actor, basePublishers.map((publisher) => resolveOwnerOrgSlug(publisher.name)));
+        } catch {
+          ownerOrgs = new Map();
+        }
+      }
+      const publishers = basePublishers.map((publisher) => {
+        const ownerId = ownerOrgs.get(resolveOwnerOrgSlug(publisher.name)) ?? null;
+        return { ...publisher, ownerOrganizationId: ownerId !== null && ownerId !== actor.organizationId ? ownerId : null };
+      });
       return { ok: true as const, value: {
         articles: scope.articles, articlesNextCursor: scope.articlesNextCursor, total: scope.total, tagOptions: scope.tagOptions,
         categories: scope.categories, authors: scope.authors,
-        publishers: scope.publishers.map(({ id, name, attributionLabel, status }) => ({ id, name, attributionLabel, status })), regions, sites,
+        publishers, regions, sites,
         domains: scope.domains.filter((domain) => referencedDomainIds.has(domain.id)).map(({ id, normalizedHostname }) => ({ id, normalizedHostname })),
         articleSites: scope.articleSites,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
@@ -881,22 +897,146 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   }
 
   async createArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
-    const result = await this.mutate({ actor, raw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'], execute: (transaction, value, now) => {
-      this.requireArticleReferences(transaction.state, value);
-      requireLockedRegionValue(transaction.state, actor, value.regionId);
-      const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
-      const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds ?? []);
-      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
-      const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), source: value.source ?? '', scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
-      transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
-      return record;
-    }});
+    const forOrg = await this.tryCreateArticleForOwnerOrg(actor, raw);
+    const result = forOrg ?? await this.mutate({ actor, raw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'], execute: (transaction, value, now) => this.insertArticleRecord(transaction, actor, value, now) });
     if (result.ok && this.notifier !== null) {
       try {
-        await this.notifier.notifyArticleCreated({ organizationId: actor.organizationId, articleId: result.value.id, title: result.value.title });
+        await this.notifier.notifyArticleCreated({ organizationId: result.value.organizationId, articleId: result.value.id, title: result.value.title });
       } catch { /* best-effort notification: queue failure does not fail the write */ }
     }
     return result;
+  }
+
+  private insertArticleRecord(transaction: DashboardTransaction, actor: AuthorizedTenantActorContext, value: ArticleCreateInput, now: string): ArticleRecord {
+    this.requireArticleReferences(transaction.state, value);
+    requireLockedRegionValue(transaction.state, actor, value.regionId);
+    const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
+    const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds ?? []);
+    const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
+    const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), source: value.source ?? '', scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null };
+    transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
+    return record;
+  }
+
+  /**
+   * Buatkan artikel langsung di org pemilik penerbit cermin.
+   *
+   * @param actor - Admin pemanggil; wajib membawa grant platform super_admin.
+   * @param raw - Payload kreasi mentah dari dasbor org aktif.
+   * @returns Record milik org pemilik, atau null bila jalur normal yang berlaku.
+   * @remarks Admin menulis dari dasbor operator tetapi memilih penerbit humas
+   * (mis. RUTAN KELAS II B WONOSOBO): artikel, atribusi, dan audit harus
+   * melekat ke org UPT tersebut, bukan ke org operator. Penerbit tanpa
+   * cermin org (Indicate Newsroom, Redaksi) dan penerbit kosong kembali ke
+   * jalur normal (return null). Sampul unggahan (leadMediaId milik org
+   * operator) dikosongkan karena FK media satu-org; penyalinan berkas media
+   * adalah tahap berikutnya, bukan tahap ini.
+   */
+  private async tryCreateArticleForOwnerOrg(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ArticleRecord, PublicErrorEnvelope> | null> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return null;
+    const parsed = articleCreateSchema.safeParse(raw);
+    if (!parsed.success || parsed.data.publisherId === null) return null;
+    let scope;
+    try {
+      scope = await this.repository.readEditorialScope(actor, DASHBOARD_PERMISSIONS.articleRead, { publisherId: parsed.data.publisherId }, { limit: 0 });
+    } catch {
+      return null;
+    }
+    const publisher = scope.publishers.find((candidate) => candidate.id === parsed.data.publisherId);
+    if (publisher === undefined) return null;
+    let ownerOrgId: string | null;
+    try {
+      ownerOrgId = await this.repository.findOrganizationBySlug(actor, resolveOwnerOrgSlug(publisher.name));
+    } catch {
+      return null;
+    }
+    if (ownerOrgId === null || ownerOrgId === actor.organizationId) return null;
+    const { ownerOrganizationId: claimedOwner, ...rest } = parsed.data;
+    if (claimedOwner !== undefined && claimedOwner !== null && claimedOwner !== ownerOrgId) {
+      return { ok: false, error: createPublicError('INVALID_INPUT', 'Penerbit dan organisasi tujuan tidak cocok; pilih ulang penerbit.', actor.requestId, { ownerOrganizationId: ['Penerbit dan organisasi tujuan tidak cocok.'] }) };
+    }
+    const categorySlugs = (rest.categoryIds ?? []).flatMap((id) => {
+      const slug = scope.categories.find((candidate) => candidate.id === id)?.slug;
+      return slug === undefined ? [] : [slug];
+    });
+    const regionSlug = rest.regionId === null ? null : (scope.regions.find((candidate) => candidate.id === rest.regionId)?.slug ?? null);
+    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: ownerOrgId, regionScopeId: null };
+    try {
+      const record = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
+        const mapped = mapArticleForOrg(
+          {
+            publisherId: rest.publisherId,
+            authorId: rest.authorId,
+            categoryIds: rest.categoryIds,
+            regionId: rest.regionId,
+            publisherName: publisher.name,
+            categorySlugs,
+            regionSlug,
+          },
+          transaction.state,
+        );
+        if (mapped === null) throw new DashboardValidationError({ publisherId: ['Penerbit tidak tersedia di organisasi tujuan.'] });
+        return this.insertArticleRecord(
+          transaction,
+          ownerActor,
+          { ...rest, publisherId: mapped.publisherId, authorId: mapped.authorId, categoryIds: mapped.categoryIds, regionId: mapped.regionId },
+          this.clock.now().toISOString(),
+        );
+      }, ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites']);
+      return { ok: true, value: record } as const;
+    } catch (error) {
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.create', 'article');
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.create', 'article', DASHBOARD_PERMISSIONS.articleManage);
+    }
+  }
+
+  /**
+   * Terbitkan artikel milik org lain ke portal org aktif.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param raw - Org pemilik, artikel, dan situs penyaji tujuan.
+   * @returns Id baris bridge dan slug untuk invalidasi.
+   */
+  async requestBridgePublication(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly bridgeIds: readonly string[]; readonly slug: string }, PublicErrorEnvelope>> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.bridge.request', 'portal_assignment');
+    const parsed = bridgeRequestSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.requestBridgePublication(actor, parsed.data);
+      return { ok: true, value } as const;
+    } catch (error) {
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.bridge.request', 'portal_assignment');
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.bridge.request', 'portal_assignment', DASHBOARD_PERMISSIONS.articleManage);
+    }
+  }
+
+  /**
+   * Tarik penayangan jembatan; artikel pemilik tidak diubah.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param raw - Org pemilik, artikel, dan situs yang ditarik (kosong = semua).
+   * @returns Jumlah baris bridge yang diturunkan.
+   */
+  async unpublishBridge(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly unpublished: number }, PublicErrorEnvelope>> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.bridge.unpublish', 'portal_assignment');
+    const parsed = bridgeUnpublishSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.unpublishBridge(actor, parsed.data);
+      return { ok: true, value } as const;
+    } catch (error) {
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.bridge.unpublish', 'portal_assignment');
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.bridge.unpublish', 'portal_assignment', DASHBOARD_PERMISSIONS.articleManage);
+    }
   }
 
   updateArticle(actor: AuthorizedTenantActorContext, raw: unknown) {

@@ -10,6 +10,7 @@ import {
   Globe,
   KeyRound,
   LayoutDashboard,
+  LayoutTemplate,
   Link2,
   Megaphone,
   Newspaper,
@@ -123,8 +124,8 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     icon: Link2, suppressesRawCollections: true,
   },
   ads: {
-    label: 'Iklan', title: 'Manajemen Iklan', eyebrow: 'Monetisasi Portal', group: 'publishing',
-    description: 'Slot per situs, pengiklan, kampanye, kreatif, dan penempatan tayang.',
+    label: 'Iklan', title: 'Manajemen Iklan Jaringan', eyebrow: 'Monetisasi Portal', group: 'publishing',
+    description: 'Atur slot iklan sekali untuk seluruh situs jaringan: pilih ukuran, isi konten, lalu Simpan.',
     icon: Megaphone, requiredPermission: DASHBOARD_PERMISSIONS.siteManage, suppressesRawCollections: true,
   },
   configuration: {
@@ -165,7 +166,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   content: {
     label: 'Konten Website', title: 'Konten Website', eyebrow: 'Halaman Publik', group: 'system',
     description: 'Testimoni, tanya-jawab, dan kontak yang tampil di situs publik.',
-    icon: Megaphone, requiredPermission: INTEGRATIONS_PERMISSIONS.contentManage, suppressesRawCollections: true,
+    icon: LayoutTemplate, requiredPermission: INTEGRATIONS_PERMISSIONS.contentManage, suppressesRawCollections: true,
   },
   ai: {
     label: 'Asisten AI', title: 'Asisten AI', eyebrow: 'Kontrol AI', group: 'system',

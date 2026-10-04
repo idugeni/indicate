@@ -1,6 +1,6 @@
 import { describe, expect, it, expectTypeOf } from 'vitest';
 
-import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
+import { DrizzleDeliveryRepository, resolvePublisherAttribution } from '@/data/repos/delivery';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import type { ArticleListItem, NetworkArticle } from '@/modules/delivery/models';
 
@@ -120,6 +120,8 @@ function harness(handlers: {
   readonly reportSitekey?: readonly unknown[];
   readonly adSettings?: readonly unknown[];
   readonly placements?: readonly unknown[];
+  readonly bridgeAssignments?: readonly unknown[];
+  readonly bridgeDetails?: readonly unknown[];
 }) {
   const selectLog: SelectLog[] = [];
   const limitLog: number[] = [];
@@ -138,7 +140,7 @@ function harness(handlers: {
     {},
     {
       get(_target, prop) {
-        if (prop === 'execute') return async () => [];
+        if (prop === 'execute') return async () => handlers.bridgeDetails ?? [];
         if (prop === 'select')
           return (projection: Record<string, unknown>) => {
             const keys = Object.keys(projection ?? {});
@@ -146,6 +148,7 @@ function harness(handlers: {
             const only = (...wanted: readonly string[]) =>
               wanted.length === keys.length && wanted.every((key) => keys.includes(key));
             if (only('body') || only('body', 'bodyJson')) return chainable(body, limitLog);
+            if (keys.includes('sourceArticleId')) return chainable(handlers.bridgeAssignments ?? [], limitLog);
             if (keys.includes('sortOrder')) return chainable(gallery, limitLog);
             if (only('mediaId')) {
               const set = brandSets[Math.min(brandCursor, brandSets.length - 1)] ?? [];
@@ -169,6 +172,106 @@ function harness(handlers: {
   const repository = new DrizzleDeliveryRepository(database as never, 'https://portal.example/brand/default.jpg', handlers.publicHost ?? null);
   return { repository, selectLog, limitLog };
 }
+
+describe('resolvePublisherAttribution', () => {
+  it('mengembangkan label generik menjadi Redaksi {tenant}', () => {
+    expect(resolvePublisherAttribution('Redaksi', 'Fakta01')).toBe('Redaksi Fakta01');
+    expect(resolvePublisherAttribution('  redaksi  ', 'BacaZaman')).toBe('Redaksi BacaZaman');
+  });
+
+  it('melewatkan label spesifik apa adanya', () => {
+    expect(resolvePublisherAttribution('Indicate Newsroom', 'Fakta01')).toBe('Indicate Newsroom');
+    expect(resolvePublisherAttribution('Humas Lapas Semarang', 'Fakta01')).toBe('Humas Lapas Semarang');
+    expect(resolvePublisherAttribution('Redaksi Fakta01', 'Fakta01')).toBe('Redaksi Fakta01');
+  });
+
+  it('memetakan atribusi generik per portal pada listing', async () => {
+    const { repository } = harness({ articles: [articleRow({ publisherName: 'Redaksi', attribution: 'Redaksi' })] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]?.attribution).toBe('Redaksi Portal');
+  });
+
+  it('mempertahankan atribusi spesifik pada listing', async () => {
+    const { repository } = harness({ articles: [articleRow({ publisherName: 'Indicate Newsroom', attribution: 'Indicate Newsroom' })] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]?.attribution).toBe('Indicate Newsroom');
+  });
+});
+
+describe('readBridgeArticles', () => {
+  const bridgeDetail = {
+    article_id: 'art-upt-1',
+    slug: 'berita-upt',
+    title: 'Berita UPT',
+    excerpt: 'Ringkasan UPT.',
+    canonical_url: null,
+    tags: ['wonosobo'],
+    status: 'active',
+    article_type: 'standard',
+    is_sponsored: false,
+    video_url: null,
+    audio_url: null,
+    duration_seconds: null,
+    region_id: 'r-1',
+    category_slug: null,
+    category_name: null,
+    publisher_name: 'RUTAN KELAS II B WONOSOBO',
+    attribution: 'Humas Rutan Wonosobo',
+    publisher_logo: null,
+    publisher_city: 'Kab. Wonosobo',
+    publisher_bio: null,
+    publisher_verified: true,
+    publisher_type: 'correctional_institution',
+    author_display: 'Tim Redaksi',
+    author_bio: null,
+    author_avatar: null,
+    author_url: null,
+    cover_image_url: 'https://cdn.example/cover.jpg',
+    published_at: new Date('2026-10-04T10:00:00.000Z'),
+    updated_at: new Date('2026-10-04T10:00:00.000Z'),
+    body: 'Isi lengkap berita UPT.',
+    body_json: null,
+  };
+  const bridgeAssignment = {
+    id: 'bridge-1',
+    siteId: 's1',
+    sourceOrganizationId: 'org-upt',
+    sourceArticleId: 'art-upt-1',
+    publishedAt: new Date('2026-10-04T11:00:00.000Z'),
+  };
+
+  it('menayangkan artikel pemilik di portal penyaji', async () => {
+    const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles).toHaveLength(1);
+    expect(site?.articles[0]).toMatchObject({
+      id: 'art-upt-1',
+      slug: 'berita-upt',
+      href: '/berita-upt',
+      attribution: 'Humas Rutan Wonosobo',
+      publisherVerified: true,
+      officialInstitution: 'RUTAN KELAS II B WONOSOBO',
+      imageUrl: 'https://cdn.example/cover.jpg',
+      articleSiteId: 'bridge-1',
+      viewCount: 0,
+    });
+  });
+
+  it('membawa isi penuh untuk halaman detail bridge', async () => {
+    const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-upt' });
+    const item = site?.articles[0];
+    if (item === undefined || !isNetworkArticle(item)) throw new Error('expected detail article');
+    expect(item.body).toBe('Isi lengkap berita UPT.');
+    expect(item.gallery).toEqual([]);
+  });
+
+  it('menyelesaikan slug bridge menjadi id artikel pemilik', async () => {
+    const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
+    await expect(repository.resolveArticleId({ ...CONTEXT }, 'berita-upt')).resolves.toBe('art-upt-1');
+    await expect(repository.resolveArticleId({ ...CONTEXT }, 'tidak-ada')).resolves.toBeNull();
+  });
+});
 
 describe('loadReportChallengeSitekey', () => {
   it('membaca satu kolom dari domain tenant', async () => {
@@ -197,7 +300,7 @@ describe('readSite projection', () => {
     expect(articleKeys).toHaveLength(1);
     expect(articleKeys[0]).not.toContain('body');
     expect(selectLog.filter((entry) => entry.keys.includes('sortOrder'))).toHaveLength(0);
-    expect(selectLog).toHaveLength(4);
+    expect(selectLog).toHaveLength(5);
     const item = site?.articles[0];
     expect(item).toBeDefined();
     expect(item).not.toHaveProperty('body');
@@ -250,7 +353,7 @@ describe('readSite projection', () => {
     expect(item).toBeDefined();
     expect(item).toHaveProperty('body', 'Isi penuh artikel untuk halaman detail.');
     expect(item).toHaveProperty('gallery');
-    expect(selectLog).toHaveLength(6);
+    expect(selectLog).toHaveLength(7);
     expectTypeOf(item).toEqualTypeOf<ArticleListItem | undefined>();
     if (item !== undefined && isNetworkArticle(item)) {
       expectTypeOf(item).toEqualTypeOf<NetworkArticle>();

@@ -67,12 +67,62 @@ export interface DashboardRepository {
   /** Enqueue a manual cache purge per site (null = all in scope); executed directly by the dispatcher. */
   enqueueCachePurge(actor: AuthorizedTenantActorContext, permission: string, siteId: string | null): Promise<readonly CachePurgeTarget[]>;
   recordDenied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<void>;
+  /**
+   * Resolve an active organization id by slug across org boundaries (platform stewards only).
+   *
+   * @param actor - Calling actor; must carry the platform super-admin grant.
+   * @param slug - Organization slug to resolve.
+   * @returns Organization id, or null when no active org carries the slug.
+   */
+  findOrganizationBySlug(actor: AuthorizedTenantActorContext, slug: string): Promise<string | null>;
+  /**
+   * Resolve active organization ids for many slugs in one round trip (platform stewards only).
+   *
+   * @param actor - Calling actor; must carry the platform super-admin grant.
+   * @param slugs - Organization slugs to resolve.
+   * @returns Id keyed by slug; unknown slugs are simply absent.
+   */
+  findOrganizationsBySlugs(actor: AuthorizedTenantActorContext, slugs: readonly string[]): Promise<ReadonlyMap<string, string>>;
   execute<T>(
     actor: AuthorizedTenantActorContext,
     permission: string,
     operation: (transaction: DashboardTransaction) => T | Promise<T>,
     scope?: readonly DashboardCollectionName[],
   ): Promise<T>;
+  /**
+   * Run a mutation in another organization's context for platform stewards.
+   *
+   * @param actor - Calling actor; must carry the platform super-admin grant.
+   * @param targetOrganizationId - Organization owning the rows being written.
+   * @param operation - Mutation against the target organization's state.
+   * @param scope - Collections to hydrate, same contract as `execute()`.
+   * @returns Whatever the operation returns.
+   * @remarks Membership authorization is replaced by the platform grant check;
+   * the audit trail keeps the calling admin as actor while rows and audit
+   * entries belong to the target organization.
+   */
+  executeForOrganization<T>(
+    actor: AuthorizedTenantActorContext,
+    targetOrganizationId: string,
+    operation: (transaction: DashboardTransaction) => T | Promise<T>,
+    scope?: readonly DashboardCollectionName[],
+  ): Promise<T>;
+  /**
+   * Terbitkan artikel milik org lain ke portal org aktif (jembatan lintas-org).
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param input - Org pemilik, artikel, dan situs penyaji tujuan.
+   * @returns Id baris bridge dan slug untuk invalidasi.
+   */
+  requestBridgePublication(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[] }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string }>;
+  /**
+   * Tarik penayangan jembatan; artikel pemilik tidak diubah.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param input - Org pemilik, artikel, dan situs yang ditarik (kosong = semua).
+   * @returns Jumlah baris bridge yang diturunkan.
+   */
+  unpublishBridge(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[] }): Promise<{ readonly unpublished: number }>;
 }
 
 export class DashboardAccessDeniedError extends Error {

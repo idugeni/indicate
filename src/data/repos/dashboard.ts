@@ -6,11 +6,12 @@ import { extractTipTapImages } from '@/modules/site/tiptap-document';
 import { regionScopeCovers } from '@/modules/site/region-scope';
 import type { ActivityHour, ArticleRecord, RecentActivity, AnalyticsProjection, ConfigurationScope, EditorialScope, NetworkArticlesScope, PublisherClaimScope, PublisherScope, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay, TaxonomyScope } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type DashboardCollectionName, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { redact } from '@/core/security/redaction';
 import { DashboardValidationError } from '@/modules/dashboard/tenant-service-errors';
 import {
   apiKeys, articleCategories, articleRevisions, articleSites, articles, auditLogs, authors, cacheBypasses, categories, contentReports, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
-  permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, users, webhookReplayClaims,
+  permissions, portalAssignments, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions, roles, sites, siteSettings, users, webhookReplayClaims,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
@@ -184,12 +185,16 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     throw last;
   }
 
-  private async establishContext(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> {
-    await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${actor.organizationId}::uuid, ${actor.actorId}, ${actor.requestId})`);
+  private async establishContextFor(transaction: Transaction, organizationId: string, actor: AuthorizedTenantActorContext): Promise<void> {
+    await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${actor.actorId}, ${actor.requestId})`);
     await transaction.execute(sql`SELECT indicate_private.set_region_context(${actor.regionScopeId ?? null}::uuid)`);
     if (actor.actorType === 'user') {
       await transaction.execute(sql`SELECT indicate_private.set_verified_user_context(${actor.verifiedAuthUserId}::uuid)`);
     }
+  }
+
+  private async establishContext(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> {
+    await this.establishContextFor(transaction, actor.organizationId, actor);
   }
 
   private async authorize(transaction: Transaction, actor: AuthorizedTenantActorContext, permission: string): Promise<void> {
@@ -1089,7 +1094,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource as 'manual' | 'auto', expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         authors: authorRows.map((row) => ({ id: row.id, organizationId, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
-        publishers: publisherRows.map((row) => ({ id: row.id, name: row.name, attributionLabel: row.attributionLabel, status: row.status })),
+        publishers: publisherRows.map((row) => ({ id: row.id, name: row.name, attributionLabel: row.attributionLabel, status: row.status, ownerOrganizationId: null as string | null })),
         regions: regionRows.map((row) => ({ id: row.id, organizationId, externalKey: row.externalKey, name: row.name, shortName: row.shortName, slug: row.slug, status: row.status, kind: row.kind, parentRegionId: row.parentRegionId, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         sites: siteRows.map((row) => ({ id: row.id, organizationId, domainId: row.domainId, regionId: row.regionId, siteLevel: row.siteLevel, parentSiteId: row.parentSiteId, normalizedHostname: row.normalizedHostname, status: row.status, activationState: row.activationState, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         domains: domainRows.map((row) => ({ id: row.id, normalizedHostname: row.normalizedHostname })),
@@ -1282,13 +1287,149 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   }
 
   async execute<T>(actor: AuthorizedTenantActorContext, permission: string, operation: (transaction: DashboardTransaction) => T | Promise<T>, scope?: readonly DashboardCollectionName[]): Promise<T> {
+    return this.runScoped(actor, actor.organizationId, { membershipPermission: permission }, operation, scope);
+  }
+
+  /**
+   * Run a mutation in another organization's context for platform stewards.
+   *
+   * @param actor - Calling actor; must carry the platform super-admin grant.
+   * @param targetOrganizationId - Organization owning the rows being written.
+   * @param operation - Mutation against the target organization's state.
+   * @param scope - Collections to hydrate, same contract as `execute()`.
+   * @returns Whatever the operation returns.
+   * @remarks Single-org `execute()` cannot serve "create on behalf of" flows:
+   * context, authorization, subscription gate, and state all derive from the
+   * actor org. This variant re-anchors all four to the target org while the
+   * audit trail keeps the calling admin as actor. Membership authorization is
+   * replaced by the platform grant check, so stewards need no membership in
+   * every customer org they serve.
+   */
+  async executeForOrganization<T>(actor: AuthorizedTenantActorContext, targetOrganizationId: string, operation: (transaction: DashboardTransaction) => T | Promise<T>, scope?: readonly DashboardCollectionName[]): Promise<T> {
+    return this.runScoped(actor, targetOrganizationId, { platformManaged: true }, operation, scope);
+  }
+
+  /**
+   * Resolve an active organization id by slug across org boundaries.
+   *
+   * @param actor - Calling actor; must carry the platform super-admin grant.
+   * @param slug - Organization slug to resolve.
+   * @returns Organization id, or null when no active org carries the slug.
+   */
+  async findOrganizationBySlug(actor: AuthorizedTenantActorContext, slug: string): Promise<string | null> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+    const rows = await this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      return transaction.execute<{ id: string }>(sql`SELECT id FROM indicate_private.find_organization_by_slug(${slug})`);
+    });
+    return rows[0]?.id ?? null;
+  }
+
+  /**
+   * Terbitkan artikel milik org lain ke portal org aktif (jembatan lintas-org).
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param input - Org pemilik, artikel, dan situs penyaji tujuan.
+   * @returns Id baris bridge dan slug untuk invalidasi.
+   * @remarks Dua transaksi terpisah karena satu transaksi hanya boleh satu
+   * konteks tenant: pertama membalik artikel pemilik menjadi aktif (audit di
+   * org pemilik), kedua menulis baris `portal_assignments` berstatus published
+   * di org penyaji (audit + invalidasi di org penyaji). Sinkron, tanpa antrean
+   * pekerja: penayangan bridge murni flip status DB, tanpa handshake origin.
+   */
+  async requestBridgePublication(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[] }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string }> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+    const siteIds = [...new Set(input.siteIds)].sort();
+    if (siteIds.length === 0 || siteIds.length > 200) throw new DashboardAccessDeniedError();
+    const now = new Date();
+    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: input.ownerOrganizationId, regionScopeId: null };
+    const flipped = await this.executeForOrganization(ownerActor, input.ownerOrganizationId, (transaction) => {
+      const article = transaction.state.articles.find((candidate) => candidate.id === input.articleId);
+      if (article === undefined) throw new DashboardAccessDeniedError();
+      if (article.status !== 'draft' && article.status !== 'scheduled' && article.status !== 'active') throw new DashboardValidationError({ articleId: ['Hanya draf, terjadwal, atau aktif yang bisa diterbitkan.'] });
+      const after = { ...article, status: 'active' as const, publishedAt: article.publishedAt ?? now.toISOString(), updatedAt: now.toISOString(), version: article.version + 1 };
+      const index = transaction.state.articles.findIndex((candidate) => candidate.id === input.articleId);
+      transaction.state.articles[index] = after;
+      transaction.appendAudit({ action: 'article.publish', targetType: 'article', targetId: article.id, outcome: 'succeeded', changedFields: ['status', 'publishedAt', 'version', 'updatedAt'], before: article as unknown as Record<string, unknown>, after: after as unknown as Record<string, unknown> });
+      return { slug: after.slug, title: after.title };
+    }, ['articles']);
+    const bridgeIds = await this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+      const siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, siteIds), eq(sites.status, 'active'))).limit(siteIds.length);
+      if (siteRows.length !== siteIds.length) throw new DashboardAccessDeniedError();
+      const rows = siteRows.map((site) => ({ organizationId: actor.organizationId, id: crypto.randomUUID(), siteId: site.id, sourceOrganizationId: input.ownerOrganizationId, sourceArticleId: input.articleId, state: 'published' as const, stateOccurredAt: now, publishedAt: now, version: 1, createdAt: now, updatedAt: now }));
+      for (const chunk of insertChunks(rows)) {
+        await transaction.insert(portalAssignments).values([...chunk]).onConflictDoUpdate({
+          target: [portalAssignments.organizationId, portalAssignments.sourceOrganizationId, portalAssignments.sourceArticleId, portalAssignments.siteId],
+          set: { state: 'published', stateOccurredAt: now, publishedAt: now, updatedAt: now, version: sql`${portalAssignments.version} + 1` },
+        });
+      }
+      for (const site of siteRows) {
+        await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, reason: 'publication.bridge.request', articleSlugs: [flipped.slug] }) as never);
+      }
+      await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'publication.bridge.request', targetType: 'portal_assignment', targetId: input.articleId, outcome: 'succeeded', changedFields: ['state'], requestId: actor.requestId, before: null, after: { ownerOrganizationId: input.ownerOrganizationId, articleId: input.articleId, siteIds } });
+      return rows.map((row) => row.id);
+    });
+    return { bridgeIds, slug: flipped.slug };
+  }
+
+  /**
+   * Tarik penayangan jembatan; artikel pemilik tidak diubah.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param input - Org pemilik, artikel, dan situs yang ditarik (kosong = semua).
+   * @returns Jumlah baris bridge yang diturunkan.
+   */
+  async unpublishBridge(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[] }): Promise<{ readonly unpublished: number }> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+    const now = new Date();
     return this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
-      await this.authorize(transaction, actor, permission);
-      await this.enforceWritableSubscription(transaction, actor);
-      await transaction.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, actor.organizationId)).limit(1).for('update');
+      const siteFilter = input.siteIds.length === 0 ? undefined : inArray(portalAssignments.siteId, [...input.siteIds]);
+      const unpublished = await transaction.update(portalAssignments)
+        .set({ state: 'unpublished', stateOccurredAt: now, updatedAt: now, version: sql`${portalAssignments.version} + 1` })
+        .where(and(eq(portalAssignments.organizationId, actor.organizationId), eq(portalAssignments.sourceOrganizationId, input.ownerOrganizationId), eq(portalAssignments.sourceArticleId, input.articleId), eq(portalAssignments.state, 'published'), ...(siteFilter === undefined ? [] : [siteFilter])))
+        .returning({ id: portalAssignments.id, siteId: portalAssignments.siteId });
+      const slugs = await transaction.select({ slug: articles.slug }).from(articles).where(and(eq(articles.organizationId, input.ownerOrganizationId), eq(articles.id, input.articleId))).limit(1);
+      const hostnames = unpublished.length === 0 ? [] : await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, unpublished.map((row) => row.siteId)))).limit(unpublished.length);
+      for (const site of hostnames) {
+        await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, reason: 'publication.bridge.unpublish', articleSlugs: slugs[0] === undefined ? [] : [slugs[0].slug] }) as never);
+      }
+      await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'publication.bridge.unpublish', targetType: 'portal_assignment', targetId: input.articleId, outcome: 'succeeded', changedFields: ['state'], requestId: actor.requestId, before: null, after: { ownerOrganizationId: input.ownerOrganizationId, articleId: input.articleId } });
+      return { unpublished: unpublished.length };
+    });
+  }
+
+  /**
+   * Resolve active organization ids for many slugs in one round trip.
+   *
+   * @param actor - Calling actor; must carry the platform super-admin grant.
+   * @param slugs - Organization slugs to resolve.
+   * @returns Id keyed by slug; unknown slugs are simply absent.
+   */
+  async findOrganizationsBySlugs(actor: AuthorizedTenantActorContext, slugs: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+    if (slugs.length === 0) return new Map();
+    const rows = await this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      return transaction.execute<{ id: string; slug: string }>(sql`SELECT id, slug FROM indicate_private.find_organizations_by_slugs(${sqlStringArray([...new Set(slugs)])}::text[])`);
+    });
+    return new Map([...rows].map((row) => [row.slug, row.id] as const));
+  }
+
+  private async runScoped<T>(actor: AuthorizedTenantActorContext, organizationId: string, auth: { readonly membershipPermission: string } | { readonly platformManaged: true }, operation: (transaction: DashboardTransaction) => T | Promise<T>, scope?: readonly DashboardCollectionName[]): Promise<T> {
+    return this.database.transaction(async (transaction) => {
+      const scopedActor = 'platformManaged' in auth ? { ...actor, organizationId, regionScopeId: null } : actor;
+      if ('platformManaged' in auth) {
+        if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+      }
+      await this.establishContextFor(transaction, organizationId, scopedActor);
+      if (!('platformManaged' in auth)) await this.authorize(transaction, scopedActor, auth.membershipPermission);
+      await this.enforceWritableSubscriptionFor(transaction, organizationId, scopedActor);
+      await transaction.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1).for('update');
       const loaded = scope === undefined ? undefined : new Set<DashboardCollectionName>(scope);
-      const before = await this.load(transaction, actor.organizationId, loaded);
+      const before = await this.load(transaction, organizationId, loaded);
       const state = structuredClone(before) as MutableTenantState;
       if (loaded !== undefined) {
         for (const name of ['domains', 'regions', 'sites', 'siteSettings', 'roles', 'memberships', 'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media', 'publishingJobs', 'publishingJobTargets'] as const) {
@@ -1308,7 +1449,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         state,
         articleContentTouched: new Set<string>(),
         refreshArticleContent: async (articleId) => {
-          const rows = await transaction.select({ id: articles.id, body: articles.body, bodyJson: articles.bodyJson }).from(articles).where(and(eq(articles.organizationId, actor.organizationId), eq(articles.id, articleId))).limit(1);
+          const rows = await transaction.select({ id: articles.id, body: articles.body, bodyJson: articles.bodyJson }).from(articles).where(and(eq(articles.organizationId, scopedActor.organizationId), eq(articles.id, articleId))).limit(1);
           const row = rows[0];
           if (row === undefined) return false;
           const index = state.articles.findIndex((candidate) => candidate.id === articleId);
@@ -1325,7 +1466,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           displayNameCache.set(userId, name);
           return name;
         },
-        appendAudit: (event) => pendingAudits.push({ ...event, id: crypto.randomUUID(), organizationId: actor.organizationId, actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, requestId: actor.requestId, occurredAt: new Date().toISOString(), before: event.before === null ? null : redact(event.before) as Record<string, unknown>, after: event.after === null ? null : redact(event.after) as Record<string, unknown> }),
+        appendAudit: (event) => pendingAudits.push({ ...event, id: crypto.randomUUID(), organizationId: scopedActor.organizationId, actorType: scopedActor.actorType, actorId: scopedActor.actorId, entryPoint: scopedActor.entryPoint, requestId: scopedActor.requestId, occurredAt: new Date().toISOString(), before: event.before === null ? null : redact(event.before) as Record<string, unknown>, after: event.after === null ? null : redact(event.after) as Record<string, unknown> }),
       };
       const result = await operation(dashboardTransaction);
       await this.persist(transaction, actor.actorId, before, state, pendingAudits, dashboardTransaction.articleContentTouched, loaded);
@@ -1334,8 +1475,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   }
 
   private async enforceWritableSubscription(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> {
+    await this.enforceWritableSubscriptionFor(transaction, actor.organizationId, actor);
+  }
+
+  private async enforceWritableSubscriptionFor(transaction: Transaction, organizationId: string, actor: AuthorizedTenantActorContext): Promise<void> {
     if (actor.actorType !== 'user') return;
-    const rows = await transaction.execute<{ state: string }>(sql`SELECT indicate_private.subscription_access_state(${actor.organizationId}::uuid) AS state`);
+    const rows = await transaction.execute<{ state: string }>(sql`SELECT indicate_private.subscription_access_state(${organizationId}::uuid) AS state`);
     const state = rows[0]?.state;
     if (state === 'platform' || state === 'active') return;
     throw new DashboardSubscriptionInactiveError(state ?? 'none');

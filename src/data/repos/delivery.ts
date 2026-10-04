@@ -2,7 +2,7 @@ import { aliasedTable, and, eq, gt, inArray, isNotNull, notInArray, or, sql } fr
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { ActivationAttempt, FeedArticle, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
+import type { ActivationAttempt, ArticleListItem, FeedArticle, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 import { articleBodyText } from '@/modules/site/article-markup';
 import { isTipTapDoc, extractTipTapImages, tiptapToText } from '@/modules/site/tiptap-document';
@@ -11,7 +11,8 @@ import { isPublicObjectKey } from '@/modules/publishing/object-key';
 import { parseTenantAdOverrides, safeTemplateId } from '@/modules/ads/config';
 import { mapPlacementRows, mapTenantAdRows } from '@/modules/ads/db-mapping';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle, type SiteCategory } from '@/modules/delivery/ports';
-import { articleSites, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
+import { sqlStringArray } from '@/data/repos/shared/sql-array';
+import { articleSites, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, portalAssignments, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -53,6 +54,69 @@ function lineageSiteIds(context: ResolvedSiteContext) {
 }
 
 /**
+ * Build the site ids whose bridge assignments a portal inherits.
+ *
+ * @param context - Resolved tenant hostname context.
+ * @returns SQL subquery yielding the portal plus every transitive ancestor.
+ * @remarks Mirror image of `lineageSiteIds`: a bridge assignment made on an
+ * apex portal serves the apex itself and every descendant city, so a city
+ * portal collects the assignments of its ancestors. Depth is at most 3
+ * (apex -> region -> city).
+ */
+function ancestorSiteIds(context: ResolvedSiteContext) {
+  return sql`(with recursive ancestry as (
+    select ${sites.id}, ${sites.parentSiteId} from ${sites}
+    where ${sites.organizationId} = ${context.organizationId} and ${sites.id} = ${context.siteId}
+    union all
+    select parent.id, parent.parent_site_id from ${sites} parent join ancestry child on parent.id = child.parent_site_id
+    where parent.organization_id = ${context.organizationId}
+  ) select id from ancestry)`;
+}
+
+/** One row from `fetch_assigned_article_details`: public display columns only. */
+type BridgeDetail = {
+  readonly article_id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly excerpt: string | null;
+  readonly canonical_url: string | null;
+  readonly tags: readonly string[];
+  readonly status: string;
+  readonly article_type: string;
+  readonly is_sponsored: boolean;
+  readonly video_url: string | null;
+  readonly audio_url: string | null;
+  readonly duration_seconds: number | null;
+  readonly region_id: string | null;
+  readonly category_slug: string | null;
+  readonly category_name: string | null;
+  readonly publisher_name: string | null;
+  readonly attribution: string | null;
+  readonly publisher_logo: string | null;
+  readonly publisher_city: string | null;
+  readonly publisher_bio: string | null;
+  readonly publisher_verified: boolean;
+  readonly publisher_type: string | null;
+  readonly author_display: string | null;
+  readonly author_bio: string | null;
+  readonly author_avatar: string | null;
+  readonly author_url: string | null;
+  readonly cover_image_url: string | null;
+  readonly published_at: Date | string;
+  readonly updated_at: Date | string;
+  readonly body: string;
+  readonly body_json: unknown | null;
+};
+
+/** Bridge assignment joined to its fetched owner detail. */
+interface BridgePair {
+  readonly bridgeId: string;
+  readonly siteId: string;
+  readonly publishedAt: Date | string;
+  readonly detail: BridgeDetail;
+}
+
+/**
  * Resolve the URL a listing must link to for an article visible on this portal.
  *
  * @param originHost - Hostname of the portal that owns the assignment.
@@ -74,6 +138,21 @@ function robotsDirectiveFor(value: 'index,follow' | 'noindex,nofollow' | null): 
   if (value === 'noindex,nofollow') return 'noindex, nofollow';
   if (value === 'index,follow') return 'index, follow';
   return null;
+}
+
+/**
+ * Resolve the card byline for one article on the serving portal.
+ *
+ * @param raw - Joined attribution label, publisher name, or site fallback.
+ * @param siteName - Display name of the portal serving the article.
+ * @returns `Redaksi {siteName}` for the generic newsroom label, otherwise raw.
+ */
+export function resolvePublisherAttribution(raw: string, siteName: string): string {
+  if (raw.trim().toLowerCase() !== 'redaksi') return raw;
+  const site = siteName.trim();
+  if (site === '') return raw;
+  if (/^redaksi\b/iu.test(site)) return site;
+  return `Redaksi ${site}`;
 }
 
 /**
@@ -305,6 +384,68 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
     });
   }
 
+  /**
+   * Read published bridge assignments visible on this portal with owner details.
+   *
+   * @param transaction - Public tenant transaction (serving org context).
+   * @param context - Resolved tenant hostname context serving the page.
+   * @param query - Listing/detail filters mirrored from the local query.
+   * @returns Assignment/detail pairs, newest first, capped for listings.
+   * @remarks Listings inherit ancestor assignments (apex -> region -> city),
+   * mirroring `lineageSiteIds` downward; a detail resolves only on the site
+   * holding the assignment, mirroring the local one-article-one-URL rule.
+   * Owner content arrives exclusively through the `SECURITY DEFINER`
+   * `fetch_assigned_article_details` reader, grouped by owner org so one
+   * portal with many institutions still costs one call per institution.
+   */
+  private async readBridgePairs(transaction: Transaction, context: ResolvedSiteContext, query: NetworkContentQuery): Promise<readonly BridgePair[]> {
+    const siteScope = query.articleSlug === undefined
+      ? sql`${portalAssignments.siteId} in ${ancestorSiteIds(context)}`
+      : eq(portalAssignments.siteId, context.siteId);
+    const assignments = await transaction.select({
+      id: portalAssignments.id,
+      siteId: portalAssignments.siteId,
+      sourceOrganizationId: portalAssignments.sourceOrganizationId,
+      sourceArticleId: portalAssignments.sourceArticleId,
+      publishedAt: portalAssignments.publishedAt,
+    })
+      .from(portalAssignments)
+      .where(and(eq(portalAssignments.organizationId, context.organizationId), siteScope, eq(portalAssignments.state, 'published'), isNotNull(portalAssignments.publishedAt)))
+      .orderBy(sql`${portalAssignments.publishedAt} DESC`)
+      .limit(100);
+    const usable = assignments.filter((row): row is typeof row & { readonly publishedAt: Date } => row.publishedAt !== null);
+    if (usable.length === 0) return [];
+    const byOwner = new Map<string, { readonly rows: typeof usable; ids: string[] }>();
+    for (const row of usable) {
+      const group = byOwner.get(row.sourceOrganizationId) ?? { rows: [], ids: [] as string[] };
+      (group.rows as unknown[]).push(row);
+      group.ids.push(row.sourceArticleId);
+      byOwner.set(row.sourceOrganizationId, group);
+    }
+    const pairs: BridgePair[] = [];
+    for (const [ownerOrg, group] of byOwner) {
+      const details = await transaction.execute<BridgeDetail>(sql`
+        SELECT * FROM indicate_private.fetch_assigned_article_details(
+          ${ownerOrg}::uuid, ${sqlStringArray(group.ids)}::uuid[]
+        )
+      `);
+      const byId = new Map([...details].map((detail) => [detail.article_id, detail]));
+      for (const row of group.rows) {
+        const detail = byId.get(row.sourceArticleId);
+        if (detail === undefined) continue;
+        if (query.articleSlug !== undefined && detail.slug !== query.articleSlug) continue;
+        if (query.categorySlug !== undefined) continue;
+        if (query.tag !== undefined && !detail.tags.includes(query.tag)) continue;
+        if (query.search !== undefined) {
+          const needle = query.search.toLowerCase();
+          if (!detail.title.toLowerCase().includes(needle) && !detail.body.toLowerCase().includes(needle)) continue;
+        }
+        pairs.push({ bridgeId: row.id, siteId: row.siteId, publishedAt: row.publishedAt, detail });
+      }
+    }
+    return pairs.sort((left, right) => new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime());
+  }
+
   private async readSite(transaction: Transaction, context: ResolvedSiteContext, query: NetworkContentQuery): Promise<NetworkSiteData | null> {
       const shell = await this.readSettings(transaction, context);
       if (shell === null) return null;
@@ -358,14 +499,70 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         });
       }
       const settings = shell.settings;
-      return {
-        ...shell,
-        articles: rows.filter((row) => row.publishedAt !== null).map((row) => {
+      const bridgePairs = await this.readBridgePairs(transaction, context, query);
+      const bridgeDetail = query.articleSlug === undefined || detailBody !== null
+        ? null
+        : (bridgePairs.find((pair) => pair.detail.slug === query.articleSlug) ?? null);
+      const bridgeItems: ArticleListItem[] = bridgePairs.map((pair) => {
+        const detail = pair.detail;
+        const isBridgeDetail = bridgeDetail !== null && pair.bridgeId === bridgeDetail.bridgeId;
+        const richText = isBridgeDetail && isTipTapDoc(detail.body_json) ? tiptapToText(detail.body_json) : '';
+        const description = detail.excerpt ?? (richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(detail.body, 180));
+        return {
+          id: detail.article_id,
+          slug: detail.slug,
+          title: detail.title,
+          description,
+          href: `/${detail.slug}`,
+          canonicalUrl: detail.canonical_url ?? null,
+          robotsDirective: null,
+          ...(isBridgeDetail
+            ? { body: detail.body, bodyJson: isTipTapDoc(detail.body_json) ? detail.body_json : null, gallery: [] as const }
+            : {}),
+          tags: [...detail.tags],
+          regionId: detail.region_id,
+          categoryId: null,
+          categorySlug: null,
+          categoryName: null,
+          authorName: null,
+          authorDisplayName: detail.author_display,
+          authorBio: detail.author_bio,
+          authorAvatarUrl: detail.author_avatar,
+          authorWebsiteUrl: detail.author_url ?? null,
+          publisherName: detail.publisher_name,
+          attribution: detail.attribution ?? detail.publisher_name ?? settings.name,
+          publisherLogoUrl: detail.publisher_logo,
+          publisherCity: detail.publisher_city,
+          publisherBio: detail.publisher_bio ?? DEFAULT_PUBLISHER_BIO,
+          publisherSocials: {},
+          publisherVerified: detail.publisher_verified,
+          independent: detail.publisher_type === 'independent_publisher',
+          officialInstitution: detail.publisher_verified ? detail.publisher_name : null,
+          publishedAt: iso(pair.publishedAt),
+          updatedAt: iso(detail.updated_at),
+          articleSiteId: pair.bridgeId,
+          viewCount: 0,
+          imageMediaType: null,
+          imageUrl: detail.cover_image_url,
+          thumbnailUrl: null,
+          imageWidth: null,
+          imageHeight: null,
+          imageFocalX: null,
+          imageFocalY: null,
+        };
+      });
+      const ownItems = rows.filter((row) => row.publishedAt !== null).map((row) => {
           const isDetail = detailTarget !== undefined && detailBody !== null && row.id === detailTarget.id;
           const richText = isDetail && isTipTapDoc(detailBodyJson) ? tiptapToText(detailBodyJson) : '';
           const description = row.customDescription ?? row.excerpt ?? (richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(articleBodyText(row.bodyExcerpt ?? ''), 180));
-          return { id: row.id, slug: row.slug, title: row.customTitle ?? row.title, href: originHref(row.originHost, context, row.slug), canonicalUrl: row.canonicalUrl, robotsDirective: robotsDirectiveFor(row.robotsDirective), description, ...(isDetail ? { body: detailBody, bodyJson: isTipTapDoc(detailBodyJson) ? detailBodyJson : null, gallery: detailGallery } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: row.attribution ?? row.publisherName ?? settings.name, publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customObjectKey) ?? absoluteMediaUrl(context, row.customImageMediaId)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadObjectKey) ?? absoluteMediaUrl(context, row.leadMediaId)) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customThumbKey) ?? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadThumbKey) ?? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`)) : null, imageWidth: row.customImageMediaId !== null ? row.customMediaWidth : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaWidth : null, imageHeight: row.customImageMediaId !== null ? row.customMediaHeight : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaHeight : null, imageFocalX: row.customImageMediaId !== null ? row.customMediaFocalX : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalX : null, imageFocalY: row.customImageMediaId !== null ? row.customMediaFocalY : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalY : null };
-        }),
+          return { id: row.id, slug: row.slug, title: row.customTitle ?? row.title, href: originHref(row.originHost, context, row.slug), canonicalUrl: row.canonicalUrl, robotsDirective: robotsDirectiveFor(row.robotsDirective), description, ...(isDetail ? { body: detailBody, bodyJson: isTipTapDoc(detailBodyJson) ? detailBodyJson : null, gallery: detailGallery } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: resolvePublisherAttribution(row.attribution ?? row.publisherName ?? settings.name, settings.name), publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customObjectKey) ?? absoluteMediaUrl(context, row.customImageMediaId)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadObjectKey) ?? absoluteMediaUrl(context, row.leadMediaId)) : row.coverImageUrl, thumbnailUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customThumbKey) ?? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadThumbKey) ?? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`)) : null, imageWidth: row.customImageMediaId !== null ? row.customMediaWidth : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaWidth : null, imageHeight: row.customImageMediaId !== null ? row.customMediaHeight : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaHeight : null, imageFocalX: row.customImageMediaId !== null ? row.customMediaFocalX : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalX : null, imageFocalY: row.customImageMediaId !== null ? row.customMediaFocalY : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalY : null };
+        });
+      const merged = [...ownItems, ...bridgeItems].sort(
+        (left, right) => new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime(),
+      );
+      return {
+        ...shell,
+        articles: merged,
       };
   }
 
@@ -487,7 +684,24 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .where(and(eq(articleSites.organizationId, context.organizationId), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt), eq(articles.slug, slug)))
         .limit(1);
-      return rows[0]?.id ?? null;
+      if (rows[0] !== undefined) return rows[0].id;
+      const bridge = await transaction.select({
+        sourceOrganizationId: portalAssignments.sourceOrganizationId,
+        sourceArticleId: portalAssignments.sourceArticleId,
+      })
+        .from(portalAssignments)
+        .where(and(eq(portalAssignments.organizationId, context.organizationId), eq(portalAssignments.siteId, context.siteId), eq(portalAssignments.state, 'published'), isNotNull(portalAssignments.publishedAt)))
+        .limit(100);
+      for (const row of bridge) {
+        const details = await transaction.execute<{ article_id: string; slug: string }>(sql`
+          SELECT article_id, slug FROM indicate_private.fetch_assigned_articles(
+            ${row.sourceOrganizationId}::uuid, ${sqlStringArray([row.sourceArticleId])}::uuid[]
+          )
+        `);
+        const match = [...details].find((detail) => detail.slug === slug);
+        if (match !== undefined) return match.article_id;
+      }
+      return null;
     });
   }
 

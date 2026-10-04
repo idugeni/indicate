@@ -15,6 +15,7 @@ import {
   adsCreativeStatusSchema,
   adsCreativeUpdateSchema,
   adsCreativeUploadSchema,
+  adsNetworkSlotSchema,
   adsPlacementDeleteSchema,
   adsPlacementSchema,
   adsPlacementUpdateSchema,
@@ -32,6 +33,7 @@ import {
 
 export type AdsAction =
   | 'ads.tenant_setting.save'
+  | 'ads.network_setting.save'
   | 'ads.advertiser.create'
   | 'ads.advertiser.update'
   | 'ads.advertiser.delete'
@@ -97,6 +99,18 @@ export class AdsService {
       return { ok: true, value: await this.repository.saveTenantSetting(actor, { ...parsed.data, requestId }) };
     } catch (error) {
       return this.error(requestId, 'ads.tenant_setting.save', error);
+    }
+  }
+
+  async saveNetworkSlot(actor: AuthorizedTenantActorContext, raw: unknown, requestId: string): Promise<Result<{ readonly creativeId: string | null; readonly savedSites: number }, PublicErrorEnvelope>> {
+    const denial = await this.gate(actor);
+    if (denial !== null) return { ok: false, error: denial };
+    const parsed = adsNetworkSlotSchema.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Periksa kembali isian slot jaringan.', requestId) };
+    try {
+      return { ok: true, value: await this.repository.saveNetworkSlot(actor, { ...parsed.data, requestId }) };
+    } catch (error) {
+      return this.error(requestId, 'ads.network_setting.save', error);
     }
   }
 

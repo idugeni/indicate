@@ -33,6 +33,15 @@ export const publisherType = pgEnum('publisher_type', [
 ]);
 export const publisherVerificationStatus = pgEnum('publisher_verification_status', ['unverified', 'pending', 'verified', 'rejected']);
 export const articleStatus = pgEnum('article_status', ['draft', 'in_review', 'scheduled', 'active', 'archived']);
+/**
+ * Canonical article presentation modes shared by every worker.
+ *
+ * @remarks `standard` is the backfill for all legacy rows; the remaining five
+ * modes gate dashboard validation, delivery templates, and AI prompts.
+ */
+export const articleType = pgEnum('article_type', ['standard', 'video', 'gallery', 'audio', 'liveblog', 'short']);
+/** Presentation mode of one article; mirrors the `article_type` enum. */
+export type ArticleType = (typeof articleType.enumValues)[number];
 export const publishingState = pgEnum('publishing_state', ['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']);
 export const mediaState = pgEnum('media_state', ['reserved', 'active', 'rejected', 'archived']);
 export const reportStatus = pgEnum('report_status', ['received', 'under_review', 'action_taken', 'rejected']);
@@ -131,6 +140,16 @@ export const articles = pgTable('articles', {
   source: text('source').notNull(),
   tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
   status: articleStatus('status').default('draft').notNull(),
+  /** Presentation mode; `standard` for legacy rows backfilled by migration 252. */
+  type: articleType('type').default('standard').notNull(),
+  /** Paid-content flag driving the sponsored disclosure on delivery surfaces. */
+  isSponsored: boolean('is_sponsored').default(false).notNull(),
+  /** Canonical external watch/file URL for `video` mode; null for other modes. */
+  videoUrl: text('video_url'),
+  /** Canonical external listen/file URL for `audio` mode; null otherwise. */
+  audioUrl: text('audio_url'),
+  /** Playback length in whole seconds for `video`/`audio` modes; null otherwise. */
+  durationSeconds: integer('duration_seconds'),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   /** Optional embargo/scheduled date; enforced by the publishing scheduler. */
   scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
@@ -149,15 +168,69 @@ export const articles = pgTable('articles', {
   index('articles_organization_region_idx').on(table.organizationId, table.regionId),
   index('articles_organization_category_idx').on(table.organizationId, table.categoryId),
   index('articles_organization_lead_media_idx').on(table.organizationId, table.leadMediaId).where(sql`${table.leadMediaId} IS NOT NULL`),
+  index('articles_organization_type_idx').on(table.organizationId, table.type),
   check('articles_version_positive', sql`${table.version} > 0`),
   check('articles_slug_shape', sql`char_length(${table.slug}) BETWEEN 1 AND 300 AND ${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
 ]);
 
 /**
- * Ordered multi-category assignments; position 1 mirrors the primary `articles.category_id`.
+ * Ordered liveblog entries keyed to one article.
  *
- * @remarks Delivery, SEO, and filters keep reading the primary column; this table carries the full set.
+ * @remarks Entries die with their article (cascade); writers predicate on
+ * `version` exactly like `articles.version` so concurrent edits conflict
+ * instead of last-wins.
  */
+export const articleUpdates = pgTable('article_updates', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  id: uuid('id').notNull(),
+  articleId: uuid('article_id').notNull(),
+  body: text('body').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  createdBy: text('created_by').notNull(),
+  version: integer('version').default(1).notNull(),
+  ...timestamps,
+}, (table) => [
+  primaryKey({ name: 'article_updates_pk', columns: [table.organizationId, table.id] }),
+  unique('article_updates_id_unique').on(table.id),
+  foreignKey({ name: 'article_updates_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('cascade'),
+  index('article_updates_organization_article_sort_idx').on(table.organizationId, table.articleId, table.sortOrder),
+  check('article_updates_body_length', sql`char_length(${table.body}) BETWEEN 1 AND 20000`),
+  check('article_updates_sort_positive', sql`${table.sortOrder} >= 1`),
+  check('article_updates_version_positive', sql`${table.version} > 0`),
+]);
+
+/**
+ * Cross-org portal assignments: UPT-owned articles served on operator portals.
+ *
+ * @remarks `article_sites` is locked single-org by composite FKs and RLS, so
+ * this explicit bridge carries (serving org, site) with a same-org FK to
+ * `sites` while pointing at the canonical article in the owner org WITHOUT a
+ * foreign key (composite FKs cannot span orgs). Pair integrity is enforced by
+ * the for-org creation path, worker checks, and periodic hygiene.
+ */
+export const portalAssignments = pgTable('portal_assignments', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  id: uuid('id').notNull(),
+  siteId: uuid('site_id').notNull(),
+  sourceOrganizationId: uuid('source_organization_id').notNull(),
+  sourceArticleId: uuid('source_article_id').notNull(),
+  state: publishingState('state').default('queued').notNull(),
+  stateOccurredAt: timestamp('state_occurred_at', { withTimezone: true }).defaultNow().notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  version: integer('version').default(1).notNull(),
+  ...timestamps,
+}, (table) => [
+  primaryKey({ name: 'portal_assignments_pk', columns: [table.organizationId, table.id] }),
+  unique('portal_assignments_id_unique').on(table.id),
+  foreignKey({ name: 'portal_assignments_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('restrict'),
+  unique('portal_assignments_owner_pair_unique').on(table.organizationId, table.sourceOrganizationId, table.sourceArticleId, table.siteId),
+  index('portal_assignments_org_site_state_idx').on(table.organizationId, table.siteId, table.state),
+  index('portal_assignments_org_source_idx').on(table.organizationId, table.sourceOrganizationId, table.sourceArticleId),
+  check('portal_assignments_published_needs_time', sql`((${table.state} <> 'published') OR (${table.publishedAt} IS NOT NULL))`),
+  check('portal_assignments_version_positive', sql`${table.version} > 0`),
+]);
+
 export const articleCategories = pgTable('article_categories', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   articleId: uuid('article_id').notNull(),
