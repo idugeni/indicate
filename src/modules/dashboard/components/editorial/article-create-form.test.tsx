@@ -10,17 +10,25 @@ vi.mock('@/modules/dashboard/components/editorial/rich-text-editor', () => ({
   RichTextEditor: ({
     initialDoc,
     onDocChange,
+    onPolish,
   }: {
     readonly initialDoc?: unknown;
     readonly onDocChange: (change: { readonly doc: unknown; readonly text: string }) => void;
+    readonly onPolish?: (() => void) | undefined;
   }) => {
     const initial = initialDoc as { readonly content?: readonly { readonly content?: readonly { readonly text?: unknown }[] }[] } | null | undefined;
     const initialText = (initial?.content ?? [])
       .map((node) => (node.content ?? []).map((leaf) => (typeof leaf.text === 'string' ? leaf.text : '')).join(''))
       .join(' ');
     return (
-      <textarea
-        aria-label="Isi Artikel"
+      <>
+        {onPolish === undefined ? null : (
+          <button type="button" aria-label="Poles isi" onClick={onPolish}>
+            Poles isi
+          </button>
+        )}
+        <textarea
+          aria-label="Isi Artikel"
         defaultValue={initialText}
         onChange={(event) => {
           const text = event.target.value;
@@ -36,6 +44,7 @@ vi.mock('@/modules/dashboard/components/editorial/rich-text-editor', () => ({
           });
         }}
       />
+      </>
     );
   },
 }));
@@ -988,7 +997,7 @@ describe('Formulir tulis artikel', () => {
       },
     }));
 
-    await user.click(screen.getByRole('button', { name: /audio jadi berita/i }));
+    await user.click(screen.getByRole('button', { name: /pilih audio/i }));
     const [fileInput] = Array.from(document.querySelectorAll('input[type="file"]')).filter((el) =>
       (el.getAttribute('aria-label') ?? '').includes('dijadikan berita'),
     );

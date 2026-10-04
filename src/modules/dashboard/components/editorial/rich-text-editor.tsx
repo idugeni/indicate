@@ -16,7 +16,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2, WandSparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,10 @@ function fileStem(name: string): string {
  * @param command - Dashboard dispatcher for `media.reserve`, `media.complete`, and `media.read`.
  * @param owner - Media owner for inline uploads; defaults to the organization.
  * @param ownerOrganizationId - Target org for the bytes when filing on behalf of another org.
+ * @param onPolish - Polish-body action from the host form; when absent no polish button renders.
+ * @param polishBusy - AI polish in flight.
+ * @param polishDisabled - Disable the polish button even when idle.
+ * @param polishLabel - Button caption; defaults to `Poles isi`.
  * @param labelledBy - ID of the visible label describing this editor.
  * @param disabled - Disables toolbar and canvas during submission.
  * @returns Toolbar plus canvas styled with Shadcn and Tailwind tokens.
@@ -73,6 +77,10 @@ export function RichTextEditor({
   command,
   owner = { kind: 'organization' },
   ownerOrganizationId,
+  onPolish,
+  polishBusy = false,
+  polishDisabled = false,
+  polishLabel = 'Poles isi',
   labelledBy,
   disabled = false,
 }: {
@@ -81,6 +89,10 @@ export function RichTextEditor({
   readonly command: CommandFn;
   readonly owner?: MediaOwner;
   readonly ownerOrganizationId?: string | null;
+  readonly onPolish?: (() => void) | undefined;
+  readonly polishBusy?: boolean;
+  readonly polishDisabled?: boolean;
+  readonly polishLabel?: string;
   readonly labelledBy?: string;
   readonly disabled?: boolean;
 }) {
@@ -99,14 +111,18 @@ export function RichTextEditor({
     onDocChangeRef.current = onDocChange;
   });
   const [linkDraft, setLinkDraft] = useState('');
-  const [linkOpen, setLinkOpen] = useState(false);
   const [imageUrlDraft, setImageUrlDraft] = useState('');
   const [imageUrlAlt, setImageUrlAlt] = useState('');
-  const [imageUrlOpen, setImageUrlOpen] = useState(false);
   const [youtubeDraft, setYoutubeDraft] = useState('');
-  const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [socialDraft, setSocialDraft] = useState('');
-  const [socialOpen, setSocialOpen] = useState(false);
+  /**
+   * Satu panel semat yang terbuka; membuka satu menutup yang lain agar
+   * toolbar tidak menumpuk dua formulir sekaligus di layar sempit.
+   */
+  const [openPanel, setOpenPanel] = useState<'link' | 'youtube' | 'social' | 'imageUrl' | null>(null);
+  const togglePanel = (panel: 'link' | 'youtube' | 'social' | 'imageUrl') => {
+    setOpenPanel((current) => (current === panel ? null : panel));
+  };
   const [status, setStatus] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -207,7 +223,7 @@ export function RichTextEditor({
     const href = linkDraft.trim();
     if (href === '') {
       editor.chain().focus().unsetLink().run();
-      setLinkOpen(false);
+      setOpenPanel(null);
       return;
     }
     if (!isSafeLinkUrl(href)) {
@@ -215,7 +231,7 @@ export function RichTextEditor({
       return;
     }
     editor.chain().focus().setLink({ href }).run();
-    setLinkOpen(false);
+    setOpenPanel(null);
     setLinkDraft('');
     setStatus(null);
   }
@@ -228,7 +244,7 @@ export function RichTextEditor({
       return;
     }
     editor.chain().focus().setYoutubeVideo({ src: `https://www.youtube.com/watch?v=${videoId}` }).run();
-    setYoutubeOpen(false);
+    setOpenPanel(null);
     setYoutubeDraft('');
     setStatus(null);
   }
@@ -242,7 +258,7 @@ export function RichTextEditor({
     }
     const alt = imageUrlAlt.trim() === '' ? 'gambar' : imageUrlAlt.trim().slice(0, 300);
     editor.chain().focus().setImage({ src, alt, title: alt }).run();
-    setImageUrlOpen(false);
+    setOpenPanel(null);
     setImageUrlDraft('');
     setImageUrlAlt('');
     setStatus('Gambar tersisip dari URL.');
@@ -260,7 +276,7 @@ export function RichTextEditor({
     } else {
       editor.chain().focus().insertContent({ type: detected.type, attrs: { src: detected.url } }).run();
     }
-    setSocialOpen(false);
+    setOpenPanel(null);
     setSocialDraft('');
     setStatus('Sematan tersisip.');
   }
@@ -287,12 +303,12 @@ export function RichTextEditor({
       <div id={toolbarId} role="toolbar" aria-label="Format teks" className="flex flex-wrap items-center gap-1.5 border-b border-hairline bg-bg-raised p-2">
         {editor === null ? null : (
           <>
-            <div role="group" aria-label="Gaya dasar" className="flex items-center gap-1">
+            <div role="group" aria-label="Gaya dasar" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('Tebal', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Tebal (Ctrl+B)')}
             {toggle('Miring', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Miring (Ctrl+I)')}
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <div role="group" aria-label="Struktur" className="flex items-center gap-1">
+            <div role="group" aria-label="Struktur" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('H2', editor.isActive('heading', { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), 'Judul bagian')}
             {toggle('H3', editor.isActive('heading', { level: 3 }), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), 'Subbagian')}
             {toggle('Kutip', editor.isActive('blockquote'), () => editor.chain().focus().toggleBlockquote().run(), 'Kutipan')}
@@ -300,10 +316,10 @@ export function RichTextEditor({
             {toggle('Nomor', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Daftar bernomor')}
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <div role="group" aria-label="Sisip cepat" className="flex items-center gap-1">
+            <div role="group" aria-label="Sisip cepat" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('Tautan', editor.isActive('link'), () => {
               setLinkDraft(typeof editor.getAttributes('link').href === 'string' ? (editor.getAttributes('link').href as string) : '');
-              setLinkOpen((open) => !open);
+              togglePanel('link');
             }, 'Sisip atau ubah tautan')}
             <AppTooltip label="Unggah gambar ke R2" side="top">
               <Button type="button" variant="outline" size="xs" aria-label="Unggah gambar" disabled={busy} onClick={() => fileRef.current?.click()}>
@@ -312,7 +328,7 @@ export function RichTextEditor({
               </Button>
             </AppTooltip>
             <AppTooltip label="Sisipkan gambar dari URL luar" side="top">
-              <Button type="button" variant="outline" size="xs" aria-label="Sisipkan gambar dari URL" aria-expanded={imageUrlOpen} disabled={busy} onClick={() => setImageUrlOpen((open) => !open)}>
+              <Button type="button" variant="outline" size="xs" aria-label="Sisipkan gambar dari URL" aria-expanded={openPanel === 'imageUrl'} disabled={busy} onClick={() => togglePanel('imageUrl')}>
                 URL
               </Button>
             </AppTooltip>
@@ -321,16 +337,27 @@ export function RichTextEditor({
             <AppTooltip label={advancedOpen ? 'Sembunyikan format lanjutan' : 'Tampilkan format lanjutan'} side="top">
               <Button type="button" variant="outline" size="xs" aria-expanded={advancedOpen} aria-controls={`${toolbarId}-advanced`} disabled={busy} onClick={() => setAdvancedOpen((open) => !open)}>
                 <ChevronDown className={`h-3 w-3 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                Lanjutan
+                Advance
               </Button>
             </AppTooltip>
+            {onPolish === undefined ? null : (
+              <>
+                <Separator orientation="vertical" className="h-5" />
+                <AppTooltip label="Poles alur dan EYD isi dengan AI tanpa mengubah fakta" side="top">
+                  <Button type="button" variant="outline" size="xs" aria-label={polishLabel} disabled={busy || polishDisabled} onClick={onPolish}>
+                    {polishBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <WandSparkles className="h-3 w-3" aria-hidden="true" />}
+                    {polishLabel}
+                  </Button>
+                </AppTooltip>
+              </>
+            )}
           </>
         )}
       </div>
 
       {advancedOpen && editor !== null ? (
         <div id={`${toolbarId}-advanced`} role="group" aria-label="Format lanjutan" className="flex flex-wrap items-center gap-1.5 border-b border-hairline bg-bg-raised p-2">
-            <div role="group" aria-label="Gaya lanjutan" className="flex items-center gap-1">
+            <div role="group" aria-label="Gaya lanjutan" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('Coret', editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), 'Coret')}
             {toggle('Garis Bawah', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Garis bawah (Ctrl+U)')}
             {toggle('Kode Sebaris', editor.isActive('code'), () => editor.chain().focus().toggleCode().run(), 'Kode sebaris')}
@@ -352,152 +379,163 @@ export function RichTextEditor({
             {toggle('Reset', false, () => editor.chain().focus().unsetColor().run(), 'Kembalikan warna bawaan', 'Hapus warna teks')}
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <div role="group" aria-label="Blok dan garis" className="flex items-center gap-1">
+            <div role="group" aria-label="Blok dan garis" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('Kode', editor.isActive('codeBlock'), () => editor.chain().focus().toggleCodeBlock().run(), 'Blok kode')}
             {toggle('Garis', false, () => editor.chain().focus().setHorizontalRule().run(), 'Garis pemisah')}
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <div role="group" aria-label="Perataan" className="flex items-center gap-1">
+            <div role="group" aria-label="Perataan" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('Kiri', editor.isActive({ textAlign: 'left' }), () => editor.chain().focus().setTextAlign('left').run(), 'Rata kiri')}
             {toggle('Tengah', editor.isActive({ textAlign: 'center' }), () => editor.chain().focus().setTextAlign('center').run(), 'Rata tengah')}
             {toggle('Kanan', editor.isActive({ textAlign: 'right' }), () => editor.chain().focus().setTextAlign('right').run(), 'Rata kanan')}
             {toggle('Rata', editor.isActive({ textAlign: 'justify' }), () => editor.chain().focus().setTextAlign('justify').run(), 'Rata kanan-kiri')}
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <div role="group" aria-label="Tabel" className="flex items-center gap-1">
+            <div role="group" aria-label="Tabel" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('Tabel', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), 'Sisipkan tabel 3×3')}
             {toggle('+Brs', false, () => editor.chain().focus().addRowAfter().run(), 'Tambah baris di bawah')}
             {toggle('+Kol', false, () => editor.chain().focus().addColumnAfter().run(), 'Tambah kolom di kanan')}
             {toggle('Hapus Tabel', false, () => editor.chain().focus().deleteTable().run(), 'Hapus tabel aktif')}
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <div role="group" aria-label="Sisipan lanjutan" className="flex items-center gap-1">
-            {toggle('YouTube', false, () => setYoutubeOpen((open) => !open), 'Sematkan video YouTube', 'Sematan YouTube')}
-            {toggle('Sosial', false, () => setSocialOpen((open) => !open), 'Sematkan YouTube, X, Instagram, TikTok, Facebook, atau Google Drive', 'Sematan sosial')}
+            <div role="group" aria-label="Sisipan lanjutan" className="flex min-w-0 flex-wrap items-center gap-1">
+            {toggle('YouTube', false, () => togglePanel('youtube'), 'Sematkan video YouTube', 'Sematan YouTube')}
+            {toggle('Sosial', false, () => togglePanel('social'), 'Sematkan YouTube, X, Instagram, TikTok, Facebook, atau Google Drive', 'Sematan sosial')}
             </div>
             <Separator orientation="vertical" className="h-5" />
-            <div role="group" aria-label="Riwayat" className="flex items-center gap-1">
+            <div role="group" aria-label="Riwayat" className="flex min-w-0 flex-wrap items-center gap-1">
             {toggle('Urung', false, () => editor.chain().focus().undo().run(), 'Urungkan (Ctrl+Z)', 'Urungkan', busy || !editor.can().undo())}
             {toggle('Ulang', false, () => editor.chain().focus().redo().run(), 'Ulangi (Ctrl+Shift+Z)', 'Ulangi', busy || !editor.can().redo())}
             </div>
         </div>
       ) : null}
 
-      {linkOpen ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-hairline bg-bg-raised-2 p-2">
+      {openPanel === 'link' ? (
+        <div className="grid min-w-0 gap-1.5 overflow-x-clip border-b border-hairline bg-bg-raised-2 p-2">
           <label htmlFor={linkInputId} className="font-mono text-[11px] text-paper-dim">
             URL tautan
           </label>
-          <Input
-            id={linkInputId}
-            value={linkDraft}
-            onChange={(event) => setLinkDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                applyLink();
-              }
-            }}
-            placeholder="https://… atau /slug-artikel"
-            disabled={busy}
-            className="h-7 min-w-0 flex-1 font-mono text-xs"
-          />
-          <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyLink}>
-            Terapkan
-          </Button>
+          <div className="flex min-w-0 items-center gap-2">
+            <Input
+              id={linkInputId}
+              value={linkDraft}
+              onChange={(event) => setLinkDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  applyLink();
+                }
+              }}
+              placeholder="https://… atau /slug-artikel"
+              disabled={busy}
+              className="h-7 min-w-0 flex-1 font-mono text-xs"
+            />
+            <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyLink} className="flex-none">
+              Terapkan
+            </Button>
+          </div>
         </div>
       ) : null}
 
-      {youtubeOpen ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-hairline bg-bg-raised-2 p-2">
+      {openPanel === 'youtube' ? (
+        <div className="grid min-w-0 gap-1.5 overflow-x-clip border-b border-hairline bg-bg-raised-2 p-2">
           <label htmlFor={youtubeInputId} className="font-mono text-[11px] text-paper-dim">
             URL/ID YouTube
           </label>
-          <Input
-            id={youtubeInputId}
-            value={youtubeDraft}
-            onChange={(event) => setYoutubeDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                applyYoutube();
-              }
-            }}
-            placeholder="https://youtu.be/… atau 11 karakter ID"
-            disabled={busy}
-            className="h-7 min-w-0 flex-1 font-mono text-xs"
-          />
-          <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyYoutube}>
-            Sematkan
-          </Button>
+          <div className="flex min-w-0 items-center gap-2">
+            <Input
+              id={youtubeInputId}
+              value={youtubeDraft}
+              onChange={(event) => setYoutubeDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  applyYoutube();
+                }
+              }}
+              placeholder="https://youtu.be/… atau 11 karakter ID"
+              disabled={busy}
+              className="h-7 min-w-0 flex-1 font-mono text-xs"
+            />
+            <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyYoutube} className="flex-none">
+              Sematkan
+            </Button>
+          </div>
         </div>
       ) : null}
 
-      {imageUrlOpen ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-hairline bg-bg-raised-2 p-2">
-          <label htmlFor={imageUrlInputId} className="font-mono text-[11px] text-paper-dim">
-            URL gambar
-          </label>
-          <Input
-            id={imageUrlInputId}
-            value={imageUrlDraft}
-            onChange={(event) => setImageUrlDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                applyImageUrl();
-              }
-            }}
-            placeholder="https://…/gambar.webp"
-            disabled={busy}
-            className="h-7 min-w-0 flex-1 font-mono text-xs"
-          />
-          <label htmlFor={imageUrlAltInputId} className="font-mono text-[11px] text-paper-dim">
-            Alt
-          </label>
-          <Input
-            id={imageUrlAltInputId}
-            value={imageUrlAlt}
-            onChange={(event) => setImageUrlAlt(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                applyImageUrl();
-              }
-            }}
-            placeholder="Keterangan gambar"
-            disabled={busy}
-            maxLength={300}
-            className="h-7 w-32 font-mono text-xs"
-          />
-          <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyImageUrl}>
-            Sisipkan
-          </Button>
+      {openPanel === 'imageUrl' ? (
+        <div className="grid min-w-0 gap-1.5 overflow-x-clip border-b border-hairline bg-bg-raised-2 p-2">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <label htmlFor={imageUrlInputId} className="font-mono text-[11px] text-paper-dim">
+              URL gambar
+            </label>
+            <label htmlFor={imageUrlAltInputId} className="font-mono text-[11px] text-paper-faint">
+              Alt (opsional)
+            </label>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <Input
+              id={imageUrlInputId}
+              value={imageUrlDraft}
+              onChange={(event) => setImageUrlDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  applyImageUrl();
+                }
+              }}
+              placeholder="https://…/gambar.webp"
+              disabled={busy}
+              className="h-7 min-w-0 flex-1 font-mono text-xs"
+            />
+            <Input
+              id={imageUrlAltInputId}
+              value={imageUrlAlt}
+              onChange={(event) => setImageUrlAlt(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  applyImageUrl();
+                }
+              }}
+              placeholder="Keterangan"
+              disabled={busy}
+              maxLength={300}
+              aria-label="Alt"
+              className="h-7 w-28 min-w-0 font-mono text-xs sm:w-32"
+            />
+            <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyImageUrl} className="flex-none">
+              Sisipkan
+            </Button>
+          </div>
         </div>
       ) : null}
 
-      {socialOpen ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-hairline bg-bg-raised-2 p-2">
+      {openPanel === 'social' ? (
+        <div className="grid min-w-0 gap-1.5 overflow-x-clip border-b border-hairline bg-bg-raised-2 p-2">
           <label htmlFor={socialInputId} className="font-mono text-[11px] text-paper-dim">
             URL postingan sosial
           </label>
-          <Input
-            id={socialInputId}
-            value={socialDraft}
-            onChange={(event) => setSocialDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                applySocial();
-              }
-            }}
-            placeholder="youtube.com • x.com • instagram.com • tiktok.com • facebook.com • drive.google.com"
-            disabled={busy}
-            className="h-7 min-w-0 flex-1 font-mono text-xs"
-          />
-          <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applySocial}>
-            Sematkan
-          </Button>
+          <div className="flex min-w-0 items-center gap-2">
+            <Input
+              id={socialInputId}
+              value={socialDraft}
+              onChange={(event) => setSocialDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  applySocial();
+                }
+              }}
+              placeholder="youtube.com • x.com • instagram.com • tiktok.com • facebook.com • drive.google.com"
+              disabled={busy}
+              className="h-7 min-w-0 flex-1 font-mono text-xs"
+            />
+            <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applySocial} className="flex-none">
+              Sematkan
+            </Button>
+          </div>
         </div>
       ) : null}
 

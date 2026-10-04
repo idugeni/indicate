@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -16,14 +16,14 @@ describe('RichTextEditor', () => {
     expect(screen.getByRole('button', { name: 'Tebal' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'H2' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Unggah gambar' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Lanjutan' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Advance' })).toBeDefined();
     expect(screen.getByRole('status')).toBeDefined();
   });
 
   it('membuka format lanjutan berisi tombol enterprise: tabel, perataan, stabilo, garis', async () => {
     const user = userEvent.setup();
     render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
-    await user.click(screen.getByRole('button', { name: 'Lanjutan' }));
+    await user.click(screen.getByRole('button', { name: 'Advance' }));
     expect(screen.getByRole('button', { name: 'Garis Bawah' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Kode Sebaris' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Stabilo' })).toBeDefined();
@@ -47,7 +47,7 @@ describe('RichTextEditor', () => {
     expect(screen.queryByLabelText('URL gambar')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Sisipkan gambar dari URL' }));
     expect(screen.getByLabelText('URL gambar')).toBeDefined();
-    expect(screen.getByLabelText('Alt')).toBeDefined();
+    expect(screen.getByLabelText(/Alt/)).toBeDefined();
   });
 
   it('menolak URL gambar yang tidak aman', async () => {
@@ -59,8 +59,32 @@ describe('RichTextEditor', () => {
     expect(screen.getByRole('status').textContent ?? '').toContain('tidak valid');
   });
 
+  it('hanya membuka satu panel semat dalam satu waktu', async () => {
+    const user = userEvent.setup();
+    render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
+    await user.click(screen.getByRole('button', { name: 'Advance' }));
+    await user.click(screen.getByRole('button', { name: 'Sematan YouTube' }));
+    expect(screen.getByLabelText('URL/ID YouTube')).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Sematan sosial' }));
+    expect(screen.getByLabelText('URL postingan sosial')).toBeDefined();
+    expect(screen.queryByLabelText('URL/ID YouTube')).toBeNull();
+  });
+
   it('menonaktifkan toolbar saat disabled', () => {
     render(<RichTextEditor onDocChange={() => {}} command={async () => null} disabled />);
     expect(screen.getByRole('button', { name: 'Tebal' }).hasAttribute('disabled')).toBe(true);
+  });
+
+  it('menampilkan tombol poles di toolbar hanya bila disediakan', async () => {
+    const user = userEvent.setup();
+    const onPolish = vi.fn();
+    const { unmount } = render(
+      <RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" onPolish={onPolish} polishLabel="Poles ulang" />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Poles ulang' }));
+    expect(onPolish).toHaveBeenCalledTimes(1);
+    unmount();
+    render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
+    expect(screen.queryByRole('button', { name: 'Poles isi' })).toBeNull();
   });
 });

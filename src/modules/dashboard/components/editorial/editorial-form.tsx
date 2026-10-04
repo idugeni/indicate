@@ -21,7 +21,6 @@ import {
   Sparkles,
   Tags,
   Type,
-  WandSparkles,
 } from 'lucide-react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
@@ -1479,43 +1478,37 @@ export function ArticleCreateForm({
               <p className="m-0 font-mono text-[11px] text-paper-faint" role="note">
                 {MODE_HINTS[mode]}
               </p>
-              <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-hairline/70 bg-bg px-2 py-1.5" aria-label="Bantuan AI untuk isi">
-                <span className="mr-1 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                  <Sparkles className="h-3 w-3 text-brass" aria-hidden="true" />
-                  <span>AI</span>
-                </span>
-                <AppTooltip label="Poles alur dan EYD isi dengan AI tanpa mengubah fakta">
-                  <AiActionButton
-                    busy={aiAction === 'polish'}
-                    idleLabel={polishRounds === 0 ? 'Poles isi' : 'Poles ulang'}
-                    icon={WandSparkles}
-                    size="xs"
-                    tone="primary"
-                    disabled={!aiReady || bodyText.trim() === ''}
-                    onClick={polishBodyInline}
+              <div className="space-y-2 rounded-md border border-hairline/70 bg-bg px-3 py-2.5" aria-label="Audio jadi berita">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                    <Newspaper className="h-3 w-3 text-brass" aria-hidden="true" />
+                    <span>Audio jadi berita</span>
+                  </span>
+                  <span className="m-0 font-mono text-[11px] text-paper-faint">
+                    Unggah rekaman — judul, isi, kategori, dan topik terisi otomatis. Tinjau sebelum menyimpan.
+                  </span>
+                  <AppTooltip label="Transkripsikan rekaman menjadi berita lengkap siap isi formulir">
+                    <AiActionButton
+                      busy={aiAction === 'transcribe'}
+                      idleLabel="Pilih audio…"
+                      icon={Newspaper}
+                      size="xs"
+                      disabled={!aiReady}
+                      onClick={() => document.getElementById(transcribeFullInputId)?.click()}
+                    />
+                  </AppTooltip>
+                  <input
+                    id={transcribeFullInputId}
+                    type="file"
+                    accept="audio/*"
+                    className="sr-only"
+                    aria-label="Pilih berkas audio untuk dijadikan berita"
+                    onChange={(event) => {
+                      transcribeFileInline(event.target.files?.[0] ?? null);
+                      event.target.value = '';
+                    }}
                   />
-                </AppTooltip>
-                <AppTooltip label="Transkripsikan rekaman menjadi berita lengkap siap isi formulir">
-                  <AiActionButton
-                    busy={aiAction === 'transcribe'}
-                    idleLabel="Audio jadi berita"
-                    icon={Newspaper}
-                    size="xs"
-                    disabled={!aiReady}
-                    onClick={() => document.getElementById(transcribeFullInputId)?.click()}
-                  />
-                </AppTooltip>
-                <input
-                  id={transcribeFullInputId}
-                  type="file"
-                  accept="audio/*"
-                  className="sr-only"
-                  aria-label="Pilih berkas audio untuk dijadikan berita"
-                  onChange={(event) => {
-                    transcribeFileInline(event.target.files?.[0] ?? null);
-                    event.target.value = '';
-                  }}
-                />
+                </div>
               </div>
               {bodyJsonProblem === null ? null : (
                 <p className="m-0 font-mono text-[11px] text-error" role="alert">
@@ -1548,6 +1541,10 @@ export function ArticleCreateForm({
                   onDocChange={handleRichChange}
                   command={command ?? (async () => { throw new Error('Unggahan media tidak tersedia di pratinjau.'); })}
                   ownerOrganizationId={foreignOwnerOrg}
+                  onPolish={polishBodyInline}
+                  polishBusy={aiAction === 'polish'}
+                  polishDisabled={!aiReady || bodyText.trim() === ''}
+                  polishLabel={polishRounds === 0 ? 'Poles isi' : 'Poles ulang'}
                   labelledBy={`${bodyInputId}-label`}
                   disabled={isSubmitting}
                 />
@@ -1939,29 +1936,34 @@ export function ArticleCreateForm({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1.5">
+                  <div className="grid gap-2">
                       <Button
                         type="button"
                         variant="outline"
-                        size="xs"
+                        size="lg"
                         disabled={isSubmitting || uploadingFeatured}
-                        className="flex-1"
+                        className="w-full"
                         onClick={() => document.getElementById(featuredFileId)?.click()}
                       >
-                        <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{uploadingFeatured ? 'Mengunggah...' : 'Pilih gambar...'}</span>
+                        <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                        <span>{uploadingFeatured ? 'Mengunggah...' : 'Unggah gambar sampul baru'}</span>
                       </Button>
+                      <div className="flex items-center gap-2" aria-hidden="true">
+                        <span className="h-px flex-1 bg-hairline" />
+                        <span className="font-mono text-[11px] uppercase tracking-wider text-paper-faint">atau</span>
+                        <span className="h-px flex-1 bg-hairline" />
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
-                        size="xs"
+                        size="lg"
                         disabled={isSubmitting || uploadingFeatured}
-                        className="flex-1"
+                        className="w-full"
                         onClick={openLibrary}
                         aria-expanded={libraryOpen}
                       >
-                        <Images className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{libraryOpen ? 'Tutup pustaka' : 'Pilih dari pustaka...'}</span>
+                        <Images className="h-4 w-4" aria-hidden="true" />
+                        <span>{libraryOpen ? 'Tutup pustaka media' : 'Pilih dari pustaka media'}</span>
                       </Button>
                     </div>
                     {libraryOpen ? (
