@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (252 migrations):
+-- Reviewed sources, in journal order (261 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -266,6 +266,15 @@
 --   250  20261004040000_ai_modality_models  ledger sha256:7f6dca46bf710d52828842deb5bccf94239782c2b62e126c54f0b6bda12fcba6
 --   251  20261004050000_ai_provider_chat_flag  ledger sha256:fa4df38a78e2b67797aca706a6897dcf7e3d3a7e3522f92796f38300f1853417
 --   252  20261004060000_ai_perf_indexes  ledger sha256:b3e957767a7980718566819e58577f66118e30b548a4ce5ae9ed19e1e4cd8913
+--   253  20261004070000_article_type_modes  ledger sha256:2497270059015e57fd179bf9e8c3351e79c47c885d78c947493b4659fd2812e0
+--   254  20261004080000_article_audio_url  ledger sha256:e706efda83973a6789fd333b916f081b7917b47f71ddc00ec626cb3d5d30e819
+--   255  20261004090000_article_updates_version  ledger sha256:eba938f344b4de8cf9655aa3a112a72e492e77831ddfab54339d0023d973f4f6
+--   256  20261004131000_upt_org_regions_authors  ledger sha256:52514c0cdd6f04f99a4cbb8d6fd363b7c30ff3e2b9cf45b6045b9711800a3fe7
+--   257  20261004131500_find_organization_by_slug  ledger sha256:8b3c72dc368595ee1306b47122ad434b031642723d88dc19b159eaf80aa1faa3
+--   258  20261004132000_upt_org_default_category  ledger sha256:0189c5aff500a6bd42d9ea5842611e5e2119c77c636db7ed09ee4cdf60b44eaf
+--   259  20261004133700_portal_assignments_bridge  ledger sha256:e4109a858d9138d96e1d0b09414f4fd73a0d1e9d9d7d1b97f88ab75b081bbe0d
+--   260  20261004134200_fetch_assigned_article_details  ledger sha256:19396bbb5acd2df30cd09118d8229228d94e24838704254d65f4e69173f90aa0
+--   261  20261004140300_find_organizations_by_slugs  ledger sha256:e873de125cde3801ec1fd74c48bfa09eac7c6aec514935e9a1402b9db515c6a4
 
 BEGIN;
 
@@ -20706,4 +20715,388 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (251, 'ai_perf_indexes', 'sha256:58babaf06f3a1f963454deb0f903f2e5a174e6b4dea9cefd49ad9d6bfa0e1f0d');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b3e957767a7980718566819e58577f66118e30b548a4ce5ae9ed19e1e4cd8913', 1791136800000);
+
+-- ----------------------------------------------------------------------
+-- 20261004070000_article_type_modes
+-- ----------------------------------------------------------------------
+-- Article presentation modes, sponsored flag, video URL, and liveblog updates.
+--
+-- `articles.type` (enum `article_type`, six modes) defaults to `standard` and
+-- `articles.is_sponsored` defaults to false; both backfill legacy rows before
+-- the NOT NULL contract lands, so existing reads never see NULL. `video_url`
+-- carries the canonical external watch/file URL for `video` mode (uploaded
+-- video bytes keep living on `media` under purpose `article-video`).
+-- `article_updates` holds ordered liveblog entries keyed to one article with a
+-- composite FK (cascade: entries die with their article) and a body/sort
+-- contract matching the Drizzle schema. Tenant RLS plus runtime grants mirror
+-- `article_categories_rls`; the `updated_at` freshness guard picks the new
+-- table up by column enumeration. `article_status` is untouched.
+-- Ledger version 252 follows the live `max(version)`, which is 251.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TYPE public.article_type AS ENUM ('standard', 'video', 'gallery', 'audio', 'liveblog', 'short');
+ALTER TABLE public.articles ADD COLUMN type public.article_type;
+ALTER TABLE public.articles ADD COLUMN is_sponsored boolean;
+ALTER TABLE public.articles ADD COLUMN video_url text;
+UPDATE public.articles SET type = 'standard' WHERE type IS NULL;
+UPDATE public.articles SET is_sponsored = false WHERE is_sponsored IS NULL;
+ALTER TABLE public.articles ALTER COLUMN type SET DEFAULT 'standard';
+ALTER TABLE public.articles ALTER COLUMN is_sponsored SET DEFAULT false;
+ALTER TABLE public.articles ALTER COLUMN type SET NOT NULL;
+ALTER TABLE public.articles ALTER COLUMN is_sponsored SET NOT NULL;
+ALTER TABLE public.articles ADD CONSTRAINT articles_video_url_shape CHECK (video_url IS NULL OR (char_length(video_url) BETWEEN 1 AND 2000 AND (video_url LIKE 'http://%' OR video_url LIKE 'https://%')));
+CREATE INDEX IF NOT EXISTS articles_organization_type_idx ON public.articles (organization_id, type);
+CREATE TABLE public.article_updates (
+  organization_id uuid NOT NULL,
+  id uuid NOT NULL,
+  article_id uuid NOT NULL,
+  body text NOT NULL,
+  sort_order integer NOT NULL,
+  published_at timestamp with time zone,
+  created_by text NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT article_updates_pk PRIMARY KEY (organization_id, id),
+  CONSTRAINT article_updates_article_fk FOREIGN KEY (organization_id, article_id) REFERENCES public.articles(organization_id, id) ON DELETE CASCADE,
+  CONSTRAINT article_updates_body_length CHECK (char_length(body) BETWEEN 1 AND 20000),
+  CONSTRAINT article_updates_sort_positive CHECK (sort_order >= 1)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS article_updates_id_unique ON public.article_updates (id);
+CREATE INDEX IF NOT EXISTS article_updates_organization_article_sort_idx ON public.article_updates (organization_id, article_id, sort_order);
+DO $verify_article_modes$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.articles WHERE type IS NULL OR is_sponsored IS NULL) THEN
+    RAISE EXCEPTION 'article mode backfill incomplete';
+  END IF;
+END
+$verify_article_modes$;
+ALTER TABLE public.article_updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.article_updates FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON public.article_updates;
+CREATE POLICY tenant_isolation ON public.article_updates TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.article_updates TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (252, 'article_type_modes', 'sha256:1c635c27be81834b22c6abcf9f0c96356422f73911f40da0a0e0e83c7aa7ea41');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2497270059015e57fd179bf9e8c3351e79c47c885d78c947493b4659fd2812e0', 1791140400000);
+
+-- ----------------------------------------------------------------------
+-- 20261004080000_article_audio_url
+-- ----------------------------------------------------------------------
+-- Audio URL and playback duration for `video`/`audio` article modes.
+--
+-- `articles.audio_url` carries the canonical external listen/file URL for
+-- `audio` mode (uploaded audio bytes keep living on `media` under purpose
+-- `article-audio`); it stays nullable because every other mode leaves it
+-- empty. `articles.duration_seconds` carries the playback length in whole
+-- seconds for `video`/`audio` modes and stays nullable elsewhere. Both are
+-- additive and nullable, so no backfill is required and existing reads never
+-- see a new NOT NULL contract. Checks mirror `articles_video_url_shape`.
+-- Ledger version 253 follows the live `max(version)`, which is 252.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.articles ADD COLUMN audio_url text;
+ALTER TABLE public.articles ADD COLUMN duration_seconds integer;
+ALTER TABLE public.articles ADD CONSTRAINT articles_audio_url_shape CHECK (audio_url IS NULL OR (char_length(audio_url) BETWEEN 1 AND 2000 AND (audio_url LIKE 'http://%' OR audio_url LIKE 'https://%')));
+ALTER TABLE public.articles ADD CONSTRAINT articles_duration_shape CHECK (duration_seconds IS NULL OR (duration_seconds >= 1 AND duration_seconds <= 86400));
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (253, 'article_audio_url', 'sha256:5e63ac2f7adddd48aa40c2604f3ce708544a7d03ec3fd88590f8003d97402f4e');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e706efda83973a6789fd333b916f081b7917b47f71ddc00ec626cb3d5d30e819', 1791144000000);
+
+-- ----------------------------------------------------------------------
+-- 20261004090000_article_updates_version
+-- ----------------------------------------------------------------------
+-- Optimistic-lock version for liveblog entries.
+--
+-- `article_updates.version` starts at 1 for the (zero) existing rows via the
+-- column default; writers predicate on it exactly like `articles.version`, so
+-- two editors racing on one entry resolve to a conflict instead of last-wins.
+-- Ledger version 254 follows the live `max(version)`, which is 253.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.article_updates ADD COLUMN version integer DEFAULT 1 NOT NULL;
+ALTER TABLE public.article_updates ADD CONSTRAINT article_updates_version_positive CHECK (version > 0);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (254, 'article_updates_version', 'sha256:9db5b29123f853321a882b7f3af149b2abb68668940cc5b461199515ad72b6af');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('eba938f344b4de8cf9655aa3a112a72e492e77831ddfab54339d0023d973f4f6', 1791147600000);
+
+-- ----------------------------------------------------------------------
+-- 20261004131000_upt_org_regions_authors
+-- ----------------------------------------------------------------------
+-- Wilayah + penulis default untuk 59 org UPT Jateng.
+--
+-- Org UPT lahir hanya dengan organizations + permissions + subscriptions +
+-- publishers (seed upt-jateng-59org): tanpa regions, tanpa authors. Akibatnya
+-- artikel tidak bisa dibuat atas nama mereka (validasi wilayah menolak,
+-- penulis default jatuh ke authors[0]) dan dasbor mereka kosong selamanya.
+-- Migrasi ini melengkapi tiap org UPT dengan provinsi Jawa Tengah, kota asal
+-- (dari customer_metadata.city tanpa awalan Kab./Kota), dan satu author
+-- Redaksi/Tim Redaksi, sehingga kreasi "atas nama org" punya rumahnya.
+-- Idempoten: setiap INSERT dijaga NOT EXISTS (slug per org / display_name).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+INSERT INTO public.regions(organization_id, id, external_key, name, short_name, slug, status, kind, parent_region_id, version, created_at, updated_at)
+SELECT o.id, gen_random_uuid(), 'upt-province-jawa-tengah', 'Jawa Tengah', 'Jateng', 'jawa-tengah', 'active', 'region', NULL, 1, now(), now()
+FROM public.organizations o
+WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND NOT EXISTS (SELECT 1 FROM public.regions r WHERE r.organization_id = o.id AND r.slug = 'jawa-tengah');
+WITH slugged AS (
+  SELECT o.id AS organization_id,
+    trim(BOTH '-' FROM regexp_replace(lower(NULLIF(regexp_replace(o.customer_metadata->>'city', '^(Kab\.|Kota)\s+', ''), '')), '[^a-z0-9]+', '-', 'g')) AS city_slug,
+    NULLIF(regexp_replace(o.customer_metadata->>'city', '^(Kab\.|Kota)\s+', ''), '') AS city_name
+  FROM public.organizations o
+  WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+)
+INSERT INTO public.regions(organization_id, id, external_key, name, short_name, slug, status, kind, parent_region_id, version, created_at, updated_at)
+SELECT s.organization_id, gen_random_uuid(), 'upt-city-' || s.city_slug, s.city_name, NULL, s.city_slug, 'active', 'city', p.id, 1, now(), now()
+FROM slugged s
+JOIN public.regions p ON p.organization_id = s.organization_id AND p.slug = 'jawa-tengah'
+WHERE s.city_slug IS NOT NULL AND s.city_slug <> '' AND s.city_slug <> 'jawa-tengah'
+  AND NOT EXISTS (SELECT 1 FROM public.regions r WHERE r.organization_id = s.organization_id AND r.slug = s.city_slug);
+INSERT INTO public.authors(organization_id, id, display_name, byline, status, version, created_at, updated_at)
+SELECT o.id, gen_random_uuid(), 'Redaksi', 'Tim Redaksi', 'active', 1, now(), now()
+FROM public.organizations o
+WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND NOT EXISTS (SELECT 1 FROM public.authors a WHERE a.organization_id = o.id AND a.display_name = 'Redaksi');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (255, 'upt_org_regions_authors', 'sha256:1f9319398d9f8eb56e4c9617ca81943dc8000dba1c9429d009406c2d27911eba');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('52514c0cdd6f04f99a4cbb8d6fd363b7c30ff3e2b9cf45b6045b9711800a3fe7', 1791151200000);
+
+-- ----------------------------------------------------------------------
+-- 20261004131500_find_organization_by_slug
+-- ----------------------------------------------------------------------
+-- Pencarian org tujuan lintas-org untuk kreasi "atas nama org".
+--
+-- Jalur kreasi admin menulis artikel ke org UPT dari dasbor operator. Kode
+-- service harus memetakan nama penerbit cermin (mis. RUTAN KELAS II B
+-- WONOSOBO) ke organizations.slug (rutan-kelas-ii-b-wonosobo), tetapi
+-- kebijakan SELECT organizations terkunci ke org konteks berjalan, sehingga
+-- pencarian langsung selalu kosong. Fungsi ini membuka tepat satu baris
+-- (id/slug/status aktif) lewat SECURITY DEFINER, mengikuti idiom
+-- lookup_user_display_name: tanpa PII, tanpa tulis, tanpa bypass lain.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.find_organization_by_slug(
+  requested_slug text
+)
+RETURNS TABLE(id uuid, slug text, status record_status)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT target.id, target.slug, target.status
+  FROM public.organizations AS target
+  WHERE target.slug = requested_slug
+    AND target.status = 'active'
+  LIMIT 1
+$$;
+REVOKE ALL ON FUNCTION indicate_private.find_organization_by_slug(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.find_organization_by_slug(text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (256, 'find_organization_by_slug', 'sha256:0e65bbfdd8dd142c8c64dd29a48788e1ff07978a29b0f82ed5e91512a618ed75');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8b3c72dc368595ee1306b47122ad434b031642723d88dc19b159eaf80aa1faa3', 1791154800000);
+
+-- ----------------------------------------------------------------------
+-- 20261004132000_upt_org_default_category
+-- ----------------------------------------------------------------------
+-- Kategori default untuk 59 org UPT Jateng.
+--
+-- Tanpa satu pun kategori, kreasi artikel atas nama org UPT selalu gagal
+-- (resolveArticleCategoryIds menolak tenant tanpa kategori). Satu kategori
+-- `Berita` per org menutup celah terakhir agar dasbor UPT bisa dipakai
+-- menulis; kategori khusus ditambah humas sendiri belakangan.
+-- Idempoten: dijaga NOT EXISTS (slug per org).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+INSERT INTO public.categories(organization_id, id, name, slug, status, version, created_at, updated_at)
+SELECT o.id, gen_random_uuid(), 'Berita', 'berita', 'active', 1, now(), now()
+FROM public.organizations o
+WHERE o.customer_metadata->>'seed' = 'upt-jateng-59org'
+  AND NOT EXISTS (SELECT 1 FROM public.categories c WHERE c.organization_id = o.id AND c.slug = 'berita');
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (257, 'upt_org_default_category', 'sha256:166061da9811215f8e00c5832bf170df64666649cdd99a562b7160a10e4b37f7');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0189c5aff500a6bd42d9ea5842611e5e2119c77c636db7ed09ee4cdf60b44eaf', 1791158400000);
+
+-- ----------------------------------------------------------------------
+-- 20261004133700_portal_assignments_bridge
+-- ----------------------------------------------------------------------
+-- Penugasan portal lintas-org: artikel milik org UPT tayang di portal operator.
+--
+-- Relasi `article_sites` dikunci satu-org oleh FK komposit dan RLS, dan
+-- pelonggaran kunci itu akan menyentuh fondasi keamanan — ditolak. Tabel ini
+-- adalah jembatan eksplisit sebagai gantinya: baris hidup di org PENYAJI
+-- (operator) dengan FK same-org ke `sites`, menunjuk artikel kanonis di org
+-- PEMILIK (UPT) lewat pasangan (source_organization_id, source_article_id)
+-- yang SENGAJA tanpa FK, karena FK komposit tidak bisa menjangkau org lain.
+-- Integritas pasangan dijamin berlapis: resolusi id→org di service (jalur
+-- kreasi untuk-org), pemeriksaan tulis di worker, dan skrip higiene
+-- berkala untuk yatim. RLS terkunci org penyaji; baca konten pemilik hanya
+-- lewat `fetch_assigned_articles` yang memfilter eksplisit kedua parameter.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE TABLE public.portal_assignments (
+  organization_id uuid NOT NULL,
+  id uuid NOT NULL,
+  site_id uuid NOT NULL,
+  source_organization_id uuid NOT NULL,
+  source_article_id uuid NOT NULL,
+  state publishing_state DEFAULT 'queued' NOT NULL,
+  state_occurred_at timestamp with time zone DEFAULT now() NOT NULL,
+  published_at timestamp with time zone,
+  version integer DEFAULT 1 NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT portal_assignments_pk PRIMARY KEY (organization_id, id),
+  CONSTRAINT portal_assignments_site_fk FOREIGN KEY (organization_id, site_id) REFERENCES public.sites(organization_id, id) ON DELETE RESTRICT,
+  CONSTRAINT portal_assignments_owner_pair_unique UNIQUE (organization_id, source_organization_id, source_article_id, site_id),
+  CONSTRAINT portal_assignments_published_needs_time CHECK ((state <> 'published') OR (published_at IS NOT NULL)),
+  CONSTRAINT portal_assignments_version_positive CHECK (version > 0)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS portal_assignments_id_unique ON public.portal_assignments (id);
+CREATE INDEX IF NOT EXISTS portal_assignments_org_site_state_idx ON public.portal_assignments (organization_id, site_id, state);
+CREATE INDEX IF NOT EXISTS portal_assignments_org_source_idx ON public.portal_assignments (organization_id, source_organization_id, source_article_id);
+ALTER TABLE public.portal_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.portal_assignments FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation_select ON public.portal_assignments;
+DROP POLICY IF EXISTS tenant_isolation_insert ON public.portal_assignments;
+DROP POLICY IF EXISTS tenant_isolation_update ON public.portal_assignments;
+DROP POLICY IF EXISTS tenant_isolation_delete ON public.portal_assignments;
+CREATE POLICY tenant_isolation_select ON public.portal_assignments FOR SELECT TO indicate_runtime USING (organization_id = indicate_private.current_organization_id());
+CREATE POLICY tenant_isolation_insert ON public.portal_assignments FOR INSERT TO indicate_runtime WITH CHECK (organization_id = indicate_private.current_organization_id());
+CREATE POLICY tenant_isolation_update ON public.portal_assignments FOR UPDATE TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+CREATE POLICY tenant_isolation_delete ON public.portal_assignments FOR DELETE TO indicate_runtime USING (organization_id = indicate_private.current_organization_id());
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.portal_assignments TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_articles(
+  requested_organization_id uuid,
+  requested_article_ids uuid[]
+)
+RETURNS TABLE(
+  article_id uuid, slug text, title text, excerpt text, canonical_url text,
+  tags text[], status public.article_status, article_type text, is_sponsored boolean,
+  video_url text, audio_url text, duration_seconds integer,
+  region_id uuid, category_id uuid, publisher_id uuid, author_id uuid,
+  lead_media_id uuid, cover_image_url text, published_at timestamp with time zone,
+  updated_at timestamp with time zone
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT a.id, a.slug, a.title, a.excerpt, a.canonical_url,
+    a.tags, a.status, a.type::text, a.is_sponsored,
+    a.video_url, a.audio_url, a.duration_seconds,
+    a.region_id, a.category_id, a.publisher_id, a.author_id,
+    a.lead_media_id, a.cover_image_url, a.published_at,
+    a.updated_at
+  FROM public.articles AS a
+  WHERE a.organization_id = requested_organization_id
+    AND a.id = ANY (requested_article_ids)
+    AND a.status = 'active'
+    AND a.published_at IS NOT NULL
+$$;
+REVOKE ALL ON FUNCTION indicate_private.fetch_assigned_articles(uuid, uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.fetch_assigned_articles(uuid, uuid[]) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (258, 'portal_assignments_bridge', 'sha256:044bad23c2df4724f908190e016a66ad4b254283b031346f441cc6e21c228beb');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e4109a858d9138d96e1d0b09414f4fd73a0d1e9d9d7d1b97f88ab75b081bbe0d', 1791162000000);
+
+-- ----------------------------------------------------------------------
+-- 20261004134200_fetch_assigned_article_details
+-- ----------------------------------------------------------------------
+-- Pembaca detail artikel ter tugaskan lintas-org untuk delivery.
+--
+-- `fetch_assigned_articles` (v258) hanya mengembalikan id rujukan; delivery
+-- butuh label penerbit/penulis/kategori plus isi untuk merender kartu dan
+-- halaman detail portal penyaji. Fungsi ini menggabungkan semuanya dalam
+-- satu pemanggilan SECURITY DEFINER yang memfilter eksplisit kedua parameter
+-- (org pemilik + daftar id), hanya baris aktif/terbit, dan hanya kolom tampil
+-- publik: tanpa token, rahasia, atau kontak internal (kolom contacts utuh
+-- tidak ikut; yang ikut hanya logo/city/bio yang memang tampil publik).
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_article_details(
+  requested_organization_id uuid,
+  requested_article_ids uuid[]
+)
+RETURNS TABLE(
+  article_id uuid, slug text, title text, excerpt text, canonical_url text,
+  tags text[], status public.article_status, article_type text, is_sponsored boolean,
+  video_url text, audio_url text, duration_seconds integer,
+  region_id uuid, category_slug text, category_name text,
+  publisher_name text, attribution text, publisher_logo text, publisher_city text,
+  publisher_bio text, publisher_verified boolean, publisher_type text,
+  author_display text, author_bio text, author_avatar text, author_url text,
+  cover_image_url text, published_at timestamp with time zone,
+  updated_at timestamp with time zone, body text, body_json jsonb
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT a.id, a.slug, a.title, a.excerpt, a.canonical_url,
+    a.tags, a.status, a.type::text, a.is_sponsored,
+    a.video_url, a.audio_url, a.duration_seconds,
+    a.region_id, c.slug, c.name,
+    p.name, p.attribution_label,
+    p.contacts->>'logoUrl', p.contacts->>'city', p.contacts->>'bio',
+    p.verification_status = 'verified', p.type::text,
+    au.display_name, au.bio, au.avatar_url, au.website_url,
+    a.cover_image_url, a.published_at,
+    a.updated_at, a.body, a.body_json
+  FROM public.articles AS a
+  LEFT JOIN public.publishers AS p
+    ON p.organization_id = a.organization_id AND p.id = a.publisher_id AND p.status = 'active'
+  LEFT JOIN public.authors AS au
+    ON au.organization_id = a.organization_id AND au.id = a.author_id AND au.status = 'active'
+  LEFT JOIN public.categories AS c
+    ON c.organization_id = a.organization_id AND c.id = a.category_id AND c.status = 'active'
+  WHERE a.organization_id = requested_organization_id
+    AND a.id = ANY (requested_article_ids)
+    AND a.status = 'active'
+    AND a.published_at IS NOT NULL
+$$;
+REVOKE ALL ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (259, 'fetch_assigned_article_details', 'sha256:9b00b2c840cb12b83e7dd7827518f66351cc28d379c3d42ad26590b010103002');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('19396bbb5acd2df30cd09118d8229228d94e24838704254d65f4e69173f90aa0', 1791165600000);
+
+-- ----------------------------------------------------------------------
+-- 20261004140300_find_organizations_by_slugs
+-- ----------------------------------------------------------------------
+-- Resolusi id org massal untuk dasbor steward.
+--
+-- Daftar editorial memuat puluhan penerbit cermin; memetakan tiap nama ke
+-- org pemilik satu per satu berarti puluhan round trip per muat dasbor.
+-- Fungsi ini melakukan hal yang sama dengan `find_organization_by_slug`
+-- untuk sekumpulan slug sekaligus: hanya id/slug aktif, tanpa PII.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.find_organizations_by_slugs(
+  requested_slugs text[]
+)
+RETURNS TABLE(id uuid, slug text)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT target.id, target.slug
+  FROM public.organizations AS target
+  WHERE target.slug = ANY (requested_slugs)
+    AND target.status = 'active'
+$$;
+REVOKE ALL ON FUNCTION indicate_private.find_organizations_by_slugs(text[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.find_organizations_by_slugs(text[]) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (260, 'find_organizations_by_slugs', 'sha256:f0fa4bf869605a7ae00eddd56a93f2feda14c51edfbe180b6eddf27737cbc2d5');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e873de125cde3801ec1fd74c48bfa09eac7c6aec514935e9a1402b9db515c6a4', 1791169200000);
 COMMIT;
