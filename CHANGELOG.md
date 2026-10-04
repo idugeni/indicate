@@ -15,6 +15,17 @@ npm-facing.
 
 ### Added
 
+- Buatkan-berita-untuk-org: admin menulis dari dasbor operator, memilih
+  penerbit humas, dan artikel, media, atribusi, serta audit melekat ke org
+  UPT pemilik (v255-v257: wilayah, penulis Redaksi, dan kategori tiap org
+  UPT; v256/v260: pencari org lintas-org). Form mengisi wilayah/kota/sumber
+  otomatis dari penerbit dan mengunggah foto ke org tujuan. Jejak audit
+  tetap mencatat admin sebagai pelaku.
+- Jembatan penayangan lintas-org (v258-v259): artikel milik UPT tayang di
+  portal operator lewat `portal_assignments` + pembaca `SECURITY DEFINER`,
+  tanpa melonggarkan FK/RLS satu-org yang ada. Penerbitan sinkron (tanpa
+  antrean pekerja), SEO membawa identitas institusi pemilik, dan
+  `Redaksi {tenant}` dinamis untuk label generik di kartu artikel.
 - Terms and privacy consent on the two forms that take personal data. The
   tenant report form now ships a shadcn `Checkbox` that must be ticked before
   the report is sent, linking to that tenant's own `/syarat-ketentuan` and
