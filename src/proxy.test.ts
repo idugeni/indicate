@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 
 import { getControlHosts } from '@/core/config/edge-hosts';
-import { config as proxyConfig, indexNowKeyFileResponse, isIndexNowKeyFile, proxy } from '@/proxy';
+import { config as proxyConfig, adsenseCspHosts, indexNowKeyFileResponse, isIndexNowKeyFile, proxy } from '@/proxy';
 
 const HOSTS = getControlHosts();
 
@@ -181,6 +181,23 @@ describe('proxy tenant surfaces', () => {
       delete process.env.NEXT_PUBLIC_SUPABASE_URL;
       delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     }
+  });
+});
+
+describe('proxy adsense csp', () => {
+  it('mengekspos host AdSense yang diizinkan', () => {
+    const hosts = adsenseCspHosts();
+    expect(hosts.scriptHosts).toContain('https://pagead2.googlesyndication.com');
+    expect(hosts.scriptHosts).toContain('https://googleads.g.doubleclick.net');
+    expect(hosts.frameHosts).toContain('https://googleads.g.doubleclick.net');
+    expect(hosts.frameHosts).toContain('https://tpc.googlesyndication.com');
+  });
+
+  it('mengizinkan skrip dan bingkai AdSense di header CSP', async () => {
+    const csp = (await proxy(request('portal.example', '/berita-utama'))).headers.get('content-security-policy') ?? '';
+    expect(csp).toContain('https://pagead2.googlesyndication.com');
+    expect(csp).toContain('https://googleads.g.doubleclick.net');
+    expect(csp).toContain('https://tpc.googlesyndication.com');
   });
 });
 

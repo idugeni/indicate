@@ -7,16 +7,24 @@ import {
   AdsAccessDeniedError,
   AdsConflictError,
   AdsNotFoundError,
+  type AdsAdvertiserDeleteInput,
   type AdsAdvertiserInput,
+  type AdsAdvertiserUpdateInput,
+  type AdsCampaignDeleteInput,
   type AdsCampaignInput,
   type AdsCampaignStatusInput,
+  type AdsCampaignUpdateInput,
+  type AdsCreativeDeleteInput,
   type AdsCreativeInput,
   type AdsCreativeStatusInput,
+  type AdsCreativeUpdateInput,
   type AdsOverview,
+  type AdsPlacementDeleteInput,
   type AdsPlacementInput,
   type AdsPlacementUpdateInput,
   type AdsRepository,
   type AdsTenantSettingInput,
+  type AdsUploadedCreativeInput,
 } from '@/modules/ads/ports';
 import type * as schema from '@/data/schema';
 import { adCreatives, adPlacements, adSlots, advertisers, auditLogs, campaigns, sites, siteSettings, tenantAdSettings } from '@/data/schema';
@@ -173,6 +181,55 @@ export class DrizzleAdsRepository implements AdsRepository {
     });
   }
 
+  /**
+   * Updates an advertiser name/contact guarded by optimistic version.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Advertiser id, new fields, and expected version.
+   * @returns Next version after the write.
+   */
+  async updateAdvertiser(actor: AuthorizedTenantActorContext, input: AdsAdvertiserUpdateInput): Promise<{ readonly version: number }> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      const patch: { name: string; contactEmail?: string | null; version: number; updatedAt: Date } = {
+        name: input.name, version: input.expectedVersion + 1, updatedAt: new Date(now),
+      };
+      if (input.contactEmail !== undefined) patch.contactEmail = input.contactEmail;
+      const updated = await transaction.update(advertisers)
+        .set(patch)
+        .where(and(eq(advertisers.organizationId, actor.organizationId), eq(advertisers.id, input.id), eq(advertisers.version, input.expectedVersion)))
+        .returning({ version: advertisers.version });
+      if (updated[0] === undefined) throw new AdsConflictError();
+      await this.audit(transaction, actor, 'ads.advertiser.update', 'advertiser', input.id, null, { name: input.name }, input.requestId, now);
+      return { version: updated[0].version };
+    });
+  }
+
+  /**
+   * Hard-deletes an advertiser row.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Advertiser id to delete.
+   */
+  async deleteAdvertiser(actor: AuthorizedTenantActorContext, input: AdsAdvertiserDeleteInput): Promise<void> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      try {
+        const deleted = await transaction.delete(advertisers)
+          .where(and(eq(advertisers.organizationId, actor.organizationId), eq(advertisers.id, input.id)))
+          .returning({ id: advertisers.id });
+        if (deleted[0] === undefined) throw new AdsNotFoundError();
+      } catch (error) {
+        if (error instanceof AdsNotFoundError) throw error;
+        if (foreignKeyViolation(error)) throw new AdsConflictError('Pengiklan masih dipakai kampanye. Hapus atau pindahkan kampanyenya dulu.');
+        throw error;
+      }
+      await this.audit(transaction, actor, 'ads.advertiser.delete', 'advertiser', input.id, { id: input.id }, null, input.requestId, now);
+    });
+  }
+
   async createCreative(actor: AuthorizedTenantActorContext, input: AdsCreativeInput): Promise<{ readonly id: string }> {
     return this.database.transaction(async (transaction) => {
       await this.tenant(transaction, actor);
@@ -195,6 +252,35 @@ export class DrizzleAdsRepository implements AdsRepository {
     });
   }
 
+  /**
+   * Persists an uploaded image as an image creative with captured dimensions.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Public image URL, natural dimensions, and optional link fields.
+   * @returns New creative id.
+   */
+  async createUploadedCreative(actor: AuthorizedTenantActorContext, input: AdsUploadedCreativeInput): Promise<{ readonly id: string }> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      const id = crypto.randomUUID();
+      try {
+        await transaction.insert(adCreatives).values({
+          organizationId: actor.organizationId, id, campaignId: input.campaignId, kind: 'image',
+          imageUrl: input.imageUrl, href: input.href === undefined || input.href === '' ? null : input.href, altText: input.alt ?? null,
+          widthPx: input.width, heightPx: input.height, html: null,
+          provider: null, providerClientId: null, providerSlotId: null,
+          status: 'active', version: 1, createdAt: new Date(now), updatedAt: new Date(now),
+        });
+      } catch (error) {
+        if (foreignKeyViolation(error)) throw new AdsNotFoundError();
+        throw error;
+      }
+      await this.audit(transaction, actor, 'ads.creative.upload', 'ad_creative', id, null, { kind: 'image', imageUrl: input.imageUrl }, input.requestId, now);
+      return { id };
+    });
+  }
+
   async updateCreativeStatus(actor: AuthorizedTenantActorContext, input: AdsCreativeStatusInput): Promise<{ readonly version: number }> {
     return this.database.transaction(async (transaction) => {
       await this.tenant(transaction, actor);
@@ -206,6 +292,85 @@ export class DrizzleAdsRepository implements AdsRepository {
       if (updated[0] === undefined) throw new AdsConflictError();
       await this.audit(transaction, actor, 'ads.creative.status', 'ad_creative', input.id, null, { status: input.status }, input.requestId, now);
       return { version: updated[0].version };
+    });
+  }
+
+  /**
+   * Updates creative fields per kind guarded by optimistic version.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Creative id, per-kind fields, and expected version.
+   * @returns Next version after the write.
+   */
+  async updateCreative(actor: AuthorizedTenantActorContext, input: AdsCreativeUpdateInput): Promise<{ readonly version: number }> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      const patch: {
+        campaignId?: string | null;
+        imageUrl?: string | null;
+        href?: string | null;
+        altText?: string | null;
+        widthPx?: number | null;
+        heightPx?: number | null;
+        html?: string | null;
+        provider?: string | null;
+        providerClientId?: string | null;
+        providerSlotId?: string | null;
+        version: number;
+        updatedAt: Date;
+      } = { version: input.expectedVersion + 1, updatedAt: new Date(now) };
+      if (input.campaignId !== undefined) patch.campaignId = input.campaignId;
+      if (input.kind === 'image') {
+        if (input.imageUrl !== undefined) patch.imageUrl = input.imageUrl;
+        if (input.href !== undefined) patch.href = input.href === '' ? null : input.href;
+        if (input.alt !== undefined) patch.altText = input.alt;
+        if (input.width !== undefined) patch.widthPx = input.width;
+        if (input.height !== undefined) patch.heightPx = input.height;
+      } else if (input.kind === 'html') {
+        if (input.html !== undefined) patch.html = input.html;
+      } else {
+        if (input.provider !== undefined) patch.provider = input.provider;
+        if (input.clientId !== undefined) patch.providerClientId = input.clientId;
+        if (input.slotId !== undefined) patch.providerSlotId = input.slotId;
+      }
+      let updated: readonly { version: number }[];
+      try {
+        updated = await transaction.update(adCreatives)
+          .set(patch)
+          .where(and(eq(adCreatives.organizationId, actor.organizationId), eq(adCreatives.id, input.id), eq(adCreatives.version, input.expectedVersion)))
+          .returning({ version: adCreatives.version });
+      } catch (error) {
+        if (foreignKeyViolation(error)) throw new AdsNotFoundError();
+        throw error;
+      }
+      if (updated[0] === undefined) throw new AdsConflictError();
+      await this.audit(transaction, actor, 'ads.creative.update', 'ad_creative', input.id, null, { kind: input.kind }, input.requestId, now);
+      return { version: updated[0].version };
+    });
+  }
+
+  /**
+   * Hard-deletes a creative row.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Creative id to delete.
+   */
+  async deleteCreative(actor: AuthorizedTenantActorContext, input: AdsCreativeDeleteInput): Promise<void> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      try {
+        const deleted = await transaction.delete(adCreatives)
+          .where(and(eq(adCreatives.organizationId, actor.organizationId), eq(adCreatives.id, input.id)))
+          .returning({ id: adCreatives.id });
+        if (deleted[0] === undefined) throw new AdsNotFoundError();
+      } catch (error) {
+        if (error instanceof AdsNotFoundError) throw error;
+        if (foreignKeyViolation(error)) throw new AdsConflictError('Kreatif masih dipakai penempatan atau slot situs. Hapus penempatan dan slot kustomnya dulu.');
+        throw error;
+      }
+      await this.audit(transaction, actor, 'ads.creative.delete', 'ad_creative', input.id, { id: input.id }, null, input.requestId, now);
     });
   }
 
@@ -242,6 +407,58 @@ export class DrizzleAdsRepository implements AdsRepository {
       if (updated[0] === undefined) throw new AdsConflictError();
       await this.audit(transaction, actor, 'ads.campaign.status', 'campaign', input.id, null, { status: input.status }, input.requestId, now);
       return { version: updated[0].version };
+    });
+  }
+
+  /**
+   * Updates campaign name/priority/window guarded by optimistic version.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Campaign id, partial fields, and expected version.
+   * @returns Next version after the write.
+   */
+  async updateCampaign(actor: AuthorizedTenantActorContext, input: AdsCampaignUpdateInput): Promise<{ readonly version: number }> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      const patch: { name?: string; priority?: number; startsAt?: Date | null; endsAt?: Date | null; version: number; updatedAt: Date } = {
+        version: input.expectedVersion + 1, updatedAt: new Date(now),
+      };
+      if (input.name !== undefined) patch.name = input.name;
+      if (input.priority !== undefined) patch.priority = input.priority;
+      if (input.startsAt !== undefined) patch.startsAt = input.startsAt === null ? null : new Date(input.startsAt);
+      if (input.endsAt !== undefined) patch.endsAt = input.endsAt === null ? null : new Date(input.endsAt);
+      const updated = await transaction.update(campaigns)
+        .set(patch)
+        .where(and(eq(campaigns.organizationId, actor.organizationId), eq(campaigns.id, input.id), eq(campaigns.version, input.expectedVersion)))
+        .returning({ version: campaigns.version });
+      if (updated[0] === undefined) throw new AdsConflictError();
+      await this.audit(transaction, actor, 'ads.campaign.update', 'campaign', input.id, null, { ...patch, version: undefined, updatedAt: undefined }, input.requestId, now);
+      return { version: updated[0].version };
+    });
+  }
+
+  /**
+   * Hard-deletes a campaign row.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Campaign id to delete.
+   */
+  async deleteCampaign(actor: AuthorizedTenantActorContext, input: AdsCampaignDeleteInput): Promise<void> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      try {
+        const deleted = await transaction.delete(campaigns)
+          .where(and(eq(campaigns.organizationId, actor.organizationId), eq(campaigns.id, input.id)))
+          .returning({ id: campaigns.id });
+        if (deleted[0] === undefined) throw new AdsNotFoundError();
+      } catch (error) {
+        if (error instanceof AdsNotFoundError) throw error;
+        if (foreignKeyViolation(error)) throw new AdsConflictError('Kampanye masih dipakai penempatan atau kreatif. Hapus penempatan dan kreatifnya dulu.');
+        throw error;
+      }
+      await this.audit(transaction, actor, 'ads.campaign.delete', 'campaign', input.id, { id: input.id }, null, input.requestId, now);
     });
   }
 
@@ -286,6 +503,30 @@ export class DrizzleAdsRepository implements AdsRepository {
       if (updated[0] === undefined) throw new AdsConflictError();
       await this.audit(transaction, actor, 'ads.placement.update', 'ad_placement', input.id, null, { ...patch, version: undefined, updatedAt: undefined }, input.requestId, now);
       return { version: updated[0].version };
+    });
+  }
+
+  /**
+   * Hard-deletes a placement row.
+   *
+   * @param actor - Tenant actor with the `site.manage` grant.
+   * @param input - Placement id to delete.
+   */
+  async deletePlacement(actor: AuthorizedTenantActorContext, input: AdsPlacementDeleteInput): Promise<void> {
+    return this.database.transaction(async (transaction) => {
+      await this.tenant(transaction, actor);
+      const now = new Date().toISOString();
+      try {
+        const deleted = await transaction.delete(adPlacements)
+          .where(and(eq(adPlacements.organizationId, actor.organizationId), eq(adPlacements.id, input.id)))
+          .returning({ id: adPlacements.id });
+        if (deleted[0] === undefined) throw new AdsNotFoundError();
+      } catch (error) {
+        if (error instanceof AdsNotFoundError) throw error;
+        if (foreignKeyViolation(error)) throw new AdsConflictError('Penempatan masih dipakai data lain. Hapus rujukan tersebut dulu.');
+        throw error;
+      }
+      await this.audit(transaction, actor, 'ads.placement.delete', 'ad_placement', input.id, { id: input.id }, null, input.requestId, now);
     });
   }
 }

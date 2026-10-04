@@ -42,23 +42,25 @@ mencegah CLS), dan `visibilityClass` (`hidden lg:block` untuk sidebar,
 
 | Template | header | top | listing | article | channel | footer |
 |---|---|---|---|---|---|---|
-| clean-blue | – | leaderboard | hero-ad, in-feed | in-content, content-middle, content-bottom | content-middle | footer-banner |
-| black-lime | – | top-banner | hero-ad, in-feed | in-content, content-middle | in-feed | footer-banner |
-| dark-navy | – | below-navigation | hero-ad, sidebar-top | in-content, content-middle, mobile-banner | content-middle | footer-banner |
-| glassy-blue | header-top | – | in-feed | in-content, content-bottom | in-feed | footer-banner |
-| green-minimal | – | leaderboard | in-feed | in-content, content-bottom | content-middle | footer-banner |
-| orange-modern | – | top-banner | hero-ad, in-feed | in-content, content-middle, content-bottom | in-feed | footer-banner |
-| purple-editorial | – | below-navigation | hero-ad | in-content, content-middle | content-middle | footer-banner |
-| red-editorial | header-top | – | in-feed | in-content, content-bottom, mobile-banner | in-feed | footer-banner |
-| soft-blue | – | leaderboard | hero-ad, in-feed | in-content, content-middle | content-middle | footer-banner |
-| warm-editorial | – | below-navigation | in-feed | in-content, content-bottom | in-feed | footer-banner |
+| clean-blue | – | leaderboard | hero-ad, in-feed, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
+| black-lime | – | top-banner | hero-ad, in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
+| dark-navy | – | below-navigation | hero-ad, sidebar-top, sidebar-bottom, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
+| glassy-blue | header-top | – | in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
+| green-minimal | – | leaderboard | in-feed, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
+| orange-modern | – | top-banner | hero-ad, in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
+| purple-editorial | – | below-navigation | hero-ad, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
+| red-editorial | header-top | – | in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
+| soft-blue | – | leaderboard | hero-ad, in-feed, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
+| warm-editorial | – | below-navigation | in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
 
-Slot di luar peta template tidak pernah dirender (`mapped: false`),
-sehingga halaman artikel satu kolom tidak dipaksa menjadi dua kolom dan
-identitas tiap template utuh. `sidebar-middle` dan `sidebar-bottom`
-terdaftar dan didukung renderer, tetapi belum dipetakan karena belum ada
-template dengan kolom rel mandiri di tingkat halaman; `sidebar-top`
-dipetakan hanya di rel 340px milik dark-navy.
+※ = `in-content, content-middle, content-bottom, sidebar-top, sidebar-bottom`
+— zona artikel identik di semua template by design (dijaga `ad-matrix.test.tsx`).
+
+Slot di luar peta template tidak pernah dirender (`mapped: false` → `enabled: false`
+di `resolveAdSlot`, diferifikasi `ad-matrix.test.tsx`).
+`sidebar-middle` terdaftar dan didukung renderer, tetapi belum dipetakan
+di template mana pun — cadangan untuk rel masa depan; `sidebar-top` dan
+`sidebar-bottom` ada di artikel semua template dan di listing dark-navy.
 
 ## Konfigurasi tenant
 
@@ -96,13 +98,36 @@ merusak halaman. Jalur naik kelas saat dasbor admin tiba adalah tabel
 - Slot di atas header (`header-top`) menggulir pergi; satu-satunya elemen
   menempel adalah jangkar ponsel (`sticky bottom-0`) yang menyisakan ruang
   alir di akhir halaman sehingga tidak menutup footer.
-- Ritme vertikal milik slot (`my-8`, runtuh dengan tetangga), bukan
-  penempatan: zona shell dan jangkar menetralkannya (`[&_[data-ad-slot]]:my-0`)
-  agar padding terukur mereka tidak berubah.
+- Ritme vertikal milik slot (`my-6`, `md:my-8`, runtuh dengan tetangga),
+  bukan penempatan: 24px di ponsel agar hemat viewport, 32px di desktop
+  menyamai ritme teks (`mt-8`). Satu-satunya pengecualian adalah jangkar
+  ponsel yang menetralkannya (`[&_[data-ad-slot]]:my-0`) agar bilah tetap
+  ramping.
 - Iklan disembunyikan saat cetak (`[data-ad-slot]` di aturan print
   `globals.css`).
 - Gambar di bawah lipatan memakai `loading="lazy"`; slot zona atas
   dirender eager. Nol JavaScript klien, nol fetch iklan, nol hidrasi.
+- Render gambar adalah responsive display (lebar 100%, tinggi otomatis
+  dari atribut dimensi) — default yang direkomendasikan Google. `sizes`
+  per slot mencakup unit standar Google termasuk 468×60, 160×600,
+  300×200/100/50, dan 250×250.
+
+## AdSense penuh
+
+- Kreatif `provider` (`provider: 'adsense'`) merender unit nyata:
+  `<ins class="adsbygoogle" data-ad-client data-ad-slot>` plus loader
+  `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js`
+  via `AdSensePush` (`src/modules/ads/adsense-push.tsx`, komponen klien
+  kecil: `useEffect` mendorong `(window.adsbygoogle || []).push({})`,
+  skrip dimuat dengan `next/script` `afterInteractive`).
+- CSP edge (`src/proxy.ts`, `adsenseCspHosts()`) membuka `script-src`
+  untuk `pagead2.googlesyndication.com` dan `googleads.g.doubleclick.net`,
+  serta `frame-src` untuk `googleads.g.doubleclick.net` dan
+  `tpc.googlesyndication.com`; direktif lain tidak dilonggarkan.
+- Batasan: `clientId` wajib — tanpa `clientId` (atau hanya spasi),
+  `AdProvider` merender null (wadah cadangan slot tetap dipertahankan,
+  tanpa markup iklan); `slotId` opsional, absen berarti unit responsif
+  tanpa `data-ad-slot`.
 
 ## Skema database (v245–v246, live)
 
@@ -138,9 +163,45 @@ Empat tab: **Slot Situs** (switch per slot + kreatif kustom per situs),
 **Kampanye** (pengiklan, periode, prioritas, status), **Kreatif**
 (gambar/HTML/penyedia), **Penempatan** (kampanye→slot dengan scope
 situs/template/perangkat, jendela tayang, prioritas, switch aktif).
+Slot **mati secara bawaan** dan hanya tayang setelah switch dasbor
+dinyalakan per slot per situs (atau penempatan aktif memasok kreatif —
+itu dihitung sebagai opt-in eksplisit).
 Seluruh tulis berversi (konflik → 409 + muat ulang) dan tercatat di
 `audit_logs` dalam transaksi yang sama. Setiap mutasi sukses memanggil
 `revalidateTag(org:…)` agar halaman publik yang ter-cache langsung segar.
+
+### Operasi ubah & hapus
+
+Selain create/status, dasbor menyediakan `*.update` (pengiklan, kampanye,
+kreatif per-jenis, penempatan) dan `*.delete` (keempatnya) via action map
+yang sama. Ubahan memakai cek versi optimistis (`version = expectedVersion`,
+baris tak cocok → 409). Hapus adalah hard delete satu baris tanpa
+select-then-delete; bila FK `restrict` menahan (mis. pengiklan masih dipakai
+kampanye) error `23503` dipetakan ke konflik 409 berpesan jelas. Setiap
+mutasi menulis satu baris `audit_logs` dalam transaksi yang sama.
+
+### Unggah gambar kreatif (`ads.creative.upload`)
+
+Form Kreatif (jenis gambar) menyediakan input berkas di samping URL: berkas
+dipilih → `POST` multipart ke `/api/dashboard/ads` (`organizationId`,
+`action`, `file`, plus `campaignId`/`href`/`alt` opsional) → URL publik
+terisi otomatis dari `{id, imageUrl}` beserta pratinjau kecil. Batas:
+MIME `image/*`, ≤5MB, sisi ≤4096px (dimensi dibaca via `sharp` tanpa
+konversi — bytes asli disimpan agar rasio kreatif pengiklan utuh; tanpa
+thumbnail turunan).
+
+Berkas mendarat di bucket publik dengan key
+`pub/o/{org}/p/ad-creative/{uuid}.{ext}` → URL
+`https://{R2_PUBLIC_HOST}/{key}`. Sengaja **tanpa baris `media`**:
+purpose `ad-creative` tidak ada di `MEDIA_PURPOSES` dan CHECK
+`media_owner_prefix` hanya menerima aset organisasi di
+`o/{org}/p/%/organization/%`, sehingga key di atas tak bisa lolos tanpa
+migrasi — `imageUrl` R2 langsung disimpan di `ad_creatives` (kind `image`,
+`width`/`height` asli). Urutan tulis: PUT R2 dulu, lalu satu transaksi
+DB (`ad_creatives` + `audit_logs`); bila transaksi gagal, objek R2 dihapus
+lagi (`deleteExact`, best-effort). Tanpa `R2_PUBLIC_HOST` aksi gagal
+fail-closed (503): tanpa host publik dan tanpa baris media tak ada jalur
+sajian. Gate memakai `site.manage` yang sama seperti action lain.
 
 ## Ketahanan yang diaudit
 
@@ -159,9 +220,8 @@ Seluruh tulis berversi (konflik → 409 + muat ulang) dan tercatat di
 
 - Kreatif `html` berasal dari konfigurasi tepercaya (dasbor harus
   membatasi ke peran tepercaya); tidak ada sanitasi markup di render.
-- Kreatif `provider` (AdSense) merender placeholder berlabel dengan atribut
-  `data-ad-*` — tanpa injeksi skrip, karena `src/proxy.ts` belum
-  mengizinkan host skrip penyedia iklan.
+- Kreatif `provider` (AdSense) merender unit penuh — lihat
+  [AdSense penuh](#adsense-penuh).
 - Tanpa dasbor admin (tulis kampanye/penempatan) dan tanpa beacon
   impresi/klik (rencana: mengikuti pola `ViewBeacon`); tabel baca
   (`tenant_ad_settings`, `ad_placements`) sudah live di read path.
@@ -173,4 +233,5 @@ Seluruh tulis berversi (konflik → 409 + muat ulang) dan tercatat di
   `tenant_ad_settings` di `src/data/repos/delivery.test.ts`.
 - Cakupan uji: katalog slot, validasi kreatif, peta 10 template,
   prioritas konfigurasi, pemetaan baris DB, render null saat dinonaktifkan/tak dipetakan/
-  template asing, tanpa `script` untuk penyedia, tanpa lebar tetap.
+  template asing, unit AdSense (`ins.adsbygoogle` + loader klien),
+  tanpa lebar tetap.

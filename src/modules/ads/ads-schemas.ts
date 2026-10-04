@@ -23,6 +23,19 @@ export const adsAdvertiserSchema = z.object({
   contactEmail: z.email().max(320).nullable(),
 });
 
+/** Partial update for an advertiser; version guards stale writes. */
+export const adsAdvertiserUpdateSchema = z.object({
+  id: uuid,
+  name: z.string().trim().min(3).max(120),
+  contactEmail: z.email().max(320).nullable().optional(),
+  expectedVersion: version,
+});
+
+/** Hard-delete target for an advertiser. */
+export const adsAdvertiserDeleteSchema = z.object({
+  id: uuid,
+});
+
 const adsImageCreative = z.object({
   kind: z.literal('image'),
   imageUrl: z.string().trim().min(1).max(2000).refine(isTenantSafeUrl, { error: 'URL gambar harus https:// atau path /.' }),
@@ -58,6 +71,48 @@ export const adsCreativeStatusSchema = z.object({
   expectedVersion: version,
 });
 
+const adsImageCreativeUpdate = z.object({
+  kind: z.literal('image'),
+  campaignId: uuid.nullable().optional(),
+  imageUrl: z.string().trim().min(1).max(2000).refine(isTenantSafeUrl, { error: 'URL gambar harus https:// atau path /.' }).optional(),
+  href: z.string().trim().max(2000).refine((value) => value === '' || isTenantSafeUrl(value), { error: 'Tautan klik harus https:// atau path /.' }).optional(),
+  alt: z.string().trim().max(300).optional(),
+  width: z.number().int().positive().max(30000).optional(),
+  height: z.number().int().positive().max(30000).optional(),
+});
+
+const adsHtmlCreativeUpdate = z.object({
+  kind: z.literal('html'),
+  campaignId: uuid.nullable().optional(),
+  html: z.string().min(1).max(50000).optional(),
+});
+
+const adsProviderCreativeUpdate = z.object({
+  kind: z.literal('provider'),
+  campaignId: uuid.nullable().optional(),
+  provider: z.literal('adsense').optional(),
+  clientId: z.string().trim().max(100).optional(),
+  slotId: z.string().trim().max(100).optional(),
+});
+
+/** Partial per-kind update for a creative; version guards stale writes. */
+export const adsCreativeUpdateSchema = z.discriminatedUnion('kind', [adsImageCreativeUpdate, adsHtmlCreativeUpdate, adsProviderCreativeUpdate]).and(z.object({
+  id: uuid,
+  expectedVersion: version,
+}));
+
+/** Hard-delete target for a creative. */
+export const adsCreativeDeleteSchema = z.object({
+  id: uuid,
+});
+
+/** Text fields for a multipart creative upload; the file itself is validated in code. */
+export const adsCreativeUploadSchema = z.object({
+  campaignId: uuid.nullable().optional(),
+  href: z.string().trim().max(2000).refine((value) => value === '' || isTenantSafeUrl(value), { error: 'Tautan klik harus https:// atau path /.' }).optional(),
+  alt: z.string().trim().max(300).optional(),
+});
+
 export const adsCampaignSchema = z.object({
   advertiserId: uuid,
   name: z.string().trim().min(3).max(160),
@@ -74,6 +129,24 @@ export const adsCampaignStatusSchema = z.object({
   id: uuid,
   status: z.enum(['draft', 'scheduled', 'active', 'paused', 'ended']),
   expectedVersion: version,
+});
+
+/** Partial update for a campaign; status stays on the status endpoint. */
+export const adsCampaignUpdateSchema = z.object({
+  id: uuid,
+  name: z.string().trim().min(3).max(160).optional(),
+  priority: z.number().int().min(0).max(1000).optional(),
+  startsAt: isoDateTime.optional(),
+  endsAt: isoDateTime.optional(),
+  expectedVersion: version,
+}).refine(
+  (value) => value.startsAt === undefined || value.startsAt === null || value.endsAt === undefined || value.endsAt === null || value.endsAt > value.startsAt,
+  { error: 'Akhir periode harus setelah awal periode.', path: ['endsAt'] },
+);
+
+/** Hard-delete target for a campaign. */
+export const adsCampaignDeleteSchema = z.object({
+  id: uuid,
 });
 
 export const adsPlacementSchema = z.object({
@@ -102,3 +175,8 @@ export const adsPlacementUpdateSchema = z.object({
   (value) => value.startsAt === undefined || value.startsAt === null || value.endsAt === undefined || value.endsAt === null || value.endsAt > value.startsAt,
   { error: 'Akhir periode harus setelah awal periode.', path: ['endsAt'] },
 );
+
+/** Hard-delete target for a placement. */
+export const adsPlacementDeleteSchema = z.object({
+  id: uuid,
+});

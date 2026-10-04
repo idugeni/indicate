@@ -7,6 +7,12 @@ import { isSlotMapped } from '@/modules/ads/config';
 import { makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
 import { AdSlot } from '@/modules/ads/ad-slot';
 
+function allSlotsOn(): Record<string, unknown> {
+  return Object.fromEntries(
+    AD_SLOT_IDS.map((slot) => [slot, { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/x.png' } }]),
+  );
+}
+
 describe('matriks template × slot', () => {
   for (const templateId of TEMPLATE_IDS) {
     it(`mematuhi peta ${templateId}: slot terpetakan tampil, sisanya nol`, () => {
@@ -14,7 +20,7 @@ describe('matriks template × slot', () => {
         const site = makeNetworkSite();
         const html = renderToStaticMarkup(
           <AdSlot
-            site={{ ...site, settings: { ...site.settings, colors: { templateId } } }}
+            site={{ ...site, settings: { ...site.settings, colors: { templateId }, ads: allSlotsOn() } }}
             slot={slot}
           />,
         );
@@ -37,7 +43,10 @@ describe('matriks template × slot', () => {
         />,
       );
     };
-    expect(renders()).toContain('data-ad-slot="leaderboard"');
+    expect(
+      renders({ leaderboard: { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/x.png' } } }),
+    ).toContain('data-ad-slot="leaderboard"');
     expect(renders({ leaderboard: { enabled: false } })).toBe('');
+    expect(renders({ leaderboard: { enabled: true } })).toBe('');
   });
 });

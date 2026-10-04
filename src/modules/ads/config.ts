@@ -110,6 +110,9 @@ export function isSlotMapped(templateId: TemplateId, slot: AdSlotId): boolean {
  * @param slot - Semantic slot to resolve.
  * @param campaign - Optional campaign override with the highest precedence.
  * @returns Mapping, enablement, and the winning creative (null = fallback).
+ * @remarks Slots are OFF unless explicitly enabled: the dashboard switch
+ * (tenant overrides) or an active campaign placement opts in. Only the
+ * default with no operator action anywhere stays dark.
  */
 export function resolveAdSlot({
   templateId,
@@ -126,7 +129,7 @@ export function resolveAdSlot({
   if (!mapped) return { slot, mapped, enabled: false, creative: null };
   const tenant = overrides[slot];
   const override = campaign?.slots?.[slot];
-  const enabled = override?.enabled ?? tenant?.enabled ?? true;
+  const enabled = override?.enabled ?? tenant?.enabled ?? false;
   const creative = override?.creative ?? tenant?.creative ?? null;
   return { slot, mapped, enabled, creative: creative ?? null };
 }

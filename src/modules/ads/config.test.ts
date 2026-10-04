@@ -34,8 +34,17 @@ describe('parseTenantAdOverrides', () => {
 });
 
 describe('resolveAdSlot', () => {
-  it('mengaktifkan slot terpetakan secara bawaan', () => {
+  it('menonaktifkan slot terpetakan secara bawaan (opt-in lewat dasbor)', () => {
     const resolved = resolveAdSlot({ templateId: 'clean-blue', overrides: {}, slot: 'leaderboard' });
+    expect(resolved).toEqual({ slot: 'leaderboard', mapped: true, enabled: false, creative: null });
+  });
+
+  it('mengaktifkan slot yang eksplisit dinyalakan tenant', () => {
+    const resolved = resolveAdSlot({
+      templateId: 'clean-blue',
+      overrides: { leaderboard: { enabled: true } },
+      slot: 'leaderboard',
+    });
     expect(resolved).toEqual({ slot: 'leaderboard', mapped: true, enabled: true, creative: null });
   });
 

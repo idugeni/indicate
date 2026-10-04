@@ -22,9 +22,9 @@ import { TEMPLATE_IDS, type TemplateId } from '@/modules/site/components/network
 interface OverviewSite { readonly id: string; readonly name: string; readonly hostname: string; readonly templateId: string | null }
 interface OverviewSlot { readonly id: string; readonly name: string; readonly description: string; readonly active: boolean }
 interface OverviewSetting { readonly siteId: string; readonly slotId: string; readonly enabled: boolean; readonly creativeId: string | null; readonly version: number }
-interface OverviewAdvertiser { readonly id: string; readonly name: string }
+interface OverviewAdvertiser { readonly id: string; readonly name: string; readonly contactEmail: string | null; readonly version: number }
 interface OverviewCampaign { readonly id: string; readonly advertiserId: string; readonly name: string; readonly status: string; readonly priority: number; readonly startsAt: string | null; readonly endsAt: string | null; readonly version: number }
-interface OverviewCreative { readonly id: string; readonly campaignId: string | null; readonly kind: string; readonly imageUrl: string | null; readonly href: string | null; readonly altText: string | null; readonly html: string | null; readonly provider: string | null; readonly status: string; readonly version: number }
+interface OverviewCreative { readonly id: string; readonly campaignId: string | null; readonly kind: string; readonly imageUrl: string | null; readonly href: string | null; readonly altText: string | null; readonly html: string | null; readonly provider: string | null; readonly providerClientId: string | null; readonly providerSlotId: string | null; readonly status: string; readonly version: number }
 interface OverviewPlacement { readonly id: string; readonly campaignId: string; readonly creativeId: string; readonly slotId: string; readonly siteId: string | null; readonly templateId: string | null; readonly device: string | null; readonly priority: number; readonly startsAt: string | null; readonly endsAt: string | null; readonly active: boolean; readonly version: number }
 interface Overview {
   readonly sites: readonly OverviewSite[];
@@ -178,7 +178,7 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
                 <TableBody>
                   {AD_SLOT_IDS.map((slot) => {
                     const setting = settingsBySlot.get(slot);
-                    const enabled = setting?.enabled ?? true;
+                    const enabled = setting?.enabled ?? false;
                     const templates = templatesForSlot(slot);
                     const mappedForSite = activeTemplateId === null || isSlotMapped(activeTemplateId, slot);
                     return (
@@ -249,28 +249,34 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
         </TabsContent>
         <TabsContent keepMounted value="kampanye">
           <div className="space-y-6">
-            <AdvertiserForm busy={busy} advertisers={overview?.advertisers ?? []} onCreate={(payload) => mutate('ads.advertiser.create', payload, 'Pengiklan dibuat.')} />
-            <CampaignSection overview={overview} busy={busy} onCreate={(payload) => mutate('ads.campaign.create', payload, 'Kampanye dibuat.')} onStatus={(payload) => mutate('ads.campaign.status', payload, 'Status kampanye diperbarui.')} />
+            <AdvertiserForm busy={busy} advertisers={overview?.advertisers ?? []} onCreate={(payload) => mutate('ads.advertiser.create', payload, 'Pengiklan dibuat.')} onUpdate={(payload) => mutate('ads.advertiser.update', payload, 'Pengiklan diperbarui.')} onDelete={(payload) => mutate('ads.advertiser.delete', payload, 'Pengiklan dihapus.')} />
+            <CampaignSection overview={overview} busy={busy} onCreate={(payload) => mutate('ads.campaign.create', payload, 'Kampanye dibuat.')} onStatus={(payload) => mutate('ads.campaign.status', payload, 'Status kampanye diperbarui.')} onUpdate={(payload) => mutate('ads.campaign.update', payload, 'Kampanye diperbarui.')} onDelete={(payload) => mutate('ads.campaign.delete', payload, 'Kampanye dihapus.')} />
           </div>
         </TabsContent>
         <TabsContent keepMounted value="kreatif">
-          <CreativeSection overview={overview} busy={busy} onCreate={(payload) => mutate('ads.creative.create', payload, 'Kreatif dibuat.')} onStatus={(payload) => mutate('ads.creative.status', payload, 'Status kreatif diperbarui.')} />
+          <CreativeSection organizationId={organizationId} overview={overview} busy={busy} onCreate={(payload) => mutate('ads.creative.create', payload, 'Kreatif dibuat.')} onStatus={(payload) => mutate('ads.creative.status', payload, 'Status kreatif diperbarui.')} onUpdate={(payload) => mutate('ads.creative.update', payload, 'Kreatif diperbarui.')} onDelete={(payload) => mutate('ads.creative.delete', payload, 'Kreatif dihapus.')} />
         </TabsContent>
         <TabsContent keepMounted value="penempatan">
-          <PlacementSection overview={overview} busy={busy} onCreate={(payload) => mutate('ads.placement.create', payload, 'Penempatan dibuat.')} onUpdate={(payload) => mutate('ads.placement.update', payload, 'Penempatan diperbarui.')} />
+          <PlacementSection overview={overview} busy={busy} onCreate={(payload) => mutate('ads.placement.create', payload, 'Penempatan dibuat.')} onUpdate={(payload) => mutate('ads.placement.update', payload, 'Penempatan diperbarui.')} onDelete={(payload) => mutate('ads.placement.delete', payload, 'Penempatan dihapus.')} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function AdvertiserForm({ busy, advertisers, onCreate }: {
+function AdvertiserForm({ busy, advertisers, onCreate, onUpdate, onDelete }: {
   readonly busy: boolean;
   readonly advertisers: readonly OverviewAdvertiser[];
   readonly onCreate: (payload: Record<string, unknown>) => Promise<void>;
+  readonly onUpdate: (payload: Record<string, unknown>) => Promise<void>;
+  readonly onDelete: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const [name, setName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editVersion, setEditVersion] = useState(0);
   return (
     <SectionCard icon={Megaphone} title="Pengiklan" eyebrow="advertiser">
       <form
@@ -293,19 +299,50 @@ function AdvertiserForm({ busy, advertisers, onCreate }: {
       {advertisers.length === 0 ? (
         <EmptyState title="Belum ada pengiklan" description="Buat pengiklan dulu sebelum membuat kampanye." compact />
       ) : (
-        <ul className="m-0 flex flex-wrap gap-1.5 p-0 py-2">
-          {advertisers.map((advertiser) => <li key={advertiser.id} className="list-none"><Badge variant="outline">{advertiser.name}</Badge></li>)}
+        <ul className="m-0 grid gap-2 p-0 py-2">
+          {advertisers.map((advertiser) => (
+            <li key={advertiser.id} className="list-none">
+              {editingId === advertiser.id ? (
+                <form
+                  className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] sm:items-end"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void onUpdate({ id: advertiser.id, name: editName.trim(), contactEmail: editEmail.trim() === '' ? null : editEmail.trim(), expectedVersion: editVersion }).then(() => setEditingId(null));
+                  }}
+                >
+                  <span className="grid gap-1.5">
+                    <Label htmlFor={`ads-adv-edit-name-${advertiser.id}`}>Nama</Label>
+                    <Input id={`ads-adv-edit-name-${advertiser.id}`} value={editName} onChange={(event) => setEditName(event.target.value)} required minLength={3} maxLength={120} disabled={busy} />
+                  </span>
+                  <span className="grid gap-1.5">
+                    <Label htmlFor={`ads-adv-edit-email-${advertiser.id}`}>Surel kontak</Label>
+                    <Input id={`ads-adv-edit-email-${advertiser.id}`} type="email" value={editEmail} onChange={(event) => setEditEmail(event.target.value)} disabled={busy} />
+                  </span>
+                  <Button type="submit" size="sm" disabled={busy || editName.trim().length < 3}>Simpan</Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setEditingId(null)}>Batal</Button>
+                </form>
+              ) : (
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant="outline">{advertiser.name}</Badge>
+                  <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setEditingId(advertiser.id); setEditName(advertiser.name); setEditEmail(advertiser.contactEmail ?? ''); setEditVersion(advertiser.version); }}>Ubah</Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { if (!window.confirm(`Hapus pengiklan "${advertiser.name}"?`)) return; void onDelete({ id: advertiser.id }); }}>Hapus</Button>
+                </span>
+              )}
+            </li>
+          ))}
         </ul>
       )}
     </SectionCard>
   );
 }
 
-function CampaignSection({ overview, busy, onCreate, onStatus }: {
+function CampaignSection({ overview, busy, onCreate, onStatus, onUpdate, onDelete }: {
   readonly overview: Overview | null;
   readonly busy: boolean;
   readonly onCreate: (payload: Record<string, unknown>) => Promise<void>;
   readonly onStatus: (payload: Record<string, unknown>) => Promise<void>;
+  readonly onUpdate: (payload: Record<string, unknown>) => Promise<void>;
+  readonly onDelete: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const [advertiserId, setAdvertiserId] = useState('');
   const [name, setName] = useState('');
@@ -313,8 +350,15 @@ function CampaignSection({ overview, busy, onCreate, onStatus }: {
   const [priority, setPriority] = useState('0');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPriority, setEditPriority] = useState('0');
+  const [editStartsAt, setEditStartsAt] = useState('');
+  const [editEndsAt, setEditEndsAt] = useState('');
+  const [editVersion, setEditVersion] = useState(0);
   const advertisers = overview?.advertisers ?? [];
   const campaigns = overview?.campaigns ?? [];
+  const editingCampaign = campaigns.find((campaign) => campaign.id === editingId) ?? null;
   return (
     <SectionCard icon={Newspaper} title="Kampanye" eyebrow="campaign">
       <form
@@ -360,42 +404,88 @@ function CampaignSection({ overview, busy, onCreate, onStatus }: {
       {campaigns.length === 0 ? (
         <EmptyState title="Belum ada kampanye" description="Kampanye aktif dengan penempatan menentukan kreatif yang tayang." compact />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Kampanye</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Prioritas</TableHead>
-              <TableHead>Periode</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {campaigns.map((campaign) => (
-              <TableRow key={campaign.id}>
-                <TableCell className="font-sans text-[13px] font-semibold text-paper">{campaign.name}</TableCell>
-                <TableCell>
-                  <DashboardSelect id={`ads-cam-st-${campaign.id}`} value={campaign.status} disabled={busy} onValueChange={(next) => { if (next !== null) void onStatus({ id: campaign.id, status: next, expectedVersion: campaign.version }); }} placeholder="Status" ariaLabel={`Status kampanye ${campaign.name}`}>
-                    {['draft', 'scheduled', 'active', 'paused', 'ended'].map((value) => <DashboardSelectItem key={value} value={value}>{value}</DashboardSelectItem>)}
-                  </DashboardSelect>
-                </TableCell>
-                <TableCell className="font-mono text-xs tabular-nums text-paper-dim">{campaign.priority}</TableCell>
-                <TableCell className="font-mono text-[11px] text-paper-faint">
-                  {`${campaign.startsAt === null ? '—' : campaign.startsAt.slice(0, 10)} → ${campaign.endsAt === null ? '—' : campaign.endsAt.slice(0, 10)}`}
-                </TableCell>
+        <>
+          {editingCampaign === null ? null : (
+            <form
+              className="grid gap-3 border-b border-line-data py-4 sm:grid-cols-2 lg:grid-cols-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void onUpdate({
+                  id: editingCampaign.id, name: editName.trim(), priority: Number(editPriority),
+                  startsAt: toIsoOrNull(editStartsAt), endsAt: toIsoOrNull(editEndsAt),
+                  expectedVersion: editVersion,
+                }).then(() => setEditingId(null));
+              }}
+            >
+              <span className="grid gap-1.5">
+                <Label htmlFor="ads-cam-edit-name">Nama kampanye</Label>
+                <Input id="ads-cam-edit-name" value={editName} onChange={(event) => setEditName(event.target.value)} required minLength={3} maxLength={160} disabled={busy} />
+              </span>
+              <span className="grid gap-1.5">
+                <Label htmlFor="ads-cam-edit-priority">Prioritas</Label>
+                <Input id="ads-cam-edit-priority" type="number" min={0} max={1000} value={editPriority} onChange={(event) => setEditPriority(event.target.value)} disabled={busy} />
+              </span>
+              <span className="grid gap-1.5">
+                <Label htmlFor="ads-cam-edit-start">Mulai</Label>
+                <Input id="ads-cam-edit-start" type="datetime-local" value={editStartsAt} onChange={(event) => setEditStartsAt(event.target.value)} disabled={busy} />
+              </span>
+              <span className="grid gap-1.5">
+                <Label htmlFor="ads-cam-edit-end">Berakhir</Label>
+                <Input id="ads-cam-edit-end" type="datetime-local" value={editEndsAt} onChange={(event) => setEditEndsAt(event.target.value)} disabled={busy} />
+              </span>
+              <span className="flex items-end gap-1.5">
+                <Button type="submit" size="sm" disabled={busy || editName.trim().length < 3}>Simpan</Button>
+                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setEditingId(null)}>Batal</Button>
+              </span>
+            </form>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kampanye</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Prioritas</TableHead>
+                <TableHead>Periode</TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {campaigns.map((campaign) => (
+                <TableRow key={campaign.id}>
+                  <TableCell className="font-sans text-[13px] font-semibold text-paper">{campaign.name}</TableCell>
+                  <TableCell>
+                    <DashboardSelect id={`ads-cam-st-${campaign.id}`} value={campaign.status} disabled={busy} onValueChange={(next) => { if (next !== null) void onStatus({ id: campaign.id, status: next, expectedVersion: campaign.version }); }} placeholder="Status" ariaLabel={`Status kampanye ${campaign.name}`}>
+                      {['draft', 'scheduled', 'active', 'paused', 'ended'].map((value) => <DashboardSelectItem key={value} value={value}>{value}</DashboardSelectItem>)}
+                    </DashboardSelect>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs tabular-nums text-paper-dim">{campaign.priority}</TableCell>
+                  <TableCell className="font-mono text-[11px] text-paper-faint">
+                    {`${campaign.startsAt === null ? '—' : campaign.startsAt.slice(0, 10)} → ${campaign.endsAt === null ? '—' : campaign.endsAt.slice(0, 10)}`}
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap gap-1">
+                      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setEditingId(campaign.id); setEditName(campaign.name); setEditPriority(String(campaign.priority)); setEditStartsAt(campaign.startsAt === null ? '' : campaign.startsAt.slice(0, 16)); setEditEndsAt(campaign.endsAt === null ? '' : campaign.endsAt.slice(0, 16)); setEditVersion(campaign.version); }}>Ubah</Button>
+                      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { if (!window.confirm(`Hapus kampanye "${campaign.name}"?`)) return; void onDelete({ id: campaign.id }); }}>Hapus</Button>
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
       )}
     </SectionCard>
   );
 }
 
-function CreativeSection({ overview, busy, onCreate, onStatus }: {
+function CreativeSection({ organizationId, overview, busy, onCreate, onStatus, onUpdate, onDelete }: {
+  readonly organizationId: string;
   readonly overview: Overview | null;
   readonly busy: boolean;
   readonly onCreate: (payload: Record<string, unknown>) => Promise<void>;
   readonly onStatus: (payload: Record<string, unknown>) => Promise<void>;
+  readonly onUpdate: (payload: Record<string, unknown>) => Promise<void>;
+  readonly onDelete: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const [kind, setKind] = useState('image');
   const [campaignId, setCampaignId] = useState('');
@@ -404,8 +494,41 @@ function CreativeSection({ overview, busy, onCreate, onStatus }: {
   const [alt, setAlt] = useState('');
   const [html, setHtml] = useState('');
   const [clientId, setClientId] = useState('');
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editHref, setEditHref] = useState('');
+  const [editAlt, setEditAlt] = useState('');
+  const [editHtml, setEditHtml] = useState('');
+  const [editClientId, setEditClientId] = useState('');
+  const [editSlotId, setEditSlotId] = useState('');
+  const [editVersion, setEditVersion] = useState(0);
   const campaigns = overview?.campaigns ?? [];
   const creatives = overview?.creatives ?? [];
+  const editingCreative = creatives.find((creative) => creative.id === editingId) ?? null;
+
+  const uploadFile = useCallback(async (file: File) => {
+    setUploadBusy(true);
+    setUploadError(null);
+    try {
+      const form = new FormData();
+      form.set('organizationId', organizationId);
+      form.set('action', 'ads.creative.upload');
+      form.set('file', file);
+      if (campaignId !== '') form.set('campaignId', campaignId);
+      if (href.trim() !== '') form.set('href', href.trim());
+      if (alt.trim() !== '') form.set('alt', alt.trim());
+      const response = await fetch('/api/dashboard/ads', { method: 'POST', body: form });
+      const body = (await response.json().catch(() => null)) as { readonly imageUrl?: unknown; readonly error?: { readonly message?: string } } | null;
+      if (!response.ok || typeof body?.imageUrl !== 'string') throw new Error(body?.error?.message ?? `HTTP ${response.status}`);
+      setImageUrl(body.imageUrl);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Unggah gambar gagal.');
+    } finally {
+      setUploadBusy(false);
+    }
+  }, [organizationId, campaignId, href, alt]);
   return (
     <SectionCard icon={ImageIcon} title="Kreatif" eyebrow="creative">
       <form
@@ -443,6 +566,26 @@ function CreativeSection({ overview, busy, onCreate, onStatus }: {
               <Input id="ads-cre-img" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} required disabled={busy} placeholder="https://…" />
             </span>
             <span className="grid gap-1.5">
+              <Label htmlFor="ads-cre-file">Unggah berkas (maks 5MB)</Label>
+              <Input
+                id="ads-cre-file"
+                type="file"
+                accept="image/*"
+                disabled={busy || uploadBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (file !== undefined && file !== null) void uploadFile(file);
+                }}
+              />
+              {uploadBusy ? <p className="m-0 font-sans text-[11px] text-paper-faint">Mengunggah…</p> : null}
+              {uploadError !== null ? <p className="m-0 font-sans text-[11px] text-error">{uploadError}</p> : null}
+              {imageUrl !== '' ? (
+                // eslint-disable-next-line @next/next/no-img-element -- pratinjau kecil dasbor saja; tayang publik memakai renderer slot iklan
+                <img src={imageUrl} alt="" aria-hidden="true" className="h-10 w-auto justify-self-start rounded border border-hairline" />
+              ) : null}
+            </span>
+            <span className="grid gap-1.5">
               <Label htmlFor="ads-cre-href">Tautan klik</Label>
               <Input id="ads-cre-href" value={href} onChange={(event) => setHref(event.target.value)} disabled={busy} placeholder="https://pengiklan…" />
             </span>
@@ -464,43 +607,112 @@ function CreativeSection({ overview, busy, onCreate, onStatus }: {
             <Input id="ads-cre-client" value={clientId} onChange={(event) => setClientId(event.target.value)} disabled={busy} placeholder="ca-pub-…" />
           </span>
         ) : null}
-        <span className="flex items-end"><Button type="submit" disabled={busy}>Buat kreatif</Button></span>
+        <span className="flex items-end"><Button type="submit" disabled={busy || uploadBusy}>Buat kreatif</Button></span>
       </form>
       {creatives.length === 0 ? (
         <EmptyState title="Belum ada kreatif" description="Kreatif aktif dapat dipasang ke slot situs atau penempatan kampanye." compact />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Kreatif</TableHead>
-              <TableHead>Jenis</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {creatives.map((creative) => (
-              <TableRow key={creative.id}>
-                <TableCell className="max-w-64 truncate font-sans text-[13px] text-paper">{creativeLabel(creative)}</TableCell>
-                <TableCell><Badge variant="outline">{creative.kind}</Badge></TableCell>
-                <TableCell>
-                  <DashboardSelect id={`ads-cre-st-${creative.id}`} value={creative.status} disabled={busy} onValueChange={(next) => { if (next !== null) void onStatus({ id: creative.id, status: next, expectedVersion: creative.version }); }} placeholder="Status" ariaLabel="Status kreatif">
-                    {['active', 'inactive', 'archived'].map((value) => <DashboardSelectItem key={value} value={value}>{value}</DashboardSelectItem>)}
-                  </DashboardSelect>
-                </TableCell>
+        <>
+          {editingCreative === null ? null : (
+            <form
+              className="grid gap-3 border-b border-line-data py-4 sm:grid-cols-2 lg:grid-cols-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const payload: Record<string, unknown> = { id: editingCreative.id, kind: editingCreative.kind, expectedVersion: editVersion };
+                if (editingCreative.kind === 'image') {
+                  payload.imageUrl = editImageUrl.trim();
+                  if (editHref.trim() !== '') payload.href = editHref.trim();
+                  if (editAlt.trim() !== '') payload.alt = editAlt.trim();
+                } else if (editingCreative.kind === 'html') {
+                  payload.html = editHtml;
+                } else {
+                  if (editClientId.trim() !== '') payload.clientId = editClientId.trim();
+                  if (editSlotId.trim() !== '') payload.slotId = editSlotId.trim();
+                }
+                void onUpdate(payload).then(() => setEditingId(null));
+              }}
+            >
+              {editingCreative.kind === 'image' ? (
+                <>
+                  <span className="grid gap-1.5">
+                    <Label htmlFor="ads-cre-edit-img">URL gambar</Label>
+                    <Input id="ads-cre-edit-img" value={editImageUrl} onChange={(event) => setEditImageUrl(event.target.value)} required disabled={busy} />
+                  </span>
+                  <span className="grid gap-1.5">
+                    <Label htmlFor="ads-cre-edit-href">Tautan klik</Label>
+                    <Input id="ads-cre-edit-href" value={editHref} onChange={(event) => setEditHref(event.target.value)} disabled={busy} />
+                  </span>
+                  <span className="grid gap-1.5">
+                    <Label htmlFor="ads-cre-edit-alt">Teks alt</Label>
+                    <Input id="ads-cre-edit-alt" value={editAlt} onChange={(event) => setEditAlt(event.target.value)} disabled={busy} maxLength={300} />
+                  </span>
+                </>
+              ) : null}
+              {editingCreative.kind === 'html' ? (
+                <span className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="ads-cre-edit-html">Markup HTML tepercaya</Label>
+                  <Input id="ads-cre-edit-html" value={editHtml} onChange={(event) => setEditHtml(event.target.value)} required disabled={busy} />
+                </span>
+              ) : null}
+              {editingCreative.kind !== 'image' && editingCreative.kind !== 'html' ? (
+                <>
+                  <span className="grid gap-1.5">
+                    <Label htmlFor="ads-cre-edit-client">ID klien penyedia</Label>
+                    <Input id="ads-cre-edit-client" value={editClientId} onChange={(event) => setEditClientId(event.target.value)} disabled={busy} />
+                  </span>
+                  <span className="grid gap-1.5">
+                    <Label htmlFor="ads-cre-edit-slot">ID slot penyedia</Label>
+                    <Input id="ads-cre-edit-slot" value={editSlotId} onChange={(event) => setEditSlotId(event.target.value)} disabled={busy} />
+                  </span>
+                </>
+              ) : null}
+              <span className="flex items-end gap-1.5">
+                <Button type="submit" size="sm" disabled={busy}>Simpan</Button>
+                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setEditingId(null)}>Batal</Button>
+              </span>
+            </form>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kreatif</TableHead>
+                <TableHead>Jenis</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {creatives.map((creative) => (
+                <TableRow key={creative.id}>
+                  <TableCell className="max-w-64 truncate font-sans text-[13px] text-paper">{creativeLabel(creative)}</TableCell>
+                  <TableCell><Badge variant="outline">{creative.kind}</Badge></TableCell>
+                  <TableCell>
+                    <DashboardSelect id={`ads-cre-st-${creative.id}`} value={creative.status} disabled={busy} onValueChange={(next) => { if (next !== null) void onStatus({ id: creative.id, status: next, expectedVersion: creative.version }); }} placeholder="Status" ariaLabel="Status kreatif">
+                      {['active', 'inactive', 'archived'].map((value) => <DashboardSelectItem key={value} value={value}>{value}</DashboardSelectItem>)}
+                    </DashboardSelect>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap gap-1">
+                      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setEditingId(creative.id); setEditImageUrl(creative.imageUrl ?? ''); setEditHref(creative.href ?? ''); setEditAlt(creative.altText ?? ''); setEditHtml(creative.html ?? ''); setEditClientId(creative.providerClientId ?? ''); setEditSlotId(creative.providerSlotId ?? ''); setEditVersion(creative.version); }}>Ubah</Button>
+                      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { if (!window.confirm(`Hapus kreatif ${creative.kind} ini?`)) return; void onDelete({ id: creative.id }); }}>Hapus</Button>
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
       )}
     </SectionCard>
   );
 }
 
-function PlacementSection({ overview, busy, onCreate, onUpdate }: {
+function PlacementSection({ overview, busy, onCreate, onUpdate, onDelete }: {
   readonly overview: Overview | null;
   readonly busy: boolean;
   readonly onCreate: (payload: Record<string, unknown>) => Promise<void>;
   readonly onUpdate: (payload: Record<string, unknown>) => Promise<void>;
+  readonly onDelete: (payload: Record<string, unknown>) => Promise<void>;
 }) {
   const [campaignId, setCampaignId] = useState('');
   const [creativeId, setCreativeId] = useState('');
@@ -511,9 +723,15 @@ function PlacementSection({ overview, busy, onCreate, onUpdate }: {
   const [priority, setPriority] = useState('0');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPriority, setEditPriority] = useState('0');
+  const [editStartsAt, setEditStartsAt] = useState('');
+  const [editEndsAt, setEditEndsAt] = useState('');
+  const [editVersion, setEditVersion] = useState(0);
   const campaigns = (overview?.campaigns ?? []).filter((campaign) => campaign.status === 'active');
   const creatives = (overview?.creatives ?? []).filter((creative) => creative.status === 'active');
   const placements = overview?.placements ?? [];
+  const editingPlacement = placements.find((placement) => placement.id === editingId) ?? null;
   const campaignName = (id: string) => overview?.campaigns.find((campaign) => campaign.id === id)?.name ?? id.slice(0, 8);
   const creativeName = (id: string) => {
     const creative = overview?.creatives.find((item) => item.id === id);
@@ -590,37 +808,76 @@ function PlacementSection({ overview, busy, onCreate, onUpdate }: {
       {placements.length === 0 ? (
         <EmptyState title="Belum ada penempatan" description="Penempatan aktif mengalahkan kreatif bawaan slot." compact />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Slot</TableHead>
-              <TableHead>Kampanye · Kreatif</TableHead>
-              <TableHead>Cakupan</TableHead>
-              <TableHead>Aktif</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {placements.map((placement) => (
-              <TableRow key={placement.id}>
-                <TableCell className="font-mono text-xs text-paper">{placement.slotId}</TableCell>
-                <TableCell className="font-sans text-[13px] text-paper">{`${campaignName(placement.campaignId)} · ${creativeName(placement.creativeId)}`}</TableCell>
-                <TableCell className="font-mono text-[11px] text-paper-faint">
-                  {`${placement.siteId === null ? 'semua situs' : placement.siteId.slice(0, 8)} · ${placement.templateId ?? 'semua template'} · ${placement.device ?? 'semua perangkat'}`}
-                </TableCell>
-                <TableCell>
-                  <Checkbox
-                    checked={placement.active}
-                    disabled={busy}
-                    aria-label={`Aktifkan penempatan ${placement.slotId}`}
-                    onCheckedChange={(checked) => {
-                      void onUpdate({ id: placement.id, active: checked === true, expectedVersion: placement.version });
-                    }}
-                  />
-                </TableCell>
+        <>
+          {editingPlacement === null ? null : (
+            <form
+              className="grid gap-3 border-b border-line-data py-4 sm:grid-cols-2 lg:grid-cols-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void onUpdate({
+                  id: editingPlacement.id, priority: Number(editPriority),
+                  startsAt: toIsoOrNull(editStartsAt), endsAt: toIsoOrNull(editEndsAt),
+                  expectedVersion: editVersion,
+                }).then(() => setEditingId(null));
+              }}
+            >
+              <span className="grid gap-1.5">
+                <Label htmlFor="ads-pla-edit-priority">Prioritas</Label>
+                <Input id="ads-pla-edit-priority" type="number" min={0} max={1000} value={editPriority} onChange={(event) => setEditPriority(event.target.value)} disabled={busy} />
+              </span>
+              <span className="grid gap-1.5">
+                <Label htmlFor="ads-pla-edit-start">Mulai</Label>
+                <Input id="ads-pla-edit-start" type="datetime-local" value={editStartsAt} onChange={(event) => setEditStartsAt(event.target.value)} disabled={busy} />
+              </span>
+              <span className="grid gap-1.5">
+                <Label htmlFor="ads-pla-edit-end">Berakhir</Label>
+                <Input id="ads-pla-edit-end" type="datetime-local" value={editEndsAt} onChange={(event) => setEditEndsAt(event.target.value)} disabled={busy} />
+              </span>
+              <span className="flex items-end gap-1.5">
+                <Button type="submit" size="sm" disabled={busy}>Simpan</Button>
+                <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setEditingId(null)}>Batal</Button>
+              </span>
+            </form>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Slot</TableHead>
+                <TableHead>Kampanye · Kreatif</TableHead>
+                <TableHead>Cakupan</TableHead>
+                <TableHead>Aktif</TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {placements.map((placement) => (
+                <TableRow key={placement.id}>
+                  <TableCell className="font-mono text-xs text-paper">{placement.slotId}</TableCell>
+                  <TableCell className="font-sans text-[13px] text-paper">{`${campaignName(placement.campaignId)} · ${creativeName(placement.creativeId)}`}</TableCell>
+                  <TableCell className="font-mono text-[11px] text-paper-faint">
+                    {`${placement.siteId === null ? 'semua situs' : placement.siteId.slice(0, 8)} · ${placement.templateId ?? 'semua template'} · ${placement.device ?? 'semua perangkat'}`}
+                  </TableCell>
+                  <TableCell>
+                    <Checkbox
+                      checked={placement.active}
+                      disabled={busy}
+                      aria-label={`Aktifkan penempatan ${placement.slotId}`}
+                      onCheckedChange={(checked) => {
+                        void onUpdate({ id: placement.id, active: checked === true, expectedVersion: placement.version });
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex flex-wrap gap-1">
+                      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setEditingId(placement.id); setEditPriority(String(placement.priority)); setEditStartsAt(placement.startsAt === null ? '' : placement.startsAt.slice(0, 16)); setEditEndsAt(placement.endsAt === null ? '' : placement.endsAt.slice(0, 16)); setEditVersion(placement.version); }}>Ubah</Button>
+                      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { if (!window.confirm(`Hapus penempatan slot "${placement.slotId}"?`)) return; void onDelete({ id: placement.id }); }}>Hapus</Button>
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
       )}
     </SectionCard>
   );

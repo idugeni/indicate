@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
+import { AD_SLOT_IDS } from '@/modules/ads/slots';
 import { AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
+
+function allOn(): Record<string, unknown> {
+  return Object.fromEntries(
+    AD_SLOT_IDS.map((slot) => [slot, { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/x.png' } }]),
+  );
+}
 
 function siteFor(templateId: string, ads?: Record<string, unknown>) {
   const site = makeNetworkSite();
@@ -34,19 +41,32 @@ describe('AdSlot', () => {
     expect(html).toBe('');
   });
 
-  it('merender label, ruang cadangan, dan status kosong untuk slot aktif tanpa kreatif', () => {
-    const html = renderToStaticMarkup(<AdSlot site={siteFor('clean-blue')} slot="leaderboard" />);
-    expect(html).toContain('data-ad-slot="leaderboard"');
-    expect(html).toContain('Iklan');
-    expect(html).toContain('data-ad-state="empty"');
-    expect(html).toContain('aspect-[');
+  it('tidak merender apa pun untuk slot aktif tanpa kreatif (UI bersih)', () => {
+    const html = renderToStaticMarkup(<AdSlot site={siteFor('clean-blue', { leaderboard: { enabled: true } })} slot="leaderboard" />);
+    expect(html).toBe('');
   });
 
-  it('menampilkan CTA house-ad tanpa teks label terlihat saat slot kosong', () => {
-    const html = renderToStaticMarkup(<AdSlot site={siteFor('clean-blue')} slot="leaderboard" />);
-    expect(html).toContain('Pasang Iklan');
-    expect(html).toContain('href="/kontak"');
-    expect(html).not.toContain('tracking-[0.14em]');
+  it('tidak menampilkan CTA house-ad saat slot kosong', () => {
+    const html = renderToStaticMarkup(<AdSlot site={siteFor('clean-blue', { leaderboard: { enabled: true } })} slot="leaderboard" />);
+    expect(html).not.toContain('Pasang Iklan');
+    expect(html).not.toContain('href="/kontak"');
+  });
+
+  it('merender label dan ruang cadangan untuk slot terisi', () => {
+    const html = renderToStaticMarkup(
+      <AdSlot
+        site={siteFor('clean-blue', {
+          leaderboard: {
+            enabled: true,
+            creative: { kind: 'image', imageUrl: 'https://cdn.example/a.png', href: 'https://pengiklan.example', alt: 'Promo' },
+          },
+        })}
+        slot="leaderboard"
+      />,
+    );
+    expect(html).toContain('data-ad-slot="leaderboard"');
+    expect(html).toContain('Iklan');
+    expect(html).toContain('aspect-[');
   });
 
   it('merender kreatif gambar dengan tautan bersponsor dan lazy loading', () => {
@@ -54,6 +74,7 @@ describe('AdSlot', () => {
       <AdSlot
         site={siteFor('clean-blue', {
           leaderboard: {
+            enabled: true,
             creative: { kind: 'image', imageUrl: 'https://cdn.example/a.png', href: 'https://pengiklan.example', alt: 'Promo' },
           },
         })}
@@ -69,7 +90,7 @@ describe('AdSlot', () => {
     const html = renderToStaticMarkup(
       <AdSlot
         site={siteFor('clean-blue', {
-          leaderboard: { creative: { kind: 'image', imageUrl: 'https://cdn.example/a.png' } },
+          leaderboard: { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/a.png' } },
         })}
         slot="leaderboard"
         eager
@@ -78,21 +99,68 @@ describe('AdSlot', () => {
     expect(html).not.toContain('loading="lazy"');
   });
 
-  it('tidak menyuntikkan skrip untuk kreatif penyedia', () => {
+  it('merender unit AdSense nyata dengan ins dan client id', () => {
     const html = renderToStaticMarkup(
       <AdSlot
         site={siteFor('clean-blue', {
-          leaderboard: { creative: { kind: 'provider', provider: 'adsense', clientId: 'ca-pub-1' } },
+          leaderboard: {
+            enabled: true,
+            creative: { kind: 'provider', provider: 'adsense', clientId: 'ca-pub-1', slotId: '123' },
+          },
         })}
         slot="leaderboard"
       />,
     );
     expect(html).toContain('data-ad-provider="adsense"');
-    expect(html).not.toContain('<script');
+    expect(html).toContain('adsbygoogle');
+    expect(html).toContain('data-ad-client="ca-pub-1"');
+    expect(html).toContain('data-ad-slot="123"');
+    expect(html).not.toContain('siap untuk penyedia');
+  });
+
+  it('merender ins responsif tanpa data-ad-slot saat slotId absen', () => {
+    const html = renderToStaticMarkup(
+      <AdSlot
+        site={siteFor('clean-blue', {
+          leaderboard: { enabled: true, creative: { kind: 'provider', provider: 'adsense', clientId: 'ca-pub-1' } },
+        })}
+        slot="leaderboard"
+      />,
+    );
+    expect(html).toContain('adsbygoogle');
+    expect(html).toContain('data-ad-client="ca-pub-1"');
+    expect(html).not.toContain('data-ad-slot="123"');
+  });
+
+  it('tanpa clientId tidak merender markup iklan (fallback null)', () => {
+    const html = renderToStaticMarkup(
+      <AdSlot
+        site={siteFor('clean-blue', {
+          leaderboard: { enabled: true, creative: { kind: 'provider', provider: 'adsense' } },
+        })}
+        slot="leaderboard"
+      />,
+    );
+    expect(html).not.toContain('adsbygoogle');
+    expect(html).not.toContain('data-ad-client');
+    expect(html).not.toContain('siap untuk penyedia');
+  });
+
+  it('clientId kosong dianggap absen (fallback null)', () => {
+    const html = renderToStaticMarkup(
+      <AdSlot
+        site={siteFor('clean-blue', {
+          leaderboard: { enabled: true, creative: { kind: 'provider', provider: 'adsense', clientId: '   ' } },
+        })}
+        slot="leaderboard"
+      />,
+    );
+    expect(html).not.toContain('adsbygoogle');
+    expect(html).not.toContain('data-ad-client');
   });
 
   it('tidak memakai lebar tetap pada wadah luar, hanya batas maksimum', () => {
-    const html = renderToStaticMarkup(<AdSlot site={siteFor('red-editorial')} slot="mobile-banner" />);
+    const html = renderToStaticMarkup(<AdSlot site={siteFor('red-editorial', allOn())} slot="mobile-banner" />);
     expect(html).toContain('md:hidden');
     expect(html).not.toMatch(/(?<!max-)width:\s*\d+px/);
   });
@@ -101,7 +169,7 @@ describe('AdSlot', () => {
     const html = renderToStaticMarkup(
       <AdSlot
         site={siteFor('clean-blue', {
-          leaderboard: { creative: { kind: 'image', imageUrl: 'https://cdn.example/a.png', width: 728, height: 90 } },
+          leaderboard: { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/a.png', width: 728, height: 90 } },
         })}
         slot="leaderboard"
       />,
@@ -113,7 +181,7 @@ describe('AdSlot', () => {
     const html = renderToStaticMarkup(
       <AdSlot
         site={siteFor('clean-blue', {
-          'content-middle': { creative: { kind: 'image', imageUrl: 'https://cdn.example/box.png', width: 336, height: 280 } },
+          'content-middle': { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/box.png', width: 336, height: 280 } },
         })}
         slot="content-middle"
       />,
@@ -125,7 +193,7 @@ describe('AdSlot', () => {
 
 describe('AdShellTop', () => {
   it('merender slot atas milik template dan mengosongkan template tanpa slot atas', () => {
-    const withTop = renderToStaticMarkup(<AdShellTop site={siteFor('clean-blue')} />);
+    const withTop = renderToStaticMarkup(<AdShellTop site={siteFor('clean-blue', allOn())} />);
     expect(withTop).toContain('data-ad-slot="leaderboard"');
     expect(renderToStaticMarkup(<AdShellTop site={siteFor('glassy-blue')} />)).toBe('');
   });
@@ -133,7 +201,7 @@ describe('AdShellTop', () => {
 
 describe('AdShellBottom', () => {
   it('merender spanduk footer di semua template', () => {
-    expect(renderToStaticMarkup(<AdShellBottom site={siteFor('warm-editorial')} />)).toContain(
+    expect(renderToStaticMarkup(<AdShellBottom site={siteFor('warm-editorial', allOn())} />)).toContain(
       'data-ad-slot="footer-banner"',
     );
   });

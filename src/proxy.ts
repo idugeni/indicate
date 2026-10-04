@@ -20,21 +20,38 @@ import {
 
 const noindex = { 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'private, no-store' };
 
-/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Allows Turnstile challenge script + widget frame (dashboard auth and tenant report form). Allows the Disqus origins on sites whose `site_settings.comments_enabled` is set: `<shortname>.disqus.com` serves `embed.js` and frames the thread, while `disquscdn.com` serves the bundles the embed injects. Both are wildcarded on the registrable domain because the forum shortname is network configuration, and `frame-src` therefore lists Turnstile alongside Disqus rather than Turnstile alone. Allows Google Fonts stylesheet for the invoice print page. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins. */
+/**
+ * AdSense hosts allowlisted by the edge CSP.
+ *
+ * @returns Script and frame hosts required by AdSense units.
+ */
+export function adsenseCspHosts(): {
+  readonly scriptHosts: readonly string[];
+  readonly frameHosts: readonly string[];
+} {
+  return {
+    scriptHosts: ['https://pagead2.googlesyndication.com', 'https://googleads.g.doubleclick.net'],
+    frameHosts: ['https://googleads.g.doubleclick.net', 'https://tpc.googlesyndication.com'],
+  };
+}
+
+/** script-src keeps 'unsafe-inline' for Next.js flight payloads; XSS defense rests on React output escaping. Allows Cloudflare Web Analytics beacon auto-injected at the edge; Cloudflare already terminates TLS/proxies, so no new trust. Allows Turnstile challenge script + widget frame (dashboard auth and tenant report form). Allows the Disqus origins on sites whose `site_settings.comments_enabled` is set: `<shortname>.disqus.com` serves `embed.js` and frames the thread, while `disquscdn.com` serves the bundles the embed injects. Both are wildcarded on the registrable domain because the forum shortname is network configuration, and `frame-src` therefore lists Turnstile alongside Disqus rather than Turnstile alone. Allows the AdSense loader `pagead2.googlesyndication.com` serving `adsbygoogle.js` for provider creatives. Allows `googleads.g.doubleclick.net` serving AdSense ad scripts and framing the rendered creative. Allows `tpc.googlesyndication.com` framing AdSense creatives for safe third-party rendering. Allows Google Fonts stylesheet for the invoice print page. Development adds 'unsafe-eval' for React/Turbopack dev runtimes; production stays without it. No plugins. */
 function contentSecurityPolicy(): string {
+  const adsense = adsenseCspHosts();
   const scriptHosts = [
     "'self'",
     "'unsafe-inline'",
     'https://static.cloudflareinsights.com',
     'https://challenges.cloudflare.com',
     ...DISQUS_SCRIPT_HOSTS,
+    ...adsense.scriptHosts,
   ].join(' ');
   const scriptSrc = isProductionEdge() ? `script-src ${scriptHosts}` : `script-src ${scriptHosts} 'unsafe-eval'`;
   return [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    `frame-src https://challenges.cloudflare.com ${DISQUS_FRAME_HOSTS.join(' ')}`,
+    `frame-src https://challenges.cloudflare.com ${DISQUS_FRAME_HOSTS.join(' ')} ${adsense.frameHosts.join(' ')}`,
     "img-src 'self' https: data: blob:",
     "font-src 'self' https: data:",
     "connect-src 'self' https:",

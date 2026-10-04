@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { makeNetworkArticle, makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
+import { AD_SLOT_IDS } from '@/modules/ads/slots';
 import { TEMPLATE_AD_MAP } from '@/modules/ads/placement-map';
 import { isSlotMapped } from '@/modules/ads/config';
 import type { AdSlotId } from '@/modules/ads/slots';
@@ -81,7 +82,16 @@ const ARTICLE_SLOTS: readonly AdSlotId[] = ['in-content', 'content-middle', 'con
 
 function siteFor(templateId: TemplateId, article: ArticleListItem): NetworkSiteData {
   const site = makeNetworkSite([article]);
-  return { ...site, settings: { ...site.settings, colors: { templateId } } };
+  return {
+    ...site,
+    settings: {
+      ...site.settings,
+      colors: { templateId },
+      ads: Object.fromEntries(
+        AD_SLOT_IDS.map((slot) => [slot, { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/x.png' } }]),
+      ),
+    },
+  };
 }
 
 describe('zona article terpadu', () => {

@@ -195,6 +195,23 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Canvas tenant mengikuti shell yang ter-render: body root tetap gelap
+     untuk permukaan kontrol, jadi setelah template mount, body di belakangnya
+     harus menyamai canvas template agar tidak bocor saat overscroll atau
+     konten pendek. Tanpa DB dan tanpa JS — murni :has progresif. */
+  body:has([data-template='clean-blue']) { background-color: #f5f8fd; }
+  body:has([data-template='black-lime']) { background-color: #0a0c07; }
+  body:has([data-template='dark-navy']) { background-color: #070f22; }
+  body:has([data-template='glassy-blue']) { background-color: #edf4ff; }
+  body:has([data-template='green-minimal']) { background-color: #f7faf7; }
+  body:has([data-template='orange-modern']) { background-color: #fff9f4; }
+  body:has([data-template='purple-editorial']) { background-color: #f8f7ff; }
+  body:has([data-template='red-editorial']) { background-color: #fffafa; }
+  body:has([data-template='soft-blue']) { background-color: #f1f6ff; }
+  body:has([data-template='warm-editorial']) { background-color: #fdf7f0; }
+  [data-template='black-lime'], [data-template='dark-navy'] { color-scheme: dark; }
+  [data-template='clean-blue'], [data-template='glassy-blue'], [data-template='green-minimal'], [data-template='orange-modern'], [data-template='purple-editorial'], [data-template='red-editorial'], [data-template='soft-blue'], [data-template='warm-editorial'] { color-scheme: light; }
+
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-fraunces);
     font-weight: 500;
