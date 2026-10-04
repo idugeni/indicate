@@ -51,6 +51,7 @@ export const auditActorType = pgEnum('audit_actor_type', ['user', 'api_key', 'te
 export const auditEntryPoint = pgEnum('audit_entry_point', ['dashboard', 'api', 'telegram', 'worker', 'reconciler']);
 export const auditOutcome = pgEnum('audit_outcome', ['succeeded', 'denied', 'failed']);
 export const activationOperation = pgEnum('activation_operation', ['activate', 'deactivate']);
+export const articleAssignmentSource = pgEnum('article_assignment_source', ['manual', 'auto']);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -287,7 +288,7 @@ export const articleSites = pgTable('article_sites', {
   customDescription: text('custom_description'),
   customImageMediaId: uuid('custom_image_media_id'),
   viewCount: integer('view_count').default(0).notNull(),
-  assignmentSource: text('assignment_source').default('manual').notNull(),
+  assignmentSource: articleAssignmentSource('assignment_source').default('manual').notNull(),
   expandedFromSiteId: uuid('expanded_from_site_id'),
   customCanonicalUrl: text('custom_canonical_url'),
   /** Per-copy robots override (NULL inherits the site default). */
@@ -309,7 +310,6 @@ export const articleSites = pgTable('article_sites', {
   check('article_sites_custom_title_shape', sql`${table.customTitle} IS NULL OR (char_length(${table.customTitle}) BETWEEN 10 AND 160)`),
   check('article_sites_custom_description_shape', sql`${table.customDescription} IS NULL OR (char_length(${table.customDescription}) BETWEEN 50 AND 500)`),
   check('article_sites_published_outcome', sql`${table.state} <> 'published' OR (${table.publishedUrl} IS NOT NULL AND ${table.publishedAt} IS NOT NULL)`),
-  check('article_sites_assignment_source_values', sql`${table.assignmentSource} IN ('manual', 'auto')`),
   check('article_sites_expanded_from_consistent', sql`(${table.assignmentSource} = 'auto') = (${table.expandedFromSiteId} IS NOT NULL)`),
 ]);
 
@@ -565,7 +565,6 @@ export const domainActivationAttempts = pgTable('domain_activation_attempts', {
   foreignKey({ name: 'domain_activation_attempts_site_fk', columns: [table.organizationId, table.siteId], foreignColumns: [sites.organizationId, sites.id] }).onDelete('cascade'),
   index('domain_activation_attempts_due_idx').on(table.status, table.nextAttemptAt),
   index('domain_activation_attempts_claim_idx').on(table.status, table.nextAttemptAt, table.reconciliationClaimExpiresAt),
-  check('domain_activation_attempts_operation_check', sql`${table.operation} IN ('activate', 'deactivate')`),
   check('domain_activation_attempts_nonnegative', sql`${table.attempts} >= 0`),
 ]);
 

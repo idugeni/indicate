@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
+import { PRIVACY_DECIDE_STATUSES, PRIVACY_REQUEST_TYPES, REPORT_CATEGORIES } from '@/modules/moderation/models';
 import { SLUG_MAX_LENGTH, SLUG_PATTERN } from '@/modules/site/slug-allocator';
 
 const id = z.uuid();
-const category = z.enum(['copyright', 'defamation', 'privacy', 'hate', 'misinformation', 'other']);
+const category = z.enum(REPORT_CATEGORIES);
 const contact = z.string().trim().min(3).max(320);
 const details = z.string().trim().min(10).max(4000);
 
@@ -47,13 +48,13 @@ export const reportDecideSchema = z.object({
 
 export const privacySubmitSchema = z.object({
   orgId: id,
-  requestType: z.enum(['access', 'correction', 'deletion', 'portability', 'restriction']),
+  requestType: z.enum(PRIVACY_REQUEST_TYPES),
   details: z.string().trim().min(10).max(4000),
 }).strict();
 
 export const privacyDecideSchema = z.object({
   ticket: z.string().trim().min(1).max(32),
-  status: z.enum(['in_progress', 'fulfilled', 'rejected']),
+  status: z.enum(PRIVACY_DECIDE_STATUSES),
   note: z.string().trim().min(1).max(2000).nullable().default(null),
 }).strict();
 

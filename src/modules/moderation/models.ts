@@ -1,11 +1,6 @@
 export type ReportStatus = 'received' | 'under_review' | 'action_taken' | 'rejected';
-export type ReportCategory =
-  | 'copyright'
-  | 'defamation'
-  | 'privacy'
-  | 'hate'
-  | 'misinformation'
-  | 'other';
+export const REPORT_CATEGORIES = ['copyright', 'defamation', 'privacy', 'hate', 'misinformation', 'other'] as const;
+export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
 export interface ContentReportRecord {
   readonly id: string;
@@ -20,8 +15,11 @@ export interface ContentReportRecord {
   readonly createdAt: string;
 }
 
-export type PrivacyRequestType = 'access' | 'correction' | 'deletion' | 'portability' | 'restriction';
-export type PrivacyRequestStatus = 'open' | 'in_progress' | 'fulfilled' | 'rejected';
+export const PRIVACY_REQUEST_TYPES = ['access', 'correction', 'deletion', 'portability', 'restriction'] as const;
+export type PrivacyRequestType = (typeof PRIVACY_REQUEST_TYPES)[number];
+export const PRIVACY_DECIDE_STATUSES = ['in_progress', 'fulfilled', 'rejected'] as const;
+export type PrivacyDecideStatus = (typeof PRIVACY_DECIDE_STATUSES)[number];
+export type PrivacyRequestStatus = 'open' | PrivacyDecideStatus;
 
 export interface PrivacyRequestRecord {
   readonly id: string;

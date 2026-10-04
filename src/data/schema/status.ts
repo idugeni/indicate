@@ -1,15 +1,18 @@
-import { index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgEnum, pgTable, primaryKey, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 };
 
+export const probeHealth = pgEnum('probe_health', ['ok', 'degraded', 'down']);
+export const incidentStatus = pgEnum('incident_status', ['open', 'resolved']);
+
 /** Hasil mentah satu putaran probe status; dibersihkan berkala oleh probe. */
 export const statusChecks = pgTable('status_checks', {
   id: uuid('id').primaryKey().defaultRandom(),
   component: text('component').notNull(),
-  health: text('health').notNull(),
+  health: probeHealth('health').notNull(),
   latencyMs: integer('latency_ms'),
   detail: text('detail'),
   checkedAt: timestamp('checked_at', { withTimezone: true }).defaultNow().notNull(),
@@ -36,7 +39,7 @@ export const statusIncidents = pgTable('status_incidents', {
   component: text('component'),
   title: text('title').notNull(),
   detail: text('detail'),
-  status: text('status').default('open').notNull(),
+  status: incidentStatus('status').default('open').notNull(),
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   updates: jsonb('updates').$type<readonly { readonly at: string; readonly text: string }[]>().default([]).notNull(),

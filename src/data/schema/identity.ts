@@ -17,6 +17,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export const recordStatus = pgEnum('record_status', ['active', 'inactive', 'archived']);
+export const organizationKind = pgEnum('organization_kind', ['operator', 'customer']);
 export const regionKind = pgEnum('region_kind', ['region', 'city']);
 export const roleTier = pgEnum('role_tier', ['admin', 'user', 'superadmin']);
 export const permissionScope = pgEnum('permission_scope', ['organization', 'platform']);
@@ -40,14 +41,13 @@ export const organizations = pgTable('organizations', {
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   status: recordStatus('status').default('active').notNull(),
-  kind: text('kind').default('customer').notNull(),
+  kind: organizationKind('kind').default('customer').notNull(),
   customerMetadata: jsonb('customer_metadata').$type<Record<string, unknown>>().default({}).notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
 }, (table) => [
   unique('organizations_slug_unique').on(table.slug),
   check('organizations_version_positive', sql`${table.version} > 0`),
-  check('organizations_kind_check', sql`${table.kind} IN ('operator', 'customer')`),
   index('organizations_status_idx').on(table.status),
   index('organizations_kind_idx').on(table.kind),
 ]);

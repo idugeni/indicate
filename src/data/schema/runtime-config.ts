@@ -29,6 +29,7 @@ export const invalidationPartitionKind = pgEnum('invalidation_partition_kind', [
 export const configAuditOutcome = pgEnum('config_audit_outcome', ['succeeded', 'denied', 'conflicted', 'failed']);
 export const configAuditActorType = pgEnum('config_audit_actor_type', ['user', 'api_key', 'telegram', 'system', 'migration']);
 export const seoRobotsDirective = pgEnum('seo_robots_directive', ['index,follow', 'noindex,nofollow']);
+export const invalidationIntentStatus = pgEnum('invalidation_intent_status', ['pending', 'claimed', 'completed', 'failed']);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -170,7 +171,7 @@ export const runtimeConfigInvalidationIntents = pgTable('runtime_config_invalida
   organizationId: uuid('organization_id'),
   domainId: uuid('domain_id'),
   siteId: uuid('site_id'),
-  status: text('status').notNull().default('pending'),
+  status: invalidationIntentStatus('status').notNull().default('pending'),
   attempts: integer('attempts').notNull().default(0),
   nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }),
   claimToken: uuid('claim_token'),

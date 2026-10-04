@@ -184,7 +184,7 @@ export const orgErasureRequests = pgTable('org_erasure_requests', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   requestedBy: text('requested_by').notNull(),
   reason: text('reason').notNull(),
-  status: text('status').default('pending').notNull(),
+  status: taskStatus('status').default('pending').notNull(),
   scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull(),
   attempts: integer('attempts').default(0).notNull(),
   nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
