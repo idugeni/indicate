@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import type { MediaOwner } from '@/modules/publishing/models';
-import { detectDriveEmbed, detectSocialEmbed, extractYouTubeId, isSafeLinkUrl, isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
+import { detectDriveEmbed, detectSocialEmbed, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
 import { DriveEmbed, FacebookEmbed, InstagramEmbed, TikTokEmbed, TwitterEmbed } from '@/modules/dashboard/components/editorial/embed-nodes';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
 import { AppTooltip } from '@/ui/app-tooltip';
@@ -87,6 +87,8 @@ export function RichTextEditor({
   const toolbarId = useId();
   const linkInputId = useId();
   const youtubeInputId = useId();
+  const imageUrlInputId = useId();
+  const imageUrlAltInputId = useId();
   const socialInputId = useId();
   const selectedCaptionInputId = useId();
   const fileInputId = useId();
@@ -98,6 +100,9 @@ export function RichTextEditor({
   });
   const [linkDraft, setLinkDraft] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
+  const [imageUrlDraft, setImageUrlDraft] = useState('');
+  const [imageUrlAlt, setImageUrlAlt] = useState('');
+  const [imageUrlOpen, setImageUrlOpen] = useState(false);
   const [youtubeDraft, setYoutubeDraft] = useState('');
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [socialDraft, setSocialDraft] = useState('');
@@ -228,6 +233,21 @@ export function RichTextEditor({
     setStatus(null);
   }
 
+  function applyImageUrl(): void {
+    if (editor === null) return;
+    const src = imageUrlDraft.trim();
+    if (!isSafeMediaSrc(src)) {
+      setStatus('URL gambar tidak valid: gunakan alamat https langsung ke berkas gambar.');
+      return;
+    }
+    const alt = imageUrlAlt.trim() === '' ? 'gambar' : imageUrlAlt.trim().slice(0, 300);
+    editor.chain().focus().setImage({ src, alt, title: alt }).run();
+    setImageUrlOpen(false);
+    setImageUrlDraft('');
+    setImageUrlAlt('');
+    setStatus('Gambar tersisip dari URL.');
+  }
+
   function applySocial(): void {
     if (editor === null) return;
     const detected = detectSocialEmbed(socialDraft) ?? detectDriveEmbed(socialDraft);
@@ -289,6 +309,11 @@ export function RichTextEditor({
               <Button type="button" variant="outline" size="xs" aria-label="Unggah gambar" disabled={busy} onClick={() => fileRef.current?.click()}>
                 {uploading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
                 Gambar
+              </Button>
+            </AppTooltip>
+            <AppTooltip label="Sisipkan gambar dari URL luar" side="top">
+              <Button type="button" variant="outline" size="xs" aria-label="Sisipkan gambar dari URL" aria-expanded={imageUrlOpen} disabled={busy} onClick={() => setImageUrlOpen((open) => !open)}>
+                URL
               </Button>
             </AppTooltip>
             </div>
@@ -404,6 +429,49 @@ export function RichTextEditor({
           />
           <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyYoutube}>
             Sematkan
+          </Button>
+        </div>
+      ) : null}
+
+      {imageUrlOpen ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-hairline bg-bg-raised-2 p-2">
+          <label htmlFor={imageUrlInputId} className="font-mono text-[11px] text-paper-dim">
+            URL gambar
+          </label>
+          <Input
+            id={imageUrlInputId}
+            value={imageUrlDraft}
+            onChange={(event) => setImageUrlDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                applyImageUrl();
+              }
+            }}
+            placeholder="https://…/gambar.webp"
+            disabled={busy}
+            className="h-7 min-w-0 flex-1 font-mono text-xs"
+          />
+          <label htmlFor={imageUrlAltInputId} className="font-mono text-[11px] text-paper-dim">
+            Alt
+          </label>
+          <Input
+            id={imageUrlAltInputId}
+            value={imageUrlAlt}
+            onChange={(event) => setImageUrlAlt(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                applyImageUrl();
+              }
+            }}
+            placeholder="Keterangan gambar"
+            disabled={busy}
+            maxLength={300}
+            className="h-7 w-32 font-mono text-xs"
+          />
+          <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyImageUrl}>
+            Sisipkan
           </Button>
         </div>
       ) : null}

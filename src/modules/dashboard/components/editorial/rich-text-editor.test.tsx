@@ -41,6 +41,24 @@ describe('RichTextEditor', () => {
     expect(screen.queryByLabelText('Keterangan gambar')).toBeNull();
   });
 
+  it('membuka panel URL gambar dari toolbar', async () => {
+    const user = userEvent.setup();
+    render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
+    expect(screen.queryByLabelText('URL gambar')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Sisipkan gambar dari URL' }));
+    expect(screen.getByLabelText('URL gambar')).toBeDefined();
+    expect(screen.getByLabelText('Alt')).toBeDefined();
+  });
+
+  it('menolak URL gambar yang tidak aman', async () => {
+    const user = userEvent.setup();
+    render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
+    await user.click(screen.getByRole('button', { name: 'Sisipkan gambar dari URL' }));
+    await user.type(screen.getByLabelText('URL gambar'), 'notaurl');
+    await user.click(screen.getByRole('button', { name: 'Sisipkan' }));
+    expect(screen.getByRole('status').textContent ?? '').toContain('tidak valid');
+  });
+
   it('menonaktifkan toolbar saat disabled', () => {
     render(<RichTextEditor onDocChange={() => {}} command={async () => null} disabled />);
     expect(screen.getByRole('button', { name: 'Tebal' }).hasAttribute('disabled')).toBe(true);

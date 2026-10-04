@@ -1079,6 +1079,10 @@ export function ArticleCreateForm({
       toast.error('Slug hanya boleh huruf kecil, angka, dan strip.');
       return;
     }
+    if (descriptionText.trim().length > 500) {
+      toast.error(`Deskripsi ${descriptionText.trim().length} karakter — maksimal 500. Pangkas dulu.`);
+      return;
+    }
     if (provinceId === null && !nationalActive) {
       toast.error('Pilih wilayah dulu.');
       return;
