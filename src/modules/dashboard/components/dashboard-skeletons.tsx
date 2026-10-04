@@ -386,6 +386,12 @@ export function DashboardViewSkeleton({ view }: { readonly view: View }) {
           <FormsGridBare columns={2} count={2} />
         </>
       ) : null}
+      {view === 'ads' ? (
+        <>
+          <DashboardTabsSkeleton />
+          <TablesGridBare columns={1} count={2} />
+        </>
+      ) : null}
       {view === 'customers' ? (
         <>
           <FormsGridBare columns={3} count={3} />

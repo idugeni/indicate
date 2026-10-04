@@ -116,6 +116,10 @@ const ModerationPanel = dynamic(
   () => import('@/modules/dashboard/components/moderation/moderation-panel').then((module) => ({ default: module.ModerationPanel })),
   { loading: () => <DashboardViewSkeleton view="moderation" /> },
 );
+const AdsManagementPanel = dynamic(
+  () => import('@/modules/dashboard/components/ads/ads-management-panel').then((module) => ({ default: module.AdsManagementPanel })),
+  { loading: () => <DashboardViewSkeleton view="ads" /> },
+);
 const LoginMethodsForm = dynamic(
   () => import('@/modules/dashboard/components/settings/login-methods-form').then((module) => ({ default: module.LoginMethodsForm })),
   { loading: () => <DashboardFormSkeleton /> },
@@ -300,7 +304,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         </Tabs>
       ) : null}
       {view === 'media' ? <MediaLibrary data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} /> : null}
+      {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} organizationId={organizationId} /> : null}
       {view === 'publishing' ? (
         <div className="grid gap-6">
           <PublishingForm data={data} command={command} />
@@ -344,6 +348,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       ) : null}
       {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...permissions]} /> : null}
       {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
+      {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
       {view === 'ai' ? <AiManagementPanel organizationId={organizationId} command={command} /> : null}
       {view === 'customers' ? <CustomerManagement command={command} organizationId={organizationId} /> : null}
       {view === 'content' ? <ContentManager /> : null}

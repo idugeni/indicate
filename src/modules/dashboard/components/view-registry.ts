@@ -38,6 +38,7 @@ export type View =
   | 'media'
   | 'publishing'
   | 'published'
+  | 'ads'
   | 'analytics'
   | 'audit'
   | 'operations'
@@ -120,6 +121,11 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     label: 'Hasil Tayang', title: 'Hasil Tayang', eyebrow: 'URL Siap Dishare', group: 'publishing',
     description: 'Semua URL artikel yang sudah tayang, bernomor dan siap disalin ke WhatsApp.',
     icon: Link2, suppressesRawCollections: true,
+  },
+  ads: {
+    label: 'Iklan', title: 'Manajemen Iklan', eyebrow: 'Monetisasi Portal', group: 'publishing',
+    description: 'Slot per situs, pengiklan, kampanye, kreatif, dan penempatan tayang.',
+    icon: Megaphone, requiredPermission: DASHBOARD_PERMISSIONS.siteManage, suppressesRawCollections: true,
   },
   configuration: {
     label: 'Domain & Wilayah', title: 'Domain & Wilayah', eyebrow: 'Pengaturan Domain', group: 'system',
