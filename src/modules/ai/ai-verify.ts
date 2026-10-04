@@ -1,9 +1,9 @@
 import 'server-only';
 
-import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
+import type { AiServiceDeps } from '@/modules/ai/ai-service';
 import { PUBLISHER_VERIFY_SCHEMA } from '@/modules/ai/ai-response-schemas';
-import type { AiCallerRole } from '@/modules/ai/ai-types';
-import { AI_LIMITS, scanPrompt, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
+import { runTaskQuery } from '@/modules/ai/ai-task-query';
+import { AI_LIMITS, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
 
 const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
@@ -61,37 +61,6 @@ export function parseVerification(text: string): PublisherAssessment | null {
   return { summary, riskLevel, checklist, recommendation };
 }
 
-async function runQuery(
-  callerRole: AiCallerRole,
-  organizationId: string | undefined,
-  query: {
-    readonly prompt: string;
-    readonly systemInstruction: string;
-    readonly temperature: number;
-    readonly maxOutputTokens: number;
-    readonly responseMimeType?: string;
-    readonly responseSchema?: Record<string, unknown> | undefined;
-  },
-): Promise<{ readonly ok: true; readonly text: string } | { readonly ok: false; readonly error: string }> {
-  const scanned = scanPrompt(query.prompt);
-  if (!scanned.ok) return { ok: false, error: scanned.reason };
-  if (configured === null) return { ok: false, error: BUSY_MESSAGE };
-  const result = await executeAiQuery(configured, {
-    prompt: query.prompt,
-    organizationId: organizationId ?? null,
-    systemInstruction: query.systemInstruction,
-    temperature: query.temperature,
-    maxOutputTokens: query.maxOutputTokens,
-    responseMimeType: query.responseMimeType,
-    ...(query.responseSchema === undefined ? {} : { responseSchema: query.responseSchema }),
-    channel: 'web',
-    callerRole,
-    enableTools: false,
-  });
-  if (result.error !== undefined || result.text.trim() === '') return { ok: false, error: BUSY_MESSAGE };
-  return { ok: true, text: result.text };
-}
-
 const VERIFY_SYSTEM = [
   'Kamu adalah analis verifikasi penerbit jaringan media Indonesia.',
   'Gunakan bahasa dugaan ("dugaan", "indikasi", "tampak"); jangan menyatakan penipuan atau valid secara mutlak.',
@@ -145,7 +114,8 @@ export async function verifyPublisher(input: {
 }): Promise<{ readonly ok: true; readonly assessment: PublisherAssessment } | { readonly ok: false; readonly error: string }> {
   const built = buildPublisherVerifyInput(input.name, input.evidence);
   if (!built.ok) return built;
-  const result = await runQuery('editor', input.organizationId, {
+  // No dedicated thinking profile for verification; use the channel default.
+  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
     prompt: built.prompt,
     systemInstruction: built.systemInstruction,
     temperature: 0.3,

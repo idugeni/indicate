@@ -104,6 +104,13 @@ export interface StreamDraftInput {
   readonly onDelta?: ((delta: string) => void) | undefined;
 }
 
+/**
+ * Maximum accumulated stream text before aborting an oversized response.
+ *
+ * @remarks Guards the client against unbounded memory growth from a runaway stream.
+ */
+export const AI_STREAM_BUFFER_LIMIT = 500_000;
+
 async function readJsonError(response: Response): Promise<string> {
   const body = (await response.json().catch(() => null)) as { readonly error?: { readonly message?: string } } | null;
   const message = typeof body?.error?.message === 'string' && body.error.message !== '' ? body.error.message : '';
@@ -131,16 +138,26 @@ export async function streamDraftArticle(input: StreamDraftInput): Promise<strin
   if (reader === undefined || reader === null) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
   const decoder = new TextDecoder();
   let buffer = '';
+  let totalText = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
+    if (buffer.length > AI_STREAM_BUFFER_LIMIT) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error('respons terlalu besar; stream dihentikan.');
+    }
     const split = splitSseFrames(buffer);
     buffer = split.rest;
     for (const frame of split.frames) {
       const event = parseSseFrame(frame);
       if (event === null) continue;
       if (event.kind === 'delta') {
+        totalText += event.delta.length;
+        if (totalText > AI_STREAM_BUFFER_LIMIT) {
+          await reader.cancel().catch(() => undefined);
+          throw new Error('respons terlalu besar; stream dihentikan.');
+        }
         input.onDelta?.(event.delta);
       } else if (event.kind === 'done') {
         await reader.cancel().catch(() => undefined);
@@ -175,6 +192,9 @@ export interface AiStreamState {
 /**
  * React state for one streamed draft turn with abort support.
  *
+ * @remarks Hook signature is frozen: `ai-draft-assist.tsx` consumes `start` and
+ * `abort` as-is, so oversized-response handling stays inside `streamDraftArticle`
+ * and never changes this return shape.
  * @returns Live output, status flags, plus start and abort controls.
  */
 export function useAiStream(): AiStreamState {

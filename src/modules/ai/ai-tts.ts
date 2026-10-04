@@ -1,7 +1,9 @@
 import 'server-only';
 
-import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
-import { scanPrompt, truncateInput } from '@/modules/ai/ai-usage';
+import type { AiServiceDeps } from '@/modules/ai/ai-service';
+import { runTaskQuery } from '@/modules/ai/ai-task-query';
+import { TASK_MODEL_PROFILE } from '@/modules/ai/ai-task-profiles';
+import { truncateInput } from '@/modules/ai/ai-usage';
 
 export const TTS_LIMITS = {
   text: 4000,
@@ -88,12 +90,12 @@ export function buildTtsInput(
 }
 
 /**
- * Mensintesis teks artikel menjadi audio Bahasa Indonesia.
+ * Synthesize article text into Indonesian speech audio.
  *
- * @param input.text - Teks artikel, dipangkas ke 4000 karakter.
- * @param input.voice - Nama suara opsional; kosong memakai suara bawaan.
- * @param input.organizationId - Organisasi untuk cakupan kredensial dan audit.
- * @returns Audio base64 bertipe audio/*, atau pesan sibuk yang aman.
+ * @param input.text - Article text, truncated to 4000 chars.
+ * @param input.voice - Optional voice name; empty uses the default voice.
+ * @param input.organizationId - Organization scoping credentials and audit.
+ * @returns Base64 audio of type audio/*, or a safe busy message.
  */
 export async function synthesizeSpeech(input: {
   readonly text: string;
@@ -102,25 +104,19 @@ export async function synthesizeSpeech(input: {
 }): Promise<{ readonly ok: true; readonly audio: TtsAudio } | { readonly ok: false; readonly error: string }> {
   const built = buildTtsInput(input.text, input.voice);
   if (!built.ok) return built;
-  const scanned = scanPrompt(built.prompt);
-  if (!scanned.ok) return { ok: false, error: scanned.reason };
-  if (configured === null) return { ok: false, error: BUSY_MESSAGE };
-  const result = await executeAiQuery(configured, {
+  // TTS is a non-text task: forward thinkingBudget 0 via the tts profile.
+  // AiThinkingConfig permits 0, so it travels as thinkingConfig as-is.
+  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
     prompt: built.prompt,
-    organizationId: input.organizationId ?? null,
     systemInstruction: TTS_SYSTEM_INSTRUCTION,
-    temperature: 0.3,
+    temperature: TASK_MODEL_PROFILE.tts.temperature,
     maxOutputTokens: 512,
-    channel: 'web',
-    callerRole: 'editor',
-    enableTools: false,
+    thinkingTask: 'tts',
     modelOverride: TTS_MODEL,
     responseModalities: ['AUDIO'],
     speechVoiceName: built.voiceName,
   });
-  if (result.error !== undefined || (result.text.trim() === '' && (result.inlineData?.length ?? 0) === 0)) {
-    return { ok: false, error: BUSY_MESSAGE };
-  }
+  if (!result.ok) return result;
   const audio = pickAudio(result.inlineData);
   if (audio === null) return { ok: false, error: BUSY_MESSAGE };
   if (!isAudioWithinCap(audio)) return { ok: false, error: 'Audio hasil terlalu besar. Coba teks yang lebih pendek.' };

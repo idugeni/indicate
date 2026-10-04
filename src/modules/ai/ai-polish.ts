@@ -2,62 +2,13 @@ import 'server-only';
 
 import { BUSY_MESSAGE, runQuery, scanPrompt, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
 import { CLASSIFY_ARTICLE_SCHEMA, POLISH_BODY_SCHEMA } from '@/modules/ai/ai-response-schemas';
-import type { AiThinkingConfig } from '@/modules/ai/ai-types';
+import { TASK_MODEL_PROFILE } from '@/modules/ai/ai-task-profiles';
+
+export type { AiTaskKind } from '@/modules/ai/ai-task-profiles';
+export { TASK_MODEL_PROFILE, taskThinkingOverride } from '@/modules/ai/ai-task-profiles';
 
 const GROUNDING_SENTENCE =
   'Gunakan hanya fakta dari judul, kutipan, dan isi yang diberikan; jangan menambah fakta baru di luar teks tersebut.';
-
-/**
- * Jenis tugas AI yang dipetakan ke profil model hemat.
- *
- * @remarks Kunci `ringkas` adalah alias tugas `summarize` di control plane.
- */
-export type AiTaskKind = 'caption' | 'seo' | 'polish' | 'ringkas' | 'sampul' | 'chat' | 'embed';
-
-/**
- * Profil model hemat per tugas: tier murah, suhu yang disarankan, dan anggaran thinking.
- *
- * @remarks `thinkingBudget` yang `undefined` berarti memakai default kanal adapter.
- */
-export interface TaskModelProfile {
-  readonly modelTier: 'murah';
-  readonly temperature: number;
-  readonly thinkingBudget?: number | undefined;
-}
-
-/**
- * Matriks tugas ke profil model hemat.
- *
- * @remarks Caption dan SEO memakai penalaran pendek agar cepat; polish dan
- * ringkas memakai anggaran besar agar hasilnya matang; sampul, chat, dan
- * embed memakai default kanal tanpa thinking tambahan.
- */
-export const TASK_MODEL_PROFILE: Record<AiTaskKind, TaskModelProfile> = {
-  caption: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 1024 },
-  seo: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 2048 },
-  polish: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 8192 },
-  ringkas: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 8192 },
-  sampul: { modelTier: 'murah', temperature: 0.8 },
-  chat: { modelTier: 'murah', temperature: 0.7 },
-  embed: { modelTier: 'murah', temperature: 0 },
-};
-
-/**
- * Mengembalikan override thinking untuk satu tugas dari matriks profil.
- *
- * @param task - Tugas yang menentukan anggaran default.
- * @param userOverride - Override eksplisit pemanggil, dihormati lebih dulu.
- * @returns Konfigurasi thinking tugas tersebut, atau undefined bila memakai default kanal.
- */
-export function taskThinkingOverride(
-  task: AiTaskKind | (string & {}),
-  userOverride?: AiThinkingConfig | undefined,
-): AiThinkingConfig | undefined {
-  if (userOverride?.thinkingBudget !== undefined) return userOverride;
-  const profile = (TASK_MODEL_PROFILE as Record<string, TaskModelProfile>)[task];
-  if (profile?.thinkingBudget === undefined) return undefined;
-  return { thinkingBudget: profile.thinkingBudget, includeThoughts: true };
-}
 
 const POLISH_SYSTEM = [
   'Kamu adalah editor bahasa senior media Indonesia.',
@@ -102,6 +53,7 @@ export async function polishBody(input: {
     maxOutputTokens: 4096,
     responseMimeType: 'application/json',
     responseSchema: POLISH_BODY_SCHEMA,
+    thinkingTask: 'polish',
   });
   if (!result.ok) return result;
   const polished = parsePolishedBody(result.text);
@@ -165,6 +117,7 @@ export async function classifyArticle(input: {
     maxOutputTokens: 512,
     responseMimeType: 'application/json',
     responseSchema: CLASSIFY_ARTICLE_SCHEMA,
+    thinkingTask: 'seo',
   });
   if (!result.ok) return result;
   const classification = parseClassification(result.text, allowed);

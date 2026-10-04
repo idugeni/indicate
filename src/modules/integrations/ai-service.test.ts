@@ -221,6 +221,32 @@ describe('AI service permission gating', () => {
     const actor = actorWith([INTEGRATIONS_PERMISSIONS.aiManage]);
     const result = await target.updatePolicy(actor, {
       rotationStrategy: 'health_aware', chainStrategy: 'round_robin', primaryProviderId: 'openrouter',
+      defaultModel: 'openai/gpt-9-future', fallbackProviderId: null, fallbackModel: 'openai/gpt-9-fallback',
+      maxRetries: 3, cooldownDurationSec: 60,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('updatePolicy menolak round_robin rantai satu entri', async () => {
+    const { service: target } = setupAi();
+    const actor = actorWith([INTEGRATIONS_PERMISSIONS.aiManage]);
+    const result = await target.updatePolicy(actor, {
+      rotationStrategy: 'health_aware', chainStrategy: 'round_robin', primaryProviderId: 'openrouter',
+      defaultModel: 'openai/gpt-9-future', fallbackProviderId: null, fallbackModel: 'openai/gpt-9-future',
+      maxRetries: 3, cooldownDurationSec: 60,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.error.code).toBe('INVALID_INPUT');
+      expect(result.error.error.message).toContain('Round robin butuh 2 entri');
+    }
+  });
+
+  it('updatePolicy mengizinkan rantai satu entri untuk strategi fallback', async () => {
+    const { service: target } = setupAi();
+    const actor = actorWith([INTEGRATIONS_PERMISSIONS.aiManage]);
+    const result = await target.updatePolicy(actor, {
+      rotationStrategy: 'health_aware', chainStrategy: 'fallback', primaryProviderId: 'openrouter',
       defaultModel: 'openai/gpt-9-future', fallbackProviderId: null, fallbackModel: 'openai/gpt-9-future',
       maxRetries: 3, cooldownDurationSec: 60,
     });

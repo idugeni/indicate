@@ -1,14 +1,14 @@
 import 'server-only';
 
-import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
+import type { AiServiceDeps } from '@/modules/ai/ai-service';
 import {
   SEO_BUNDLE_SCHEMA,
   SEO_EXCERPT_SCHEMA,
   SEO_META_SCHEMA,
   SEO_TITLES_SCHEMA,
 } from '@/modules/ai/ai-response-schemas';
-import type { AiCallerRole, AiChatImage } from '@/modules/ai/ai-types';
-import { AI_LIMITS, scanPrompt, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
+import { runTaskQuery } from '@/modules/ai/ai-task-query';
+import { AI_LIMITS, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
 
 const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
@@ -21,35 +21,6 @@ let configured: AiServiceDeps | null = null;
  */
 export function configureAiSeo(deps: AiServiceDeps): void {
   configured = deps;
-}
-
-async function runQuery(callerRole: AiCallerRole, organizationId: string | undefined, query: {
-  readonly prompt: string;
-  readonly systemInstruction: string;
-  readonly temperature: number;
-  readonly maxOutputTokens: number;
-  readonly responseMimeType?: string;
-  readonly responseSchema?: Record<string, unknown> | undefined;
-  readonly images?: readonly AiChatImage[] | undefined;
-}): Promise<{ readonly ok: true; readonly text: string } | { readonly ok: false; readonly error: string }> {
-  const scanned = scanPrompt(query.prompt);
-  if (!scanned.ok) return { ok: false, error: scanned.reason };
-  if (configured === null) return { ok: false, error: BUSY_MESSAGE };
-  const result = await executeAiQuery(configured, {
-    prompt: query.prompt,
-    organizationId: organizationId ?? null,
-    systemInstruction: query.systemInstruction,
-    temperature: query.temperature,
-    maxOutputTokens: query.maxOutputTokens,
-    responseMimeType: query.responseMimeType,
-    ...(query.responseSchema === undefined ? {} : { responseSchema: query.responseSchema }),
-    channel: 'web',
-    callerRole,
-    enableTools: false,
-    ...(query.images === undefined ? {} : { images: [...query.images] }),
-  });
-  if (result.error !== undefined || result.text.trim() === '') return { ok: false, error: BUSY_MESSAGE };
-  return { ok: true, text: result.text };
 }
 
 const SEO_TITLE_SYSTEM = [
@@ -156,6 +127,17 @@ export function parseTitleSuggestions(text: string, options?: SeoParseOptions): 
     if (options?.strict === true) throw new Error('Judul SEO: respons bukan JSON objek yang valid.');
     return null;
   }
+  return titlesFromRecord(record, options);
+}
+
+/**
+ * Extract title variants from one parsed JSON record.
+ *
+ * @param record - Single parsed model output shared by all bundle parsers.
+ * @param options - Strict mode throws a descriptive Error for wild shapes.
+ * @returns Three normalized titles, or null when missing.
+ */
+function titlesFromRecord(record: Record<string, unknown>, options?: SeoParseOptions): readonly string[] | null {
   const raw = Array.isArray(record.titles) ? record.titles : Array.isArray(record.judul) ? record.judul : null;
   if (raw === null) {
     if (options?.strict === true) throw new Error('Judul SEO: field "titles" hilang atau bukan array string.');
@@ -173,19 +155,13 @@ export function parseTitleSuggestions(text: string, options?: SeoParseOptions): 
 }
 
 /**
- * Mengurai deskripsi meta dari output model.
+ * Extract the meta description from one parsed JSON record.
  *
- * @param text - Output mentah model.
- * @param options - Opsi parse; strict true melempar Error deskriptif untuk bentuk liar.
- * @returns Deskripsi maksimal 160 karakter; null bila kosong atau tidak bisa diurai.
- * @throws {Error} Bila strict true dan field meta_description hilang atau kosong.
+ * @param record - Single parsed model output shared by all bundle parsers.
+ * @param options - Strict mode throws a descriptive Error for wild shapes.
+ * @returns Description capped at 160 chars, or null when missing.
  */
-export function parseMetaDescription(text: string, options?: SeoParseOptions): string | null {
-  const record = parseJsonRecord(text);
-  if (record === null) {
-    if (options?.strict === true) throw new Error('Deskripsi meta SEO: respons bukan JSON objek yang valid.');
-    return null;
-  }
+function metaFromRecord(record: Record<string, unknown>, options?: SeoParseOptions): string | null {
   const raw = typeof record.meta_description === 'string' && record.meta_description.trim() !== ''
     ? record.meta_description
     : typeof record.metaDescription === 'string'
@@ -199,12 +175,40 @@ export function parseMetaDescription(text: string, options?: SeoParseOptions): s
 }
 
 /**
- * Mengurai kutipan ringkas dari output model.
+ * Extract the short excerpt from one parsed JSON record.
  *
- * @param text - Output mentah model.
- * @param options - Opsi parse; strict true melempar Error deskriptif untuk bentuk liar.
- * @returns Kutipan maksimal 400 karakter; null bila tidak bisa diurai.
- * @throws {Error} Bila strict true dan field excerpt hilang atau kosong.
+ * @param record - Single parsed model output shared by all bundle parsers.
+ * @param options - Strict mode throws a descriptive Error for wild shapes.
+ * @returns Excerpt capped at 400 chars, or empty string when missing.
+ */
+function excerptFromRecord(record: Record<string, unknown>, options?: SeoParseOptions): string | null {
+  const raw = typeof record.excerpt === 'string' ? record.excerpt : '';
+  if (options?.strict === true && raw.trim() === '') throw new Error('Kutipan SEO: field "excerpt" hilang atau kosong.');
+  return raw.trim().slice(0, 400);
+}
+
+/**
+ * Parse the meta description from model output.
+ *
+ * @param text - Raw model output.
+ * @param options - Strict mode throws a descriptive Error for wild shapes.
+ * @returns Description capped at 160 chars, or null when unparseable.
+ */
+export function parseMetaDescription(text: string, options?: SeoParseOptions): string | null {
+  const record = parseJsonRecord(text);
+  if (record === null) {
+    if (options?.strict === true) throw new Error('Deskripsi meta SEO: respons bukan JSON objek yang valid.');
+    return null;
+  }
+  return metaFromRecord(record, options);
+}
+
+/**
+ * Parse the short excerpt from model output.
+ *
+ * @param text - Raw model output.
+ * @param options - Strict mode throws a descriptive Error for wild shapes.
+ * @returns Excerpt capped at 400 chars, or null when unparseable.
  */
 export function parseExcerptSuggestion(text: string, options?: SeoParseOptions): string | null {
   const record = parseJsonRecord(text);
@@ -212,29 +216,30 @@ export function parseExcerptSuggestion(text: string, options?: SeoParseOptions):
     if (options?.strict === true) throw new Error('Kutipan SEO: respons bukan JSON objek yang valid.');
     return null;
   }
-  const raw = typeof record.excerpt === 'string' ? record.excerpt : '';
-  if (options?.strict === true && raw.trim() === '') throw new Error('Kutipan SEO: field "excerpt" hilang atau kosong.');
-  if (options?.strict === true && raw.trim() === '') throw new Error('Kutipan SEO: field "excerpt" hilang atau kosong.');
-  return raw.trim().slice(0, 400);
+  return excerptFromRecord(record, options);
 }
 
 /**
- * Mengurai paket SEO gabungan dari satu output model.
+ * Parse the combined SEO bundle from one model output with a single decode.
  *
- * @param text - Output mentah model berisi titles, excerpt, dan meta_description.
- * @param options - Opsi parse; strict true melempar Error deskriptif untuk bentuk liar.
- * @returns Paket SEO ternormalisasi; null bila ada bagian hilang atau tidak bisa diurai.
- * @throws {Error} Bila strict true dan ada bagian paket yang hilang atau tidak valid.
+ * @param text - Raw model output holding titles, excerpt, and meta_description.
+ * @param options - Strict mode throws a descriptive Error for wild shapes.
+ * @returns Normalized SEO bundle, or null when any part is missing.
  */
 export function parseSeoBundle(text: string, options?: SeoParseOptions): SeoBundle | null {
   const strict = options?.strict === true;
+  const record = parseJsonRecord(text);
+  if (record === null) {
+    if (strict) throw new Error('Judul SEO: respons bukan JSON objek yang valid.');
+    return null;
+  }
   let titles: readonly string[] | null = null;
   let excerpt: string | null = null;
   let metaDescription: string | null = null;
   try {
-    titles = parseTitleSuggestions(text, options);
-    excerpt = parseExcerptSuggestion(text, options);
-    metaDescription = parseMetaDescription(text, options);
+    titles = titlesFromRecord(record, options);
+    excerpt = excerptFromRecord(record, options);
+    metaDescription = metaFromRecord(record, options);
   } catch (error) {
     if (strict) throw error;
     return null;
@@ -265,10 +270,10 @@ function baseInput(input: { readonly title: string; readonly body: string }): { 
 export async function suggestTitles(input: { readonly title: string; readonly body: string; readonly organizationId?: string }): Promise<{ readonly ok: true; readonly titles: readonly string[] } | { readonly ok: false; readonly error: string }> {
   const base = baseInput(input);
   if (base === null) return { ok: false, error: 'Judul atau isi diperlukan.' };
-  const result = await runQuery('editor', input.organizationId, {
+  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
     prompt: `Susun 3 varian judul ringkas untuk artikel berikut:\n\nJudul: ${base.title}\n\nIsi:\n${base.body}`,
     systemInstruction: SEO_TITLE_SYSTEM, temperature: 0.7, maxOutputTokens: 512, responseMimeType: 'application/json',
-    responseSchema: SEO_TITLES_SCHEMA,
+    responseSchema: SEO_TITLES_SCHEMA, thinkingTask: 'seo',
   });
   if (!result.ok) return result;
   const titles = parseTitleSuggestions(result.text);
@@ -289,10 +294,10 @@ export async function suggestMetaDescription(input: { readonly title: string; re
   const base = baseInput(input);
   if (base === null) return { ok: false, error: 'Judul atau isi diperlukan.' };
   const current = truncateInput(input.current ?? '', 400);
-  const result = await runQuery('editor', input.organizationId, {
+  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
     prompt: `Susun satu deskripsi meta untuk artikel berikut:\n\nJudul: ${base.title}\n\nIsi:\n${base.body}${current === '' ? '' : `\n\nDeskripsi saat ini (sempurnakan tanpa mengubah makna menjadi 150-160 karakter, sedekat mungkin ke 160):\n${current}`}`,
     systemInstruction: SEO_META_SYSTEM, temperature: 0.5, maxOutputTokens: 256, responseMimeType: 'application/json',
-    responseSchema: SEO_META_SCHEMA,
+    responseSchema: SEO_META_SCHEMA, thinkingTask: 'seo',
   });
   if (!result.ok) return result;
   const metaDescription = parseMetaDescription(result.text);
@@ -311,10 +316,10 @@ export async function suggestMetaDescription(input: { readonly title: string; re
 export async function suggestExcerpt(input: { readonly title: string; readonly body: string; readonly organizationId?: string }): Promise<{ readonly ok: true; readonly excerpt: string } | { readonly ok: false; readonly error: string }> {
   const base = baseInput(input);
   if (base === null) return { ok: false, error: 'Judul atau isi diperlukan.' };
-  const result = await runQuery('editor', input.organizationId, {
+  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
     prompt: `Susun satu kutipan ringkas untuk artikel berikut:\n\nJudul: ${base.title}\n\nIsi:\n${base.body}`,
     systemInstruction: SEO_EXCERPT_SYSTEM, temperature: 0.7, maxOutputTokens: 512, responseMimeType: 'application/json',
-    responseSchema: SEO_EXCERPT_SCHEMA,
+    responseSchema: SEO_EXCERPT_SCHEMA, thinkingTask: 'seo',
   });
   if (!result.ok) return result;
   const excerpt = parseExcerptSuggestion(result.text);
@@ -336,10 +341,10 @@ export async function suggestSeoBundle(input: SeoBundleInput): Promise<{ readonl
   const sections = [`Judul: ${base.title}`, `Isi:\n${base.body}`];
   if (reference !== '') sections.push(`Kutipan acuan (sumber grounding tambahan; jangan menambah fakta di luar Judul, Isi, dan kutipan ini):\n${reference}`);
   if (current !== '') sections.push(`Deskripsi saat ini (sempurnakan tanpa mengubah makna menjadi 150-160 karakter, sedekat mungkin ke 160):\n${current}`);
-  const result = await runQuery('editor', input.organizationId, {
+  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
     prompt: `Susun paket SEO gabungan (3 judul, 1 kutipan, 1 deskripsi meta) untuk artikel berikut. Setiap klaim harus tertelusur ke teks yang diberi.\n\n${sections.join('\n\n')}`,
     systemInstruction: SEO_BUNDLE_SYSTEM, temperature: 0.6, maxOutputTokens: 768, responseMimeType: 'application/json',
-    responseSchema: SEO_BUNDLE_SCHEMA,
+    responseSchema: SEO_BUNDLE_SCHEMA, thinkingTask: 'seo',
   });
   if (!result.ok) return result;
   const bundle = parseSeoBundle(result.text);

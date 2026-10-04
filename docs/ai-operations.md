@@ -82,7 +82,10 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   `round_robin` rotates the starting entry per request through the Redis
   cursor `ai:chain:cursor` (fail-open to fixed order) to spread load, with
   failover to the next entry preserved. A single-entry chain (one provider,
-  no fallback) is unaffected by either strategy. `rotation_strategy`
+  no fallback, identical default/fallback model) stays on `fallback`;
+  saving it under `round_robin` is rejected because rotation needs two
+  entries — add a fallback provider or a distinct fallback model. The panel
+  only warns in that state; the backend blocks on save. `rotation_strategy`
   (`health_aware` default) is orthogonal: it picks the credential *within*
   one provider, while the chain strategy orders *models* across entries.
 - Modality overrides follow the catalog owner: TTS, transcription, and
@@ -94,6 +97,15 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   `vercel-gateway`, `openai-compatible`) use `GET /models` so the result
   never depends on the configured default model. OpenRouter calls carry an
   `X-Title: Indicate` header.
+- OpenRouter routing: chat requests send `provider: {sort: 'throughput',
+  allow_fallbacks: true}` for fastest-first load balancing with gateway
+  failover; structured requests add `require_parameters: true` so JSON
+  traffic only reaches supporting endpoints. `data_collection` is left
+  unset to preserve free-tier availability — set `deny` per adapter only
+  when endpoint coverage is verified.
+- Per-model RPM/TPM enforcement runs an atomic Lua check-and-charge
+  (`AI_RATE_LIMIT_LUA`) when the store supports eval, falling back to the
+  legacy path otherwise; both stay fail-open on Redis errors.
 - Policy validation: saving rejects unknown provider ids and a default or
   fallback model whose catalog owner differs from the selected provider.
   Model names outside the catalog are allowed (the catalog may lag new
@@ -127,6 +139,15 @@ is a 60-second Redis sliding window (`ai:limit:{model}:{window}`) checked after
 the semantic-cache hit and before the provider call. Blocked calls return the
 busy message, are logged as `blocked`, and never consume a key. Models without
 a registered limit are unlimited. Every Redis failure is fail-open.
+
+## Control-plane read indexes
+
+Migration 251 (`ai_perf_indexes`) adds `ai_models_model_name_idx` on
+`ai_models (model_name)` and
+`ai_credentials_provider_status_priority_used_idx` on `ai_credentials
+(provider_id, status, priority, last_used_at)`, backing chain-owner
+lookups, probe model resolution, and credential rotation reads. Both are
+`IF NOT EXISTS`; no secrets, no data change.
 
 ## Budgets and org attribution
 

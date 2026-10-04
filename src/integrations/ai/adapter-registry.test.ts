@@ -31,6 +31,8 @@ describe('getAiAdapter', () => {
     await adapter.execute('sk-or-test', 'openai/gpt-4o-mini', { prompt: 'hai' });
     const init = vi.mocked(fetch).mock.calls.at(0)?.at(1) as RequestInit;
     expect((init.headers as Record<string, string>)['X-Title']).toBe('Indicate');
+    const body = JSON.parse(init.body as string) as { provider?: Record<string, unknown> };
+    expect(body.provider).toMatchObject({ sort: 'throughput', allow_fallbacks: true });
   });
 
   it('mengembalikan stub openai-compatible tanpa kunci', async () => {

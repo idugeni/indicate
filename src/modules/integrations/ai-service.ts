@@ -356,10 +356,12 @@ export class AiService {
    * @returns Indonesian field message when invalid; null when the chain is consistent.
    * @remarks Unknown model names are allowed (catalog may lag new provider models);
    * only known catalog entries are checked against their owning provider.
+   * A round_robin chain with one entry (no fallback provider and identical
+   * default/fallback model) is rejected; round robin needs two entries.
    */
   private async validateModelChain(
     actor: AuthorizedTenantActorContext,
-    input: { readonly primaryProviderId: string | null; readonly defaultModel: string; readonly fallbackProviderId: string | null; readonly fallbackModel: string },
+    input: { readonly chainStrategy: AiChainStrategy; readonly primaryProviderId: string | null; readonly defaultModel: string; readonly fallbackProviderId: string | null; readonly fallbackModel: string },
   ): Promise<string | null> {
     try {
       const [providers, models, stored] = await Promise.all([
@@ -388,6 +390,9 @@ export class AiService {
       const fallbackProvider = input.fallbackProviderId ?? primary;
       if (fallbackProvider !== null && fallbackOwner !== undefined && fallbackOwner !== fallbackProvider) {
         return `Model fallback ${input.fallbackModel} milik ${fallbackOwner}, bukan ${fallbackProvider}.`;
+      }
+      if (input.chainStrategy === 'round_robin' && input.fallbackProviderId === null && input.fallbackModel === input.defaultModel) {
+        return 'Round robin butuh 2 entri rantai: isi provider fallback atau bedakan model fallback.';
       }
       return null;
     } catch {

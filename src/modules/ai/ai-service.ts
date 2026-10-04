@@ -5,8 +5,10 @@ import { sql } from 'drizzle-orm';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
 import {
   checkAiModelRateLimit,
+  checkOrganizationQuota,
   estimateAiInputTokens,
   getAiModelLimits,
+  getOrganizationQuotaLimits,
   type AiModelRateLimits,
   type AiRateLimitStore,
 } from '@/modules/ai/ai-rate-limit';
@@ -56,10 +58,20 @@ const DEFAULT_STAFF_SYSTEM_INSTRUCTION =
 
 /** Provider adapter boundary; implementations wrap vendor SDKs outside this module. */
 export interface AiProviderAdapter {
+  /**
+   * Execute one prompt against the provider.
+   *
+   * @param apiKey - Plaintext credential, never logged or returned.
+   * @param modelName - Target model for this attempt.
+   * @param prompt - Effective prompt with system instruction applied.
+   * @param opts - Optional abort signal bounding the vendor fetch.
+   * @returns Raw adapter result before output redaction.
+   */
   execute(
     apiKey: string,
     modelName: string,
     prompt: AiChatPrompt,
+    opts?: { readonly signal?: AbortSignal | undefined } | undefined,
   ): Promise<AiAdapterResult>;
 }
 
@@ -227,6 +239,86 @@ function defaultSleep(ms: number): Promise<void> {
   });
 }
 
+/**
+ * Hard cap on provider attempts for one query across every chain entry.
+ */
+export const AI_MAX_TOTAL_ATTEMPTS = 12;
+
+/** Upper bound for the whole-query provider deadline. */
+export const AI_OVERALL_DEADLINE_CAP_MS = 180000;
+
+/**
+ * In-process slots currently holding a provider call.
+ *
+ * @remarks Per-instance only: serverless platforms run many isolated
+ * instances, so this semaphore bounds concurrency inside one instance
+ * and never acts as a global distributed limit.
+ */
+let aiActiveSlots = 0;
+
+/** FIFO waiters queued for the next free slot. */
+const aiSlotWaiters: Array<() => void> = [];
+
+/**
+ * Reset the in-process concurrency gate.
+ *
+ * @remarks Test-only hook restoring a deterministic idle gate.
+ */
+export function resetAiConcurrencyState(): void {
+  aiActiveSlots = 0;
+  aiSlotWaiters.length = 0;
+}
+
+/**
+ * Read settled slot usage for assertions.
+ *
+ * @returns Active slots plus queued waiters.
+ */
+export function getAiConcurrencyUsage(): { readonly active: number; readonly queued: number } {
+  return { active: aiActiveSlots, queued: aiSlotWaiters.length };
+}
+
+/**
+ * Acquire one provider slot under the routing policy limit.
+ *
+ * @param limit - `globalConcurrencyLimit` from the active policy.
+ * @remarks Fail-open: non-positive or non-finite limits skip gating so a
+ * misconfigured policy never blocks answers.
+ */
+async function acquireAiGlobalSlot(limit: number): Promise<void> {
+  if (!Number.isFinite(limit) || limit <= 0) return;
+  if (aiActiveSlots < limit) {
+    aiActiveSlots += 1;
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    aiSlotWaiters.push(resolve);
+  });
+}
+
+/** Release one provider slot, handing it to the oldest waiter first. */
+function releaseAiGlobalSlot(): void {
+  const next = aiSlotWaiters.shift();
+  if (next !== undefined) {
+    next();
+    return;
+  }
+  aiActiveSlots = Math.max(0, aiActiveSlots - 1);
+}
+
+/**
+ * Execute one adapter call bounded by a per-attempt timeout.
+ *
+ * @param adapter - Provider adapter for this chain entry.
+ * @param apiKey - Plaintext credential for this attempt only.
+ * @param modelName - Target model for this attempt.
+ * @param prompt - Effective prompt with system instruction applied.
+ * @param timeoutMs - Per-attempt ceiling driving `AbortSignal.timeout`.
+ * @returns Raw adapter result before output redaction.
+ * @remarks The timeout signal is forwarded as the fourth `opts` argument so
+ * vendor fetches abort promptly; adapters ignoring `opts` keep working
+ * because the parameter is optional.
+ */
 async function executeWithTimeout(
   adapter: AiProviderAdapter,
   apiKey: string,
@@ -234,19 +326,34 @@ async function executeWithTimeout(
   prompt: AiChatPrompt,
   timeoutMs: number,
 ): Promise<AiAdapterResult> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      adapter.execute(apiKey, modelName, prompt),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          reject(new Error(`AI request timed out after ${timeoutMs}ms.`));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
+  if (typeof AbortSignal.timeout !== 'function') {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        adapter.execute(apiKey, modelName, prompt),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(new Error(`AI request timed out after ${timeoutMs}ms.`));
+          }, timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
+  const signal = AbortSignal.timeout(timeoutMs);
+  return Promise.race([
+    adapter.execute(apiKey, modelName, prompt, { signal }),
+    new Promise<never>((_, reject) => {
+      signal.addEventListener(
+        'abort',
+        () => {
+          reject(new Error(`AI request timed out after ${timeoutMs}ms.`));
+        },
+        { once: true },
+      );
+    }),
+  ]);
 }
 
 /**
@@ -256,13 +363,19 @@ async function executeWithTimeout(
  * @param promptData - Caller request with tenant scope, channel, and optional execution hooks.
  * @returns Generation result with secret-scrubbed text and masked credential identity.
  * @remarks Pipeline order is fixed: injection guardrail, global budget,
+ * per-organization quota (fail-open, charged on the allowed verdict), then
  * optional semantic cache (keyed by `normalizeCachePrompt`, probed for the
  * target model then every fallback chain model so a fallback success is
  * re-servable), round-robin provider retries, output redaction, then
  * request logging. Plaintext keys stay inside the key loop and are never
  * stay inside the key loop and are never logged or returned. Rounds walk
  * every chain entry once before repeating, so the fallback model is tried
- * second instead of after the primary budget is exhausted. Mode
+ * second instead of after the primary budget is exhausted. Provider calls
+ * hold one in-process slot under `policy.globalConcurrencyLimit`; the gate
+ * is per-instance and fail-open. The loop additionally stops after
+ * `AI_MAX_TOTAL_ATTEMPTS` attempts or an overall deadline of
+ * `min(timeoutMs * entries, AI_OVERALL_DEADLINE_CAP_MS)`, whichever comes
+ * first, and reports the existing exhaustion message. Mode
  * `interactive` (default) bounds per-model attempts by policy then
  * fail-fast to the next fallback model; `background` allows the existing
  * upper bounds instead. When `redactor` is provided it runs on the prompt
@@ -339,6 +452,55 @@ export async function executeAiQuery(
       retryCount: 0,
       toolCallsExecuted: [],
     };
+  }
+
+  if (organizationId !== null) {
+    try {
+      const quotaLimits = await getOrganizationQuotaLimits(deps.db, organizationId);
+      if (quotaLimits.dailyRequestLimit !== null || quotaLimits.dailyTokenLimit !== null) {
+        const quotaStore = deps.rateLimit?.store;
+        if (quotaStore !== undefined) {
+          const orgHistoryLength = promptData.history?.length ?? 0;
+          // Allowed verdicts already charge the estimate above, so the
+          // successful pre-check doubles as the per-org usage record.
+          const verdict = await checkOrganizationQuota(
+            quotaStore,
+            organizationId,
+            quotaLimits,
+            estimateAiInputTokens(promptData.prompt, orgHistoryLength),
+            clock(),
+          );
+          if (!verdict.allowed) {
+            await log({
+              correlationId,
+              channel,
+              providerId: 'org-quota-guardrail',
+              modelName: 'org-quota-guardrail',
+              credentialId: null,
+              organizationId,
+              status: 'blocked',
+              retryCount: 0,
+              latencyMs: 2,
+              errorClass: verdict.reason ?? 'quota_exhausted',
+              errorMessage: 'Organization daily AI quota exceeded',
+            });
+            return {
+              text: 'Maaf, kuota AI organisasi Anda telah habis. Silakan coba lagi besok atau hubungi administrator.',
+              providerId: 'org-quota-guardrail',
+              modelName: 'org-quota-guardrail',
+              credentialId: 'org-quota-block',
+              credentialMasked: 'ORG_QUOTA',
+              latencyMs: 2,
+              retryCount: 0,
+              toolCallsExecuted: [],
+              error: verdict.reason,
+            };
+          }
+        }
+      }
+    } catch {
+      /* Quota checks fail open so a quota outage never blocks answers. */
+    }
   }
 
   const policy = await getActiveRoutingPolicy(deps.db);
@@ -498,33 +660,106 @@ export async function executeAiQuery(
         mode === 'background' ? credentials.length : Math.min(policy.maxRetries || 3, credentials.length),
     });
   }
-  const maxRounds = entries.reduce((max, entry) => Math.max(max, entry.entryBudget), 0);
-  for (let round = 0; round < maxRounds; round += 1) {
-    for (const entry of entries) {
-      if (round >= entry.entryBudget) continue;
-      const { providerId, modelName, adapter, credentials } = entry;
-      const used = entryAttempts.get(entry.key) ?? 0;
-      if (used > 0) await sleep(computeRetryDelayMs(used));
-      entryAttempts.set(entry.key, used + 1);
-      totalAttempts += 1;
-      const eligible = credentials.filter((credential) => (keyAttempts.get(credential.id) ?? 0) < perKeyLimit);
-      if (eligible.length === 0) continue;
-      const credential = selectCredential(eligible, policy.rotationStrategy);
-      if (credential === null) continue;
-      keyAttempts.set(credential.id, (keyAttempts.get(credential.id) ?? 0) + 1);
+  await acquireAiGlobalSlot(policy.globalConcurrencyLimit);
+  try {
+    const maxRounds = entries.reduce((max, entry) => Math.max(max, entry.entryBudget), 0);
+    const queryStartMs = clock().getTime();
+    const overallDeadlineMs =
+      entries.length === 0 ? 0 : Math.min(timeoutMs * entries.length, AI_OVERALL_DEADLINE_CAP_MS);
+    let limitsReached = false;
+    for (let round = 0; round < maxRounds && !limitsReached; round += 1) {
+      for (const entry of entries) {
+        if (totalAttempts >= AI_MAX_TOTAL_ATTEMPTS || clock().getTime() - queryStartMs >= overallDeadlineMs) {
+          limitsReached = true;
+          break;
+        }
+        if (round >= entry.entryBudget) continue;
+        const { providerId, modelName, adapter, credentials } = entry;
+        const used = entryAttempts.get(entry.key) ?? 0;
+        if (used > 0) await sleep(computeRetryDelayMs(used));
+        entryAttempts.set(entry.key, used + 1);
+        totalAttempts += 1;
+        const eligible = credentials.filter((credential) => (keyAttempts.get(credential.id) ?? 0) < perKeyLimit);
+        if (eligible.length === 0) continue;
+        const credential = selectCredential(eligible, policy.rotationStrategy);
+        if (credential === null) continue;
+        keyAttempts.set(credential.id, (keyAttempts.get(credential.id) ?? 0) + 1);
 
-      const plainKey = await decryptAiKey(deps.db, credential.keyEncrypted);
-      if (plainKey === '') continue;
+        const plainKey = await decryptAiKey(deps.db, credential.keyEncrypted);
+        if (plainKey === '') continue;
 
-      const entryPrompt = providerId === 'vercel-gateway'
-        ? { ...effectivePrompt, maxOutputTokens: Math.max(effectivePrompt.maxOutputTokens ?? 0, GATEWAY_FALLBACK_MIN_TOKENS) }
-        : effectivePrompt;
-      const startedAt = clock().getTime();
-      try {
-        const result = await executeWithTimeout(adapter, plainKey, modelName, entryPrompt, timeoutMs);
-        if (result.text.trim() === '' && (result.inlineData?.length ?? 0) === 0) {
-          const emptyMs = clock().getTime() - startedAt;
-          await recordKeyFailure(deps.db, credential.id, 'malformed_response', 'Provider returned empty text.', policy.cooldownDurationSec);
+        const entryPrompt = providerId === 'vercel-gateway'
+          ? { ...effectivePrompt, maxOutputTokens: Math.max(effectivePrompt.maxOutputTokens ?? 0, GATEWAY_FALLBACK_MIN_TOKENS) }
+          : effectivePrompt;
+        const startedAt = clock().getTime();
+        try {
+          const result = await executeWithTimeout(adapter, plainKey, modelName, entryPrompt, timeoutMs);
+          if (result.text.trim() === '' && (result.inlineData?.length ?? 0) === 0) {
+            const emptyMs = clock().getTime() - startedAt;
+            await recordKeyFailure(deps.db, credential.id, 'malformed_response', 'Provider returned empty text.', policy.cooldownDurationSec);
+            await log({
+              correlationId,
+              channel,
+              providerId,
+              modelName,
+              credentialId: credential.id,
+              organizationId,
+              status: 'failed',
+              retryCount: totalAttempts - 1,
+              latencyMs: emptyMs,
+              errorClass: 'malformed_response',
+              errorMessage: 'Provider returned empty text.',
+            });
+            continue;
+          }
+          const latencyMs = clock().getTime() - startedAt;
+          await recordKeySuccess(deps.db, credential.id, latencyMs);
+          await recordModelSuccess(breakerStore, providerId, modelName);
+          await deps.budget.recordAiTokenUsage(result.tokensUsage?.total ?? 0);
+          await log({
+            correlationId,
+            channel,
+            providerId,
+            modelName,
+            credentialId: credential.id,
+            organizationId,
+            status: 'success',
+            retryCount: totalAttempts - 1,
+            latencyMs,
+            promptTokens: result.tokensUsage?.prompt ?? 0,
+            completionTokens: result.tokensUsage?.completion ?? 0,
+            totalTokens: result.tokensUsage?.total ?? 0,
+            toolsExecuted: [...result.toolCallsExecuted],
+          });
+
+          if (deps.cache !== undefined && !hasImages && !wantsMedia && result.text.length > 20) {
+            deps.cache
+              .store(cacheKey, result.text, modelName, 86400)
+              .catch(() => undefined);
+          }
+
+          return {
+            text: redactSecrets(result.text),
+            providerId,
+            modelName,
+            credentialId: credential.id,
+            credentialMasked: credential.keyMasked,
+            latencyMs,
+            retryCount: totalAttempts - 1,
+            toolCallsExecuted: [...result.toolCallsExecuted],
+            toolResults: result.toolResults,
+            tokensUsage: result.tokensUsage,
+            ...(result.inlineData === undefined || result.inlineData.length === 0
+              ? {}
+              : { inlineData: result.inlineData.map((item) => ({ mimeType: item.mimeType, base64: item.base64 })) }),
+          };
+        } catch (error) {
+          const latencyMs = clock().getTime() - startedAt;
+          const { errorClass, isRetryable, message } = classifyAiError(error);
+          await recordKeyFailure(deps.db, credential.id, errorClass, message, policy.cooldownDurationSec);
+          if (AI_BREAKER_ERROR_CLASSES.includes(errorClass)) {
+            await recordModelInfraFailure(breakerStore, providerId, modelName);
+          }
           await log({
             correlationId,
             channel,
@@ -534,88 +769,28 @@ export async function executeAiQuery(
             organizationId,
             status: 'failed',
             retryCount: totalAttempts - 1,
-            latencyMs: emptyMs,
-            errorClass: 'malformed_response',
-            errorMessage: 'Provider returned empty text.',
-          });
-          continue;
-        }
-        const latencyMs = clock().getTime() - startedAt;
-        await recordKeySuccess(deps.db, credential.id, latencyMs);
-        await recordModelSuccess(breakerStore, providerId, modelName);
-        await deps.budget.recordAiTokenUsage(result.tokensUsage?.total ?? 0);
-        await log({
-          correlationId,
-          channel,
-          providerId,
-          modelName,
-          credentialId: credential.id,
-          organizationId,
-          status: 'success',
-          retryCount: totalAttempts - 1,
-          latencyMs,
-          promptTokens: result.tokensUsage?.prompt ?? 0,
-          completionTokens: result.tokensUsage?.completion ?? 0,
-          totalTokens: result.tokensUsage?.total ?? 0,
-          toolsExecuted: [...result.toolCallsExecuted],
-        });
-
-        if (deps.cache !== undefined && !hasImages && !wantsMedia && result.text.length > 20) {
-          deps.cache
-            .store(cacheKey, result.text, modelName, 86400)
-            .catch(() => undefined);
-        }
-
-        return {
-          text: redactSecrets(result.text),
-          providerId,
-          modelName,
-          credentialId: credential.id,
-          credentialMasked: credential.keyMasked,
-          latencyMs,
-          retryCount: totalAttempts - 1,
-          toolCallsExecuted: [...result.toolCallsExecuted],
-          toolResults: result.toolResults,
-          tokensUsage: result.tokensUsage,
-          ...(result.inlineData === undefined || result.inlineData.length === 0
-            ? {}
-            : { inlineData: result.inlineData.map((item) => ({ mimeType: item.mimeType, base64: item.base64 })) }),
-        };
-      } catch (error) {
-        const latencyMs = clock().getTime() - startedAt;
-        const { errorClass, isRetryable, message } = classifyAiError(error);
-        await recordKeyFailure(deps.db, credential.id, errorClass, message, policy.cooldownDurationSec);
-        if (AI_BREAKER_ERROR_CLASSES.includes(errorClass)) {
-          await recordModelInfraFailure(breakerStore, providerId, modelName);
-        }
-        await log({
-          correlationId,
-          channel,
-          providerId,
-          modelName,
-          credentialId: credential.id,
-          organizationId,
-          status: 'failed',
-          retryCount: totalAttempts - 1,
-          latencyMs,
-          errorClass,
-          errorMessage: message.slice(0, 500),
-        });
-        if (!isRetryable) {
-          return {
-            text: 'Maaf, permintaan tidak dapat diproses oleh sistem keamanan konten AI.',
-            providerId,
-            modelName,
-            credentialId: credential.id,
-            credentialMasked: credential.keyMasked,
             latencyMs,
-            retryCount: totalAttempts - 1,
-            toolCallsExecuted: [],
-            error: message,
-          };
+            errorClass,
+            errorMessage: message.slice(0, 500),
+          });
+          if (!isRetryable) {
+            return {
+              text: 'Maaf, permintaan tidak dapat diproses oleh sistem keamanan konten AI.',
+              providerId,
+              modelName,
+              credentialId: credential.id,
+              credentialMasked: credential.keyMasked,
+              latencyMs,
+              retryCount: totalAttempts - 1,
+              toolCallsExecuted: [],
+              error: message,
+            };
+          }
         }
       }
     }
+  } finally {
+    releaseAiGlobalSlot();
   }
 
   return {

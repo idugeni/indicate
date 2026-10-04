@@ -16,9 +16,45 @@ export interface AiModelRateLimits {
 
 /** Minimal Redis surface for the fixed-window counters; fail-open lives in the check. */
 export interface AiRateLimitStore {
-  readonly get: (key: string) => Promise<number | null>;
+  /** Raw counter read; Upstash may return numeric strings, coerced with `Number()`. */
+  readonly get: (key: string) => Promise<number | string | null>;
   readonly incrby: (key: string, delta: number) => Promise<number>;
   readonly expire: (key: string, seconds: number) => Promise<void>;
+  /** Optional atomic set for breaker timestamp values; absent stores use incrby. */
+  readonly set?: ((key: string, value: string) => Promise<void>) | undefined;
+  /** Optional Lua eval for atomic check-and-charge; absent stores use the legacy path. */
+  readonly eval?: ((script: string, keys: readonly string[], args: ReadonlyArray<string | number>) => Promise<unknown>) | undefined;
+}
+
+/**
+ * Atomic RPM/TPM check-and-charge script.
+ *
+ * @remarks KEYS[1] RPM counter, KEYS[2] TPM counter; ARGV rpm_limit, tpm_limit
+ * (-1 = unlimited), token charge, window TTL. Returns 'ok', 'rpm_exceeded',
+ * or 'tpm_exceeded'. One server round-trip: concurrent instances can no
+ * longer over-admit between check and increment.
+ */
+export const AI_RATE_LIMIT_LUA = [
+  "local rpm = tonumber(redis.call('GET', KEYS[1]) or 0)",
+  "local tpm = tonumber(redis.call('GET', KEYS[2]) or 0)",
+  'if tonumber(ARGV[1]) >= 0 and rpm >= tonumber(ARGV[1]) then return {\'rpm_exceeded\'} end',
+  'if tonumber(ARGV[2]) >= 0 and tpm + tonumber(ARGV[3]) > tonumber(ARGV[2]) then return {\'tpm_exceeded\'} end',
+  "if tonumber(ARGV[1]) >= 0 then redis.call('INCRBY', KEYS[1], 1) redis.call('EXPIRE', KEYS[1], ARGV[4]) end",
+  "if tonumber(ARGV[2]) >= 0 then redis.call('INCRBY', KEYS[2], tonumber(ARGV[3])) redis.call('EXPIRE', KEYS[2], ARGV[4]) end",
+  "return {'ok'}",
+].join('\n');
+
+/**
+ * Read one verdict token from a Lua script result.
+ *
+ * @param value - Raw eval result (single-element array or plain string).
+ * @returns Check verdict; unknown shapes fail open to allowed.
+ */
+export function readRateLimitVerdict(value: unknown): AiRateLimitCheck {
+  const token = Array.isArray(value) ? value[0] : value;
+  if (token === 'rpm_exceeded') return { allowed: false, reason: 'rpm_exceeded' };
+  if (token === 'tpm_exceeded') return { allowed: false, reason: 'tpm_exceeded' };
+  return { allowed: true };
 }
 
 /** Verdict of one pre-call limit check. */
@@ -43,6 +79,8 @@ export function aiRateLimitWindow(now: Date): number {
  * @param modelName - Model under enforcement.
  * @param window - Whole-minute bucket from `aiRateLimitWindow`.
  * @returns Namespaced RPM key.
+ * @remarks Key shape is stable (`ai:limit:rpm:<model>:<window>`); counters
+ * turn over by window, so tuning limits never requires renaming keys.
  */
 export function aiRpmKey(modelName: string, window: number): string {
   return `ai:limit:rpm:${modelName}:${window}`;
@@ -54,6 +92,8 @@ export function aiRpmKey(modelName: string, window: number): string {
  * @param modelName - Model under enforcement.
  * @param window - Whole-minute bucket from `aiRateLimitWindow`.
  * @returns Namespaced TPM key.
+ * @remarks Key shape is stable (`ai:limit:tpm:<model>:<window>`); counters
+ * turn over by window, so tuning limits never requires renaming keys.
  */
 export function aiTpmKey(modelName: string, window: number): string {
   return `ai:limit:tpm:${modelName}:${window}`;
@@ -96,6 +136,18 @@ export function estimateAiInputTokens(promptText: string, historyLength = 0): nu
 }
 
 /**
+ * Coerce a Redis counter read to a finite number.
+ *
+ * @param value - Raw store value (Upstash may return numeric strings).
+ * @returns Finite number, or 0 when missing or non-numeric.
+ */
+function toCounterOrZero(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
  * Enforce per-model RPM/TPM against a 60-second fixed window.
  *
  * @param store - Redis counter surface.
@@ -105,6 +157,10 @@ export function estimateAiInputTokens(promptText: string, historyLength = 0): nu
  * @param now - Observation time; defaults to the current time.
  * @returns Allowed verdict, or the exceeded dimension. Blocked calls consume
  * nothing; every Redis failure resolves to allowed.
+ * @remarks Prefers the atomic Lua path when the store supports eval;
+ * otherwise falls back to legacy check-then-increment (concurrent instances
+ * may slightly overshoot). Fail-open is intentional: Redis errors resolve
+ * to allowed so a counter outage never blocks answers.
  */
 export async function checkAiModelRateLimit(
   store: AiRateLimitStore,
@@ -116,13 +172,26 @@ export async function checkAiModelRateLimit(
   const window = aiRateLimitWindow(now);
   const rpmKey = aiRpmKey(modelName, window);
   const tpmKey = aiTpmKey(modelName, window);
+  const charge = Math.max(1, Math.floor(estimatedTokens));
+  if (store.eval !== undefined) {
+    try {
+      const verdict = await store.eval(
+        AI_RATE_LIMIT_LUA,
+        [rpmKey, tpmKey],
+        [limits.rpmLimit ?? -1, limits.tpmLimit ?? -1, charge, AI_RATE_LIMIT_WINDOW_SECONDS],
+      );
+      return readRateLimitVerdict(verdict);
+    } catch {
+      return { allowed: true };
+    }
+  }
   try {
     if (limits.rpmLimit !== null) {
-      const current = (await store.get(rpmKey)) ?? 0;
+      const current = toCounterOrZero(await store.get(rpmKey));
       if (current >= limits.rpmLimit) return { allowed: false, reason: 'rpm_exceeded' };
     }
     if (limits.tpmLimit !== null) {
-      const current = (await store.get(tpmKey)) ?? 0;
+      const current = toCounterOrZero(await store.get(tpmKey));
       if (current + Math.max(1, Math.floor(estimatedTokens)) > limits.tpmLimit) {
         return { allowed: false, reason: 'tpm_exceeded' };
       }
@@ -153,14 +222,20 @@ export function createAiModelRateLimitStore(config: { readonly url: string; read
   const redis = new Redis({ url: config.url, token: config.token });
   return {
     async get(key: string): Promise<number | null> {
-      const value = await redis.get<number>(key);
-      return typeof value === 'number' && Number.isFinite(value) ? value : null;
+      // Upstash may return numeric strings; coerce with Number().
+      const value = await redis.get<number | string>(key);
+      if (value === null || value === undefined) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
     },
     async incrby(key: string, delta: number): Promise<number> {
       return redis.incrby(key, delta);
     },
     async expire(key: string, seconds: number): Promise<void> {
       await redis.expire(key, seconds);
+    },
+    async eval(script: string, keys: readonly string[], args: ReadonlyArray<string | number>): Promise<unknown> {
+      return redis.eval(script, [...keys], [...args] as (string | number)[]);
     },
   };
 }
@@ -214,6 +289,8 @@ export function aiOrgQuotaTokensKey(organizationId: string, day: string): string
  * @param now - Observation time; defaults to the current time.
  * @returns Allowed verdict with remaining quota, or the exceeded dimension.
  * Blocked calls consume nothing; every Redis failure resolves to allowed.
+ * @remarks Check-then-increment is not atomic; concurrent instances may
+ * slightly overshoot the ceiling. Fail-open is intentional.
  */
 export async function checkOrganizationQuota(
   store: AiRateLimitStore,
@@ -230,14 +307,14 @@ export async function checkOrganizationQuota(
     let remainingRequests: number | undefined;
     let remainingTokens: number | undefined;
     if (limits.dailyRequestLimit !== null) {
-      const current = (await store.get(requestsKey)) ?? 0;
+      const current = toCounterOrZero(await store.get(requestsKey));
       if (current >= limits.dailyRequestLimit) {
         return { allowed: false, reason: 'org_daily_requests_exceeded', remainingRequests: 0 };
       }
       remainingRequests = limits.dailyRequestLimit - current;
     }
     if (limits.dailyTokenLimit !== null) {
-      const current = (await store.get(tokensKey)) ?? 0;
+      const current = toCounterOrZero(await store.get(tokensKey));
       if (current + charge > limits.dailyTokenLimit) {
         return { allowed: false, reason: 'org_daily_tokens_exceeded', remainingTokens: Math.max(0, limits.dailyTokenLimit - current) };
       }
@@ -254,5 +331,31 @@ export async function checkOrganizationQuota(
     return { allowed: true, remainingRequests, remainingTokens };
   } catch {
     return { allowed: true };
+  }
+}
+
+/**
+ * Read daily per-organization quota ceilings.
+ *
+ * @param db - Runtime database port.
+ * @param organizationId - Tenant whose ceilings apply.
+ * @returns Limits, or nulls (unlimited) when the row is missing or the read fails.
+ */
+export async function getOrganizationQuotaLimits(
+  db: AiDb,
+  organizationId: string,
+): Promise<AiOrganizationQuotaLimits> {
+  try {
+    const value = await db.execute(
+      sql`select daily_request_limit, daily_token_limit from organizations where id = ${organizationId} limit 1`,
+    );
+    const row = (Array.isArray(value) ? value[0] : undefined) as Record<string, unknown> | undefined;
+    if (row === undefined) return { dailyRequestLimit: null, dailyTokenLimit: null };
+    return {
+      dailyRequestLimit: toPositiveOrNull(row.daily_request_limit),
+      dailyTokenLimit: toPositiveOrNull(row.daily_token_limit),
+    };
+  } catch {
+    return { dailyRequestLimit: null, dailyTokenLimit: null };
   }
 }

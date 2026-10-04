@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeRetryDelayMs, executeAiQuery, normalizeCachePrompt, toToolsParam, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
-import { aiRateLimitWindow, aiRpmKey } from '@/modules/ai/ai-rate-limit';
+import { AI_MAX_TOTAL_ATTEMPTS, computeRetryDelayMs, executeAiQuery, getAiConcurrencyUsage, normalizeCachePrompt, resetAiConcurrencyState, toToolsParam, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
+import { aiOrgQuotaRequestsKey, aiOrgQuotaTokensKey, aiRateLimitWindow, aiRpmKey, estimateAiInputTokens } from '@/modules/ai/ai-rate-limit';
 import type { AiDb } from '@/modules/ai/ai-types';
 
 const POLICY_ROW = {
@@ -61,7 +61,7 @@ interface FakeDb {
   readonly logs: AiRequestLogEntry[];
 }
 
-function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record<string, unknown> = POLICY_ROW, ownerProvider: string | null = null): FakeDb {
+function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record<string, unknown> = POLICY_ROW, ownerProvider: string | null = null, orgLimits: Record<string, unknown> | null = null): FakeDb {
   const adapterCalls: { readonly providerId: string; readonly modelName: string }[] = [];
   const logs: AiRequestLogEntry[] = [];
   let credentialSelect = 0;
@@ -69,6 +69,7 @@ function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record
     execute: async (query: unknown) => {
       const text = sqlText(query);
       if (text.includes('ai_routing_policies')) return [{ ...policyRow }];
+      if (text.includes('organizations')) return orgLimits === null ? [] : [{ ...orgLimits }];
       if (text.includes('decrypt_ai_key')) return [{ plain: 'plain-test-key' }];
       if (text.includes('provider_id') && text.includes('ai_models')) {
         return ownerProvider === null ? [] : [{ provider_id: ownerProvider }];
@@ -96,7 +97,7 @@ function depsFor(fake: FakeDb, extra?: Partial<AiServiceDeps>, failModels: reado
       recordAiTokenUsage: async () => {},
     },
     resolveAdapter: (providerId: string) => ({
-      execute: async (_apiKey: string, modelName: string) => {
+      execute: async (_apiKey: string, modelName: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
         fake.adapterCalls.push({ providerId, modelName });
         if (failing.has(modelName)) throw new Error('Gemini request failed (http 503: unavailable).');
         return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] };
@@ -283,7 +284,7 @@ describe('executeAiQuery strategi rantai', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: () => new Promise<never>(() => {}),
+          execute: (_apiKey: string, _model: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => new Promise<never>(() => {}),
         }),
       }),
       PROMPT,
@@ -504,7 +505,7 @@ describe('executeAiQuery cache dan redactor', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, _model: string, prompt: { readonly prompt: string }) => {
+          execute: async (_apiKey: string, _model: string, prompt: { readonly prompt: string }, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
             sent.push(prompt.prompt);
             return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
           },
@@ -560,7 +561,7 @@ describe('executeAiQuery teks kosong', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, name: string) => {
+          execute: async (_apiKey: string, name: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
             calls.push(name);
             if (name === 'gemini-3.8-flash') return { text: '', toolCallsExecuted: [] as string[] };
             return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
@@ -582,7 +583,7 @@ describe('executeAiQuery teks kosong', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async (_apiKey: string, name: string) => {
+          execute: async (_apiKey: string, name: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
             calls.push(name);
             return { text: '', toolCallsExecuted: [] as string[] };
           },
@@ -601,7 +602,7 @@ describe('executeAiQuery teks kosong', () => {
     const result = await executeAiQuery(
       depsFor(fake, {
         resolveAdapter: () => ({
-          execute: async () => ({
+          execute: async (_apiKey: string, _model: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => ({
             text: '',
             toolCallsExecuted: [] as string[],
             inlineData: [{ mimeType: 'image/png', base64: 'AAA' }],
@@ -612,5 +613,229 @@ describe('executeAiQuery teks kosong', () => {
     );
     expect(result.error).toBeUndefined();
     expect(result.inlineData).toHaveLength(1);
+  });
+});
+
+describe('executeAiQuery abort signal', () => {
+  const SINGLE_POLICY = {
+    ...POLICY_ROW,
+    primary_provider_id: 'gemini',
+    fallback_provider_id: null,
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.8-flash',
+  };
+
+  it('meneruskan AbortSignal ke adapter provider', async () => {
+    resetAiConcurrencyState();
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], SINGLE_POLICY);
+    const signals: unknown[] = [];
+    const result = await executeAiQuery(
+      depsFor(fake, {
+        resolveAdapter: () => ({
+          execute: async (_apiKey: string, _model: string, _prompt: unknown, opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+            signals.push(opts?.signal);
+            return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 10, completion: 20, total: 30 }, toolCallsExecuted: [] as string[] };
+          },
+        }),
+      }),
+      PROMPT,
+    );
+    expect(result.providerId).toBe('gemini');
+    expect(signals).toHaveLength(1);
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+  });
+});
+
+describe('executeAiQuery batas upaya total dan deadline', () => {
+  const TWO_ENTRY_POLICY = {
+    ...POLICY_ROW,
+    primary_provider_id: 'gemini',
+    fallback_provider_id: null,
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.6-flash',
+    max_retries: 10,
+    per_key_retry_limit: 5,
+    request_timeout_ms: 60000,
+  };
+
+  function tenCredentials(prefix: string): Record<string, unknown>[] {
+    return Array.from({ length: 10 }, (_, index) => credentialRow(`${prefix}-${index}`, 'gemini'));
+  }
+
+  it('berhenti setelah cap attempt total', async () => {
+    resetAiConcurrencyState();
+    const fake = setup([tenCredentials('a'), tenCredentials('b')], TWO_ENTRY_POLICY);
+    const result = await executeAiQuery(
+      depsFor(fake, { sleep: async () => {} }, ['gemini-3.8-flash', 'gemini-3.6-flash']),
+      { ...PROMPT, mode: 'background' },
+    );
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(result.providerId).toBe('exhausted');
+    expect(fake.adapterCalls).toHaveLength(AI_MAX_TOTAL_ATTEMPTS);
+    expect(result.retryCount).toBe(AI_MAX_TOTAL_ATTEMPTS);
+  });
+
+  it('deadline keseluruhan menghentikan loop sebelum cap attempt', async () => {
+    resetAiConcurrencyState();
+    const fake = setup([tenCredentials('c'), tenCredentials('d')], TWO_ENTRY_POLICY);
+    const base = new Date('2026-09-30T00:00:00.000Z').getTime();
+    let ticks = 0;
+    const advancingClock = (): Date => {
+      ticks += 1;
+      return new Date(base + ticks * 61000);
+    };
+    const result = await executeAiQuery(
+      depsFor(
+        fake,
+        { clock: advancingClock, sleep: async () => {} },
+        ['gemini-3.8-flash', 'gemini-3.6-flash'],
+      ),
+      { ...PROMPT, mode: 'background' },
+    );
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(fake.adapterCalls.length).toBeGreaterThanOrEqual(1);
+    expect(fake.adapterCalls.length).toBeLessThan(AI_MAX_TOTAL_ATTEMPTS);
+  });
+});
+
+describe('executeAiQuery kuota per-organisasi', () => {
+  const SINGLE_POLICY = {
+    ...POLICY_ROW,
+    primary_provider_id: 'gemini',
+    fallback_provider_id: null,
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.8-flash',
+  };
+  const fixedNow = new Date('2026-09-30T00:01:30.000Z');
+  const day = '2026-09-30';
+
+  function quotaStore(counts = new Map<string, number>(), fail = false) {
+    return {
+      get: async (key: string) => {
+        if (fail) throw new Error('redis down');
+        return counts.get(key) ?? null;
+      },
+      incrby: async (key: string, delta: number) => {
+        if (fail) throw new Error('redis down');
+        const next = (counts.get(key) ?? 0) + delta;
+        counts.set(key, next);
+        return next;
+      },
+      expire: async () => {
+        if (fail) throw new Error('redis down');
+      },
+    };
+  }
+
+  it('kuota org terlampaui memblokir tanpa memanggil provider', async () => {
+    resetAiConcurrencyState();
+    const counts = new Map([[aiOrgQuotaRequestsKey('org-9', day), 100]]);
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini')]],
+      SINGLE_POLICY,
+      null,
+      { daily_request_limit: 100, daily_token_limit: null },
+    );
+    const result = await executeAiQuery(
+      depsFor(fake, { clock: () => fixedNow, rateLimit: { store: quotaStore(counts) } }),
+      PROMPT,
+    );
+    expect(result.providerId).toBe('org-quota-guardrail');
+    expect(result.credentialMasked).toBe('ORG_QUOTA');
+    expect(fake.adapterCalls).toHaveLength(0);
+    expect(fake.logs).toHaveLength(1);
+    expect(fake.logs[0]?.status).toBe('blocked');
+    expect(fake.logs[0]?.organizationId).toBe('org-9');
+  });
+
+  it('pre-check lolos mencatat pemakaian per-org lalu sukses', async () => {
+    resetAiConcurrencyState();
+    const counts = new Map<string, number>();
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini')]],
+      SINGLE_POLICY,
+      null,
+      { daily_request_limit: 100, daily_token_limit: 10000 },
+    );
+    const result = await executeAiQuery(
+      depsFor(fake, { clock: () => fixedNow, rateLimit: { store: quotaStore(counts) } }),
+      PROMPT,
+    );
+    expect(result.providerId).toBe('gemini');
+    expect(counts.get(aiOrgQuotaRequestsKey('org-9', day))).toBe(1);
+    expect(counts.get(aiOrgQuotaTokensKey('org-9', day))).toBe(
+      estimateAiInputTokens(PROMPT.prompt, 0),
+    );
+  });
+
+  it('redis kuota mati berarti lolos (fail-open)', async () => {
+    resetAiConcurrencyState();
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini')]],
+      SINGLE_POLICY,
+      null,
+      { daily_request_limit: 1, daily_token_limit: 1 },
+    );
+    const result = await executeAiQuery(
+      depsFor(fake, { clock: () => fixedNow, rateLimit: { store: quotaStore(new Map(), true) } }),
+      PROMPT,
+    );
+    expect(result.providerId).toBe('gemini');
+    expect(fake.adapterCalls).toHaveLength(1);
+  });
+});
+
+describe('executeAiQuery global concurrency gate', () => {
+  const GATED_POLICY = {
+    ...POLICY_ROW,
+    primary_provider_id: 'gemini',
+    fallback_provider_id: null,
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.8-flash',
+    global_concurrency_limit: 1,
+  };
+
+  it('limit 1 menyerikan eksekusi lintas query', async () => {
+    resetAiConcurrencyState();
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], GATED_POLICY);
+    const events: string[] = [];
+    let started = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const deps = depsFor(fake, {
+      sleep: async () => {},
+      resolveAdapter: () => ({
+        execute: async (_apiKey: string, _model: string, _prompt: unknown, _opts?: { readonly signal?: AbortSignal | undefined } | undefined) => {
+          started += 1;
+          const call = started;
+          events.push(`start-${call}`);
+          if (call === 1) await gate;
+          events.push(`end-${call}`);
+          return { text: 'Jawaban redaksi yang cukup panjang.', tokensUsage: { prompt: 1, completion: 1, total: 2 }, toolCallsExecuted: [] as string[] };
+        },
+      }),
+    });
+    const first = executeAiQuery(deps, PROMPT);
+    const second = executeAiQuery(deps, PROMPT);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 25);
+    });
+    expect(events).toEqual(['start-1']);
+    release();
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    expect(events).toEqual(['start-1', 'end-1', 'start-2', 'end-2']);
+    expect(firstResult.providerId).toBe('gemini');
+    expect(secondResult.providerId).toBe('gemini');
+    expect(getAiConcurrencyUsage()).toEqual({ active: 0, queued: 0 });
+  });
+
+  it('limit tak valid berarti tanpa gate (fail-open)', async () => {
+    resetAiConcurrencyState();
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], { ...GATED_POLICY, global_concurrency_limit: 0 });
+    const result = await executeAiQuery(depsFor(fake), PROMPT);
+    expect(result.providerId).toBe('gemini');
+    expect(getAiConcurrencyUsage()).toEqual({ active: 0, queued: 0 });
   });
 });

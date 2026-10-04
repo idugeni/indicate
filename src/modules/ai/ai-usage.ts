@@ -8,7 +8,8 @@ import {
   TAG_SUGGESTION_SCHEMA,
   VISION_DRAFT_SCHEMA,
 } from '@/modules/ai/ai-response-schemas';
-import type { AiCallerRole, AiChatImage } from '@/modules/ai/ai-types';
+import { taskThinkingOverride, type AiTaskKind } from '@/modules/ai/ai-task-profiles';
+import type { AiCallerRole, AiChatImage, AiThinkingConfig } from '@/modules/ai/ai-types';
 import { slugify } from '@/modules/site/slugify';
 
 export const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
@@ -186,18 +187,20 @@ export function parseModerationAnalysis(text: string): ModerationAnalysis | null
 }
 
 /**
- * Menjalankan satu query AI staf dengan guard rahasia dan budget.
+ * Run one guarded staff query with secret scan and task thinking budget.
  *
- * @param callerRole - Peran pemanggil untuk audit dan guardrail.
- * @param organizationId - Organisasi untuk cakupan kredensial dan audit.
- * @param query - Prompt dan kontrol generasi; media diteruskan apa adanya.
- * @returns Teks plus muatan media bila diminta, atau pesan sibuk yang aman.
+ * @param callerRole - Caller role for audit and guardrails.
+ * @param organizationId - Organization scoping credentials and audit.
+ * @param query - Prompt, generation controls, and optional task media.
+ * @returns Text plus inline media when requested, or a safe busy message.
  */
 export async function runQuery(callerRole: AiCallerRole, organizationId: string | undefined, query: {
   readonly prompt: string;
   readonly systemInstruction: string;
   readonly temperature: number;
   readonly maxOutputTokens: number;
+  readonly thinkingTask?: AiTaskKind | (string & {}) | undefined;
+  readonly thinkingConfig?: AiThinkingConfig | undefined;
   readonly responseMimeType?: string;
   readonly responseSchema?: Record<string, unknown> | undefined;
   readonly images?: readonly AiChatImage[] | undefined;
@@ -209,6 +212,8 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
   const scanned = scanPrompt(query.prompt);
   if (!scanned.ok) return { ok: false, error: scanned.reason };
   if (configured === null) return { ok: false, error: BUSY_MESSAGE };
+  const thinkingConfig = query.thinkingConfig
+    ?? (query.thinkingTask === undefined ? undefined : taskThinkingOverride(query.thinkingTask));
   const result = await executeAiQuery(configured, {
     prompt: query.prompt,
     organizationId: organizationId ?? null,
@@ -217,6 +222,7 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
     maxOutputTokens: query.maxOutputTokens,
     responseMimeType: query.responseMimeType,
     ...(query.responseSchema === undefined ? {} : { responseSchema: query.responseSchema }),
+    ...(thinkingConfig === undefined ? {} : { thinkingConfig }),
     channel: 'web',
     callerRole,
     enableTools: false,
@@ -320,7 +326,7 @@ export async function generateArticleDraft(input: { readonly topic: string; read
   const result = await runQuery('editor', input.organizationId, {
     prompt: built.prompt,
     systemInstruction: built.systemInstruction, temperature: 0.7, maxOutputTokens: 2048, responseMimeType: 'application/json',
-    responseSchema: ARTICLE_DRAFT_SCHEMA,
+    responseSchema: ARTICLE_DRAFT_SCHEMA, thinkingTask: 'summarize',
   });
   if (!result.ok) return result;
   const draft = parseArticleDraft(result.text, built.topic);
@@ -343,7 +349,7 @@ export async function suggestTags(input: { readonly title: string; readonly body
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Sarankan tag dan kategori untuk artikel berikut:\n\nJudul: ${title}\n\nIsi:\n${body}`,
     systemInstruction: TAG_SYSTEM, temperature: 0.3, maxOutputTokens: 512, responseMimeType: 'application/json',
-    responseSchema: TAG_SUGGESTION_SCHEMA,
+    responseSchema: TAG_SUGGESTION_SCHEMA, thinkingTask: 'seo',
   });
   if (!result.ok) return result;
   const suggestion = parseTagSuggestion(result.text);
@@ -366,7 +372,7 @@ export async function summarizeReport(input: { readonly category: string; readon
   const result = await runQuery('admin', input.organizationId, {
     prompt: `Analisis laporan konten berikut (kontak pelapor sengaja tidak disertakan):\n\nKategori: ${category === '' ? 'Lainnya' : category}\n\nUraian:\n${details}`,
     systemInstruction: MODERATION_SYSTEM, temperature: 0.3, maxOutputTokens: 1024, responseMimeType: 'application/json',
-    responseSchema: MODERATION_ANALYSIS_SCHEMA,
+    responseSchema: MODERATION_ANALYSIS_SCHEMA, thinkingTask: 'summarize',
   });
   if (!result.ok) return result;
   const analysis = parseModerationAnalysis(result.text);
@@ -386,7 +392,7 @@ export async function draftModerationReply(input: { readonly context: string; re
   if (context.length < 10) return { ok: false, error: 'Konteks laporan minimal 10 karakter.' };
   const result = await runQuery('admin', input.organizationId, {
     prompt: `Buatkan draf tanggapan resmi untuk laporan berikut (tanpa menyebut identitas pelapor):\n\n${context}`,
-    systemInstruction: REPLY_SYSTEM, temperature: 0.7, maxOutputTokens: 1024,
+    systemInstruction: REPLY_SYSTEM, temperature: 0.7, maxOutputTokens: 1024, thinkingTask: 'chat',
   });
   if (!result.ok) return result;
   const draft = result.text.trim().slice(0, 2500);
@@ -452,7 +458,7 @@ export async function ocCoverCaption(input: { readonly base64: string; readonly 
   const result = await runQuery('editor', input.organizationId, {
     prompt: title === '' ? 'Deskripsikan gambar sampul terlampir untuk teks alt dan keterangan foto.' : `Deskripsikan gambar sampul terlampir untuk teks alt dan keterangan foto.\n\nJudul artikel:\n${title}`,
     systemInstruction: COVER_CAPTION_SYSTEM, temperature: 0.3, maxOutputTokens: 256, responseMimeType: 'application/json',
-    responseSchema: COVER_CAPTION_SCHEMA,
+    responseSchema: COVER_CAPTION_SCHEMA, thinkingTask: 'caption',
     images: [{ base64: compact, mimeType }],
   });
   if (!result.ok) return result;
@@ -525,7 +531,7 @@ export async function ocVisionDraft(input: { readonly base64: string; readonly m
   const result = await runQuery('editor', input.organizationId, {
     prompt: hint === '' ? 'Ekstrak gambar terlampir menjadi draf berita.' : `Ekstrak gambar terlampir menjadi draf berita.\n\nPetunjuk redaksi:\n${hint}`,
     systemInstruction: VISION_SYSTEM, temperature: 0.3, maxOutputTokens: 2048, responseMimeType: 'application/json',
-    responseSchema: VISION_DRAFT_SCHEMA,
+    responseSchema: VISION_DRAFT_SCHEMA, thinkingTask: 'caption',
     images: [{ base64: compact, mimeType }],
   });
   if (!result.ok) return result;
@@ -546,7 +552,7 @@ export async function narrateInsights(input: { readonly summary: string; readonl
   if (summary.length < 10) return { ok: false, error: 'Ringkasan angka minimal 10 karakter.' };
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Susun narasi 3-5 kalimat dari ringkasan dasbor berikut. Jangan tambah angka.\n\n${summary}`,
-    systemInstruction: INSIGHT_SYSTEM, temperature: 0.3, maxOutputTokens: 512,
+    systemInstruction: INSIGHT_SYSTEM, temperature: 0.3, maxOutputTokens: 512, thinkingTask: 'summarize',
   });
   if (!result.ok) return result;
   const narrative = result.text.trim().slice(0, 1500);

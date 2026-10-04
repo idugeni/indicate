@@ -96,22 +96,35 @@ export interface AiCredentialScope {
   readonly now?: Date | undefined;
 }
 
+/** Classified provider failure driving retry and cooldown decisions. */
 export interface AiClassifiedError {
   readonly errorClass: AiErrorClass;
   readonly isRetryable: boolean;
   readonly message: string;
+  /** Parsed `retry_after:<seconds>` hint when the provider supplied one. */
+  readonly retryAfterSec?: number | undefined;
 }
 
-let roundRobinIndex = 0;
+/** Per-provider round-robin cursors for credential rotation. */
+const roundRobinByProvider = new Map<string, number>();
 
 /**
- * Reset the round-robin rotation counter.
+ * Reset the round-robin rotation counters.
  *
- * @remarks Deterministic starting point for tests and freshly booted
- * instances sharing one process-wide counter.
+ * @remarks Deterministic starting point for tests and freshly booted instances.
  */
 export function resetAiRotationState(): void {
-  roundRobinIndex = 0;
+  roundRobinByProvider.clear();
+}
+
+/**
+ * Read the cursor for one rotation scope.
+ *
+ * @param scope - Provider scope isolating rotation cursors.
+ * @returns Current cursor, defaulting to 0.
+ */
+export function getRoundRobinCursor(scope: string): number {
+  return roundRobinByProvider.get(scope) ?? 0;
 }
 
 function toStringOrNull(value: unknown): string | null {
@@ -449,43 +462,91 @@ export function aiBreakerKey(providerId: string, modelName: string): string {
 }
 
 /**
- * Memeriksa apakah satu model sedang diputus sementara.
+ * Parse a breaker counter with an optional trip timestamp.
  *
- * @param store - Counter Redis; undefined berarti fail-open (sehat).
- * @param providerId - Provider pemilik model.
- * @param modelName - Model kandidat.
- * @returns True bila gagal beruntun mencapai ambang dalam jendela.
+ * @param value - Raw store value (`count` or `"count:epochMs"`).
+ * @returns Count and trip time (null when untimestamped).
+ */
+function parseBreakerValue(value: unknown): { readonly count: number; readonly tripAt: number | null } {
+  if (typeof value === 'number') {
+    return { count: Number.isFinite(value) ? value : 0, tripAt: null };
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    const stamped = trimmed.match(/^(\d+):(\d+)$/);
+    if (stamped?.[1] !== undefined && stamped[2] !== undefined) {
+      return { count: Number.parseInt(stamped[1], 10), tripAt: Number.parseInt(stamped[2], 10) };
+    }
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) return { count: numeric, tripAt: null };
+  }
+  return { count: 0, tripAt: null };
+}
+
+/**
+ * Check whether one model is temporarily cut off.
+ *
+ * @param store - Counter Redis; undefined means fail-open (healthy).
+ * @param providerId - Model owner provider.
+ * @param modelName - Candidate model.
+ * @param nowMs - Clock in epoch ms; defaults to current time.
+ * @returns True when consecutive failures reach the threshold in-window.
+ * @remarks Half-open: a timestamped trip older than the window returns
+ * false so exactly one probe passes through.
  */
 export async function isModelBreakerTripped(
   store: AiRateLimitStore | undefined,
   providerId: string,
   modelName: string,
+  nowMs: number = Date.now(),
 ): Promise<boolean> {
   if (store === undefined) return false;
   try {
-    const count = (await store.get(aiBreakerKey(providerId, modelName))) ?? 0;
-    return count >= AI_BREAKER_TRIP_THRESHOLD;
+    const raw: unknown = await store.get(aiBreakerKey(providerId, modelName));
+    if (raw === null || raw === undefined) return false;
+    const { count, tripAt } = parseBreakerValue(raw);
+    if (count < AI_BREAKER_TRIP_THRESHOLD) return false;
+    if (tripAt !== null && nowMs - tripAt > AI_BREAKER_WINDOW_SECONDS * 1000) return false;
+    return true;
   } catch {
     return false;
   }
 }
 
 /**
- * Mencatat satu kegagalan infrastruktur untuk satu model.
+ * Record one infrastructure failure for a model.
  *
- * @param store - Counter Redis; undefined berarti tidak dicatat.
- * @param providerId - Provider pemilik model.
- * @param modelName - Model yang gagal.
+ * @param store - Counter Redis; undefined means skipped.
+ * @param providerId - Model owner provider.
+ * @param modelName - Failed model.
+ * @param nowMs - Clock in epoch ms; defaults to current time.
+ * @remarks Stores `"count:epochMs"` via `set` when available so the trip
+ * can half-open; otherwise falls back to a plain counter whose TTL expiry
+ * still cools the breaker.
  */
 export async function recordModelInfraFailure(
   store: AiRateLimitStore | undefined,
   providerId: string,
   modelName: string,
+  nowMs: number = Date.now(),
 ): Promise<void> {
   if (store === undefined) return;
   try {
-    await store.incrby(aiBreakerKey(providerId, modelName), 1);
-    await store.expire(aiBreakerKey(providerId, modelName), AI_BREAKER_WINDOW_SECONDS);
+    const key = aiBreakerKey(providerId, modelName);
+    const setter = (store as { readonly set?: unknown }).set;
+    if (typeof setter === 'function') {
+      let count = 0;
+      try {
+        const raw: unknown = await store.get(key);
+        count = parseBreakerValue(raw).count;
+      } catch {
+        count = 0;
+      }
+      await (setter as (key: string, value: string) => Promise<void>).call(store, key, `${count + 1}:${nowMs}`);
+    } else {
+      await store.incrby(key, 1);
+    }
+    await store.expire(key, AI_BREAKER_WINDOW_SECONDS);
   } catch {
     /* Breaker tidak boleh menggagalkan jawaban. */
   }
@@ -507,11 +568,12 @@ export function shouldAlertBreakerTrip(
 }
 
 /**
- * Mendinginkan hitungan gagal satu model setelah sukses.
+ * Cool one model failure count after success.
  *
- * @param store - Counter Redis; undefined berarti tidak dicatat.
- * @param providerId - Provider pemilik model.
- * @param modelName - Model yang sukses.
+ * @param store - Counter Redis; undefined means skipped.
+ * @param providerId - Model owner provider.
+ * @param modelName - Successful model.
+ * @remarks DEL semantics via a 1s expiry because the store has no `del`.
  */
 export async function recordModelSuccess(
   store: AiRateLimitStore | undefined,
@@ -590,8 +652,10 @@ export function selectCredential(
 
   switch (strategy) {
     case 'round_robin': {
-      const selected = candidates[roundRobinIndex % candidates.length];
-      roundRobinIndex = (roundRobinIndex + 1) % 1000000;
+      const scope = candidates[0]?.providerId ?? 'default';
+      const cursor = roundRobinByProvider.get(scope) ?? 0;
+      const selected = candidates[cursor % candidates.length];
+      roundRobinByProvider.set(scope, (cursor + 1) % 1000000);
       return selected ?? null;
     }
     case 'random': {
@@ -630,53 +694,95 @@ export function selectCredential(
  * Classify a provider failure into a routing decision.
  *
  * @param error - Thrown provider or transport error.
- * @returns Stable error class, whether another key may be tried, and the message.
+ * @returns Stable error class, whether another key may be tried, the message,
+ * and the parsed retry hint when present.
+ * @remarks HTTP status (`http <code>`) wins first; quota-specific markers
+ * precede generic rate signals. Bare codes only count beside error keywords
+ * to avoid false positives on free numbers.
  */
 export function classifyAiError(error: unknown): AiClassifiedError {
   const message = error instanceof Error ? error.message : String(error);
   const lower = message.toLowerCase();
+  const retryMatch = lower.match(/retry_after:(\d+)/);
+  const retryAfterSec =
+    retryMatch?.[1] === undefined ? undefined : Number.parseInt(retryMatch[1], 10);
+  const hint =
+    retryAfterSec !== undefined && Number.isFinite(retryAfterSec)
+      ? { retryAfterSec }
+      : {};
+
+  const httpMatch = lower.match(/http\s*[:\-]?\s*(\d{3})/);
+  if (httpMatch?.[1] !== undefined) {
+    const status = Number.parseInt(httpMatch[1], 10);
+    if (status === 429) return { errorClass: 'rate_limit', isRetryable: true, message, ...hint };
+    if (status === 401 || status === 403)
+      return { errorClass: 'invalid_key', isRetryable: true, message, ...hint };
+    if (status >= 500 && status <= 599)
+      return { errorClass: 'provider_unavailable', isRetryable: true, message, ...hint };
+  }
+
+  if (lower.includes('quota_exhausted') || lower.includes('quotaexhausted')) {
+    return { errorClass: 'quota_exhausted', isRetryable: true, message, ...hint };
+  }
 
   if (
     lower.includes('api_key_invalid') ||
     lower.includes('invalid api key') ||
-    lower.includes('unauthenticated') ||
-    lower.includes('401')
+    lower.includes('invalid_key') ||
+    lower.includes('unauthenticated')
   ) {
-    return { errorClass: 'invalid_key', isRetryable: true, message };
-  }
-
-  if (lower.includes('quota_exhausted') || lower.includes('quotaexhausted')) {
-    return { errorClass: 'quota_exhausted', isRetryable: true, message };
+    return { errorClass: 'invalid_key', isRetryable: true, message, ...hint };
   }
 
   if (
     lower.includes('resource_exhausted') ||
     lower.includes('quota exceeded') ||
-    lower.includes('429') ||
-    lower.includes('rate limit')
+    lower.includes('rate limit') ||
+    lower.includes('rate_limit') ||
+    lower.includes('too many requests')
   ) {
-    return { errorClass: 'rate_limit', isRetryable: true, message };
+    return { errorClass: 'rate_limit', isRetryable: true, message, ...hint };
   }
 
-  if (lower.includes('timeout') || lower.includes('timed out') || lower.includes('deadline exceeded') || lower.includes('aborterror')) {
-    return { errorClass: 'timeout', isRetryable: true, message };
+  const codeMatch = lower.match(/(?:status|code)\s*[:\-]?\s*(\d{3})/);
+  if (codeMatch?.[1] !== undefined) {
+    const status = Number.parseInt(codeMatch[1], 10);
+    if (status === 429) return { errorClass: 'rate_limit', isRetryable: true, message, ...hint };
+    if (status === 401 || status === 403)
+      return { errorClass: 'invalid_key', isRetryable: true, message, ...hint };
+    if (status >= 500 && status <= 599)
+      return { errorClass: 'provider_unavailable', isRetryable: true, message, ...hint };
+  }
+
+  const hasErrorContext = /(error|failed|failure|exception|request|response|status|code|http|limit|quota|exhausted|invalid|unauthorized|forbidden|unavailable|timeout|service|server|provider|fetch|api|key|retry|blocked|safety)/.test(
+    lower,
+  );
+  if (hasErrorContext) {
+    if (/\b429\b/.test(lower)) return { errorClass: 'rate_limit', isRetryable: true, message, ...hint };
+    if (/\b401\b/.test(lower) || /\b403\b/.test(lower))
+      return { errorClass: 'invalid_key', isRetryable: true, message, ...hint };
+    if (/\b5\d\d\b/.test(lower))
+      return { errorClass: 'provider_unavailable', isRetryable: true, message, ...hint };
+  }
+
+  if (lower.includes('timeout') || lower.includes('timed out') || lower.includes('deadline exceeded') || lower.includes('aborterror') || lower.includes('aborted')) {
+    return { errorClass: 'timeout', isRetryable: true, message, ...hint };
   }
 
   if (
     lower.includes('econnrefused') ||
     lower.includes('fetch failed') ||
     lower.includes('network error') ||
-    lower.includes('503') ||
     lower.includes('unavailable')
   ) {
-    return { errorClass: 'provider_unavailable', isRetryable: true, message };
+    return { errorClass: 'provider_unavailable', isRetryable: true, message, ...hint };
   }
 
   if (lower.includes('safety') || lower.includes('blocked') || lower.includes('content_filter')) {
-    return { errorClass: 'safety_blocked', isRetryable: false, message };
+    return { errorClass: 'safety_blocked', isRetryable: false, message, ...hint };
   }
 
-  return { errorClass: 'application_error', isRetryable: true, message };
+  return { errorClass: 'application_error', isRetryable: true, message, ...hint };
 }
 
 /**
@@ -685,6 +791,8 @@ export function classifyAiError(error: unknown): AiClassifiedError {
  * @param db - Runtime database port.
  * @param credentialId - Credential row receiving the success counters.
  * @param latencyMs - Observed provider latency for the moving average.
+ * @remarks Single-statement arithmetic `UPDATE`: counters and the running
+ * average are derived server-side so no `SELECT` round trip is needed.
  */
 export async function recordKeySuccess(
   db: AiDb,
@@ -693,17 +801,9 @@ export async function recordKeySuccess(
 ): Promise<void> {
   try {
     const nowIso = new Date().toISOString();
-    const value = await db.execute(
-      sql`select total_requests, successful_requests, avg_latency_ms from ai_credentials where id = ${credentialId} limit 1`,
-    );
-    const row = toRowArray(value)[0];
-    const record = (typeof row === 'object' && row !== null ? row : {}) as Record<string, unknown>;
-    const prevTotal = toNumberOrFallback(record.total_requests, 0);
-    const prevSuccess = toNumberOrFallback(record.successful_requests, 0);
-    const prevAvg = toNumberOrFallback(record.avg_latency_ms, latencyMs);
-    const newAvg = Math.round((prevAvg * prevTotal + latencyMs) / (prevTotal + 1));
+    const latency = Math.max(0, Math.round(latencyMs));
     await db.execute(
-      sql`update ai_credentials set last_used_at = ${nowIso}, last_success_at = ${nowIso}, total_requests = ${prevTotal + 1}, successful_requests = ${prevSuccess + 1}, avg_latency_ms = ${newAvg}, updated_at = ${nowIso} where id = ${credentialId}`,
+      sql`update ai_credentials set last_used_at = ${nowIso}, last_success_at = ${nowIso}, total_requests = total_requests + 1, successful_requests = successful_requests + 1, avg_latency_ms = case when coalesce(total_requests, 0) <= 0 then ${latency} else cast((coalesce(avg_latency_ms, 0) * total_requests + ${latency}) / (total_requests + 1) as integer) end, updated_at = ${nowIso} where id = ${credentialId}`,
     );
   } catch {
     /* Telemetry must never fail an answer. */
@@ -718,13 +818,15 @@ export async function recordKeySuccess(
  * @param errorClass - Classified failure driving cooldown and status.
  * @param errorMessage - Raw message, truncated to 500 characters server-side.
  * @param cooldownDurationSec - Cooldown window for rate, quota, and invalid-key failures.
+ * @remarks Single-statement arithmetic `UPDATE` with no preceding `SELECT`;
+ * the default 60s window matches the active routing policy.
  */
 export async function recordKeyFailure(
   db: AiDb,
   credentialId: string,
   errorClass: AiErrorClass,
   errorMessage: string,
-  cooldownDurationSec = 300,
+  cooldownDurationSec = 60,
 ): Promise<void> {
   try {
     const now = new Date();
@@ -736,13 +838,8 @@ export async function recordKeyFailure(
     const newStatus: AiCredentialStatus =
       errorClass === 'invalid_key' ? 'invalid' : cooldownUntil !== null ? 'cooldown' : 'active';
 
-    const value = await db.execute(
-      sql`select total_requests, failed_requests, rate_limit_count, quota_exhausted_count from ai_credentials where id = ${credentialId} limit 1`,
-    );
-    const row = toRowArray(value)[0];
-    const record = (typeof row === 'object' && row !== null ? row : {}) as Record<string, unknown>;
     await db.execute(
-      sql`update ai_credentials set status = ${newStatus}, cooldown_until = ${cooldownUntil}, last_used_at = ${nowIso}, last_failure_at = ${nowIso}, last_error_message = ${errorMessage.slice(0, 500)}, last_error_class = ${errorClass}, total_requests = ${toNumberOrFallback(record.total_requests, 0) + 1}, failed_requests = ${toNumberOrFallback(record.failed_requests, 0) + 1}, rate_limit_count = ${toNumberOrFallback(record.rate_limit_count, 0) + (errorClass === 'rate_limit' ? 1 : 0)}, quota_exhausted_count = ${toNumberOrFallback(record.quota_exhausted_count, 0) + (errorClass === 'quota_exhausted' ? 1 : 0)}, updated_at = ${nowIso} where id = ${credentialId}`,
+      sql`update ai_credentials set status = ${newStatus}, cooldown_until = ${cooldownUntil}, last_used_at = ${nowIso}, last_failure_at = ${nowIso}, last_error_message = ${errorMessage.slice(0, 500)}, last_error_class = ${errorClass}, total_requests = total_requests + 1, failed_requests = failed_requests + 1, rate_limit_count = rate_limit_count + ${errorClass === 'rate_limit' ? 1 : 0}, quota_exhausted_count = quota_exhausted_count + ${errorClass === 'quota_exhausted' ? 1 : 0}, updated_at = ${nowIso} where id = ${credentialId}`,
     );
   } catch {
     /* Telemetry must never fail an answer. */

@@ -72,14 +72,31 @@ describe('grounding konteks artikel asisten', () => {
 });
 
 describe('TASK_MODEL_PROFILE dan taskThinkingOverride chat', () => {
-  it('memetakan tujuh tugas ke tier murah dengan suhu chat 0.7', () => {
-    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'embed', 'polish', 'ringkas', 'sampul', 'seo']);
+  it('memetakan delapan tugas ke tier murah dengan suhu chat 0.7', () => {
+    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'cover', 'polish', 'seo', 'summarize', 'transcribe', 'tts']);
     expect(TASK_MODEL_PROFILE.chat).toEqual({ modelTier: 'murah', temperature: 0.7 });
   });
 
   it('mengembalikan undefined untuk chat dan menghormati override pemanggil', () => {
     expect(taskThinkingOverride('chat')).toBeUndefined();
     expect(taskThinkingOverride('seo')).toEqual({ thinkingBudget: 2048, includeThoughts: true });
+    expect(taskThinkingOverride('ringkas')).toEqual({ thinkingBudget: 8192, includeThoughts: true });
     expect(taskThinkingOverride('chat', { thinkingBudget: 4096, includeThoughts: false })).toEqual({ thinkingBudget: 4096, includeThoughts: false });
+  });
+
+  it('memotong kepala riwayat dan menjaga pertanyaan plus grounding utuh', () => {
+    const messages = Array.from({ length: 8 }, (_, index) => ({
+      role: 'user' as const,
+      text: `MSG${index}-${'h'.repeat(900)}`,
+    }));
+    const prompt = buildAssistantPrompt(messages, {
+      excerpt: 'Kutipan acuan.',
+      body: `Isi acuan GROUND-END-${'b'.repeat(500)}`,
+    });
+    expect(prompt.length).toBeLessThanOrEqual(4000);
+    expect(prompt).toContain('MSG7-');
+    expect(prompt).toContain('GROUND-END-');
+    expect(prompt.endsWith('di luar teks tersebut.')).toBe(true);
+    expect(prompt).not.toContain('MSG0-');
   });
 });

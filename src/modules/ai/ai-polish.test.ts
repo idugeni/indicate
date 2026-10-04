@@ -75,17 +75,19 @@ describe('validasi polish dan klasifikasi', () => {
 });
 
 describe('TASK_MODEL_PROFILE dan taskThinkingOverride', () => {
-  it('memetakan tujuh tugas ke tier murah dengan suhu yang disarankan', () => {
-    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'embed', 'polish', 'ringkas', 'sampul', 'seo']);
+  it('memetakan delapan tugas ke tier murah dengan suhu yang disarankan', () => {
+    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'cover', 'polish', 'seo', 'summarize', 'transcribe', 'tts']);
     for (const profile of Object.values(TASK_MODEL_PROFILE)) expect(profile.modelTier).toBe('murah');
     expect(TASK_MODEL_PROFILE.polish.temperature).toBe(0.5);
-    expect(TASK_MODEL_PROFILE.ringkas.thinkingBudget).toBe(8192);
+    expect(TASK_MODEL_PROFILE.summarize.thinkingBudget).toBe(8192);
   });
 
   it('mengembalikan anggaran tugas dan menghormati override pemanggil', () => {
     expect(taskThinkingOverride('polish')).toEqual({ thinkingBudget: 8192, includeThoughts: true });
     expect(taskThinkingOverride('caption')).toEqual({ thinkingBudget: 1024, includeThoughts: true });
-    expect(taskThinkingOverride('sampul')).toBeUndefined();
+    expect(taskThinkingOverride('cover')).toEqual({ thinkingBudget: 0 });
+    expect(taskThinkingOverride('ringkas')).toEqual({ thinkingBudget: 8192, includeThoughts: true });
+    expect(taskThinkingOverride('sampul')).toEqual({ thinkingBudget: 0 });
     expect(taskThinkingOverride('embed')).toBeUndefined();
     expect(taskThinkingOverride('tak-dikenal')).toBeUndefined();
     expect(taskThinkingOverride('seo', { thinkingBudget: 512 })).toEqual({ thinkingBudget: 512 });

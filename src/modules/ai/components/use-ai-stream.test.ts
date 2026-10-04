@@ -85,6 +85,13 @@ describe('streamDraftArticle', () => {
     );
     await expect(streamDraftArticle({ organizationId: 'org-1', topic: 'x', points: '' })).rejects.toThrowError(/Topik minimal/);
   });
+
+  it('membatalkan stream yang melebihi batas buffer tanpa fetch nyata', async () => {
+    const huge = 'x'.repeat(500_001);
+    const body = `data: ${JSON.stringify({ delta: huge })}\n\n`;
+    vi.stubGlobal('fetch', vi.fn(async () => sseResponse(body)));
+    await expect(streamDraftArticle({ organizationId: 'org-1', topic: 'banjir', points: '' })).rejects.toThrowError(/respons terlalu besar/);
+  });
 });
 
 describe('useAiStream abort', () => {

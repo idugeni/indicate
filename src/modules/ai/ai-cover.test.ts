@@ -82,14 +82,25 @@ describe('grounding sampul', () => {
 });
 
 describe('TASK_MODEL_PROFILE dan taskThinkingOverride sampul', () => {
-  it('memetakan tujuh tugas ke tier murah dengan suhu sampul 0.8', () => {
-    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'embed', 'polish', 'ringkas', 'sampul', 'seo']);
-    expect(TASK_MODEL_PROFILE.sampul).toEqual({ modelTier: 'murah', temperature: 0.8 });
+  it('memetakan delapan tugas ke tier murah dengan suhu sampul 0.8', () => {
+    expect(Object.keys(TASK_MODEL_PROFILE).sort()).toEqual(['caption', 'chat', 'cover', 'polish', 'seo', 'summarize', 'transcribe', 'tts']);
+    expect(TASK_MODEL_PROFILE.cover).toEqual({ modelTier: 'murah', temperature: 0.8, thinkingBudget: 0 });
   });
 
-  it('mengembalikan undefined untuk sampul dan menghormati override pemanggil', () => {
-    expect(taskThinkingOverride('sampul')).toBeUndefined();
+  it('mengembalikan anggaran nol untuk sampul dan menghormati override pemanggil', () => {
+    expect(taskThinkingOverride('cover')).toEqual({ thinkingBudget: 0 });
+    expect(taskThinkingOverride('sampul')).toEqual({ thinkingBudget: 0 });
     expect(taskThinkingOverride('polish')).toEqual({ thinkingBudget: 8192, includeThoughts: true });
-    expect(taskThinkingOverride('sampul', { thinkingBudget: 1024 })).toEqual({ thinkingBudget: 1024 });
+    expect(taskThinkingOverride('cover', { thinkingBudget: 1024 })).toEqual({ thinkingBudget: 1024 });
+  });
+
+  it('membuang karakter kontrol dari gaya bebas dan menjaga batas 120', () => {
+    const built = buildCoverImagePrompt({ title: 'Pasar Pagi Wonosobo', style: 'Sketsa\x00pensil\x07lembut\u200B' });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.prompt).toContain('Sketsapensillembut');
+    expect(built.prompt).not.toContain('\x00');
+    expect(built.prompt).not.toContain('\x07');
+    expect(built.prompt).not.toContain('\u200B');
   });
 });

@@ -5,8 +5,21 @@ import { Redis } from '@upstash/redis';
 /** OpenAI-compatible entry point for every Vercel AI Gateway model. */
 export const VERCEL_GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
 
-/** Monthly token ceiling per gateway credential for editorial free-tier workloads. */
+/** Monthly token ceiling shared by one organization across every Vercel AI Gateway model (free-tier single pool). */
 export const VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET = 500_000;
+
+/** Fixed model segment for the shared pool scope; every gateway model draws from one `${org}:vercel-gateway` pool. */
+export const VERCEL_GATEWAY_BUDGET_POOL = 'vercel-gateway';
+
+/**
+ * Builds the shared monthly budget scope for one tenant.
+ *
+ * @param organizationId - Tenant owning the spend; nullish falls back to the global pool.
+ * @returns Scope in `${org}:vercel-gateway` form, identical for every gateway model.
+ */
+export function vercelGatewayBudgetScope(organizationId: string | null | undefined): string {
+  return `${organizationId ?? 'global'}:${VERCEL_GATEWAY_BUDGET_POOL}`;
+}
 
 /** Minimal Redis surface for the monthly counters; fail-open lives in the guard. */
 export interface VercelGatewayBudgetStore {
@@ -31,10 +44,10 @@ function secondsUntilMonthEnd(now: Date): number {
 }
 
 /**
- * Checks one gateway credential against its monthly token budget.
+ * Checks one organization pool against its monthly token budget.
  *
  * @param store - Shared Upstash client; null means unconfigured and allows the request.
- * @param credentialId - Gateway credential row receiving the spend.
+ * @param credentialId - Budget scope from `vercelGatewayBudgetScope` (one pool per org, shared by all models).
  * @param now - Clock reference; defaults to the current time in production.
  * @returns Verdict plus the remaining monthly token budget.
  * @remarks Fail-open: a Redis failure allows the request rather than blocking it.
@@ -57,10 +70,10 @@ export async function checkVercelGatewayBudget(
 }
 
 /**
- * Records token consumption against one gateway credential's monthly budget.
+ * Records token consumption against one organization pool's monthly budget.
  *
  * @param store - Shared Upstash client; null means unconfigured and records nothing.
- * @param credentialId - Gateway credential row receiving the spend.
+ * @param credentialId - Budget scope from `vercelGatewayBudgetScope` (one pool per org, shared by all models).
  * @param tokensCount - Total tokens for this turn.
  * @param now - Clock reference; defaults to the current time in production.
  * @remarks Fail-open: telemetry failure never fails the answer.

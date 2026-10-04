@@ -558,8 +558,13 @@ export function AiManagementPanel({
     const fallback = fallbackProviderId.trim() === '' ? null : fallbackProviderId.trim().toLowerCase();
     if (!activeCredentialProviders.has(primary)) warnings.push(`Tidak ada kredensial aktif untuk provider primer ${primary}.`);
     if (fallback !== null && !activeCredentialProviders.has(fallback)) warnings.push(`Tidak ada kredensial aktif untuk provider fallback ${fallback}.`);
+    if (chainStrategy === 'round_robin' && fallback === null) {
+      const defModel = defaultModel.trim() === '' ? 'gemini-2.5-flash' : defaultModel.trim();
+      const fbModel = fallbackModel.trim() === '' ? 'gemini-2.5-flash' : fallbackModel.trim();
+      if (fbModel === defModel) warnings.push('Round robin butuh 2 entri rantai: isi provider fallback atau bedakan model fallback (ditolak backend saat disimpan).');
+    }
     return warnings;
-  }, [overview, primaryProviderId, fallbackProviderId, activeCredentialProviders]);
+  }, [overview, primaryProviderId, fallbackProviderId, activeCredentialProviders, chainStrategy, defaultModel, fallbackModel]);
 
   return (
     <div className="grid items-start gap-4">
@@ -875,6 +880,7 @@ export function AiManagementPanel({
                   <TableHead scope="col">Provider</TableHead>
                   <TableHead scope="col">RPM</TableHead>
                   <TableHead scope="col">TPM</TableHead>
+                  <TableHead scope="col">Tools</TableHead>
                   <TableHead scope="col">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -892,6 +898,9 @@ export function AiManagementPanel({
                       </TableCell>
                       <TableCell className="font-mono text-xs text-paper-dim">{model.rpmLimit === null ? '∞' : model.rpmLimit.toLocaleString('id-ID')}</TableCell>
                       <TableCell className="font-mono text-xs text-paper-dim">{model.tpmLimit === null ? '∞' : model.tpmLimit.toLocaleString('id-ID')}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`font-mono text-[10px] uppercase ${model.supportsTools ? 'border-signal/50 text-signal' : ''}`}>{model.supportsTools ? 'ya' : 'tidak'}</Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(unlimited ? 'success' : 'open')}`}>{unlimited ? 'unlimited' : 'limited'}</Badge>
                       </TableCell>

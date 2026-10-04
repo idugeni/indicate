@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, getModelOwnerProvider, isModelBreakerTripped, nextChainStartIndex, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveOrderedAiModelChain, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
+import { AI_BREAKER_WINDOW_SECONDS, AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, getModelOwnerProvider, getRoundRobinCursor, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveOrderedAiModelChain, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
 import type { AiCredentialRecord, AiRoutingPolicy } from '@/modules/ai/ai-types';
 
 function makeCredential(overrides: Partial<AiCredentialRecord> & { id: string }): AiCredentialRecord {
@@ -367,5 +367,163 @@ describe('resolveMaxRetries', () => {
     expect(BACKGROUND_MAX_RETRIES).toBe(5);
     expect(resolveMaxRetries('interactive')).toBe(2);
     expect(resolveMaxRetries('background')).toBe(5);
+  });
+});
+
+function captureDb() {
+  const queries: unknown[] = [];
+  const db = {
+    execute: async (query: unknown): Promise<unknown[]> => {
+      queries.push(query);
+      return [];
+    },
+  };
+  return { db, queries };
+}
+
+function queryText(query: unknown): string {
+  try {
+    return JSON.stringify(query).toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+describe('recordKeySuccess single-statement', () => {
+  it('satu UPDATE aritmetik tanpa SELECT', async () => {
+    const { db, queries } = captureDb();
+    await recordKeySuccess(db, 'cred-1', 120);
+    expect(queries).toHaveLength(1);
+    const text = queryText(queries[0]);
+    expect(text).toContain('update');
+    expect(text).toContain('successful_requests + 1');
+    expect(text).not.toContain('select');
+  });
+
+  it('tidak pernah melempar saat db gagal', async () => {
+    const broken = { execute: async (_query: unknown): Promise<unknown[]> => { throw new Error('down'); } };
+    await expect(recordKeySuccess(broken, 'cred-1', 50)).resolves.toBeUndefined();
+  });
+});
+
+describe('recordKeyFailure single-statement', () => {
+  it('satu UPDATE aritmetik tanpa SELECT', async () => {
+    const { db, queries } = captureDb();
+    await recordKeyFailure(db, 'cred-1', 'rate_limit', 'slow down', 60);
+    expect(queries).toHaveLength(1);
+    const text = queryText(queries[0]);
+    expect(text).toContain('update');
+    expect(text).toContain('failed_requests + 1');
+    expect(text).not.toContain('select');
+  });
+
+  it('default cooldown 60 detik selaras policy', async () => {
+    const { db, queries } = captureDb();
+    const before = Date.now();
+    await recordKeyFailure(db, 'cred-1', 'rate_limit', 'slow down');
+    const text = queryText(queries[0]);
+    const instants = [...text.matchAll(/\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}\.\d{3}z/g)].map((match) =>
+      Date.parse(match[0]),
+    );
+    const diffs = instants.map((instant) => (instant - before) / 1000);
+    expect(diffs.some((diff) => diff >= 55 && diff <= 65)).toBe(true);
+  });
+
+  it('cooldown eksplisit dihormati dan kelas non-cooling tanpa cooldown', async () => {
+    const explicit = captureDb();
+    const before = Date.now();
+    await recordKeyFailure(explicit.db, 'cred-1', 'quota_exhausted', 'empty', 120);
+    const explicitDiffs = [...queryText(explicit.queries[0]).matchAll(/\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}\.\d{3}z/g)].map(
+      (match) => (Date.parse(match[0]) - before) / 1000,
+    );
+    expect(explicitDiffs.some((diff) => diff >= 115 && diff <= 125)).toBe(true);
+
+    const plain = captureDb();
+    const plainBefore = Date.now();
+    await recordKeyFailure(plain.db, 'cred-1', 'application_error', 'boom', 60);
+    const plainDiffs = [...queryText(plain.queries[0]).matchAll(/\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}\.\d{3}z/g)].map(
+      (match) => (Date.parse(match[0]) - plainBefore) / 1000,
+    );
+    expect(plainDiffs.every((diff) => diff < 5)).toBe(true);
+  });
+});
+
+describe('classifyAiError http-first', () => {
+  it('pola http didahulukan untuk status', () => {
+    expect(classifyAiError('request failed http 429: slow down').errorClass).toBe('rate_limit');
+    expect(classifyAiError('fetch failed http 401 unauthorized').errorClass).toBe('invalid_key');
+    expect(classifyAiError('fetch failed http 403 forbidden').errorClass).toBe('invalid_key');
+    expect(classifyAiError('gateway http 500 exploded').errorClass).toBe('provider_unavailable');
+    expect(classifyAiError('HTTP 503 Service Unavailable').errorClass).toBe('provider_unavailable');
+  });
+
+  it('kata timeout dikenali walau ada angka', () => {
+    expect(classifyAiError('Connection timeout after 30000ms').errorClass).toBe('timeout');
+  });
+
+  it('marker retry_after diparsing', () => {
+    const result = classifyAiError('rate_limited, retry_after:45, slow down');
+    expect(result.errorClass).toBe('rate_limit');
+    expect(result.retryAfterSec).toBe(45);
+  });
+
+  it('angka bebas tanpa konteks error bukan error provider', () => {
+    expect(classifyAiError('Order 429 coffees confirmed, thank you').errorClass).toBe(
+      'application_error',
+    );
+  });
+
+  it('quota-specific menang atas sinyal generik', () => {
+    expect(classifyAiError('QUOTA_EXHAUSTED with rate limit details').errorClass).toBe(
+      'quota_exhausted',
+    );
+  });
+});
+
+describe('round_robin per-provider', () => {
+  it('cursor terisolasi per provider', () => {
+    resetAiRotationState();
+    const first = [makeCredential({ id: 'a1', providerId: 'p1' }), makeCredential({ id: 'a2', providerId: 'p1' })];
+    const second = [makeCredential({ id: 'b1', providerId: 'p2' }), makeCredential({ id: 'b2', providerId: 'p2' })];
+    expect(selectCredential(first, 'round_robin')?.id).toBe('a1');
+    expect(selectCredential(second, 'round_robin')?.id).toBe('b1');
+    expect(selectCredential(first, 'round_robin')?.id).toBe('a2');
+    expect(selectCredential(second, 'round_robin')?.id).toBe('b2');
+    expect(getRoundRobinCursor('p1')).toBe(2);
+    expect(getRoundRobinCursor('p2')).toBe(2);
+    expect(getRoundRobinCursor('unknown-scope')).toBe(0);
+  });
+});
+
+describe('model circuit breaker half-open', () => {
+  function timestampStore() {
+    const values = new Map<string, string>();
+    return {
+      store: {
+        get: async (key: string): Promise<string | null> => values.get(key) ?? null,
+        incrby: async (key: string, delta: number): Promise<number> => delta,
+        expire: async (_key: string, _seconds: number): Promise<void> => {},
+        set: async (key: string, value: string): Promise<void> => {
+          values.set(key, value);
+        },
+      },
+    };
+  }
+
+  it('trip bertimestamp mengizinkan satu probe setelah jendela kedaluwarsa', async () => {
+    const { store } = timestampStore();
+    const tripAt = 1_000_000;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await recordModelInfraFailure(store, 'gemini', 'gemini-3.8-flash', tripAt);
+    }
+    expect(await isModelBreakerTripped(store, 'gemini', 'gemini-3.8-flash', tripAt)).toBe(true);
+    expect(
+      await isModelBreakerTripped(
+        store,
+        'gemini',
+        'gemini-3.8-flash',
+        tripAt + AI_BREAKER_WINDOW_SECONDS * 1000 + 1,
+      ),
+    ).toBe(false);
   });
 });

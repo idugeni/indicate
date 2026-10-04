@@ -89,4 +89,19 @@ describe('transcribeToArticle', () => {
     await expect(transcribeToArticle({ base64: '', mimeType: 'audio/mpeg', categories: ['Nasional'] })).resolves.toMatchObject({ ok: false });
     expect(vi.mocked(executeAiQuery)).not.toHaveBeenCalled();
   });
+
+  it('melewati klasifikasi bila daftar kategori kosong', async () => {
+    const { executeAiQuery } = await import('@/modules/ai/ai-service');
+    const { configureAiTranscribe } = await import('@/modules/ai/ai-transcribe');
+    configureAiTranscribe({} as never);
+    vi.mocked(executeAiQuery).mockClear();
+    vi.mocked(executeAiQuery)
+      .mockResolvedValueOnce({ text: '{"transcript":"Warga gotong royong."}', providerId: 'gemini', modelName: 'm', credentialId: 'c', credentialMasked: 'x', latencyMs: 1, retryCount: 0, toolCallsExecuted: [] })
+      .mockResolvedValueOnce({ text: '{"title":"Gotong Royong","excerpt":"Warga bergotong royong.","content":"Warga bergotong royong membersihkan selokan.","slug_suggestion":"gotong-royong"}', providerId: 'gemini', modelName: 'm', credentialId: 'c', credentialMasked: 'x', latencyMs: 1, retryCount: 0, toolCallsExecuted: [] });
+    const result = await transcribeToArticle({ base64: 'aGVsbG8=', mimeType: 'audio/mpeg', categories: [] });
+    expect(result.ok).toBe(true);
+    expect(vi.mocked(executeAiQuery)).toHaveBeenCalledTimes(2);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.article.classification).toEqual({ categories: [], tags: [] });
+  });
 });

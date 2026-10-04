@@ -79,7 +79,13 @@ export interface AiAdapterResponse {
 
 export interface AiProviderAdapter {
   readonly providerId: string;
-  execute(plainApiKey: string, modelName: string, promptData: AiChatPrompt): Promise<AiAdapterResponse>;
+  /** Execute one prompt; `opts.signal` aborts the vendor fetch when set. */
+  execute(
+    plainApiKey: string,
+    modelName: string,
+    promptData: AiChatPrompt,
+    opts?: { readonly signal?: AbortSignal | undefined } | undefined,
+  ): Promise<AiAdapterResponse>;
 }
 
 export type AiToolExecutor = (toolName: string, args: Record<string, unknown>) => Promise<unknown>;

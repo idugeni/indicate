@@ -26,7 +26,10 @@ export class GeminiAdapterWrapper implements AiProviderAdapter {
 const adapters: ReadonlyMap<string, AiProviderAdapter> = new Map<string, AiProviderAdapter>([
   ['gemini', new GeminiAdapterWrapper()],
   ['openai-compatible', new OpenAiCompatibleAdapter()],
-  ['openrouter', new OpenAiCompatibleAdapter('openrouter', OPENROUTER_BASE_URL, { 'X-Title': 'Indicate' })],
+  [
+    'openrouter',
+    new OpenAiCompatibleAdapter('openrouter', OPENROUTER_BASE_URL, { 'X-Title': 'Indicate' }, { sort: 'throughput', allowFallbacks: true }),
+  ],
   ['vercel-gateway', new OpenAiCompatibleAdapter('vercel-gateway', VERCEL_GATEWAY_BASE_URL)],
 ]);
 

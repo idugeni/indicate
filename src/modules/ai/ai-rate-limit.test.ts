@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AI_RATE_LIMIT_LUA,
   aiOrgQuotaRequestsKey,
   aiOrgQuotaTokensKey,
   aiRateLimitWindow,
@@ -10,6 +11,8 @@ import {
   checkOrganizationQuota,
   estimateAiInputTokens,
   getAiModelLimits,
+  getOrganizationQuotaLimits,
+  readRateLimitVerdict,
   type AiRateLimitStore,
 } from '@/modules/ai/ai-rate-limit';
 import type { AiDb } from '@/modules/ai/ai-types';
@@ -99,6 +102,65 @@ describe('checkAiModelRateLimit', () => {
   });
 });
 
+describe('checkAiModelRateLimit lua atomik', () => {
+  const now = new Date('2026-09-30T00:01:30.000Z');
+
+  function luaStore(counts = new Map<string, number>(), fail = false): AiRateLimitStore & { readonly calls: string[]; readonly counts: Map<string, number>; readonly incrCalls: readonly string[] } {
+    const calls: string[] = [];
+    const base = memoryStore();
+    for (const [key, value] of counts) base.counts.set(key, value);
+    return {
+      ...base,
+      counts: base.counts,
+      incrCalls: base.incrCalls,
+      calls,
+      eval: async (script: string, keys: readonly string[], args: ReadonlyArray<string | number>) => {
+        calls.push(script);
+        if (fail) throw new Error('redis down');
+        const [rpmLimit, tpmLimit, charge] = [Number(args[0]), Number(args[1]), Number(args[2])];
+        const rpm = base.counts.get(keys[0] ?? '') ?? 0;
+        const tpm = base.counts.get(keys[1] ?? '') ?? 0;
+        if (rpmLimit >= 0 && rpm >= rpmLimit) return ['rpm_exceeded'];
+        if (tpmLimit >= 0 && tpm + charge > tpmLimit) return ['tpm_exceeded'];
+        if (rpmLimit >= 0) base.counts.set(keys[0] ?? '', rpm + 1);
+        if (tpmLimit >= 0) base.counts.set(keys[1] ?? '', tpm + charge);
+        return ['ok'];
+      },
+    };
+  }
+
+  it('memakai satu eval untuk cek-dan-catat', async () => {
+    const store = luaStore();
+    const verdict = await checkAiModelRateLimit(store, { rpmLimit: 15, tpmLimit: 1000000 }, 'gemini-2.5-flash', 100, now);
+    expect(verdict).toEqual({ allowed: true });
+    expect(store.calls).toHaveLength(1);
+    expect(store.calls[0]).toBe(AI_RATE_LIMIT_LUA);
+    expect(store.incrCalls).toHaveLength(0);
+  });
+
+  it('memblokir rpm lewat eval tanpa legacy incr', async () => {
+    const window = aiRateLimitWindow(now);
+    const store = luaStore(new Map([[aiRpmKey('m', window), 15]]));
+    const verdict = await checkAiModelRateLimit(store, { rpmLimit: 15, tpmLimit: null }, 'm', 100, now);
+    expect(verdict).toEqual({ allowed: false, reason: 'rpm_exceeded' });
+    expect(store.incrCalls).toHaveLength(0);
+  });
+
+  it('eval gagal berarti lolos (fail-open)', async () => {
+    const store = luaStore(new Map(), true);
+    const verdict = await checkAiModelRateLimit(store, { rpmLimit: 1, tpmLimit: 1 }, 'm', 5000, now);
+    expect(verdict).toEqual({ allowed: true });
+  });
+
+  it('readRateLimitVerdict memetakan token dan bentuk tak dikenal', () => {
+    expect(readRateLimitVerdict(['ok'])).toEqual({ allowed: true });
+    expect(readRateLimitVerdict(['rpm_exceeded'])).toEqual({ allowed: false, reason: 'rpm_exceeded' });
+    expect(readRateLimitVerdict(['tpm_exceeded'])).toEqual({ allowed: false, reason: 'tpm_exceeded' });
+    expect(readRateLimitVerdict('ok')).toEqual({ allowed: true });
+    expect(readRateLimitVerdict(null)).toEqual({ allowed: true });
+  });
+});
+
 describe('window helpers', () => {
   it('window stabil dalam satu menit dan berganti menit berikut', () => {
     const first = aiRateLimitWindow(new Date('2026-09-30T00:01:10.000Z'));
@@ -165,5 +227,52 @@ describe('checkOrganizationQuota', () => {
     const verdict = await checkOrganizationQuota(store, 'org-a', { dailyRequestLimit: null, dailyTokenLimit: null }, 100, now);
     expect(verdict).toEqual({ allowed: true });
     expect(store.incrCalls).toHaveLength(0);
+  });
+});
+
+describe('koersi numerik Upstash', () => {
+  const now = new Date('2026-09-30T00:01:30.000Z');
+  const window = aiRateLimitWindow(now);
+
+  function stringStore(values: Map<string, string>): AiRateLimitStore {
+    return {
+      get: async (key: string) => values.get(key) ?? null,
+      incrby: async () => 0,
+      expire: async () => {},
+    };
+  }
+
+  it('string numerik dari get diperlakukan sebagai angka', async () => {
+    const store = stringStore(new Map([[aiRpmKey('gemini-2.5-flash', window), '15']]));
+    const verdict = await checkAiModelRateLimit(store, { rpmLimit: 15, tpmLimit: null }, 'gemini-2.5-flash', 100, now);
+    expect(verdict).toEqual({ allowed: false, reason: 'rpm_exceeded' });
+  });
+
+  it('string non-numerik diperlakukan sebagai nol', async () => {
+    const store = stringStore(new Map([[aiRpmKey('gemini-2.5-flash', window), 'bukan-angka']]));
+    const verdict = await checkAiModelRateLimit(store, { rpmLimit: 15, tpmLimit: null }, 'gemini-2.5-flash', 100, now);
+    expect(verdict).toEqual({ allowed: true });
+  });
+});
+
+describe('getOrganizationQuotaLimits', () => {
+  it('membaca batas harian organisasi', async () => {
+    const limits = await getOrganizationQuotaLimits(
+      fakeDb([{ daily_request_limit: '100', daily_token_limit: 10000 }]),
+      'org-a',
+    );
+    expect(limits).toEqual({ dailyRequestLimit: 100, dailyTokenLimit: 10000 });
+  });
+
+  it('baris hilang atau db gagal berarti unlimited (fail-open)', async () => {
+    expect(await getOrganizationQuotaLimits(fakeDb([]), 'org-asing')).toEqual({
+      dailyRequestLimit: null,
+      dailyTokenLimit: null,
+    });
+    const broken: AiDb = { execute: async () => { throw new Error('db down'); } };
+    expect(await getOrganizationQuotaLimits(broken, 'org-a')).toEqual({
+      dailyRequestLimit: null,
+      dailyTokenLimit: null,
+    });
   });
 });

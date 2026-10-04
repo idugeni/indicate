@@ -1,69 +1,24 @@
 import 'server-only';
 
-import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
+import type { AiServiceDeps } from '@/modules/ai/ai-service';
+import { runTaskQuery } from '@/modules/ai/ai-task-query';
+import { TASK_MODEL_PROFILE } from '@/modules/ai/ai-task-profiles';
 import type { AiThinkingConfig } from '@/modules/ai/ai-types';
-import { scanPrompt, truncateInput } from '@/modules/ai/ai-usage';
+import { truncateInput } from '@/modules/ai/ai-usage';
+
+export type { AiTaskKind } from '@/modules/ai/ai-task-profiles';
+export { TASK_MODEL_PROFILE, taskThinkingOverride } from '@/modules/ai/ai-task-profiles';
 
 const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
 const GROUNDING_SENTENCE =
   'Gunakan hanya fakta dari judul, kutipan, dan isi yang diberikan; jangan menambah fakta baru di luar teks tersebut.';
 
-/**
- * Jenis tugas AI yang dipetakan ke profil model hemat.
- *
- * @remarks Kunci `ringkas` adalah alias tugas `summarize` di control plane.
- */
-export type AiTaskKind = 'caption' | 'seo' | 'polish' | 'ringkas' | 'sampul' | 'chat' | 'embed';
-
-/**
- * Profil model hemat per tugas: tier murah, suhu yang disarankan, dan anggaran thinking.
- *
- * @remarks `thinkingBudget` yang `undefined` berarti memakai default kanal adapter.
- */
-export interface TaskModelProfile {
-  readonly modelTier: 'murah';
-  readonly temperature: number;
-  readonly thinkingBudget?: number | undefined;
-}
-
-/**
- * Matriks tugas ke profil model hemat.
- *
- * @remarks Caption dan SEO memakai penalaran pendek agar cepat; polish dan
- * ringkas memakai anggaran besar agar hasilnya matang; sampul, chat, dan
- * embed memakai default kanal tanpa thinking tambahan.
- */
-export const TASK_MODEL_PROFILE: Record<AiTaskKind, TaskModelProfile> = {
-  caption: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 1024 },
-  seo: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 2048 },
-  polish: { modelTier: 'murah', temperature: 0.5, thinkingBudget: 8192 },
-  ringkas: { modelTier: 'murah', temperature: 0.3, thinkingBudget: 8192 },
-  sampul: { modelTier: 'murah', temperature: 0.8 },
-  chat: { modelTier: 'murah', temperature: 0.7 },
-  embed: { modelTier: 'murah', temperature: 0 },
-};
-
-/**
- * Mengembalikan override thinking untuk satu tugas dari matriks profil.
- *
- * @param task - Tugas yang menentukan anggaran default.
- * @param userOverride - Override eksplisit pemanggil, dihormati lebih dulu.
- * @returns Konfigurasi thinking tugas tersebut, atau undefined bila memakai default kanal.
- */
-export function taskThinkingOverride(
-  task: AiTaskKind | (string & {}),
-  userOverride?: AiThinkingConfig | undefined,
-): AiThinkingConfig | undefined {
-  if (userOverride?.thinkingBudget !== undefined) return userOverride;
-  const profile = (TASK_MODEL_PROFILE as Record<string, TaskModelProfile>)[task];
-  if (profile?.thinkingBudget === undefined) return undefined;
-  return { thinkingBudget: profile.thinkingBudget, includeThoughts: true };
-}
-
 const ASSISTANT_HISTORY_LIMIT = 6;
 const ASSISTANT_MESSAGE_CAP = 1000;
 const ASSISTANT_PROMPT_CAP = 4000;
+/** Last characters always kept whole when history overflows the prompt cap. */
+const ASSISTANT_TAIL_RESERVE = 800;
 const ASSISTANT_REPLY_CAP = 3000;
 
 const ASSISTANT_SYSTEM = [
@@ -100,35 +55,44 @@ export interface AssistantArticleContext {
 }
 
 /**
- * Melipat riwayat percakapan menjadi satu prompt teks untuk model tanpa status.
+ * Fold conversation history into one stateless text prompt.
  *
- * @param messages - Pesan user/asisten kronologis; enam terakhir dipakai.
- * @param context - Kutipan dan isi artikel acuan opsional; kosong berarti perilaku lama.
- * @returns Transkrip berlabel plus pertanyaan saat ini, maksimal 4000 karakter.
+ * @param messages - Chronological user/assistant messages; last six are used.
+ * @param context - Optional article excerpt and body for grounding.
+ * @returns Labelled transcript plus current question; head is sliced on
+ * overflow so the last 800 chars (question + grounding) stay whole.
  */
 export function buildAssistantPrompt(messages: readonly AssistantMessage[], context?: AssistantArticleContext | undefined): string {
   const recent = messages.filter((message) => message.text.trim() !== '').slice(-ASSISTANT_HISTORY_LIMIT);
   const current = recent[recent.length - 1];
   if (current === undefined) return '';
   const transcript = recent.slice(0, -1).map((message) => `${message.role === 'user' ? 'Pengguna' : 'Asisten'}: ${truncateInput(message.text, ASSISTANT_MESSAGE_CAP)}`);
-  const lines = [...transcript, `Pertanyaan saat ini: ${truncateInput(current.text, ASSISTANT_MESSAGE_CAP)}`];
+  const currentLine = `Pertanyaan saat ini: ${truncateInput(current.text, ASSISTANT_MESSAGE_CAP)}`;
   const excerpt = truncateInput(context?.excerpt ?? '', 2000);
   const body = truncateInput(context?.body ?? '', 2000);
   const grounding = excerpt === '' && body === ''
     ? ''
     : `\n\nKonteks artikel acuan:${excerpt === '' ? '' : `\nKutipan:\n${excerpt}`}${body === '' ? '' : `\nIsi (terpotong):\n${body}`}\n${GROUNDING_SENTENCE}`;
-  return `Percakapan staf redaksi:\n${lines.join('\n')}${grounding}`.slice(0, ASSISTANT_PROMPT_CAP);
+  const head = transcript.length === 0 ? 'Percakapan staf redaksi:\n' : `Percakapan staf redaksi:\n${transcript.join('\n')}\n`;
+  const tail = `${currentLine}${grounding}`;
+  if (head.length + tail.length <= ASSISTANT_PROMPT_CAP) return head + tail;
+  // Tail holds the current question plus grounding; keep its last CAP chars
+  // on solo overflow so the final TAIL_RESERVE chars always survive intact.
+  if (tail.length >= ASSISTANT_PROMPT_CAP) return tail.slice(-ASSISTANT_PROMPT_CAP);
+  const minTailKeep = Math.min(ASSISTANT_TAIL_RESERVE, tail.length);
+  const headKeep = ASSISTANT_PROMPT_CAP - tail.length;
+  return `${head.slice(head.length - headKeep)}${tail.slice(-Math.max(tail.length, minTailKeep))}`;
 }
 
 /**
- * Menjawab pertanyaan staf dengan konteks enam pesan terakhir yang dilipat ke prompt.
+ * Answer one staff question with the last six folded messages as prompt.
  *
- * @param input.messages - Riwayat percakapan; pesan terakhir adalah pertanyaan saat ini.
- * @param input.excerpt - Kutipan artikel acuan opsional untuk grounding; kosong berarti perilaku lama.
- * @param input.body - Isi artikel acuan terpotong opsional untuk grounding; kosong berarti perilaku lama.
- * @param input.thinkingConfig - Override thinking eksplisit; default memakai profil tugas chat.
- * @param input.organizationId - Organisasi untuk cakupan kredensial dan audit.
- * @returns Balasan asisten atau pesan sibuk yang aman.
+ * @param input.messages - Conversation history; last message is the question.
+ * @param input.excerpt - Optional article excerpt for grounding.
+ * @param input.body - Optional truncated article body for grounding.
+ * @param input.thinkingConfig - Explicit thinking override; else chat profile.
+ * @param input.organizationId - Organization scoping credentials and audit.
+ * @returns Assistant reply or a safe busy message.
  */
 export async function assistantChat(input: {
   readonly messages: readonly AssistantMessage[];
@@ -142,21 +106,15 @@ export async function assistantChat(input: {
     ? undefined
     : { excerpt: input.excerpt, body: input.body });
   if (prompt === '') return { ok: false, error: 'Pesan diperlukan.' };
-  const scanned = scanPrompt(prompt);
-  if (!scanned.ok) return { ok: false, error: scanned.reason };
-  if (configured === null) return { ok: false, error: BUSY_MESSAGE };
-  const result = await executeAiQuery(configured, {
+  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
     prompt,
-    organizationId: input.organizationId ?? null,
     systemInstruction: ASSISTANT_SYSTEM,
     temperature: TASK_MODEL_PROFILE.chat.temperature,
     maxOutputTokens: 1024,
-    thinkingConfig: input.thinkingConfig ?? taskThinkingOverride('chat'),
-    channel: 'web',
-    callerRole: 'editor',
-    enableTools: false,
+    thinkingTask: 'chat',
+    ...(input.thinkingConfig === undefined ? {} : { thinkingConfig: input.thinkingConfig }),
   });
-  if (result.error !== undefined || result.text.trim() === '') return { ok: false, error: BUSY_MESSAGE };
+  if (!result.ok) return result;
   const reply = result.text.trim().slice(0, ASSISTANT_REPLY_CAP);
   if (reply === '') return { ok: false, error: BUSY_MESSAGE };
   return { ok: true, reply };
