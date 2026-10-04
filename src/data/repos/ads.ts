@@ -220,7 +220,8 @@ export class DrizzleAdsRepository implements AdsRepository {
       }
       const settingRows = await transaction.select({ siteId: tenantAdSettings.siteId, enabled: tenantAdSettings.enabled, creativeId: tenantAdSettings.creativeId, version: tenantAdSettings.version })
         .from(tenantAdSettings)
-        .where(and(eq(tenantAdSettings.organizationId, org), eq(tenantAdSettings.slotId, input.slotId)));
+        .where(and(eq(tenantAdSettings.organizationId, org), eq(tenantAdSettings.slotId, input.slotId)))
+        .limit(OVERVIEW_LIMITS.settings);
       const currentBySite = new Map(settingRows.map((row) => [row.siteId, row]));
       for (const site of siteRows) {
         const expected = input.expectedVersions[site.id];
