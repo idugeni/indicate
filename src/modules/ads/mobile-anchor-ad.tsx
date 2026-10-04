@@ -8,13 +8,15 @@ import { X } from 'lucide-react';
  *
  * @param children - Slot iklan khusus ponsel (mis. `mobile-banner`).
  * @returns Bilah bawah tetap di ponsel; null setelah ditutup atau di desktop/cetak.
+ * @remarks Sticky (bukan fixed) agar bilah menyisakan ruang alir di akhir
+ * halaman dan tidak menutup footer; margin ritme slot dinetralkan di sini.
  */
 export function MobileAnchorAd({ children }: { readonly children: ReactNode }) {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden print:hidden">
-      <div className="relative mx-auto w-full min-w-0" style={{ maxWidth: 420 }}>
+    <div className="sticky inset-x-0 bottom-0 z-40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden print:hidden">
+      <div className="relative mx-auto w-full min-w-0 [&_[data-ad-slot]]:my-0" style={{ maxWidth: 420 }}>
         <button
           type="button"
           onClick={() => setDismissed(true)}

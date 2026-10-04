@@ -12,6 +12,7 @@ interface AdSlotProps {
   readonly slot: AdSlotId;
   readonly eager?: boolean | undefined;
   readonly campaign?: CampaignAdOverrides | undefined;
+  readonly className?: string | undefined;
 }
 
 function AdLabel() {
@@ -101,9 +102,10 @@ function AdEmpty({ slot, siteName }: { readonly slot: AdSlotId; readonly siteNam
  * @param slot - Semantic slot from the catalog.
  * @param eager - Above-the-fold slots skip `loading="lazy"`.
  * @param campaign - Optional per-render campaign override (highest precedence).
+ * @param className - Optional extra classes for the slot root.
  * @returns Reserved-space ad container, or null when the slot is off.
  */
-export function AdSlot({ site, slot, eager = false, campaign }: AdSlotProps) {
+export function AdSlot({ site, slot, eager = false, campaign, className = '' }: AdSlotProps) {
   const templateId = safeTemplateId(site.settings.colors.templateId);
   if (templateId === null) return null;
   const resolved = resolveAdSlot({ templateId, overrides: site.settings.ads ?? {}, slot, campaign: campaign ?? site.settings.adCampaigns });
@@ -120,7 +122,7 @@ export function AdSlot({ site, slot, eager = false, campaign }: AdSlotProps) {
       : null;
 
   return (
-    <div data-ad-slot={slot} className={`min-w-0${visibility}`}>
+    <div data-ad-slot={slot} className={`my-8 min-w-0${visibility}${className === '' ? '' : ` ${className}`}`}>
       <div className="mx-auto w-full min-w-0" style={{ maxWidth: definition.maxWidthPx }}>
         <AdLabel />
         <div
@@ -183,7 +185,7 @@ export function AdHeaderTop({ site, campaign }: { readonly site: NetworkSiteData
     <ZoneSlots
       site={site}
       slots={TEMPLATE_AD_MAP[templateId].header}
-      className="mx-auto w-full min-w-0 max-w-7xl px-4 pt-3 sm:px-6"
+      className="mx-auto w-full min-w-0 max-w-7xl px-4 pt-3 sm:px-6 [&_[data-ad-slot]]:my-0"
       eager
       campaign={campaign}
     />
@@ -203,7 +205,7 @@ export function AdShellTop({ site, campaign }: { readonly site: NetworkSiteData;
     <ZoneSlots
       site={site}
       slots={TEMPLATE_AD_MAP[templateId].top}
-      className="mx-auto w-full min-w-0 max-w-7xl px-4 pt-4 sm:px-6 md:pt-6"
+      className="mx-auto w-full min-w-0 max-w-7xl px-4 pt-4 sm:px-6 md:pt-6 [&_[data-ad-slot]]:my-0"
       eager
       campaign={campaign}
     />
@@ -223,7 +225,7 @@ export function AdShellBottom({ site, campaign }: { readonly site: NetworkSiteDa
     <ZoneSlots
       site={site}
       slots={TEMPLATE_AD_MAP[templateId].footer}
-      className="mx-auto w-full min-w-0 max-w-7xl px-4 pb-4 sm:px-6 md:pb-6"
+      className="mx-auto w-full min-w-0 max-w-7xl px-4 pb-4 sm:px-6 md:pb-6 [&_[data-ad-slot]]:my-0"
       campaign={campaign}
     />
   );

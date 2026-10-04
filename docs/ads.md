@@ -93,8 +93,12 @@ merusak halaman. Jalur naik kelas saat dasbor admin tiba adalah tabel
   menahan ruang sebelum kreatif tiba.
 - Slot sidebar hilang di bawah `lg` (rel runtuh menjadi inline),
   `mobile-banner` hilang di `md` ke atas.
-- Slot di atas header (`header-top`) menggulir pergi; tidak ada slot yang
-  menempel sehingga tidak menutupi navigasi lengket.
+- Slot di atas header (`header-top`) menggulir pergi; satu-satunya elemen
+  menempel adalah jangkar ponsel (`sticky bottom-0`) yang menyisakan ruang
+  alir di akhir halaman sehingga tidak menutup footer.
+- Ritme vertikal milik slot (`my-8`, runtuh dengan tetangga), bukan
+  penempatan: zona shell dan jangkar menetralkannya (`[&_[data-ad-slot]]:my-0`)
+  agar padding terukur mereka tidak berubah.
 - Iklan disembunyikan saat cetak (`[data-ad-slot]` di aturan print
   `globals.css`).
 - Gambar di bawah lipatan memakai `loading="lazy"`; slot zona atas
