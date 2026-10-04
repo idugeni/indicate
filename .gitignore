@@ -60,3 +60,4 @@ tmp/
 
 # Skrip dan query sekali pakai di root repo
 _tmp-*
+.neon

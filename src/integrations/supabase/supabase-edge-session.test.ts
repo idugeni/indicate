@@ -33,7 +33,7 @@ afterEach(() => {
 describe('nextWithSessionRefresh', () => {
   it('menghapus cookie sesi mati saat refresh token ditolak', async () => {
     mockedCreateServerClient.mockReturnValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: deadRefreshError() }) },
+      auth: { getClaims: vi.fn().mockResolvedValue({ data: { claims: null }, error: deadRefreshError() }) },
     } as unknown as Awaited<ReturnType<typeof createServerClient>>);
     const response = await nextWithSessionRefresh(
       requestWith('sb-ref-auth-token=dead; sb-ref-auth-token.0=chunk; sesi=lain'),
@@ -46,7 +46,7 @@ describe('nextWithSessionRefresh', () => {
 
   it('membiarkan cookie saat sesi valid', async () => {
     mockedCreateServerClient.mockReturnValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u-1' } }, error: null }) },
+      auth: { getClaims: vi.fn().mockResolvedValue({ data: { claims: { sub: 'u-1' } }, error: null }) },
     } as unknown as Awaited<ReturnType<typeof createServerClient>>);
     const response = await nextWithSessionRefresh(
       requestWith('sb-ref-auth-token=hidup'),

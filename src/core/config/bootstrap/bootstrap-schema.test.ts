@@ -74,6 +74,21 @@ describe('validateBootstrapConfig gagal', () => {
     expect(result.success).toBe(false);
   });
 
+  it('mengizinkan kunci DATABASE_* milik Neon saat production', () => {
+    const result = validateBootstrapConfig({
+      ...validEnv(),
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://user:pass@ep-test-pooler.neon.tech/indicate',
+      DATABASE_URL_UNPOOLED: 'postgresql://user:pass@ep-test.neon.tech/indicate',
+      DATABASE_TYPO: 'x',
+    } as Record<string, string | undefined>);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.issues.some((issue) => issue.path === 'DATABASE_TYPO')).toBe(true);
+      expect(result.issues.some((issue) => issue.path === 'DATABASE_URL')).toBe(false);
+    }
+  });
+
   it('mengizinkan production tanpa turnstile site key', () => {
     const secrets = Object.fromEntries(
       ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET'].map((name) => [name, 'kredensial-produksi-yang-cukup-panjang']),

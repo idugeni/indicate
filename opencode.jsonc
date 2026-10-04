@@ -158,6 +158,11 @@
           "3.13",
           "mcp-search-console"
         ]
+      },
+      "neon": {
+        // Project-level OAuth: tanpa API key di repo, sign-in di client.
+        "type": "remote",
+        "url": "https://mcp.neon.tech/mcp"
       }
     }
   }

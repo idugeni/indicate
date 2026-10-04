@@ -43,7 +43,10 @@ export async function nextWithSessionRefresh(
         },
       },
     });
-    const { error } = await supabase.auth.getUser();
+    // Local JWT validation: no Auth round-trip, so the per-request edge
+    // refresh costs no egress. getUser() stays reserved for flows needing
+    // the canonical server-validated record.
+    const { error } = await supabase.auth.getClaims();
     if (isDeadSessionError(error)) clearDeadSessionCookies(request, response);
   } catch {
     return response;

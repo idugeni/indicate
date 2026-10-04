@@ -35,6 +35,14 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'TURNSTILE_',
 ] as const;
 
+/**
+ * Exact third-party keys sharing an owned prefix. `neon env pull` writes
+ * `DATABASE_URL`/`DATABASE_URL_UNPOOLED` next to the Supabase `DATABASE_*`
+ * contract; exempting the exact names (never the prefix) keeps typo-catching
+ * for real `DATABASE_*` keys intact.
+ */
+const NEON_MANAGED_KEYS: ReadonlySet<string> = new Set(['DATABASE_URL', 'DATABASE_URL_UNPOOLED']);
+
 const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'NODE_ENV',
   'DASHBOARD_HOST',
@@ -42,7 +50,6 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'WEBHOOK_HOST',
   'STATUS_HOST',
   'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'DEFAULT_LOCALE',
   'SITE_DEFAULT_ASSET_URL',
@@ -66,6 +73,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'R2_PUBLIC_HOST',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
+  'NEON_SNAPSHOT_DATABASE_URL',
   'RESEND_API_KEY',
   'RESEND_DEFAULT_FROM',
   'RESEND_WEBHOOK_SECRET',
@@ -187,7 +195,6 @@ const bootstrapSchema = z
     STATUS_HOST: hostnameSchema.default('status.indicate.website'),
 
     NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
     /**
@@ -233,6 +240,7 @@ const bootstrapSchema = z
     R2_PUBLIC_HOST: hostnameSchema.optional(),
     UPSTASH_REDIS_REST_URL: httpsUrlSchema,
     UPSTASH_REDIS_REST_TOKEN: secretSchema,
+    NEON_SNAPSHOT_DATABASE_URL: z.url({ protocol: /^postgresql$/ }).optional(),
     RESEND_API_KEY: secretSchema.optional(),
     RESEND_DEFAULT_FROM: z.string().min(3).max(320).optional(),
     RESEND_WEBHOOK_SECRET: secretSchema.optional(),
@@ -330,8 +338,8 @@ export interface BootstrapConfig {
   readonly supabase: Readonly<{
     readonly projectRef?: string;
     readonly url: string;
-    /** Public, client-safe anonymized key (not a secret). */
-    readonly anonKey: string;
+    /** Public, client-safe publishable key (not a secret). */
+    readonly publishableKey: string;
   }>;
   readonly database: Readonly<{
     readonly pooledUrl: SecretString;
@@ -362,6 +370,7 @@ export interface BootstrapConfig {
     readonly r2PublicHost: string | null;
     readonly upstashRestUrl: string;
     readonly upstashRestToken: SecretString;
+    readonly neonSnapshotDatabaseUrl: SecretString | null;
     /** Resend credential pair; null when transactional email is unconfigured. */
     readonly resendApiKey: SecretString | null;
     readonly resendDefaultFrom: string | null;
@@ -390,7 +399,6 @@ export type BootstrapConfigResult =
   | { readonly success: false; readonly issues: readonly ConfigIssue[] };
 
 function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
-  const anonKey = value.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? value.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
   const projectRef = value.SUPABASE_PROJECT_REF;
   return Object.freeze({
     environment: 'production' as const,
@@ -411,7 +419,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
     supabase: Object.freeze({
       projectRef,
       url: value.NEXT_PUBLIC_SUPABASE_URL,
-      anonKey,
+      publishableKey: value.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
     }),
     database: Object.freeze({
       pooledUrl: SecretString.fromPlain(value.DATABASE_POOL_URL),
@@ -438,6 +446,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       r2PublicHost: value.R2_PUBLIC_HOST ?? null,
       upstashRestUrl: value.UPSTASH_REDIS_REST_URL,
       upstashRestToken: SecretString.fromPlain(value.UPSTASH_REDIS_REST_TOKEN),
+      neonSnapshotDatabaseUrl: value.NEON_SNAPSHOT_DATABASE_URL === undefined ? null : SecretString.fromPlain(value.NEON_SNAPSHOT_DATABASE_URL),
       resendApiKey: value.RESEND_API_KEY === undefined ? null : SecretString.fromPlain(value.RESEND_API_KEY),
       resendDefaultFrom: value.RESEND_DEFAULT_FROM ?? null,
       resendSmtpPass: value.RESEND_SMTP_PASS === undefined ? null : SecretString.fromPlain(value.RESEND_SMTP_PASS),
@@ -486,7 +495,7 @@ function detectUnknownIndicateKeys(
 ): ConfigIssue[] {
   const issues: ConfigIssue[] = [];
   for (const key of Object.keys(environment)) {
-    if (allowed.has(key) || key === 'NODE_ENV' || key.startsWith('_') || key.startsWith('npm_') || key.startsWith('NPM_')) {
+    if (allowed.has(key) || NEON_MANAGED_KEYS.has(key) || key === 'NODE_ENV' || key.startsWith('_') || key.startsWith('npm_') || key.startsWith('NPM_')) {
       continue;
     }
     if (key.startsWith('VERCEL_')) {

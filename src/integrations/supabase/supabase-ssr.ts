@@ -84,6 +84,9 @@ export function createSupabaseSsrAuthAdapter(input: {
   });
   return {
     async verifyCookieSession() {
+      // Canonical server-validated record on purpose: dashboard auth is the
+      // security boundary, so immediate revocation outweighs the round-trip
+      // that getClaims() saves on the edge refresh path.
       const { data, error } = await client.auth.getUser();
       if (error !== null || data.user === null) {
         if (isDeadSessionError(error)) clearStaleSessionCookies(input.cookies);

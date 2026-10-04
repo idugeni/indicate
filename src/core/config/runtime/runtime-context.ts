@@ -4,7 +4,10 @@ import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
 import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import type { RuntimeConfigSnapshot } from '@/core/config/persisted/parser';
 import { DrizzleRuntimeConfigRepository } from '@/data/repos/runtime-config/reader';
-import { RuntimeConfigSnapshotCache } from '@/core/system/runtime-config-snapshot-cache';
+import { CompositeSnapshotStore } from '@/core/system/composite-snapshot-store';
+import { RuntimeConfigSnapshotCache, type SnapshotSharedStore } from '@/core/system/runtime-config-snapshot-cache';
+import { createNeonSnapshotExecutor } from '@/integrations/neon/neon-pool';
+import { NeonSnapshotStore } from '@/integrations/neon/neon-snapshot-store';
 import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
 import { HrTimeMonotonicClock } from '@/core/system/monotonic-clock';
 import { getSharedRuntimeDatabase } from '@/data/client';
@@ -215,14 +218,26 @@ async function initializeContext(): Promise<RuntimeContext> {
     const runtime = getSharedRuntimeDatabase(bootstrap);
     await assertSchemaGate(runtime.client);
     const repository = new DrizzleRuntimeConfigRepository(runtime.db);
-    const snapshotStore: UpstashSnapshotStore | null =
-      process.env.NEXT_PHASE === 'phase-production-build'
+    const snapshotStores: SnapshotSharedStore[] = [];
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      snapshotStores.push(
+        new UpstashSnapshotStore({
+          url: bootstrap.credentials.upstashRestUrl,
+          token: bootstrap.credentials.upstashRestToken.reveal(),
+          namespace: `indicate:shared:${bootstrap.environment}`,
+        }),
+      );
+      const neonSnapshotUrl = bootstrap.credentials.neonSnapshotDatabaseUrl;
+      if (neonSnapshotUrl !== null) {
+        snapshotStores.push(new NeonSnapshotStore(createNeonSnapshotExecutor(neonSnapshotUrl.reveal())));
+      }
+    }
+    const snapshotStore: SnapshotSharedStore | null =
+      snapshotStores.length === 0
         ? null
-        : new UpstashSnapshotStore({
-            url: bootstrap.credentials.upstashRestUrl,
-            token: bootstrap.credentials.upstashRestToken.reveal(),
-            namespace: `indicate:shared:${bootstrap.environment}`,
-          });
+        : snapshotStores.length === 1
+          ? (snapshotStores[0] as SnapshotSharedStore)
+          : new CompositeSnapshotStore(snapshotStores);
     cache = new RuntimeConfigSnapshotCache({ repository, clock: new HrTimeMonotonicClock(), snapshotStore });
   }
 
