@@ -28,7 +28,11 @@ npm-facing.
   `Redaksi {tenant}` dinamis untuk label generik di kartu artikel.
 - Kotak-masuk UPT (v261): draf humas yang menumpuk di org tanpa situs kini
   terlihat steward di Kelola Artikel, dengan satu tombol tayang otomatis ke
-  portal kota asalnya (nasional ke semua apex).- Terms and privacy consent on the two forms that take personal data. The
+  portal kota asalnya (nasional ke semua apex).
+- Pembersih baris arsip media otomatis (v262): kategori sweep
+  `media_archived_rows` menghapus baris `archived` >90 hari yang tak dirujuk
+  artikel/brand/override mana pun — byte-nya sudah dikuras duluan oleh
+  reconciler, jadi tidak ada yatim R2 baru.- Terms and privacy consent on the two forms that take personal data. The
   tenant report form now ships a shadcn `Checkbox` that must be ticked before
   the report is sent, linking to that tenant's own `/syarat-ketentuan` and
   `/kebijakan-privasi`; `/sign-up` does the same against `/terms` and
