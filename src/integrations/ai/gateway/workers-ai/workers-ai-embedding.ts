@@ -14,6 +14,14 @@ export const WORKERS_AI_EMBED_MAX_TEXT_CHARS = 8000;
 /** Upper bound accepted from the provider; anything larger is treated as malformed. */
 const WORKERS_AI_EMBED_MAX_DIMENSIONS = 4096;
 
+/** Small backoff before the single retry on 429/5xx; keeps one reindex bounded. */
+export const WORKERS_AI_EMBED_RETRY_DELAY_MS = 250;
+
+/** Retryable transport statuses: rate-limited or server-side failures. */
+export function isRetryableWorkersAiStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
 /** Credentials for the Workers AI REST transport; the key is never logged. */
 export interface WorkersAiEmbeddingConfig {
   readonly accountId: string;
@@ -25,6 +33,7 @@ export interface WorkersAiEmbeddingConfig {
 export interface WorkersAiEmbedOptions {
   readonly fetchImpl?: EmbedFetch | undefined;
   readonly signal?: AbortSignal | undefined;
+  readonly retryDelayMs?: number | undefined;
 }
 
 function toFiniteVector(value: unknown): readonly number[] | null {
@@ -66,8 +75,13 @@ function extractMatrix(body: unknown, expected: number): Array<readonly number[]
  * @param config - Account id, API token, and optional model override.
  * @param texts - Input texts, each truncated server-side before transport.
  * @param options - Injectable fetch and abort signal.
- * @returns Vectors aligned with the input; a failed batch yields nulls so callers can store NULL and continue.
+ * @returns Vectors aligned with the input; a failed batch yields nulls so the
+ * reindex caller can still store the chunks with NULL embeddings and report
+ * them via `failedChunks` instead of failing silently. Only the
+ * `ai-embeddings` module consumes this contract.
  * @throws {Error} When credentials are empty, no text is given, or the batch exceeds 20 texts.
+ * @remarks A 429/5xx response is retried once after a small backoff; other
+ * failures yield nulls immediately without throwing.
  */
 export async function embedTextsViaWorkersAi(
   config: WorkersAiEmbeddingConfig,
@@ -81,15 +95,32 @@ export async function embedTextsViaWorkersAi(
   const payload = texts.map((raw) => raw.slice(0, WORKERS_AI_EMBED_MAX_TEXT_CHARS));
   if (payload.every((text) => text.trim() === '')) return texts.map(() => null);
   const fetchImpl = options?.fetchImpl ?? fetch;
+  const delay = options?.retryDelayMs ?? WORKERS_AI_EMBED_RETRY_DELAY_MS;
+  const request = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiToken}` },
+    body: JSON.stringify({ text: payload }),
+    ...(options?.signal === undefined ? {} : { signal: options.signal }),
+  };
+  const invalidDelay = !Number.isFinite(delay) || delay < 0;
+  const backoffMs = invalidDelay ? WORKERS_AI_EMBED_RETRY_DELAY_MS : delay;
   try {
-    const response = await fetchImpl(workersAiEmbeddingUrl(config), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiToken}` },
-      body: JSON.stringify({ text: payload }),
-      ...(options?.signal === undefined ? {} : { signal: options.signal }),
-    });
-    if (!response.ok) return texts.map(() => null);
-    const body = (await response.json().catch(() => null)) as unknown;
+    const first = await fetchImpl(workersAiEmbeddingUrl(config), request);
+    if (first.ok) {
+      const body = (await first.json().catch(() => null)) as unknown;
+      return extractMatrix(body, texts.length);
+    }
+    if (!isRetryableWorkersAiStatus(first.status)) return texts.map(() => null);
+  } catch {
+    return texts.map(() => null);
+  }
+  await new Promise((resolve) => {
+    setTimeout(resolve, backoffMs);
+  });
+  try {
+    const second = await fetchImpl(workersAiEmbeddingUrl(config), request);
+    if (!second.ok) return texts.map(() => null);
+    const body = (await second.json().catch(() => null)) as unknown;
     return extractMatrix(body, texts.length);
   } catch {
     return texts.map(() => null);

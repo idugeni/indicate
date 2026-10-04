@@ -4,6 +4,7 @@ import type { SQL } from 'drizzle-orm';
 import {
   EMBEDDING_CHUNK_CHARS,
   EMBEDDING_MAX_CHUNKS,
+  continuationMarker,
   reindexArticleEmbeddings,
   splitArticleChunks,
   TASK_MODEL_PROFILE,
@@ -96,7 +97,10 @@ function makeFakeDb(article: ArticleSeed | null): AiDb & { readonly seen: string
       if (text.includes('delete from document_embeddings')) return [];
       if (text.includes('insert into document_embeddings')) {
         for (const param of params) {
-          if (typeof param === 'string' && param !== ORG_A && param !== ORG_B && param !== ARTICLE) inserted.push(param);
+          if (typeof param !== 'string' || param === ORG_A || param === ORG_B || param === ARTICLE) continue;
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(param)) continue;
+          if (param.startsWith('[')) continue;
+          inserted.push(param);
         }
         return [];
       }
@@ -120,6 +124,24 @@ describe('splitArticleChunks', () => {
     expect(chunks.length).toBe(EMBEDDING_MAX_CHUNKS);
     for (const chunk of chunks) expect(chunk.length).toBeLessThanOrEqual(EMBEDDING_CHUNK_CHARS);
   });
+
+  it('menandai chunk terakhir bila artikel terpotong', () => {
+    const chunks = splitArticleChunks({ title: 'Laporan Tahunan', body: 'kata '.repeat(12000) });
+    expect(chunks.length).toBe(EMBEDDING_MAX_CHUNKS);
+    const last = chunks[EMBEDDING_MAX_CHUNKS - 1] ?? '';
+    expect(last).toContain('[bersambung');
+    expect(last).toContain(`${EMBEDDING_MAX_CHUNKS}/`);
+    expect(last.length).toBeLessThanOrEqual(EMBEDDING_CHUNK_CHARS);
+  });
+
+  it('tanpa penanda bila artikel muat dalam batas', () => {
+    const chunks = splitArticleChunks({ title: 'Banjir Surut', body: 'Air mulai surut.' });
+    expect(chunks.join('\n')).not.toContain('[bersambung');
+  });
+
+  it('continuationMarker memformat N/M', () => {
+    expect(continuationMarker(20, 35)).toBe('[bersambung… bagian 20/35]');
+  });
 });
 
 describe('reindexArticleEmbeddings', () => {
@@ -133,7 +155,10 @@ describe('reindexArticleEmbeddings', () => {
     });
     const result = await reindexArticleEmbeddings(db, { organizationId: ORG_A, articleId: ARTICLE });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.chunks).toBeLessThanOrEqual(EMBEDDING_MAX_CHUNKS);
+    if (result.ok) {
+      expect(result.chunks).toBeLessThanOrEqual(EMBEDDING_MAX_CHUNKS);
+      expect(result.embedded + result.failedChunks.length).toBe(result.chunks);
+    }
     expect(db.inserted.length).toBeGreaterThan(0);
     expect(db.inserted.length).toBeLessThanOrEqual(EMBEDDING_MAX_CHUNKS);
     for (const chunk of db.inserted) expect(chunk.length).toBeLessThanOrEqual(EMBEDDING_CHUNK_CHARS);

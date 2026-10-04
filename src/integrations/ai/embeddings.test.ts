@@ -42,8 +42,25 @@ describe('embedTexts', () => {
 
   it('respons non-ok menjadi null tanpa melempar', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ error: 'sibuk' }, 503));
-    const vectors = await embedTexts('kunci', ['a'], { fetchImpl });
+    const vectors = await embedTexts('kunci', ['a'], { fetchImpl, retryDelayMs: 0 });
     expect(vectors).toEqual([null]);
+    expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(2);
+  });
+
+  it('respons non-retryable tidak diulang', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ error: 'jelek' }, 400));
+    const vectors = await embedTexts('kunci', ['a'], { fetchImpl, retryDelayMs: 0 });
+    expect(vectors).toEqual([null]);
+    expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(1);
+  });
+
+  it('429/5xx diulang sekali lalu memakai hasil kedua', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ error: 'tetap sibuk' }, 503));
+    fetchImpl.mockResolvedValueOnce(jsonResponse({ error: 'sibuk' }, 429));
+    fetchImpl.mockResolvedValueOnce(jsonResponse({ embedding: { values: [0.5, 0.5] } }));
+    const vectors = await embedTexts('kunci', ['a'], { fetchImpl, retryDelayMs: 0 });
+    expect(vectors).toEqual([[0.5, 0.5]]);
+    expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(2);
   });
 
   it('mengembalikan null untuk respons malformed dan menjaga batas batch', async () => {

@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 
 import { embedTexts, type EmbedFetch } from '@/integrations/ai/embeddings';
@@ -115,12 +116,26 @@ function toText(value: unknown): string {
 }
 
 /**
+ * Builds the continuation marker appended to the last kept chunk.
+ *
+ * @param kept - Chunks stored by this reindex.
+ * @param total - Chunks the article actually produced.
+ * @returns Marker such as `[bersambung… bagian 20/35]`.
+ */
+export function continuationMarker(kept: number, total: number): string {
+  return `[bersambung… bagian ${kept}/${total}]`;
+}
+
+/**
  * Potong artikel menjadi chunk siap indeks, masing-masing ≤ 2000 karakter.
  *
  * @param input.title - Judul artikel, selalu menjadi awal chunk pertama.
  * @param input.excerpt - Ringkasan opsional di bawah judul.
  * @param input.body - Isi artikel; dipecah per paragraf lalu per kata.
  * @returns Maksimal 20 chunk; kosong bila tidak ada teks.
+ * @remarks Bila artikel menghasilkan lebih dari 20 chunk, 20 chunk pertama
+ * disimpan dan chunk terakhir diberi penanda `continuationMarker` agar
+ * pemotongan terlihat pembaca, bukan hilang diam-diam.
  */
 export function splitArticleChunks(input: {
   readonly title: string;
@@ -154,7 +169,13 @@ export function splitArticleChunks(input: {
     current = current === '' ? paragraph : `${current}\n\n${paragraph}`;
   }
   flush();
-  return chunks.slice(0, EMBEDDING_MAX_CHUNKS);
+  if (chunks.length <= EMBEDDING_MAX_CHUNKS) return chunks;
+  const kept = chunks.slice(0, EMBEDDING_MAX_CHUNKS);
+  const marker = `\n\n${continuationMarker(EMBEDDING_MAX_CHUNKS, chunks.length)}`;
+  const last = kept[EMBEDDING_MAX_CHUNKS - 1] ?? '';
+  const room = EMBEDDING_CHUNK_CHARS - marker.length;
+  kept[EMBEDDING_MAX_CHUNKS - 1] = `${last.slice(0, Math.max(0, room)).trimEnd()}${marker}`;
+  return kept;
 }
 
 /**
@@ -247,23 +268,38 @@ export async function embedQueryVector(
 }
 
 /**
- * Indeks ulang satu artikel milik organisasi ke `document_embeddings`.
+ * Successful reindex summary with explicit per-chunk failure indexes.
+ */
+export interface ReindexEmbeddingsSuccess {
+  readonly ok: true;
+  readonly chunks: number;
+  readonly embedded: number;
+  readonly failedChunks: readonly number[];
+  readonly embeddingProvider: 'workers-ai' | 'gemini' | 'none';
+}
+
+/**
+ * Reindexes one tenant-owned article into `document_embeddings`.
  *
- * @param db - Port database runtime.
- * @param input.organizationId - Organisasi pemilik; artikel organisasi lain tidak terbaca.
- * @param input.articleId - Artikel yang diindeks ulang.
- * @param options - Transport embedding yang dapat diinjeksi untuk pengujian.
- * @returns Jumlah chunk tertulis dan vektor terisi, atau kegagalan tanpa bocor lintas tenant.
- * @remarks Menghapus indeks lama artikel itu lalu menulis maksimal 20 chunk
- * dalam satu `INSERT`; kolom `embedding` diisi dari transport bila sehat,
- * atau `null` per chunk bila transport gagal, sehingga reindex tidak pernah
- * gagal hanya karena embedding dan pencarian arsip tetap memakai `chunk` ILIKE.
+ * Crash-safe without assuming multi-statement transactions (raw `AiDb`
+ * execute on a pooler): new chunks are inserted first with client-generated
+ * ids, then stale rows for the same article that are missing from the new
+ * batch are deleted, scoped to `organization_id` + `article_id`. A crash
+ * between the two statements leaves duplicates (cleaned by the next
+ * reindex) instead of an empty index. At most 20 chunks are stored; a
+ * truncated article marks its last chunk via `continuationMarker`.
+ *
+ * @param db - Runtime database port.
+ * @param input.organizationId - Owning org; other orgs' articles are invisible.
+ * @param input.articleId - Article to reindex.
+ * @param options - Injectable embedding transports for tests.
+ * @returns Chunk/vector counts plus failed chunk indexes, or a tenant-safe failure.
  */
 export async function reindexArticleEmbeddings(
   db: AiDb,
   input: { readonly organizationId: string; readonly articleId: string },
   options?: ReindexEmbeddingsOptions | undefined,
-): Promise<{ readonly ok: true; readonly chunks: number; readonly embedded: number; readonly embeddingProvider: 'workers-ai' | 'gemini' | 'none' } | { readonly ok: false; readonly error: string }> {
+): Promise<ReindexEmbeddingsSuccess | { readonly ok: false; readonly error: string }> {
   try {
     const value = await db.execute(
       sql`select id, title, excerpt, body from articles where organization_id = ${input.organizationId}::uuid and id = ${input.articleId}::uuid limit 1`,
@@ -278,9 +314,6 @@ export async function reindexArticleEmbeddings(
       body: toText(row.body),
     });
     if (chunks.length === 0) return { ok: false, error: 'Artikel kosong; tidak ada yang diindeks.' };
-    await db.execute(
-      sql`delete from document_embeddings where organization_id = ${input.organizationId}::uuid and article_id = ${input.articleId}::uuid`,
-    );
     let vectors: Array<readonly number[] | null> = chunks.map(() => null);
     let embeddingProvider: 'workers-ai' | 'gemini' | 'none' = 'none';
     try {
@@ -290,17 +323,25 @@ export async function reindexArticleEmbeddings(
     } catch {
       vectors = chunks.map(() => null);
     }
+    const ids = chunks.map(() => randomUUID());
     let embedded = 0;
+    const failedChunks: number[] = [];
     const values = chunks.map((chunk, index) => {
       const vector = vectors[index] ?? null;
-      if (vector === null) return sql`(${input.organizationId}::uuid, ${input.articleId}::uuid, ${chunk}, null)`;
+      if (vector === null) {
+        failedChunks.push(index);
+        return sql`(${ids[index]}::uuid, ${input.organizationId}::uuid, ${input.articleId}::uuid, ${chunk}, null)`;
+      }
       embedded += 1;
-      return sql`(${input.organizationId}::uuid, ${input.articleId}::uuid, ${chunk}, ${JSON.stringify([...vector])}::jsonb)`;
+      return sql`(${ids[index]}::uuid, ${input.organizationId}::uuid, ${input.articleId}::uuid, ${chunk}, ${JSON.stringify([...vector])}::jsonb)`;
     });
     await db.execute(
-      sql`insert into document_embeddings (organization_id, article_id, chunk, embedding) values ${sql.join(values, sql`, `)}`,
+      sql`insert into document_embeddings (id, organization_id, article_id, chunk, embedding) values ${sql.join(values, sql`, `)}`,
     );
-    return { ok: true, chunks: chunks.length, embedded, embeddingProvider };
+    await db.execute(
+      sql`delete from document_embeddings where organization_id = ${input.organizationId}::uuid and article_id = ${input.articleId}::uuid and id not in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})`,
+    );
+    return { ok: true, chunks: chunks.length, embedded, failedChunks, embeddingProvider };
   } catch {
     return { ok: false, error: 'Indeks semantik belum tersedia; gunakan pencarian judul/slug.' };
   }

@@ -6,6 +6,14 @@ import { sql } from 'drizzle-orm';
 import type { AiSemanticCache } from '@/modules/ai/ai-service';
 import type { AiDb } from '@/modules/ai/ai-types';
 
+/**
+ * Exact-match prompt/response cache (not vector similarity).
+ *
+ * @remarks Hits require the normalized prompt and model name to hash
+ * identically; paraphrases never match. Tenancy: a tenant reads global
+ * entries plus its own, never another tenant's rows.
+ */
+
 /** TTL bawaan satu entri cache (24 jam), dipakai bila pemanggil tidak memberi TTL valid. */
 export const SEMANTIC_CACHE_TTL_SECONDS = 86400;
 
@@ -31,16 +39,25 @@ interface CacheRow {
 }
 
 /**
- * Kunci stabil untuk satu (prompt, model): sha256 hex atas prompt yang
- * dinormalisasi (pangkas + lipat whitespace, case dipertahankan) dan nama
- * model yang dilowercase.
+ * Normalizes a prompt exactly like the service `normalizeCachePrompt`.
  *
- * @param prompt - Prompt mentah pemanggil.
- * @param modelName - Nama model yang menghasilkan respons.
- * @returns Hex sha256 64 karakter.
+ * @param prompt - Raw caller prompt.
+ * @returns Trimmed, whitespace-folded, lowercased prompt.
+ */
+export function normalizeSemanticPrompt(prompt: string): string {
+  return prompt.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Stable key for one (prompt, model) pair: sha256 hex over the normalized
+ * prompt and the lowercased model name.
+ *
+ * @param prompt - Raw caller prompt.
+ * @param modelName - Responding model name.
+ * @returns 64-char sha256 hex.
  */
 export function hashSemanticPrompt(prompt: string, modelName: string): string {
-  const normalizedPrompt = prompt.trim().replace(/\s+/gu, ' ');
+  const normalizedPrompt = normalizeSemanticPrompt(prompt);
   const normalizedModel = modelName.trim().toLowerCase();
   return createHash('sha256').update(`${normalizedModel}\n${normalizedPrompt}`, 'utf8').digest('hex');
 }
@@ -70,15 +87,14 @@ function clampTtl(ttlSeconds: number): number {
 }
 
 /**
- * Bangun implementasi `AiSemanticCache` di atas port database runtime.
+ * Builds an `AiSemanticCache` over the runtime database port.
  *
- * @param db - Port database; setiap baca terproyeksi dan berbatas `LIMIT 1`.
- * @param scope - Organisasi pengikat; tenant membaca entri global + miliknya,
- * tidak pernah milik tenant lain.
- * @returns Cache yang memenuhi batas `AiSemanticCache` tanpa pernah melempar.
- * @remarks Lookup mengembalikan maksimal 1 baris lalu menaikkan `hits`;
- * store melakukan upsert per konflik unik dan memangkas respons ke 8000
- * karakter. Kegagalan cache ditelan agar tidak pernah menggagalkan jawaban.
+ * @param db - Database port; every read is projected and `LIMIT 1`-bounded.
+ * @param scope - Binding org; a tenant reads global plus own entries only.
+ * @returns Cache honoring the `AiSemanticCache` bound without ever throwing.
+ * @remarks Lookup returns at most 1 row, then bumps `hits` with a single
+ * arithmetic `UPDATE` (no read-modify-write); store upserts on the unique
+ * conflict and trims responses to 8000 chars. Cache failures are swallowed.
  */
 export function createAiSemanticCache(db: AiDb, scope?: AiSemanticCacheScope | undefined): AiSemanticCache {
   const organizationId = scope?.organizationId ?? null;
@@ -106,7 +122,7 @@ export function createAiSemanticCache(db: AiDb, scope?: AiSemanticCacheScope | u
         return null;
       }
     },
-    store: async (prompt: string, responseText: string, modelName: string, ttlSeconds: number) => {
+    store: async (prompt: string, responseText: string, modelName: string, ttlSeconds: number = SEMANTIC_CACHE_TTL_SECONDS) => {
       const body = responseText.slice(0, SEMANTIC_CACHE_MAX_RESPONSE_CHARS);
       if (body.trim() === '') return;
       const promptHash = hashSemanticPrompt(prompt, modelName);

@@ -26,6 +26,7 @@ export interface EmbedTextsOptions {
   readonly fetchImpl?: EmbedFetch | undefined;
   readonly model?: string | undefined;
   readonly signal?: AbortSignal | undefined;
+  readonly retryDelayMs?: number | undefined;
 }
 
 /** One archive candidate scored against a query vector. */
@@ -116,6 +117,26 @@ function endpointFor(model: string): string {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent`;
 }
 
+/** Small backoff before the single retry on 429/5xx; keeps one reindex bounded. */
+export const EMBED_RETRY_DELAY_MS = 250;
+
+/** Retryable transport statuses: rate-limited or server-side failures. */
+export function isRetryableEmbeddingStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function retryDelayMs(requested: number | undefined): number {
+  if (requested === undefined) return EMBED_RETRY_DELAY_MS;
+  if (!Number.isFinite(requested) || requested < 0) return EMBED_RETRY_DELAY_MS;
+  return requested;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function extractVector(body: unknown): readonly number[] | null {
   if (typeof body !== 'object' || body === null) return null;
   const embedding = (body as { readonly embedding?: unknown }).embedding;
@@ -131,6 +152,8 @@ function extractVector(body: unknown): readonly number[] | null {
  * @param options - Injectable fetch, model override, and abort signal.
  * @returns Vectors aligned with the input; a failed text yields null so callers can store NULL and continue.
  * @throws {Error} When the key is empty, no text is given, or the batch exceeds 20 texts.
+ * @remarks One request per text, serially. A 429/5xx response is retried
+ * once after a small backoff; other failures yield null immediately.
  */
 export async function embedTexts(
   plainKey: string,
@@ -144,6 +167,7 @@ export async function embedTexts(
   const fetchImpl = options?.fetchImpl ?? fetch;
   const model = options?.model ?? GEMINI_EMBEDDING_MODEL;
   const endpoint = endpointFor(model);
+  const delay = retryDelayMs(options?.retryDelayMs);
   const out: Array<readonly number[] | null> = [];
   for (const raw of texts) {
     const text = raw.slice(0, EMBED_MAX_TEXT_CHARS);
@@ -151,19 +175,33 @@ export async function embedTexts(
       out.push(null);
       continue;
     }
+    const request = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': plainKey },
+      body: JSON.stringify({ model: `models/${model}`, content: { parts: [{ text }] } }),
+      ...(options?.signal === undefined ? {} : { signal: options.signal }),
+    };
     try {
-      const response = await fetchImpl(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': plainKey },
-        body: JSON.stringify({ model: `models/${model}`, content: { parts: [{ text }] } }),
-        ...(options?.signal === undefined ? {} : { signal: options.signal }),
-      });
-      if (!response.ok) {
+      const first = await fetchImpl(endpoint, request);
+      if (first.ok) {
+        out.push(extractVector(await first.json().catch(() => null) as unknown));
+        continue;
+      }
+      if (!isRetryableEmbeddingStatus(first.status)) {
         out.push(null);
         continue;
       }
-      const body = (await response.json().catch(() => null)) as unknown;
-      out.push(extractVector(body));
+      await sleep(delay);
+      try {
+        const second = await fetchImpl(endpoint, request);
+        if (!second.ok) {
+          out.push(null);
+          continue;
+        }
+        out.push(extractVector(await second.json().catch(() => null) as unknown));
+      } catch {
+        out.push(null);
+      }
     } catch {
       out.push(null);
     }

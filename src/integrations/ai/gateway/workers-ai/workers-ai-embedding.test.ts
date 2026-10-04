@@ -33,10 +33,26 @@ describe('embedTextsViaWorkersAi', () => {
       throw new Error('putus');
     });
     await expect(embedTextsViaWorkersAi(CONFIG, ['a'], { fetchImpl: failing })).resolves.toEqual([null]);
+    expect(failing).toHaveBeenCalledTimes(1);
     const badStatus = vi.fn(async () => jsonResponse({ error: 'sibuk' }, 503));
-    await expect(embedTextsViaWorkersAi(CONFIG, ['a', 'b'], { fetchImpl: badStatus })).resolves.toEqual([null, null]);
+    await expect(embedTextsViaWorkersAi(CONFIG, ['a', 'b'], { fetchImpl: badStatus, retryDelayMs: 0 })).resolves.toEqual([null, null]);
+    expect(badStatus).toHaveBeenCalledTimes(2);
     const malformed = vi.fn(async () => jsonResponse({ result: { data: [[Number.NaN]] } }));
     await expect(embedTextsViaWorkersAi(CONFIG, ['a'], { fetchImpl: malformed })).resolves.toEqual([null]);
+  });
+
+  it('429/5xx diulang sekali lalu memakai hasil kedua', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ error: 'tetap sibuk' }, 503));
+    fetchImpl.mockResolvedValueOnce(jsonResponse({ error: 'sibuk' }, 429));
+    fetchImpl.mockResolvedValueOnce(jsonResponse({ success: true, result: { data: [[1, 0]] } }));
+    await expect(embedTextsViaWorkersAi(CONFIG, ['a'], { fetchImpl, retryDelayMs: 0 })).resolves.toEqual([[1, 0]]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('respons non-retryable tidak diulang', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ error: 'jelek' }, 400));
+    await expect(embedTextsViaWorkersAi(CONFIG, ['a'], { fetchImpl, retryDelayMs: 0 })).resolves.toEqual([null]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('menolak kontrak kosong dan batch berlebih', async () => {
