@@ -1716,6 +1716,48 @@
       "when": 1791028800000,
       "tag": "20261003120000_site_comments_enabled",
       "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1791115200000,
+      "tag": "20261004000000_ads_full_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1791118800000,
+      "tag": "20261004010000_ads_fk_covering_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1791122400000,
+      "tag": "20261004020000_ai_openrouter_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1791126000000,
+      "tag": "20261004030000_ai_chain_strategy",
+      "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1791129600000,
+      "tag": "20261004040000_ai_modality_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1791133200000,
+      "tag": "20261004050000_ai_provider_chat_flag",
+      "breakpoints": true
     }
   ]
 }

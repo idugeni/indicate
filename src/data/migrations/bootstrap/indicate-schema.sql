@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (245 migrations):
+-- Reviewed sources, in journal order (251 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -259,6 +259,12 @@
 --   243  20261002000000_dashboard_list_pagination  ledger sha256:b41fe6f64d31744110e6e6249189f2d7a4f39bc6c7fc99b048a11bcfe5887b28
 --   244  20261003040000_backfill_article_author  ledger sha256:ee62a52cdd0399874d6cdaa3a5ec537a297b90c0e5b98a7f0669d32f321e8b8b
 --   245  20261003120000_site_comments_enabled  ledger sha256:ad4a2bb5a6249c879b441e8d8a51ed827613628a49a617a02032eef7f0b4d093
+--   246  20261004000000_ads_full_schema  ledger sha256:206f2c70722a764ba48efc641995abcb0666392561267986a3dc431c51e5da68
+--   247  20261004010000_ads_fk_covering_indexes  ledger sha256:fdc41fb7fbd93454a0bc283cc7dfd2f427bfd96f3389ae79a9d5d2374ece7ff0
+--   248  20261004020000_ai_openrouter_provider  ledger sha256:56447c9189553bf88a5d2b9f877788bd49f3fe82a4b0a5d3aedea555af307b3b
+--   249  20261004030000_ai_chain_strategy  ledger sha256:72a1c1b66bec7e89979bbce008721c700a3a7df51b70249b572528e931be9016
+--   250  20261004040000_ai_modality_models  ledger sha256:7f6dca46bf710d52828842deb5bccf94239782c2b62e126c54f0b6bda12fcba6
+--   251  20261004050000_ai_provider_chat_flag  ledger sha256:fa4df38a78e2b67797aca706a6897dcf7e3d3a7e3522f92796f38300f1853417
 
 BEGIN;
 
@@ -20294,4 +20300,389 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (244, 'site_comments_enabled', 'sha256:8c542bde2f5c4772b183b9a3533fe3cf980a3546cbd3a3c0a81ab605d325fba2');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ad4a2bb5a6249c879b441e8d8a51ed827613628a49a617a02032eef7f0b4d093', 1791028800000);
+
+-- ----------------------------------------------------------------------
+-- 20261004000000_ads_full_schema
+-- ----------------------------------------------------------------------
+-- Full advertising schema: catalog, ownership, scheduling, tenant switches, events.
+--
+-- advertisers own campaigns; campaigns group creatives; ad_placements bind one
+-- creative to one semantic slot with an optional site/template/device scope and
+-- a validity window. tenant_ad_settings carries the per-site slot switch and an
+-- optional custom creative, outranking the transitional `site_settings.seo.ads`
+-- carrier per slot. ad_impressions and ad_clicks are append-only event rows
+-- keyed by day so a future rollup can aggregate without scanning `created_at`.
+--
+-- ad_slots is a global catalog like `template_presets`: slot meaning is
+-- network-wide, so it carries no organization column and its RLS policy is a
+-- plain runtime accessor. Every other table is tenant-scoped with the standard
+-- organization guard forced on the runtime role. Event rows point at placements
+-- and creatives with SET NULL so deleting a campaign never orphans analytics.
+--
+-- The seed mirrors `src/modules/ads/slots.ts`; ON CONFLICT keeps a retried
+-- apply idempotent without touching edited rows.
+--
+-- Ledger version 245 follows the live `max(version)`, which is 244.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE TYPE "public"."ad_creative_kind" AS ENUM('image', 'html', 'provider');
+CREATE TYPE "public"."ad_campaign_status" AS ENUM('draft', 'scheduled', 'active', 'paused', 'ended');
+CREATE TABLE "public"."advertisers" (
+  "organization_id" uuid NOT NULL,
+  "id" uuid NOT NULL,
+  "name" text NOT NULL,
+  "contact_email" text,
+  "status" "public"."record_status" DEFAULT 'active' NOT NULL,
+  "version" integer DEFAULT 1 NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "advertisers_pk" PRIMARY KEY("organization_id","id")
+);
+CREATE UNIQUE INDEX "advertisers_id_unique" ON "public"."advertisers" USING btree ("id");
+CREATE UNIQUE INDEX "advertisers_organization_name_unique" ON "public"."advertisers" USING btree ("organization_id","name");
+CREATE INDEX "advertisers_organization_status_idx" ON "public"."advertisers" USING btree ("organization_id","status");
+ALTER TABLE "public"."advertisers" ADD CONSTRAINT "advertisers_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."advertisers" ADD CONSTRAINT "advertisers_version_positive" CHECK ("advertisers"."version" > 0);
+CREATE TABLE "public"."campaigns" (
+  "organization_id" uuid NOT NULL,
+  "id" uuid NOT NULL,
+  "advertiser_id" uuid NOT NULL,
+  "name" text NOT NULL,
+  "status" "public"."ad_campaign_status" DEFAULT 'draft' NOT NULL,
+  "priority" integer DEFAULT 0 NOT NULL,
+  "starts_at" timestamp with time zone,
+  "ends_at" timestamp with time zone,
+  "version" integer DEFAULT 1 NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "campaigns_pk" PRIMARY KEY("organization_id","id")
+);
+CREATE UNIQUE INDEX "campaigns_id_unique" ON "public"."campaigns" USING btree ("id");
+CREATE INDEX "campaigns_organization_status_idx" ON "public"."campaigns" USING btree ("organization_id","status");
+CREATE INDEX "campaigns_organization_advertiser_idx" ON "public"."campaigns" USING btree ("organization_id","advertiser_id");
+ALTER TABLE "public"."campaigns" ADD CONSTRAINT "campaigns_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."campaigns" ADD CONSTRAINT "campaigns_advertiser_fk" FOREIGN KEY ("organization_id","advertiser_id") REFERENCES "public"."advertisers"("organization_id","id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."campaigns" ADD CONSTRAINT "campaigns_priority_nonnegative" CHECK ("campaigns"."priority" >= 0 AND "campaigns"."version" > 0);
+ALTER TABLE "public"."campaigns" ADD CONSTRAINT "campaigns_window_sane" CHECK ("campaigns"."starts_at" IS NULL OR "campaigns"."ends_at" IS NULL OR "campaigns"."ends_at" > "campaigns"."starts_at");
+CREATE TABLE "public"."ad_creatives" (
+  "organization_id" uuid NOT NULL,
+  "id" uuid NOT NULL,
+  "campaign_id" uuid,
+  "kind" "public"."ad_creative_kind" NOT NULL,
+  "image_url" text,
+  "href" text,
+  "alt_text" text,
+  "width_px" integer,
+  "height_px" integer,
+  "html" text,
+  "provider" text,
+  "provider_client_id" text,
+  "provider_slot_id" text,
+  "status" "public"."record_status" DEFAULT 'active' NOT NULL,
+  "version" integer DEFAULT 1 NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "ad_creatives_pk" PRIMARY KEY("organization_id","id")
+);
+CREATE UNIQUE INDEX "ad_creatives_id_unique" ON "public"."ad_creatives" USING btree ("id");
+CREATE INDEX "ad_creatives_organization_campaign_idx" ON "public"."ad_creatives" USING btree ("organization_id","campaign_id");
+CREATE INDEX "ad_creatives_organization_status_idx" ON "public"."ad_creatives" USING btree ("organization_id","status");
+ALTER TABLE "public"."ad_creatives" ADD CONSTRAINT "ad_creatives_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_creatives" ADD CONSTRAINT "ad_creatives_campaign_fk" FOREIGN KEY ("organization_id","campaign_id") REFERENCES "public"."campaigns"("organization_id","id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_creatives" ADD CONSTRAINT "ad_creatives_image_shape" CHECK ("ad_creatives"."kind" <> 'image' OR "ad_creatives"."image_url" IS NOT NULL);
+ALTER TABLE "public"."ad_creatives" ADD CONSTRAINT "ad_creatives_html_shape" CHECK ("ad_creatives"."kind" <> 'html' OR "ad_creatives"."html" IS NOT NULL);
+ALTER TABLE "public"."ad_creatives" ADD CONSTRAINT "ad_creatives_provider_shape" CHECK ("ad_creatives"."kind" <> 'provider' OR "ad_creatives"."provider" = 'adsense');
+ALTER TABLE "public"."ad_creatives" ADD CONSTRAINT "ad_creatives_dimensions_positive" CHECK (("ad_creatives"."width_px" IS NULL AND "ad_creatives"."height_px" IS NULL) OR ("ad_creatives"."width_px" IS NOT NULL AND "ad_creatives"."height_px" IS NOT NULL AND "ad_creatives"."width_px" > 0 AND "ad_creatives"."height_px" > 0));
+ALTER TABLE "public"."ad_creatives" ADD CONSTRAINT "ad_creatives_version_positive" CHECK ("ad_creatives"."version" > 0);
+CREATE TABLE "public"."ad_slots" (
+  "id" text PRIMARY KEY NOT NULL,
+  "name" text NOT NULL,
+  "description" text NOT NULL,
+  "max_width_px" integer NOT NULL,
+  "allowed_formats" text[] DEFAULT ARRAY[]::text[] NOT NULL,
+  "devices" text[] DEFAULT ARRAY[]::text[] NOT NULL,
+  "active" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "ad_slots_max_width_positive" CHECK ("ad_slots"."max_width_px" > 0)
+);
+CREATE TABLE "public"."ad_placements" (
+  "organization_id" uuid NOT NULL,
+  "id" uuid NOT NULL,
+  "campaign_id" uuid NOT NULL,
+  "creative_id" uuid NOT NULL,
+  "slot_id" text NOT NULL,
+  "site_id" uuid,
+  "template_id" text,
+  "device" text,
+  "priority" integer DEFAULT 0 NOT NULL,
+  "starts_at" timestamp with time zone,
+  "ends_at" timestamp with time zone,
+  "active" boolean DEFAULT true NOT NULL,
+  "version" integer DEFAULT 1 NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "ad_placements_pk" PRIMARY KEY("organization_id","id")
+);
+CREATE UNIQUE INDEX "ad_placements_id_unique" ON "public"."ad_placements" USING btree ("id");
+CREATE INDEX "ad_placements_organization_site_slot_idx" ON "public"."ad_placements" USING btree ("organization_id","site_id","slot_id","active");
+CREATE INDEX "ad_placements_organization_campaign_idx" ON "public"."ad_placements" USING btree ("organization_id","campaign_id");
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_campaign_fk" FOREIGN KEY ("organization_id","campaign_id") REFERENCES "public"."campaigns"("organization_id","id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_creative_fk" FOREIGN KEY ("organization_id","creative_id") REFERENCES "public"."ad_creatives"("organization_id","id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_slot_id_ad_slots_id_fk" FOREIGN KEY ("slot_id") REFERENCES "public"."ad_slots"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_site_fk" FOREIGN KEY ("organization_id","site_id") REFERENCES "public"."sites"("organization_id","id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_device_values" CHECK ("ad_placements"."device" IS NULL OR "ad_placements"."device" IN ('desktop', 'tablet', 'mobile'));
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_priority_nonnegative" CHECK ("ad_placements"."priority" >= 0 AND "ad_placements"."version" > 0);
+ALTER TABLE "public"."ad_placements" ADD CONSTRAINT "ad_placements_window_sane" CHECK ("ad_placements"."starts_at" IS NULL OR "ad_placements"."ends_at" IS NULL OR "ad_placements"."ends_at" > "ad_placements"."starts_at");
+CREATE TABLE "public"."tenant_ad_settings" (
+  "organization_id" uuid NOT NULL,
+  "site_id" uuid NOT NULL,
+  "slot_id" text NOT NULL,
+  "enabled" boolean DEFAULT true NOT NULL,
+  "creative_id" uuid,
+  "version" integer DEFAULT 1 NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "tenant_ad_settings_pk" PRIMARY KEY("organization_id","site_id","slot_id")
+);
+CREATE INDEX "tenant_ad_settings_organization_site_idx" ON "public"."tenant_ad_settings" USING btree ("organization_id","site_id");
+ALTER TABLE "public"."tenant_ad_settings" ADD CONSTRAINT "tenant_ad_settings_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."tenant_ad_settings" ADD CONSTRAINT "tenant_ad_settings_site_fk" FOREIGN KEY ("organization_id","site_id") REFERENCES "public"."sites"("organization_id","id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "public"."tenant_ad_settings" ADD CONSTRAINT "tenant_ad_settings_slot_id_ad_slots_id_fk" FOREIGN KEY ("slot_id") REFERENCES "public"."ad_slots"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."tenant_ad_settings" ADD CONSTRAINT "tenant_ad_settings_creative_fk" FOREIGN KEY ("organization_id","creative_id") REFERENCES "public"."ad_creatives"("organization_id","id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."tenant_ad_settings" ADD CONSTRAINT "tenant_ad_settings_version_positive" CHECK ("tenant_ad_settings"."version" > 0);
+CREATE TABLE "public"."ad_impressions" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "organization_id" uuid NOT NULL,
+  "site_id" uuid NOT NULL,
+  "slot_id" text NOT NULL,
+  "placement_id" uuid,
+  "creative_id" uuid,
+  "device" text NOT NULL,
+  "day" date NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+  CONSTRAINT "ad_impressions_device_values" CHECK ("ad_impressions"."device" IN ('desktop', 'tablet', 'mobile', 'unknown'))
+);
+CREATE INDEX "ad_impressions_organization_site_day_idx" ON "public"."ad_impressions" USING btree ("organization_id","site_id","day");
+CREATE INDEX "ad_impressions_organization_slot_day_idx" ON "public"."ad_impressions" USING btree ("organization_id","slot_id","day");
+ALTER TABLE "public"."ad_impressions" ADD CONSTRAINT "ad_impressions_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_impressions" ADD CONSTRAINT "ad_impressions_site_fk" FOREIGN KEY ("organization_id","site_id") REFERENCES "public"."sites"("organization_id","id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "public"."ad_impressions" ADD CONSTRAINT "ad_impressions_placement_fk" FOREIGN KEY ("organization_id","placement_id") REFERENCES "public"."ad_placements"("organization_id","id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "public"."ad_impressions" ADD CONSTRAINT "ad_impressions_creative_fk" FOREIGN KEY ("organization_id","creative_id") REFERENCES "public"."ad_creatives"("organization_id","id") ON DELETE set null ON UPDATE no action;
+CREATE TABLE "public"."ad_clicks" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "organization_id" uuid NOT NULL,
+  "site_id" uuid NOT NULL,
+  "slot_id" text NOT NULL,
+  "placement_id" uuid,
+  "creative_id" uuid,
+  "device" text NOT NULL,
+  "day" date NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "target_url" text NOT NULL,
+  CONSTRAINT "ad_clicks_device_values" CHECK ("ad_clicks"."device" IN ('desktop', 'tablet', 'mobile', 'unknown'))
+);
+CREATE INDEX "ad_clicks_organization_site_day_idx" ON "public"."ad_clicks" USING btree ("organization_id","site_id","day");
+CREATE INDEX "ad_clicks_organization_slot_day_idx" ON "public"."ad_clicks" USING btree ("organization_id","slot_id","day");
+ALTER TABLE "public"."ad_clicks" ADD CONSTRAINT "ad_clicks_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "public"."ad_clicks" ADD CONSTRAINT "ad_clicks_site_fk" FOREIGN KEY ("organization_id","site_id") REFERENCES "public"."sites"("organization_id","id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "public"."ad_clicks" ADD CONSTRAINT "ad_clicks_placement_fk" FOREIGN KEY ("organization_id","placement_id") REFERENCES "public"."ad_placements"("organization_id","id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "public"."ad_clicks" ADD CONSTRAINT "ad_clicks_creative_fk" FOREIGN KEY ("organization_id","creative_id") REFERENCES "public"."ad_creatives"("organization_id","id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "public"."advertisers" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."advertisers" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "public"."advertisers";
+CREATE POLICY tenant_isolation ON "public"."advertisers" TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+ALTER TABLE "public"."campaigns" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."campaigns" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "public"."campaigns";
+CREATE POLICY tenant_isolation ON "public"."campaigns" TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+ALTER TABLE "public"."ad_creatives" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."ad_creatives" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "public"."ad_creatives";
+CREATE POLICY tenant_isolation ON "public"."ad_creatives" TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+ALTER TABLE "public"."ad_slots" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS runtime_accessor ON "public"."ad_slots";
+CREATE POLICY runtime_accessor ON "public"."ad_slots" FOR ALL TO indicate_runtime USING (true) WITH CHECK (true);
+ALTER TABLE "public"."ad_placements" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."ad_placements" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "public"."ad_placements";
+CREATE POLICY tenant_isolation ON "public"."ad_placements" TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+ALTER TABLE "public"."tenant_ad_settings" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."tenant_ad_settings" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "public"."tenant_ad_settings";
+CREATE POLICY tenant_isolation ON "public"."tenant_ad_settings" TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+ALTER TABLE "public"."ad_impressions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."ad_impressions" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "public"."ad_impressions";
+CREATE POLICY tenant_isolation ON "public"."ad_impressions" TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+ALTER TABLE "public"."ad_clicks" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."ad_clicks" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "public"."ad_clicks";
+CREATE POLICY tenant_isolation ON "public"."ad_clicks" TO indicate_runtime USING (organization_id = indicate_private.current_organization_id()) WITH CHECK (organization_id = indicate_private.current_organization_id());
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."advertisers" TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."campaigns" TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."ad_creatives" TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."ad_slots" TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."ad_placements" TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."tenant_ad_settings" TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."ad_impressions" TO indicate_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON "public"."ad_clicks" TO indicate_runtime;
+INSERT INTO "public"."ad_slots" ("id", "name", "description", "max_width_px", "allowed_formats", "devices") VALUES
+  ('header-top', 'Header top', 'Above the sticky site header; scrolls away and never overlaps navigation.', 970, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('leaderboard', 'Leaderboard', 'Full-width banner directly below the header, inside the page container.', 970, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('top-banner', 'Top banner', 'Billboard-grade banner below the header for templates with a bold hero.', 970, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('below-navigation', 'Below navigation', 'Slim strip under the nav for templates that keep the header compact.', 970, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('hero-ad', 'Hero ad', 'Between the hero block and the next content section on listing pages.', 970, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('in-feed', 'In feed', 'Inline card between listing or channel sections; flows with the feed.', 728, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('in-content', 'In content', 'Centered rectangle after the featured image, before the article body.', 336, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('content-middle', 'Content middle', 'Mid-page break after the body and gallery on articles, or between channel sections.', 728, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('content-bottom', 'Content bottom', 'After tags on articles, before the publisher footer.', 728, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile']),
+  ('sidebar-top', 'Sidebar top', 'Top of a desktop rail column; hidden below lg where rails collapse.', 336, ARRAY['image', 'html', 'provider'], ARRAY['desktop']),
+  ('sidebar-middle', 'Sidebar middle', 'Mid-rail rectangle; reserved for templates that grow a rail column.', 336, ARRAY['image', 'html', 'provider'], ARRAY['desktop']),
+  ('sidebar-bottom', 'Sidebar bottom', 'Tall half-page unit at the rail end; reserved for rail templates.', 300, ARRAY['image', 'html', 'provider'], ARRAY['desktop']),
+  ('mobile-banner', 'Mobile banner', 'Phone-only strip; never renders desktop widths.', 320, ARRAY['image', 'html', 'provider'], ARRAY['mobile']),
+  ('footer-banner', 'Footer banner', 'Full-width banner above the site footer, inside the page container.', 970, ARRAY['image', 'html', 'provider'], ARRAY['desktop', 'tablet', 'mobile'])
+ON CONFLICT ("id") DO NOTHING;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (245, 'ads_full_schema', 'sha256:98f5ca3b25f459229fd30e7a3263645950ca985de45e9ca817b6fbf028f8d569');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('206f2c70722a764ba48efc641995abcb0666392561267986a3dc431c51e5da68', 1791115200000);
+
+-- ----------------------------------------------------------------------
+-- 20261004010000_ads_fk_covering_indexes
+-- ----------------------------------------------------------------------
+-- Covering indexes for the advertising foreign keys.
+--
+-- The performance advisor flags every FK without a leftmost-covering index
+-- after `ads_full_schema` (v245). Tenant FKs on `organization_id` alone are
+-- already covered by each table's composite primary key, but the creative,
+-- placement, and slot references are not on any index's left edge: placement
+-- and creative deletes would scan the event tables, and slot-side lookups
+-- would scan placements and tenant settings. Eight narrow btree indexes close
+-- exactly those gaps; the hot read paths (`organization_id, site_id, ...`)
+-- were already indexed in v245 and are untouched here.
+--
+-- Tables are empty at apply time, so plain CREATE INDEX holds only a brief
+-- catalog lock; CONCURRENTLY would forbid running inside the migration
+-- transaction with no benefit on zero rows.
+--
+-- Ledger version 246 follows the live `max(version)`, which is 245.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE INDEX "ad_placements_organization_creative_idx" ON "public"."ad_placements" USING btree ("organization_id","creative_id");
+CREATE INDEX "ad_placements_slot_idx" ON "public"."ad_placements" USING btree ("slot_id");
+CREATE INDEX "tenant_ad_settings_organization_creative_idx" ON "public"."tenant_ad_settings" USING btree ("organization_id","creative_id");
+CREATE INDEX "tenant_ad_settings_slot_idx" ON "public"."tenant_ad_settings" USING btree ("slot_id");
+CREATE INDEX "ad_impressions_organization_placement_idx" ON "public"."ad_impressions" USING btree ("organization_id","placement_id");
+CREATE INDEX "ad_impressions_organization_creative_idx" ON "public"."ad_impressions" USING btree ("organization_id","creative_id");
+CREATE INDEX "ad_clicks_organization_placement_idx" ON "public"."ad_clicks" USING btree ("organization_id","placement_id");
+CREATE INDEX "ad_clicks_organization_creative_idx" ON "public"."ad_clicks" USING btree ("organization_id","creative_id");
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (246, 'ads_fk_covering_indexes', 'sha256:5b23261222a15b2fd902f36b921a968fa5ee5151d492a4a7be38ba73127935c9');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('fdc41fb7fbd93454a0bc283cc7dfd2f427bfd96f3389ae79a9d5d2374ece7ff0', 1791118800000);
+
+-- ----------------------------------------------------------------------
+-- 20261004020000_ai_openrouter_provider
+-- ----------------------------------------------------------------------
+-- Seed provider OpenRouter: OpenAI-compatible gateway multi-model.
+--
+-- Baris memakai ON CONFLICT DO NOTHING agar apply ulang aman; tanpa secrets:
+-- kredensial disimpan operator lewat panel AI (ai_credentials) setelah migrasi
+-- di-apply. Routing policy tidak diubah di sini; operator memilih
+-- primary_provider_id=openrouter lewat panel setelah kredensial aktif.
+-- Tanpa kredensial aktif, provider di-skip oleh router.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.ai_providers (id, name, description, is_active, is_primary, priority, created_at, updated_at)
+VALUES ('openrouter', 'OpenRouter', 'OpenAI-compatible multi-model gateway', true, false, 20, now(), now())
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.ai_models (id, provider_id, model_name, display_name, description, context_window, output_token_limit, supported_modalities, rpm_limit, tpm_limit, task_recommendation, supports_tools, supports_vision, is_default, is_active, priority, created_at, updated_at)
+VALUES
+  ('openrouter-gpt-4o-mini', 'openrouter', 'openai/gpt-4o-mini', 'GPT-4o Mini via OpenRouter', 'Default chat workhorse', 128000, 16384, ARRAY['text'], NULL, NULL, 'default chat', true, true, false, true, 10, now(), now()),
+  ('openrouter-claude-haiku', 'openrouter', 'anthropic/claude-3.5-haiku', 'Claude Haiku via OpenRouter', 'Failover editorial', 200000, 8192, ARRAY['text'], NULL, NULL, 'failover', true, true, false, true, 20, now(), now())
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (247, 'ai_openrouter_provider', 'sha256:c3c86ccd706847cefeda1e3aca9f14009fc6c5392eb5d60ef7222909330a30b9');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('56447c9189553bf88a5d2b9f877788bd49f3fe82a4b0a5d3aedea555af307b3b', 1791122400000);
+
+-- ----------------------------------------------------------------------
+-- 20261004030000_ai_chain_strategy
+-- ----------------------------------------------------------------------
+-- Strategi rantai model: fallback (urutan tetap) vs round_robin (titik awal diputar).
+--
+-- rotation_strategy yang ada mengatur pemilihan kredensial di dalam satu
+-- provider; chain_strategy mengatur urutan entri model primary → fallback
+-- antar request. fallback mencoba sesuai urutan dan pindah ke entri
+-- berikutnya saat gagal; round_robin memutar entri awal tiap request lewat
+-- cursor Redis (fail-open ke urutan fallback) agar beban tersebar, dengan
+-- failover ke entri berikutnya tetap berlaku. Rantai satu entri (tanpa
+-- fallback) tidak terpengaruh strategi mana pun.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.ai_routing_policies
+  ADD COLUMN IF NOT EXISTS chain_strategy text NOT NULL DEFAULT 'fallback';
+DO $chain_check$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_routing_policies_chain_known') THEN
+    ALTER TABLE public.ai_routing_policies
+      ADD CONSTRAINT ai_routing_policies_chain_known CHECK (chain_strategy IN ('fallback', 'round_robin'));
+  END IF;
+END
+$chain_check$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (248, 'ai_chain_strategy', 'sha256:b1491bc661e9190e3f95b3a8a2a219667ca5baa8ee5bb5a5f05bc0e845df2967');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('72a1c1b66bec7e89979bbce008721c700a3a7df51b70249b572528e931be9016', 1791126000000);
+
+-- ----------------------------------------------------------------------
+-- 20261004040000_ai_modality_models
+-- ----------------------------------------------------------------------
+-- Seed model modalitas Gemini: TTS, transkripsi, dan cover-image.
+--
+-- Ketiganya dipakai kode lewat `modelOverride`, dan router memakai katalog
+-- ini untuk menjalankan override di provider pemiliknya — bukan di primary.
+-- Tanpa baris ini, primary non-Gemini (mis. openrouter) menerima nama model
+-- Gemini dan gagal di provider. Baris memakai ON CONFLICT DO NOTHING agar
+-- apply ulang aman; tanpa secrets dan tanpa mengubah routing policy.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+INSERT INTO public.ai_models (id, provider_id, model_name, display_name, description, context_window, output_token_limit, supported_modalities, rpm_limit, tpm_limit, task_recommendation, supports_tools, supports_vision, is_default, is_active, priority, created_at, updated_at)
+VALUES
+  ('gemini-3.8-flash-tts', 'gemini', 'gemini-3.8-flash-tts', 'Gemini 3.8 Flash TTS', 'Article text-to-speech', 32000, 2048, ARRAY['text', 'audio'], NULL, NULL, 'tts', false, false, false, true, 80, now(), now()),
+  ('gemini-3.5-transcribe', 'gemini', 'gemini-3.5-transcribe', 'Gemini 3.5 Transcribe', 'Interview audio transcription', 1048576, 8192, ARRAY['audio', 'text'], NULL, NULL, 'transcribe', false, false, false, true, 81, now(), now()),
+  ('gemini-3.1-flash-image', 'gemini', 'gemini-3.1-flash-image', 'Gemini 3.1 Flash Image', 'Cover image generation', 1048576, 8192, ARRAY['text', 'image'], NULL, NULL, 'cover-image', false, true, false, true, 82, now(), now())
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (249, 'ai_modality_models', 'sha256:19c363fa01922e8e792ee14e8e76251b7a6e57302bbd3b31bb603987ebb7c423');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7f6dca46bf710d52828842deb5bccf94239782c2b62e126c54f0b6bda12fcba6', 1791129600000);
+
+-- ----------------------------------------------------------------------
+-- 20261004050000_ai_provider_chat_flag
+-- ----------------------------------------------------------------------
+-- Kemampuan chat per provider: hanya provider chat yang boleh jadi primer/fallback.
+--
+-- `workers-ai` hanya jalur embedding (tanpa adapter chat), sehingga rantai
+-- yang menunjuknya tidak pernah bisa menjawab. Flag ini dibaca validasi
+-- kebijakan dan direktori panel; default true agar seed lama (gemini,
+-- vercel-gateway, openrouter) tetap chat-capable tanpa backfill.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+ALTER TABLE public.ai_providers
+  ADD COLUMN IF NOT EXISTS supports_chat boolean NOT NULL DEFAULT true;
+UPDATE public.ai_providers SET supports_chat = false WHERE id = 'workers-ai';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (250, 'ai_provider_chat_flag', 'sha256:1fa6c75394a16fe2fdd688bea10b9e635682ed7628d1a926104290901839be71');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('fa4df38a78e2b67797aca706a6897dcf7e3d3a7e3522f92796f38300f1853417', 1791133200000);
 COMMIT;
