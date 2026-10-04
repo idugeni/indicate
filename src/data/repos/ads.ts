@@ -85,7 +85,7 @@ export class DrizzleAdsRepository implements AdsRepository {
         transaction.select({ id: sites.id, name: siteSettings.name, hostname: sites.normalizedHostname, templateId: siteSettings.templateId })
           .from(sites)
           .innerJoin(siteSettings, and(eq(siteSettings.organizationId, sites.organizationId), eq(siteSettings.siteId, sites.id)))
-          .where(and(eq(sites.organizationId, org), eq(sites.status, 'active')))
+          .where(and(eq(sites.organizationId, org), eq(sites.status, 'active'), eq(sites.siteLevel, 'apex')))
           .orderBy(sites.normalizedHostname)
           .limit(OVERVIEW_LIMITS.sites),
         transaction.select({ id: adSlots.id, name: adSlots.name, description: adSlots.description, active: adSlots.active })
