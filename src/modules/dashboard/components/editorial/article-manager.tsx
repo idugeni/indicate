@@ -42,6 +42,7 @@ import { Label } from '@/components/ui/label';
 import { STATUS_BADGE_TONE, resolveStatus } from '@/modules/dashboard/components/data-view-format';
 import { getEditorConfig, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
+import { ForOrgInbox } from '@/modules/dashboard/components/editorial/inbox-panel';
 
 interface ArchiveArticle {
   readonly id: string;
@@ -408,6 +409,7 @@ export function ArticleManager({
   return (
     <SectionCard icon={Newspaper} title={`Kelola artikel (${totalCount})`} eyebrow="Lintas portal">
       <div className="space-y-4">
+        <ForOrgInbox command={command} />
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1 space-y-1.5">
             <div className="flex items-center justify-between">

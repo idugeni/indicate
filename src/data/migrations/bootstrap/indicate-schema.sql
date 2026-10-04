@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (261 migrations):
+-- Reviewed sources, in journal order (262 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -275,6 +275,7 @@
 --   259  20261004133700_portal_assignments_bridge  ledger sha256:e4109a858d9138d96e1d0b09414f4fd73a0d1e9d9d7d1b97f88ab75b081bbe0d
 --   260  20261004134200_fetch_assigned_article_details  ledger sha256:19396bbb5acd2df30cd09118d8229228d94e24838704254d65f4e69173f90aa0
 --   261  20261004140300_find_organizations_by_slugs  ledger sha256:e873de125cde3801ec1fd74c48bfa09eac7c6aec514935e9a1402b9db515c6a4
+--   262  20261004151000_list_bridge_inbox  ledger sha256:c1a23974a063e7b7148f399e3a50f5b7c15a9c477a63ab4ee170ddea35bbfea0
 
 BEGIN;
 
@@ -21099,4 +21100,48 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (260, 'find_organizations_by_slugs', 'sha256:f0fa4bf869605a7ae00eddd56a93f2feda14c51edfbe180b6eddf27737cbc2d5');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e873de125cde3801ec1fd74c48bfa09eac7c6aec514935e9a1402b9db515c6a4', 1791169200000);
+
+-- ----------------------------------------------------------------------
+-- 20261004151000_list_bridge_inbox
+-- ----------------------------------------------------------------------
+-- Kotak-masuk lintas-org: draf humas menunggu jembatan steward.
+--
+-- Humas menulis di org sendiri yang tanpa situs, sehingga artikelnya tak
+-- pernah masuk antrean operator dan tak terlihat dasbor operator (isolasi
+-- tenant per org). Steward platform butuh satu daftar lintas-org untuk
+-- menjembatani draf-draf itu ke portal. Fungsi ini mengembalikannya:
+-- hanya org customer aktif, hanya status draft/scheduled, hanya kolom
+-- tampil (tanpa isi/body), terbaru dulu, dibatasi 200 baris. Tanpa PII,
+-- tanpa token, tanpa bypass selain filter eksplisit di badan fungsi.
+-- Checksum di bawah adalah sha256 heks dari isi berkas ini sebelum baris INSERT.
+CREATE OR REPLACE FUNCTION indicate_private.list_bridge_inbox()
+RETURNS TABLE(
+  organization_id uuid, org_slug text, org_name text, article_id uuid,
+  slug text, title text, status public.article_status, publisher_label text,
+  region_slug text, updated_at timestamp with time zone
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT o.id, o.slug, o.name, a.id, a.slug, a.title, a.status,
+    p.attribution_label, r.slug, a.updated_at
+  FROM public.organizations AS o
+  JOIN public.articles AS a
+    ON a.organization_id = o.id AND a.status IN ('draft', 'scheduled')
+  LEFT JOIN public.publishers AS p
+    ON p.organization_id = a.organization_id AND p.id = a.publisher_id AND p.status = 'active'
+  LEFT JOIN public.regions AS r
+    ON r.organization_id = a.organization_id AND r.id = a.region_id AND r.status = 'active'
+  WHERE o.kind = 'customer' AND o.status = 'active'
+  ORDER BY a.updated_at DESC
+  LIMIT 200
+$$;
+REVOKE ALL ON FUNCTION indicate_private.list_bridge_inbox() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_bridge_inbox() TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (261, 'list_bridge_inbox', 'sha256:376db88ad3440ee8467420f012507e1585faa0d188b8273adba3f1e40dee1680');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c1a23974a063e7b7148f399e3a50f5b7c15a9c477a63ab4ee170ddea35bbfea0', 1791172800000);
 COMMIT;

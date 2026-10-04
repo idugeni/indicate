@@ -752,6 +752,42 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
     expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 
+  it('menolak inbox tanpa grant platform', async () => {
+    const { service } = forOrgHarness();
+    const result = await service.listForOrgInbox(actor);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('meneruskan daftar inbox steward', async () => {
+    const { service, repository } = forOrgHarness();
+    const rows = [{ organizationId: OWNER_ORG, orgSlug: 'rutan', orgName: 'RUTAN', articleId: ID, slug: 's', title: 'T', status: 'draft', publisherLabel: null, regionSlug: null, updatedAt: NOW.toISOString() }];
+    (repository as Record<string, unknown>).listForOrgInbox = vi.fn(async () => rows);
+    const result = await service.listForOrgInbox(platformActor);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value).toEqual(rows);
+  });
+
+  it('menolak bridge-otomatis tanpa grant platform', async () => {
+    const { service } = forOrgHarness();
+    const result = await service.requestBridgePublicationAuto(actor, { ownerOrganizationId: OWNER_ORG, articleId: ID });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+  });
+
+  it('meneruskan bridge-otomatis steward ke repositori', async () => {
+    const { service, repository } = forOrgHarness();
+    const done = { bridgeIds: ['b-1'], slug: 's', siteCount: 2 };
+    (repository as Record<string, unknown>).requestBridgePublicationAuto = vi.fn(async () => done);
+    const result = await service.requestBridgePublicationAuto(platformActor, { ownerOrganizationId: OWNER_ORG, articleId: ID });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value).toEqual(done);
+  });
+
   it('menolak bridge tanpa grant platform', async () => {
     const { service } = forOrgHarness();
     const result = await service.requestBridgePublication(actor, { ownerOrganizationId: OWNER_ORG, articleId: ID, siteIds: [ID2] });

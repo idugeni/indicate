@@ -174,6 +174,8 @@ export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).m
 export const bridgeRequestSchema = z.object({ ownerOrganizationId: id, articleId: id, siteIds: z.array(id).min(1).max(200) }).strict();
 /** Tarik penayangan jembatan; artikel pemilik tidak diubah. */
 export const bridgeUnpublishSchema = z.object({ ownerOrganizationId: id, articleId: id, siteIds: z.array(id).max(200) }).strict();
+/** Minta penayangan otomatis draf humas ke portal kota asalnya. */
+export const bridgeAutoRequestSchema = z.object({ ownerOrganizationId: id, articleId: id }).strict();
 export const siteViewsSchema = z.object({ articleId: id, siteId: id, viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const siteViewsBulkSchema = z.object({ articleId: id, siteIds: z.array(id).min(1).max(200), viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const articleFilterSchema = z.object({

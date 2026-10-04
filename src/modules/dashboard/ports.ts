@@ -123,6 +123,21 @@ export interface DashboardRepository {
    * @returns Jumlah baris bridge yang diturunkan.
    */
   unpublishBridge(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[] }): Promise<{ readonly unpublished: number }>;
+  /**
+   * Daftar draf humas menunggu jembatan steward.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @returns Draf/scheduled org customer, terbaru dulu, maksimal 200 baris.
+   */
+  listForOrgInbox(actor: AuthorizedTenantActorContext): Promise<readonly { readonly organizationId: string; readonly orgSlug: string; readonly orgName: string; readonly articleId: string; readonly slug: string; readonly title: string; readonly status: string; readonly publisherLabel: string | null; readonly regionSlug: string | null; readonly updatedAt: string }[]>;
+  /**
+   * Terbitkan draf humas ke portal-portal kota asalnya secara otomatis.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param input - Org pemilik dan artikel; target dihitung dari wilayahnya.
+   * @returns Id baris bridge, slug, dan jumlah portal.
+   */
+  requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }>;
 }
 
 export class DashboardAccessDeniedError extends Error {

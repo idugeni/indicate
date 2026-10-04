@@ -1344,32 +1344,15 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     const now = new Date();
     const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: input.ownerOrganizationId, regionScopeId: null };
     const flipped = await this.executeForOrganization(ownerActor, input.ownerOrganizationId, (transaction) => {
-      const article = transaction.state.articles.find((candidate) => candidate.id === input.articleId);
-      if (article === undefined) throw new DashboardAccessDeniedError();
-      if (article.status !== 'draft' && article.status !== 'scheduled' && article.status !== 'active') throw new DashboardValidationError({ articleId: ['Hanya draf, terjadwal, atau aktif yang bisa diterbitkan.'] });
-      const after = { ...article, status: 'active' as const, publishedAt: article.publishedAt ?? now.toISOString(), updatedAt: now.toISOString(), version: article.version + 1 };
-      const index = transaction.state.articles.findIndex((candidate) => candidate.id === input.articleId);
-      transaction.state.articles[index] = after;
-      transaction.appendAudit({ action: 'article.publish', targetType: 'article', targetId: article.id, outcome: 'succeeded', changedFields: ['status', 'publishedAt', 'version', 'updatedAt'], before: article as unknown as Record<string, unknown>, after: after as unknown as Record<string, unknown> });
-      return { slug: after.slug, title: after.title };
+      const result = this.flipOwnerArticleForBridge(transaction, input.articleId, now);
+      return { slug: result.slug, title: result.title };
     }, ['articles']);
     const bridgeIds = await this.database.transaction(async (transaction) => {
       await this.establishContext(transaction, actor);
       if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
       const siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, siteIds), eq(sites.status, 'active'))).limit(siteIds.length);
       if (siteRows.length !== siteIds.length) throw new DashboardAccessDeniedError();
-      const rows = siteRows.map((site) => ({ organizationId: actor.organizationId, id: crypto.randomUUID(), siteId: site.id, sourceOrganizationId: input.ownerOrganizationId, sourceArticleId: input.articleId, state: 'published' as const, stateOccurredAt: now, publishedAt: now, version: 1, createdAt: now, updatedAt: now }));
-      for (const chunk of insertChunks(rows)) {
-        await transaction.insert(portalAssignments).values([...chunk]).onConflictDoUpdate({
-          target: [portalAssignments.organizationId, portalAssignments.sourceOrganizationId, portalAssignments.sourceArticleId, portalAssignments.siteId],
-          set: { state: 'published', stateOccurredAt: now, publishedAt: now, updatedAt: now, version: sql`${portalAssignments.version} + 1` },
-        });
-      }
-      for (const site of siteRows) {
-        await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, reason: 'publication.bridge.request', articleSlugs: [flipped.slug] }) as never);
-      }
-      await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'publication.bridge.request', targetType: 'portal_assignment', targetId: input.articleId, outcome: 'succeeded', changedFields: ['state'], requestId: actor.requestId, before: null, after: { ownerOrganizationId: input.ownerOrganizationId, articleId: input.articleId, siteIds } });
-      return rows.map((row) => row.id);
+      return this.insertPublishedBridge(transaction, actor, input.ownerOrganizationId, input.articleId, flipped.slug, siteRows, now, 'publication.bridge.request');
     });
     return { bridgeIds, slug: flipped.slug };
   }
@@ -1416,6 +1399,98 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       return transaction.execute<{ id: string; slug: string }>(sql`SELECT id, slug FROM indicate_private.find_organizations_by_slugs(${sqlStringArray([...new Set(slugs)])}::text[])`);
     });
     return new Map([...rows].map((row) => [row.slug, row.id] as const));
+  }
+
+  /**
+   * Daftar draf humas menunggu jembatan steward.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @returns Draf/scheduled org customer, terbaru dulu, maksimal 200 baris.
+   */
+  async listForOrgInbox(actor: AuthorizedTenantActorContext): Promise<readonly { readonly organizationId: string; readonly orgSlug: string; readonly orgName: string; readonly articleId: string; readonly slug: string; readonly title: string; readonly status: string; readonly publisherLabel: string | null; readonly regionSlug: string | null; readonly updatedAt: string }[]> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+    const rows = await this.database.execute<{
+      organization_id: string; org_slug: string; org_name: string; article_id: string;
+      slug: string; title: string; status: string; publisher_label: string | null;
+      region_slug: string | null; updated_at: Date | string;
+    }>(sql`SELECT * FROM indicate_private.list_bridge_inbox()`);
+    return [...rows].map((row) => ({
+      organizationId: row.organization_id,
+      orgSlug: row.org_slug,
+      orgName: row.org_name,
+      articleId: row.article_id,
+      slug: row.slug,
+      title: row.title,
+      status: row.status,
+      publisherLabel: row.publisher_label,
+      regionSlug: row.region_slug,
+      updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(row.updated_at).toISOString(),
+    }));
+  }
+
+  /**
+   * Terbitkan draf humas ke portal-portal kota asalnya secara otomatis.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param input - Org pemilik dan artikel; target dihitung dari wilayahnya.
+   * @returns Id baris bridge, slug, dan jumlah portal.
+   * @remarks Nasional (region null) → semua portal apex; kota → portal kota
+   * ber-slug sama di semua domain. Batas 200 situs per panggilan mengikuti
+   * plafon skema bridge.
+   */
+  async requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+    const now = new Date();
+    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: input.ownerOrganizationId, regionScopeId: null };
+    const flipped = await this.executeForOrganization(ownerActor, input.ownerOrganizationId, (transaction) => {
+      const flippedArticle = this.flipOwnerArticleForBridge(transaction, input.articleId, now);
+      const regionSlug = flippedArticle.regionId === null
+        ? null
+        : (transaction.state.regions.find((region) => region.id === flippedArticle.regionId)?.slug ?? null);
+      return { slug: flippedArticle.slug, title: flippedArticle.title, regionSlug };
+    }, ['articles', 'regions']);
+    const bridgeIds = await this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+      let siteRows: readonly { readonly id: string; readonly normalizedHostname: string }[];
+      if (flipped.regionSlug === null) {
+        siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.siteLevel, 'apex'), eq(sites.status, 'active'))).limit(200);
+      } else {
+        const regionRows = await transaction.select({ id: regions.id }).from(regions).where(and(eq(regions.organizationId, actor.organizationId), eq(regions.slug, flipped.regionSlug), eq(regions.kind, 'city'), eq(regions.status, 'active'))).limit(1);
+        const regionId = regionRows[0]?.id ?? null;
+        if (regionId === null) throw new DashboardValidationError({ articleId: ['Wilayah artikel tidak punya portal kota di jaringan.'] });
+        siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.siteLevel, 'city'), eq(sites.regionId, regionId), eq(sites.status, 'active'))).limit(200);
+      }
+      if (siteRows.length === 0) throw new DashboardValidationError({ articleId: ['Tidak ada portal aktif untuk wilayah ini.'] });
+      return this.insertPublishedBridge(transaction, actor, input.ownerOrganizationId, input.articleId, flipped.slug, siteRows, now, 'publication.bridge.requestAuto');
+    });
+    return { bridgeIds, slug: flipped.slug, siteCount: bridgeIds.length };
+  }
+
+  private flipOwnerArticleForBridge(transaction: DashboardTransaction, articleId: string, now: Date): { readonly slug: string; readonly title: string; readonly regionId: string | null } {
+    const article = transaction.state.articles.find((candidate) => candidate.id === articleId);
+    if (article === undefined) throw new DashboardAccessDeniedError();
+    if (article.status !== 'draft' && article.status !== 'scheduled' && article.status !== 'active') throw new DashboardValidationError({ articleId: ['Hanya draf, terjadwal, atau aktif yang bisa diterbitkan.'] });
+    const after = { ...article, status: 'active' as const, publishedAt: article.publishedAt ?? now.toISOString(), updatedAt: now.toISOString(), version: article.version + 1 };
+    const index = transaction.state.articles.findIndex((candidate) => candidate.id === articleId);
+    transaction.state.articles[index] = after;
+    transaction.appendAudit({ action: 'article.publish', targetType: 'article', targetId: article.id, outcome: 'succeeded', changedFields: ['status', 'publishedAt', 'version', 'updatedAt'], before: article as unknown as Record<string, unknown>, after: after as unknown as Record<string, unknown> });
+    return { slug: after.slug, title: after.title, regionId: after.regionId };
+  }
+
+  private async insertPublishedBridge(transaction: Transaction, actor: AuthorizedTenantActorContext, ownerOrganizationId: string, articleId: string, slug: string, siteRows: readonly { readonly id: string; readonly normalizedHostname: string }[], now: Date, reason: string): Promise<readonly string[]> {
+    const rows = siteRows.map((site) => ({ organizationId: actor.organizationId, id: crypto.randomUUID(), siteId: site.id, sourceOrganizationId: ownerOrganizationId, sourceArticleId: articleId, state: 'published' as const, stateOccurredAt: now, publishedAt: now, version: 1, createdAt: now, updatedAt: now }));
+    for (const chunk of insertChunks(rows)) {
+      await transaction.insert(portalAssignments).values([...chunk]).onConflictDoUpdate({
+        target: [portalAssignments.organizationId, portalAssignments.sourceOrganizationId, portalAssignments.sourceArticleId, portalAssignments.siteId],
+        set: { state: 'published', stateOccurredAt: now, publishedAt: now, updatedAt: now, version: sql`${portalAssignments.version} + 1` },
+      });
+    }
+    for (const site of siteRows) {
+      await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, reason, articleSlugs: [slug] }) as never);
+    }
+    await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'publication.bridge.request', targetType: 'portal_assignment', targetId: articleId, outcome: 'succeeded', changedFields: ['state'], requestId: actor.requestId, before: null, after: { ownerOrganizationId, articleId, siteIds: siteRows.map((site) => site.id) } });
+    return rows.map((row) => row.id);
   }
 
   private async runScoped<T>(actor: AuthorizedTenantActorContext, organizationId: string, auth: { readonly membershipPermission: string } | { readonly platformManaged: true }, operation: (transaction: DashboardTransaction) => T | Promise<T>, scope?: readonly DashboardCollectionName[]): Promise<T> {

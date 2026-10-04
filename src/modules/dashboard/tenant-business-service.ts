@@ -39,7 +39,7 @@ import {
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
-  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteViewsBulkSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema, bridgeRequestSchema, bridgeUnpublishSchema,
+  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteViewsBulkSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema, bridgeRequestSchema, bridgeUnpublishSchema, bridgeAutoRequestSchema,
 } from '@/modules/dashboard/schemas';
 import type { ArticleCreateInput } from '@/modules/dashboard/schemas';
 
@@ -1036,6 +1036,46 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
       return this.internal(actor, error, 'dashboard.mutation.failed', 'article.bridge.unpublish', 'portal_assignment', DASHBOARD_PERMISSIONS.articleManage);
+    }
+  }
+
+  /**
+   * Daftar draf humas menunggu jembatan steward.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @returns Draf/scheduled org customer, terbaru dulu.
+   */
+  async listForOrgInbox(actor: AuthorizedTenantActorContext) {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.inbox.list', 'article');
+    try {
+      const value = await this.repository.listForOrgInbox(actor);
+      return { ok: true, value } as const;
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.inbox.list', 'article');
+      return this.internal(actor, error, 'dashboard.query.failed', 'article.inbox.list', 'article');
+    }
+  }
+
+  /**
+   * Terbitkan draf humas ke portal-portal kota asalnya secara otomatis.
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param raw - Org pemilik dan artikel; target dihitung dari wilayahnya.
+   * @returns Id baris bridge, slug, dan jumlah portal.
+   */
+  async requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }, PublicErrorEnvelope>> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.bridge.requestAuto', 'portal_assignment');
+    const parsed = bridgeAutoRequestSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    try {
+      const value = await this.repository.requestBridgePublicationAuto(actor, parsed.data);
+      return { ok: true, value } as const;
+    } catch (error) {
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.bridge.requestAuto', 'portal_assignment');
+      if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
+      if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.bridge.requestAuto', 'portal_assignment', DASHBOARD_PERMISSIONS.articleManage);
     }
   }
 

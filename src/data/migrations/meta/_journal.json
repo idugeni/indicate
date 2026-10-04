@@ -1828,6 +1828,13 @@
       "when": 1791169200000,
       "tag": "20261004140300_find_organizations_by_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1791172800000,
+      "tag": "20261004151000_list_bridge_inbox",
+      "breakpoints": true
     }
   ]
 }
