@@ -168,14 +168,18 @@ export class MediaService {
   async list(actor: AuthorizedTenantActorContext, raw: unknown = {}): Promise<Result<MediaListPage, PublicErrorEnvelope>> {
     const parsed = mediaListSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid media list query.', actor.requestId) };
-    try { return { ok: true, value: await this.repository.listMedia(actor, parsed.data) }; }
+    const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
+    if (routed.denied) return this.denied(actor, 'media.list.denied', 'media');
+    try { return { ok: true, value: await this.repository.listMedia(routed.actor, parsed.data) }; }
     catch (error) { return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'media.list.denied', 'media') : this.failure(actor); }
   }
 
   async authorizeTenantRead(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ExactObjectAuthorization, PublicErrorEnvelope>> {
     const parsed = mediaReadSchema.safeParse(raw); if (!parsed.success) return this.denied(actor, 'media.access.denied', 'media');
+    const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
+    if (routed.denied) return this.denied(actor, 'media.access.denied', 'media');
     try {
-      const media = await this.repository.authorizeTenantMedia(actor, parsed.data.mediaId); if (media === null) return this.denied(actor, 'media.access.denied', 'media');
+      const media = await this.repository.authorizeTenantMedia(routed.actor, parsed.data.mediaId); if (media === null) return this.denied(actor, 'media.access.denied', 'media');
       return { ok: true, value: await this.storage.authorizeExactGet(media.objectKey, this.policy.readTtlSeconds) };
     } catch (error) { return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'media.access.denied', 'media') : this.failure(actor); }
   }
@@ -190,8 +194,10 @@ export class MediaService {
   async authorizeTenantReadMany(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<readonly { readonly mediaId: string; readonly url: string; readonly expiresAt: string }[], PublicErrorEnvelope>> {
     const parsed = mediaReadManySchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid media batch read.', actor.requestId) };
+    const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
+    if (routed.denied) return this.denied(actor, 'media.access.denied', 'media');
     try {
-      const records = await this.repository.authorizeTenantMediaMany(actor, parsed.data.mediaIds);
+      const records = await this.repository.authorizeTenantMediaMany(routed.actor, parsed.data.mediaIds);
       const items = [];
       for (const record of records) {
         const authorization = await this.storage.authorizeExactGet(record.objectKey, this.policy.readTtlSeconds);
@@ -210,7 +216,9 @@ export class MediaService {
 
   async archive(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<MediaAssetRecord, PublicErrorEnvelope>> {
     const parsed = mediaArchiveSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid media archive request.', actor.requestId) };
-    try { return { ok: true, value: await this.repository.archiveMedia(actor, parsed.data.mediaId, parsed.data.expectedVersion, this.clock.now().toISOString()) }; }
+    const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
+    if (routed.denied) return this.denied(actor, 'media.archive.denied', 'media');
+    try { return { ok: true, value: await this.repository.archiveMedia(routed.actor, parsed.data.mediaId, parsed.data.expectedVersion, this.clock.now().toISOString()) }; }
     catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.archive.denied', 'media');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengarsipkan media.', actor.requestId) };
@@ -221,7 +229,9 @@ export class MediaService {
 
   async updateMetadata(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<MediaAssetRecord, PublicErrorEnvelope>> {
     const parsed = mediaMetadataSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid media metadata request.', actor.requestId) };
-    try { return { ok: true, value: await this.repository.updateMediaMetadata(actor, { ...parsed.data, now: this.clock.now().toISOString() }) }; }
+    const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
+    if (routed.denied) return this.denied(actor, 'media.metadata.denied', 'media');
+    try { return { ok: true, value: await this.repository.updateMediaMetadata(routed.actor, { ...parsed.data, now: this.clock.now().toISOString() }) }; }
     catch (error) {
       if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.metadata.denied', 'media');
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengubah metadata media.', actor.requestId) };

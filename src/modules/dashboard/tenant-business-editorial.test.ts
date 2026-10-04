@@ -733,6 +733,25 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
     expect(result.error.error.code).toBe('INVALID_INPUT');
   });
 
+  it('menerima sampul milik org tujuan', async () => {
+    const targetMedia = '0199a2b3-4c5d-7e8f-9012-3456789ab009';
+    const { service } = forOrgHarness({
+      media: [{ id: targetMedia, state: 'active', mediaType: 'image/webp', purpose: 'article-cover' }],
+    });
+    const result = await service.createArticle(platformActor, { ...forOrgPayload, leadMediaId: targetMedia });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.leadMediaId).toBe(targetMedia);
+  });
+
+  it('menolak sampul milik org lain', async () => {
+    const { service } = forOrgHarness();
+    const result = await service.createArticle(platformActor, { ...forOrgPayload, leadMediaId: ID2 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
   it('menolak bridge tanpa grant platform', async () => {
     const { service } = forOrgHarness();
     const result = await service.requestBridgePublication(actor, { ownerOrganizationId: OWNER_ORG, articleId: ID, siteIds: [ID2] });

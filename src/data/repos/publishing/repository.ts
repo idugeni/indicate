@@ -13,6 +13,7 @@ import { aggregateJobState, isAllowedTargetTransition, projectPublicationResult,
 import { regionScopeCovers } from '@/modules/site/region-scope';
 import { isArticleScopedPurpose } from '@/modules/publishing/object-key';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type AcceptPublicationInput, type AcceptPublicationResult,
   type ActivateMediaInput, type ArticleSiteRobotsInput, type ArticleSiteRobotsResult, type ArticleVariantContext, type JobNotificationContext, type PublicationTargetSelection, type ReserveMediaCandidate, type ReservationCandidateResult, type PublishingRepository, type PublishingSnapshotCollection,
@@ -154,6 +155,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
   private async actorContext(transaction: Transaction, actor: AuthorizedTenantActorContext): Promise<void> { await this.context(transaction, actor.organizationId, actor.actorId, actor.requestId, actor.actorType === 'user' ? actor.verifiedAuthUserId : undefined); await transaction.execute(sql`SELECT indicate_private.set_region_context(${actor.regionScopeId ?? null}::uuid)`); }
   private async authorize(transaction: Transaction, actor: AuthorizedTenantActorContext, permission: string): Promise<void> {
     if (actor.actorType !== 'user') { if (!actor.permissionSet.has(permission)) throw new PublishingAccessDeniedError(); return; }
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true) return;
     const rows = await transaction.select({ id: memberships.userId }).from(memberships)
       .innerJoin(roles, and(eq(roles.organizationId, memberships.organizationId), eq(roles.id, memberships.roleId)))
       .innerJoin(rolePermissions, and(eq(rolePermissions.organizationId, roles.organizationId), eq(rolePermissions.roleId, roles.id)))

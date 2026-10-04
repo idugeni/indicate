@@ -378,3 +378,37 @@ describe('MediaService updateMetadata', () => {
     expect(denied.error.error.code).toBe('RESOURCE_UNAVAILABLE');
   });
 });
+
+describe('MediaService lintas-org', () => {
+  const steward = { ...actor, platformPermissionSet: new Set<string>(['platform.super_admin']) };
+  const TARGET = '0199a2b3-4c5d-7e8f-9012-3456789abcff';
+
+  it('menolak reservasi org lain tanpa grant platform', async () => {
+    const { service, repository } = harness();
+    const result = await service.reserveUpload(actor, { ...upload, ownerOrganizationId: TARGET });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+    expect(repository.reserveMediaCandidate).not.toHaveBeenCalled();
+  });
+
+  it('mencatat reservasi di org tujuan untuk steward', async () => {
+    const { service, repository } = harness();
+    const result = await service.reserveUpload(steward, { ...upload, ownerOrganizationId: TARGET });
+    expect(result.ok).toBe(true);
+    const calledActor = (repository.reserveMediaCandidate as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { readonly organizationId?: string };
+    expect(calledActor?.organizationId).toBe(TARGET);
+  });
+
+  it('menyelesaikan unggahan di org reservasi', async () => {
+    const reservation = { id: '0199a2b3-4c5d-7e8f-9012-3456789ab010', organizationId: TARGET, objectKey: 'o/x/y.webp', purpose: 'article-inline', expectedMediaType: 'image/jpeg', expectedSizeBytes: 1_000, expectedChecksum: CHECKSUM, status: 'reserved', expiresAt: new Date(Date.now() + 600_000).toISOString() };
+    const { service, repository } = harness(
+      { readReservation: async () => reservation },
+      { headExact: async () => ({ key: reservation.objectKey, contentType: 'image/jpeg', contentLength: 1_000, checksum: CHECKSUM }) },
+    );
+    const result = await service.completeUpload(steward, { reservationId: '0199a2b3-4c5d-7e8f-9012-3456789ab010', ownerOrganizationId: TARGET });
+    expect(result.ok).toBe(true);
+    const activatedActor = (repository.activateMedia as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { readonly organizationId?: string };
+    expect(activatedActor?.organizationId).toBe(TARGET);
+  });
+});

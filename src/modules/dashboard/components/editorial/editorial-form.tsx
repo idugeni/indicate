@@ -260,6 +260,7 @@ export function ArticleCreateForm({
   const [categoryIds, setCategoryIds] = useState<readonly string[]>([]);
   const [extraCategories, setExtraCategories] = useState<readonly CategoryEntity[]>([]);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
+  const [featuredOrgId, setFeaturedOrgId] = useState<string | null>(null);
   const [featuredName, setFeaturedName] = useState('');
   const [featuredPreviewUrl, setFeaturedPreviewUrl] = useState<string | null>(null);
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
@@ -937,6 +938,7 @@ export function ArticleCreateForm({
       });
       coverBlobRef.current = { blob: compressedBlob, mimeType: compressedMediaType };
       setFeaturedId(mediaId);
+      setFeaturedOrgId(foreignOwnerOrg);
       setFeaturedName(file.name);
       setFeaturedVersion(version);
       setFeaturedAlt('');
@@ -958,7 +960,7 @@ export function ArticleCreateForm({
     }
     setSavingFeaturedMeta(true);
     try {
-      const updated = (await command('media.update', { mediaId: featuredId, expectedVersion: featuredVersion, ...patch })) as { readonly version?: unknown } | null;
+      const updated = (await command('media.update', { mediaId: featuredId, expectedVersion: featuredVersion, ...(featuredOrgId === null ? {} : { ownerOrganizationId: featuredOrgId }), ...patch })) as { readonly version?: unknown } | null;
       if (updated === null) {
         toast.warning('Penyimpanan dibatalkan karena organisasi aktif berubah.');
         return;
@@ -1187,6 +1189,7 @@ export function ArticleCreateForm({
       setRawPublishDateInput('');
       setViewsInput('');
       setFeaturedId(null);
+      setFeaturedOrgId(null);
       setFeaturedName('');
       setFeaturedPreviewUrl(null);
       setFeaturedStatus(null);
@@ -1838,7 +1841,7 @@ export function ArticleCreateForm({
                         type="button"
                         variant="ghost"
                         size="xs"
-                        onClick={() => { coverBlobRef.current = null; coverRemoteRef.current = null; setFeaturedId(null); setFeaturedName(''); setFeaturedPreviewUrl(null); setFeaturedVersion(null); setFeaturedAlt(''); setFeaturedCaption(''); setFeaturedFocal(null); }}
+                        onClick={() => { coverBlobRef.current = null; coverRemoteRef.current = null; setFeaturedId(null); setFeaturedOrgId(null); setFeaturedName(''); setFeaturedPreviewUrl(null); setFeaturedVersion(null); setFeaturedAlt(''); setFeaturedCaption(''); setFeaturedFocal(null); }}
                         disabled={isSubmitting || uploadingFeatured}
                       >
                         <span>Hapus</span>
