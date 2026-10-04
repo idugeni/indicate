@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (251 migrations):
+-- Reviewed sources, in journal order (252 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -265,6 +265,7 @@
 --   249  20261004030000_ai_chain_strategy  ledger sha256:72a1c1b66bec7e89979bbce008721c700a3a7df51b70249b572528e931be9016
 --   250  20261004040000_ai_modality_models  ledger sha256:7f6dca46bf710d52828842deb5bccf94239782c2b62e126c54f0b6bda12fcba6
 --   251  20261004050000_ai_provider_chat_flag  ledger sha256:fa4df38a78e2b67797aca706a6897dcf7e3d3a7e3522f92796f38300f1853417
+--   252  20261004060000_ai_perf_indexes  ledger sha256:b3e957767a7980718566819e58577f66118e30b548a4ce5ae9ed19e1e4cd8913
 
 BEGIN;
 
@@ -20685,4 +20686,24 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (250, 'ai_provider_chat_flag', 'sha256:1fa6c75394a16fe2fdd688bea10b9e635682ed7628d1a926104290901839be71');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('fa4df38a78e2b67797aca706a6897dcf7e3d3a7e3522f92796f38300f1853417', 1791133200000);
+
+-- ----------------------------------------------------------------------
+-- 20261004060000_ai_perf_indexes
+-- ----------------------------------------------------------------------
+-- Indeks baca AI: lookup katalog model dan rotasi kredensial.
+--
+-- `ai_models_model_name_idx` mempercepat validasi rantai (owner lookup per
+-- nama model) dan probe Test (`probeModelFor`). Indeks kredensial gabungan
+-- mempercepat pemilihan kunci rotasi per (provider, status, prioritas,
+-- pemakaian terakhir) tanpa memuat ulang seluruh pool. Keduanya
+-- `IF NOT EXISTS` agar apply ulang aman; tanpa secrets, tanpa data.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE INDEX IF NOT EXISTS ai_models_model_name_idx ON public.ai_models (model_name);
+CREATE INDEX IF NOT EXISTS ai_credentials_provider_status_priority_used_idx ON public.ai_credentials (provider_id, status, priority, last_used_at);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (251, 'ai_perf_indexes', 'sha256:58babaf06f3a1f963454deb0f903f2e5a174e6b4dea9cefd49ad9d6bfa0e1f0d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b3e957767a7980718566819e58577f66118e30b548a4ce5ae9ed19e1e4cd8913', 1791136800000);
 COMMIT;
