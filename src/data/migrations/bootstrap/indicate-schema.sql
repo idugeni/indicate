@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (267 migrations):
+-- Reviewed sources, in journal order (268 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -281,6 +281,7 @@
 --   265  20261005000000_ai_routing_cost_mode  ledger sha256:a7b5679ad8995ae656f026a7f87fa33708367fee072bd3771b5e8d2ee3f780b3
 --   266  20261006000000_ai_status_enums  ledger sha256:ee37cf9ce84f565802e003adb2d1539fe41577bf8cc0e4c8d0ae145a7526ec31
 --   267  20261006010000_invalidation_intent_status  ledger sha256:6de44bcab973e4f2803632109bb1523feb65f48d96fa98916990cbfd319500ee
+--   268  20261006020000_role_permission_guard_single  ledger sha256:5d307c499c4aee2f7fb061cf369b037dce64d09f94e425f84c8e5078514d6a9e
 
 BEGIN;
 
@@ -21569,4 +21570,29 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (266, 'invalidation_intent_status', 'sha256:d3d5b85d5fb908ea9e9b15dab6680e72df374cb3b5edeb9c913af3a6d6070a97');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('6de44bcab973e4f2803632109bb1523feb65f48d96fa98916990cbfd319500ee', 1791334800000);
+
+-- ----------------------------------------------------------------------
+-- 20261006020000_role_permission_guard_single
+-- ----------------------------------------------------------------------
+-- Satu guard cakupan permission role: pertahankan yang ketat.
+--
+-- `role_permissions_scope_guard` (longgar, mengizinkan permission platform
+-- di role tenant) tidak pernah menang karena `permission_role_scope_guard`
+-- (ketat, dibuat langsung di produksi tanpa migrasi) selalu menolak lebih
+-- dulu. Migrasi ini menghapus trigger lama dan mengabadikan trigger ketat
+-- agar bootstrap fresh konvergen sama dengan produksi. Grant platform tetap
+-- lewat `platform_user_permissions`, bukan role.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DROP TRIGGER IF EXISTS role_permissions_scope_guard ON public.role_permissions;
+DROP TRIGGER IF EXISTS permission_role_scope_guard ON public.role_permissions;
+CREATE TRIGGER permission_role_scope_guard
+BEFORE INSERT OR UPDATE ON public.role_permissions
+FOR EACH ROW EXECUTE FUNCTION indicate_private.permission_role_scope_guard();
+DROP FUNCTION IF EXISTS indicate_private.enforce_role_permission_scope();
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (267, 'role_permission_guard_single', 'sha256:28f43ecc0c7b791266c947866450981904af9ef85128dd232c5691b8e3cb0356');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5d307c499c4aee2f7fb061cf369b037dce64d09f94e425f84c8e5078514d6a9e', 1791342000000);
 COMMIT;

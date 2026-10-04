@@ -1870,6 +1870,13 @@
       "when": 1791334800000,
       "tag": "20261006010000_invalidation_intent_status",
       "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1791342000000,
+      "tag": "20261006020000_role_permission_guard_single",
+      "breakpoints": true
     }
   ]
 }
