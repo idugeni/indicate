@@ -18,7 +18,7 @@ export function GlassyBlueTopBar({ site }: { readonly site: NetworkSiteData }) {
 
   return (
     <div className="hidden border-b border-white/60 bg-[#edf4ff] md:block">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
         <p className="m-0 font-sans text-xs font-medium capitalize text-slate-600">
           <time dateTime={new Date().toISOString()}>{today}</time>
         </p>

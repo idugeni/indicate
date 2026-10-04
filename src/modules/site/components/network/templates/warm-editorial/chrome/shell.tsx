@@ -7,7 +7,8 @@ import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm
 import { WarmEditorialHeader } from '@/modules/site/components/network/templates/warm-editorial/chrome/site-header';
 import { WarmEditorialFooter } from '@/modules/site/components/network/templates/warm-editorial/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
-import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
+import { AdHeaderTop, AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
+import { MobileAnchorAd } from '@/modules/ads/mobile-anchor-ad';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -41,6 +42,9 @@ export function WarmEditorialShell({
       </main>
       <AdShellBottom site={site} />
       <WarmEditorialFooter site={site} />
+      <MobileAnchorAd>
+        <AdSlot site={site} slot="mobile-banner" />
+      </MobileAnchorAd>
       <TemplateBackToTop />
     </div>
   );

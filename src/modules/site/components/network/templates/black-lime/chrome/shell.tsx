@@ -7,7 +7,8 @@ import { BLACK_LIME } from '@/modules/site/components/network/templates/black-li
 import { BlackLimeHeader } from '@/modules/site/components/network/templates/black-lime/chrome/site-header';
 import { BlackLimeFooter } from '@/modules/site/components/network/templates/black-lime/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
-import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
+import { AdHeaderTop, AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
+import { MobileAnchorAd } from '@/modules/ads/mobile-anchor-ad';
 
 /**
  * Single template shell: skip-link + header + main + footer + back-to-top,
@@ -41,6 +42,9 @@ export function BlackLimeShell({
       </main>
       <AdShellBottom site={site} />
       <BlackLimeFooter site={site} />
+      <MobileAnchorAd>
+        <AdSlot site={site} slot="mobile-banner" />
+      </MobileAnchorAd>
       <TemplateBackToTop />
     </div>
   );

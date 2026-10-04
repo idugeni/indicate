@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /**
- * Penampung konten selebar contoh (max-6xl) yang juga mengisi tinggi
+ * Penampung konten selebar contoh (max-7xl) yang juga mengisi tinggi
  * `main` agar halaman dengan status kosong bisa memusatkan isinya.
  *
  * @param children - Isi halaman.
@@ -9,5 +9,5 @@ import type { ReactNode } from 'react';
  * @returns Kontainer tenant.
  */
 export function Container({ children, className = '' }: { readonly children: ReactNode; readonly className?: string }) {
-  return <div className={`mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 sm:px-6 ${className}`}>{children}</div>;
+  return <div className={`mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 sm:px-6 ${className}`}>{children}</div>;
 }

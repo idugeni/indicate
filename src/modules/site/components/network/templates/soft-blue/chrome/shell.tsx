@@ -7,7 +7,8 @@ import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue
 import { SoftBlueHeader } from '@/modules/site/components/network/templates/soft-blue/chrome/site-header';
 import { SoftBlueFooter } from '@/modules/site/components/network/templates/soft-blue/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
-import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
+import { AdHeaderTop, AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
+import { MobileAnchorAd } from '@/modules/ads/mobile-anchor-ad';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -41,6 +42,9 @@ export function SoftBlueShell({
       </main>
       <AdShellBottom site={site} />
       <SoftBlueFooter site={site} />
+      <MobileAnchorAd>
+        <AdSlot site={site} slot="mobile-banner" />
+      </MobileAnchorAd>
       <TemplateBackToTop />
     </div>
   );

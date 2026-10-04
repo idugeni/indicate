@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
 
 import { buildSeoDocument, resolveArticleCanonical } from '@/modules/site/seo';
-import { resolvePublisherChannels } from '@/modules/site/company-contact';
+import { resolveContactChannels, resolvePublisherChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
@@ -24,6 +24,8 @@ import { CommentThread } from '@/modules/site/components/network/disqus/comment-
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { selectArticleSidebar } from '@/modules/site/components/network/ui/article-sidebar-data';
+import { ArticleSidebarBacaJuga, ArticleSidebarIkutiKami, ArticleSidebarKanal, ArticleSidebarNewsletter, ArticleSidebarShare, ArticleSidebarTerbaru, ArticleSidebarTerpopuler, ArticleSidebarTopik } from '@/modules/site/components/network/ui/article-sidebar';
 
 export function SoftBlueArticle({
   site,
@@ -44,6 +46,8 @@ export function SoftBlueArticle({
   const bylineName = article.attribution;
   const canonical = resolveArticleCanonical(site, `/${article.slug}`, article);
   const publisherChannels = resolvePublisherChannels(article.publisherSocials);
+  const sidebar = selectArticleSidebar(site.articles, article.id, related);
+  const followChannels = resolveContactChannels(site.settings.socialLinks);
 
   return (
     <SoftBlueShell site={site} path={`/${article.slug}`}>
@@ -53,7 +57,8 @@ export function SoftBlueArticle({
         articleSiteId={article.articleSiteId}
       />
       <Container className="py-8 md:py-12">
-        <article>
+        <div className="grid items-start gap-8 print:block lg:grid-cols-[minmax(0,1fr)_320px]">
+        <article className="min-w-0">
           <ArticlePrintMasthead
             siteName={site.settings.name}
             byline={bylineName}
@@ -165,7 +170,6 @@ export function SoftBlueArticle({
             </div>
           ) : null}
           <AdSlot site={site} slot="content-bottom" />
-          <AdSlot site={site} slot="mobile-banner" />
 
           <footer className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
             <div className="flex items-center gap-4">
@@ -249,6 +253,19 @@ export function SoftBlueArticle({
           <ArticlePrintFooter siteName={site.settings.name} canonical={canonical} />
 
           </article>
+        <aside aria-label="Sidebar artikel" className="grid min-w-0 gap-6 print:hidden lg:sticky lg:top-20">
+          <ArticleSidebarShare skin={SOFT_BLUE.shareButtons} article={article} canonical={canonical} />
+          <ArticleSidebarBacaJuga articles={sidebar.bacaJuga} />
+          <AdSlot site={site} slot="sidebar-top" />
+          <ArticleSidebarTerpopuler articles={sidebar.terpopuler} />
+          <ArticleSidebarTerbaru articles={sidebar.terbaru} />
+          <ArticleSidebarTopik topics={sidebar.topics} />
+          <ArticleSidebarKanal channels={sidebar.channels} />
+          <ArticleSidebarNewsletter />
+          <ArticleSidebarIkutiKami channels={followChannels} />
+          <AdSlot site={site} slot="sidebar-bottom" />
+        </aside>
+        </div>
 
           {site.settings.commentsEnabled ? (
             <CommentThread

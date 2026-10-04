@@ -41,7 +41,7 @@ export function GlassyBlueHeaderBar({
 
   return (
     <>
-      <div className="mx-auto grid min-h-16 max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 sm:gap-x-4 sm:px-6 lg:gap-x-6">
+      <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 sm:gap-x-4 sm:px-6 lg:gap-x-6">
         <div className="min-w-0 justify-self-start">{brand}</div>
         {nav}
         <div className="flex flex-none items-center gap-2 justify-self-end">

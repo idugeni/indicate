@@ -21,7 +21,7 @@ export function PurpleEditorialTopBar({ site }: { readonly site: NetworkSiteData
 
   return (
     <div className="hidden border-b border-slate-100 bg-[#f8f7ff] md:block">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
         <p className="m-0 flex min-w-0 items-center gap-2 font-sans text-xs text-slate-600">
           <time dateTime={new Date().toISOString()} className="flex-none font-medium capitalize text-slate-700">
             {today}

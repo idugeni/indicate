@@ -26,7 +26,7 @@ export async function DarkNavyFooter({ site }: { readonly site: NetworkSiteData 
 
   return (
     <footer className="border-t border-[#1b2c4f] bg-[#070f22]">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-12 sm:grid-cols-2 sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div className="col-span-2 flex flex-col items-center text-center sm:col-span-1 sm:items-start sm:text-left">
           <Link href="/" className="flex min-w-0 flex-col items-center gap-2.5 leading-none no-underline sm:flex-row sm:items-center">
             <Image
@@ -116,7 +116,7 @@ export async function DarkNavyFooter({ site }: { readonly site: NetworkSiteData 
       </div>
 
       <div className="border-t border-[#1b2c4f]">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-4 text-center font-sans text-xs text-[#9aa9c4] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-4 text-center font-sans text-xs text-[#9aa9c4] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left">
           <p className="m-0">© {year} {site.settings.name}. Semua hak dilindungi undang-undang.</p>
           <p className="m-0 font-semibold tracking-wide text-[#5f6f8c]">{COMPANY_NAME}</p>
         </div>

@@ -62,6 +62,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
                 <DarkNavyMostRead articles={mostRead} />
                 <DarkNavyNewsletter compact />
                 <AdSlot site={site} slot="sidebar-top" />
+                <AdSlot site={site} slot="sidebar-bottom" />
               </div>
             </div>
             <DarkNavyArchivePager

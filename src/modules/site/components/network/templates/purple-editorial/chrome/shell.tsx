@@ -7,7 +7,8 @@ import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/pu
 import { PurpleEditorialHeader } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-header';
 import { PurpleEditorialFooter } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
-import { AdHeaderTop, AdShellBottom, AdShellTop } from '@/modules/ads/ad-slot';
+import { AdHeaderTop, AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
+import { MobileAnchorAd } from '@/modules/ads/mobile-anchor-ad';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -41,6 +42,9 @@ export function PurpleEditorialShell({
       </main>
       <AdShellBottom site={site} />
       <PurpleEditorialFooter site={site} />
+      <MobileAnchorAd>
+        <AdSlot site={site} slot="mobile-banner" />
+      </MobileAnchorAd>
       <TemplateBackToTop />
     </div>
   );

@@ -62,7 +62,7 @@ export function TemplateSearchPanel({
 
   return (
     <div className={`ticker-enter border-t border-[${skin.panelBorder}] bg-[${skin.panelBackground}]`}>
-      <form role="search" onSubmit={submit} className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 sm:px-6">
+      <form role="search" onSubmit={submit} className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 sm:px-6">
         <label htmlFor="{skin.inputId}" className="sr-only">
           Cari berita
         </label>

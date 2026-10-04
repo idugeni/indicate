@@ -356,8 +356,8 @@
 
 @layer components {
   /* Owned by the (network) route group — article, search, category — NOT public
-     (site) pages. The actual (site) page width is Container max-w-6xl
-     (72rem), not .public-layout 76rem below. Do not use these classes
+     (site) pages. The actual (site) page width is Container max-w-7xl
+     (80rem), not .public-layout 76rem below. Do not use these classes
      for /services, /pricing, /about, /faq, /contact, /privacy, /terms. */
   .network-shell {
     --site-primary: #0b5d4b;
@@ -885,7 +885,8 @@
   [data-template] [data-sonner-toaster],
   [data-template] [data-sonner-toast],
   #main-content article nav[aria-label='Breadcrumb'],
-  #main-content article ~ * {
+  #main-content article ~ *,
+  #main-content div:has(> article) ~ * {
     display: none !important;
   }
 

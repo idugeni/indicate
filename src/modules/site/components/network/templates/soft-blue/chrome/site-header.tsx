@@ -23,7 +23,7 @@ export async function SoftBlueHeader({ site, path = '/' }: { readonly site: Netw
     <>
       <SoftBlueTopBar site={site} />
       <div className="sticky top-0 z-40 px-4 pt-3 sm:px-6">
-        <div className="mx-auto max-w-6xl rounded-2xl bg-white/95 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
+        <div className="mx-auto max-w-7xl rounded-2xl bg-white/95 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
           <SoftBlueHeaderBar
         brand={
           <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">

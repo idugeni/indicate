@@ -21,7 +21,7 @@ export function SoftBlueTopBar({ site }: { readonly site: NetworkSiteData }) {
 
   return (
     <div className="hidden bg-[#f1f6ff] md:block">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
         <p className="m-0 flex-none font-sans text-xs font-medium capitalize text-slate-600">
           <time dateTime={new Date().toISOString()}>{today}</time>
         </p>
