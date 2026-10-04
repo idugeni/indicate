@@ -8,6 +8,7 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDeliveryRepository } from '@/data/repos/delivery';
 import { HttpsPendingHostnameProbe } from '@/core/hostname/pending-hostname-probe';
 import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-adapter';
+import { HttpSharePrewarm } from '@/modules/publishing/share-prewarm';
 import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
 import { UpstashHostnameCache } from '@/integrations/redis/upstash-hostname-cache';
 
@@ -45,6 +46,6 @@ export async function deliveryOperationsComposition() {
       ? undefined
       : new UpstashHostnameCache(new UpstashSnapshotStore({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })),
     process.env.NEXT_PHASE !== 'phase-production-build');
-  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts, config.publishing.leaseSeconds);
+  const invalidation = new InvalidationDispatcher(repository, new NextCacheInvalidationAdapter(), cloudflare, config.publishing.retryDelaysSeconds, config.publishing.maxAttempts, config.publishing.leaseSeconds, new HttpSharePrewarm());
   return { config, runtime, repository, provisioning, invalidation };
 }

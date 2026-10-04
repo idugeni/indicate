@@ -50,9 +50,11 @@ function extractHostname(urlString: string): string {
 export function PublishedUrlBlock({
   title,
   urls,
+  organizationId,
 }: {
   readonly title: string;
   readonly urls: readonly string[];
+  readonly organizationId?: string | undefined;
 }) {
   const [isCopied, setIsCopied] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -60,8 +62,12 @@ export function PublishedUrlBlock({
   const [includeTitle, setIncludeTitle] = useState(true);
   const [viewMode, setViewMode] = useState<'interactive' | 'raw'>('interactive');
   const [filterTerm, setFilterTerm] = useState('');
+  const [readiness, setReadiness] = useState<'idle' | 'checking' | 'ready' | 'not-ready' | 'error'>('idle');
+  const [readinessReason, setReadinessReason] = useState<string | null>(null);
 
   const listId = useId();
+  const primaryUrl = urls[0] ?? null;
+  const shareBlocked = readiness === 'checking' || readiness === 'not-ready';
 
   const filteredUrls = useMemo(() => {
     const cleanFilter = filterTerm.trim().toLowerCase();
@@ -99,9 +105,36 @@ export function PublishedUrlBlock({
   };
 
   const handleShareWhatsApp = () => {
+    if (shareBlocked) {
+      toast.error('Pratinjau belum siap. Cek kesiapan dulu sebelum kirim ke WhatsApp.');
+      return;
+    }
     const text = formatPublishedUrlBlock({ title, urls, includeTitle: true });
     const encoded = encodeURIComponent(text);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCheckReadiness = async () => {
+    if (primaryUrl === null || organizationId === undefined || readiness === 'checking') return;
+    setReadiness('checking');
+    setReadinessReason(null);
+    try {
+      const response = await fetch(
+        `/api/dashboard/share-readiness?organizationId=${encodeURIComponent(organizationId)}&url=${encodeURIComponent(primaryUrl)}`,
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = (await response.json()) as { ready?: boolean; reason?: string };
+      if (payload.ready === true) {
+        setReadiness('ready');
+        setReadinessReason(null);
+      } else {
+        setReadiness('not-ready');
+        setReadinessReason(typeof payload.reason === 'string' ? payload.reason : 'unknown');
+      }
+    } catch {
+      setReadiness('error');
+      setReadinessReason(null);
+    }
   };
 
   return (
@@ -145,17 +178,38 @@ export function PublishedUrlBlock({
             <span>{isOpen ? 'Tutup Detail' : 'Buka Detail'}</span>
           </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            onClick={handleShareWhatsApp}
-            className="h-7 gap-1.5 border-emerald-500/30 font-sans text-xs text-emerald-400 hover:bg-emerald-500/10"
-          >
-            <MessageSquare className="h-3 w-3" aria-hidden="true" />
-            <span className="hidden sm:inline">Kirim ke WhatsApp</span>
-            <span className="sm:hidden">WA</span>
-          </Button>
+          <AppTooltip label={shareBlocked ? 'Pratinjau belum siap, cek dulu' : 'Kirim teks siaran ke WhatsApp'}>
+            <span className="inline-flex">
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={handleShareWhatsApp}
+                disabled={shareBlocked}
+                aria-disabled={shareBlocked}
+                className="h-7 gap-1.5 border-emerald-500/30 font-sans text-xs text-emerald-400 hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <MessageSquare className="h-3 w-3" aria-hidden="true" />
+                <span className="hidden sm:inline">Kirim ke WhatsApp</span>
+                <span className="sm:hidden">WA</span>
+              </Button>
+            </span>
+          </AppTooltip>
+
+          {organizationId !== undefined && primaryUrl !== null && (
+            <AppTooltip label="Periksa og:image seperti yang dilihat scraper WA/FB">
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => void handleCheckReadiness()}
+                disabled={readiness === 'checking'}
+                className="h-7 gap-1 font-mono text-xs text-paper-dim hover:text-paper disabled:opacity-50"
+              >
+                <span>{readiness === 'checking' ? 'Memeriksa…' : readiness === 'ready' ? 'Siap dibagikan' : readiness === 'not-ready' ? 'Belum siap, cek lagi' : readiness === 'error' ? 'Gagal dicek' : 'Cek kesiapan'}</span>
+              </Button>
+            </AppTooltip>
+          )}
 
           <Button
             type="button"
@@ -173,6 +227,20 @@ export function PublishedUrlBlock({
           </Button>
         </div>
       </div>
+      {readiness === 'ready' && (
+        <p className="m-0 font-mono text-[11px] text-emerald-400">Pratinjau gambar siap. Aman dibagikan ke WhatsApp.</p>
+      )}
+      {readiness === 'not-ready' && (
+        <p className="m-0 font-mono text-[11px] text-amber-400">
+          Pratinjau belum siap ({readinessReason ?? 'unknown'}). Tunggu 1-2 menit lalu cek lagi sebelum share.
+        </p>
+      )}
+      {readiness === 'error' && (
+        <p className="m-0 font-mono text-[11px] text-paper-dim">Pemeriksaan gagal. Boleh share, tapi pratinjau berisiko kosong.</p>
+      )}
+      {readiness === 'idle' && organizationId !== undefined && (
+        <p className="m-0 font-mono text-[11px] text-paper-dim">WhatsApp meng-cache pratinjau per URL. Cek kesiapan sebelum share pertama.</p>
+      )}
 
       {isOpen && (
         <div

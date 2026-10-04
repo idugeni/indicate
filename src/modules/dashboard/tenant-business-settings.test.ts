@@ -23,7 +23,7 @@ const COLLECTIONS = [
   'publishers', 'affiliations', 'categories', 'authors', 'articles', 'articleCategories', 'articleSites', 'media',
 ] as const;
 
-function harness(collections: Record<string, readonly unknown[]> = {}) {
+function harness(collections: Record<string, readonly unknown[]> = {}, invalidator: { revalidateTags: (tags: readonly string[]) => Promise<void> } | null = null) {
   const state: Record<string, unknown> = { organizationId: 'org-1' };
   for (const key of COLLECTIONS) state[key] = [...(collections[key] ?? [])];
   const repository = {
@@ -33,7 +33,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
     }),
     recordDenied: vi.fn(async () => undefined),
   };
-  const service = new TenantBusinessService(repository as never, { create: () => ID }, { now: () => NOW });
+  const service = new TenantBusinessService(repository as never, { create: () => ID }, { now: () => NOW }, null, invalidator);
   return { service, state };
 }
 
@@ -131,6 +131,23 @@ describe('TenantBusinessService saveSiteSettings', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
     expect(result.error.error.code).toBe('INVALID_INPUT');
+  });
+
+  it('membatalkan cache organisasi setelah menyimpan pengaturan', async () => {
+    const revalidateTags = vi.fn(async (_tags: readonly string[]) => undefined);
+    const { service } = harness({ sites: [site] }, { revalidateTags });
+    const result = await service.saveSiteSettings(actor, settingsInput);
+    expect(result.ok).toBe(true);
+    expect(revalidateTags).toHaveBeenCalledTimes(1);
+    expect(revalidateTags).toHaveBeenCalledWith(['org:org-1']);
+  });
+
+  it('tidak menyentuh cache saat validasi pengaturan gagal', async () => {
+    const revalidateTags = vi.fn(async (_tags: readonly string[]) => undefined);
+    const { service } = harness({ sites: [site] }, { revalidateTags });
+    const result = await service.saveSiteSettings(actor, { siteId: ID, name: 'Portal Fakta', description: 'Deskripsi portal yang informatif.' });
+    expect(result.ok).toBe(false);
+    expect(revalidateTags).not.toHaveBeenCalled();
   });
 });
 

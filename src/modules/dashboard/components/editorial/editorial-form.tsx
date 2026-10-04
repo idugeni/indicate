@@ -1171,7 +1171,7 @@ export function ArticleCreateForm({
 
   return (
     <form noValidate onSubmit={handleCreateArticle}>
-      <div className="sticky top-3 z-10 mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-hairline bg-bg/95 px-4 py-2.5 shadow-lg backdrop-blur">
+      <div className="sticky top-[60px] z-20 mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-hairline bg-bg/95 px-4 py-2.5 shadow-lg backdrop-blur">
         <SearchCombobox
           id={statusSelectId}
           name="status"

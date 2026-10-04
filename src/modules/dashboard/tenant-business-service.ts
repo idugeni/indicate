@@ -443,7 +443,7 @@ export class TenantBusinessService {
   }
 
   saveSiteSettings(actor: AuthorizedTenantActorContext, raw: unknown) {
-    return this.mutate({ actor, raw, schema: siteSettingsSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.settings.update', targetType: 'site_settings', scope: ['sites', 'regions', 'siteSettings', 'media'], execute: (transaction, value, now) => {
+    return this.mutate({ actor, raw, schema: siteSettingsSchema, permission: DASHBOARD_PERMISSIONS.siteManage, action: 'site.settings.update', targetType: 'site_settings', revalidateTags: [orgTag(actor.organizationId)], scope: ['sites', 'regions', 'siteSettings', 'media'], execute: (transaction, value, now) => {
       requireSiteInScope(transaction.state, value.siteId, actor);
       const before = transaction.state.siteSettings.find(({ siteId }) => siteId === value.siteId);
       if (before === undefined && !isKnownTemplateId(value.colors?.templateId)) throw new DashboardValidationError({ colors: ['templateId wajib diisi dari daftar template terdaftar.'] });

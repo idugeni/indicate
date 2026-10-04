@@ -66,7 +66,7 @@ function harness(options: { readonly purgeFails?: boolean; readonly revalidateFa
     5,
     300,
   );
-  return { dispatcher, repository, cloudflare, failures };
+  return { dispatcher, repository, nextCache, cloudflare, failures };
 }
 
 describe('InvalidationDispatcher', () => {
@@ -189,5 +189,23 @@ describe('InvalidationDispatcher', () => {
     const purged = vi.mocked(cloudflare.purgeExactUrls).mock.calls[0]?.[0] as readonly string[];
     expect(purged[0]).toBe(articleUrl);
     expect(purged).toHaveLength(300);
+  });
+
+  it('menghangatkan url setelah purge dan tidak menggagalkan dispatch saat warmer rusak', async () => {
+    const repository = {
+      claimInvalidations: vi.fn(async () => [task('task-1', ['https://tenant.example/slug-a'])]),
+      completeInvalidation: vi.fn(async () => {}),
+      failInvalidation: vi.fn(async () => {}),
+    };
+    const nextCache = { revalidateTags: vi.fn(async () => {}), revalidatePaths: vi.fn(async () => {}) };
+    const cloudflare = { purgeExactUrls: vi.fn(async (_urls: readonly string[]) => {}), purgeHostname: vi.fn(async () => {}) };
+    const warmer = { prewarm: vi.fn(async (_urls: readonly string[]) => {}) };
+    const dispatcher = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300, warmer);
+    await expect(dispatcher.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
+    expect(warmer.prewarm).toHaveBeenCalledTimes(1);
+    expect(warmer.prewarm).toHaveBeenCalledWith(['https://tenant.example/slug-a']);
+    const failing = { prewarm: vi.fn(async (_urls: readonly string[]): Promise<void> => { throw new Error('warmer down'); }) };
+    const resilient = new InvalidationDispatcher(repository, nextCache, cloudflare as unknown as CloudflareAuthorityPort, [5], 5, 300, failing);
+    await expect(resilient.dispatch(new Date(), 10)).resolves.toEqual({ completed: 1, failed: 0, stranded: 0 });
   });
 });

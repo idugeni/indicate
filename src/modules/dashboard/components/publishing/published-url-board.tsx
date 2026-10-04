@@ -112,12 +112,13 @@ function formatPublishedAt(value: string | null): string {
   return moment === null ? 'Jadwal belum tercatat' : `Tayang ${moment}`;
 }
 
-export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles }: {
+export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles, organizationId }: {
   readonly data: unknown;
   readonly onFilterApply?: ((query: string) => void) | undefined;
   readonly articlesNextCursor?: string | null | undefined;
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
+  readonly organizationId?: string | undefined;
 }) {
   const searchInputId = useId();
   const sortSelectId = useId();
@@ -422,7 +423,7 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
                     )}
                   </div>
 
-                  <PublishedUrlBlock title={entry.title} urls={entry.urls} />
+                  <PublishedUrlBlock title={entry.title} urls={entry.urls} organizationId={organizationId} />
                 </div>
               </SectionCard>
             );

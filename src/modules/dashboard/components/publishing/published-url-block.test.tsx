@@ -73,4 +73,22 @@ describe('PublishedUrlBlock', () => {
     fireEvent.click(screen.getByRole('button', { name: /salin siaran/i }));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
+
+  it('menonaktifkan WA sampai kesiapan siap dan menampilkannya setelah cek', async () => {
+    stubClipboard();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ ready: true, reason: 'ready' }) }) as unknown as Response));
+    render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} organizationId="org-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /cek kesiapan/i }));
+    await waitFor(() => expect(screen.getByText(/pratinjau gambar siap/i)).toBeDefined());
+    expect(screen.getByRole('button', { name: /kirim ke whatsapp/i })).toBeDefined();
+  });
+
+  it('memblokir WA saat pratinjau belum siap', async () => {
+    stubClipboard();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ ready: false, reason: 'social_tags_incomplete' }) }) as unknown as Response));
+    render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} organizationId="org-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /cek kesiapan/i }));
+    await waitFor(() => expect(screen.getByText(/pratinjau belum siap/i)).toBeDefined());
+    expect(screen.getByRole('button', { name: /kirim ke whatsapp/i }).hasAttribute('disabled')).toBe(true);
+  });
 });
