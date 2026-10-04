@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { Toaster } from '@/components/ui/sonner';
+import { ZoomLock } from '@/components/zoom-lock';
 import { WEBMCP_BRIDGE_PATH, WEBMCP_DEFAULT_PACKS, WEBMCP_MCP_PATH } from '@/modules/webmcp/bridge-source';
+import { LOCKED_ZOOM_VIEWPORT } from '@/ui/locked-viewport';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
 import { cn } from '@/ui/cn';
 import './globals.css';
@@ -19,11 +21,9 @@ const BRAND_TITLE = 'Indicate - Publishing infrastructure';
 const BRAND_IMAGE_ALT = 'Indicate - One Newsroom. Everywhere.';
 
 export const viewport: Viewport = {
+  ...LOCKED_ZOOM_VIEWPORT,
   themeColor: '#0e1320',
   colorScheme: 'dark',
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover',
 };
 
 /** Control-plane metadataBase fallback. Tenant pages derive absolute canonical/OG URLs from the request host, so this base never anchors tenant content. */
@@ -130,6 +130,7 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased">
+        <ZoomLock />
         <script type="module" async src={WEBMCP_BRIDGE_PATH} data-packs={WEBMCP_DEFAULT_PACKS} data-mcp-url={WEBMCP_MCP_PATH} />
         {children}
         <Toaster />

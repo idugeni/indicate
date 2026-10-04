@@ -1,13 +1,13 @@
 import type { Viewport } from 'next';
 import type { ReactNode } from 'react';
 
+import { LOCKED_ZOOM_VIEWPORT } from '@/ui/locked-viewport';
+
 /** Light tenant: browser chrome stays light on all portal pages. */
 export const viewport: Viewport = {
+  ...LOCKED_ZOOM_VIEWPORT,
   themeColor: '#ffffff',
   colorScheme: 'light',
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover',
 };
 
 export default function NetworkLayout({

@@ -184,6 +184,10 @@
   html {
     font-family: var(--font-plex-sans);
     scroll-behavior: smooth;
+    /* Strict zoom lock: pinch-zoom gestures never reach the page while
+       panning and scrolling keep working. Viewport meta alone is ignored
+       by some mobile browsers, so this is the enforcing layer. */
+    touch-action: pan-x pan-y;
   }
 
   body {

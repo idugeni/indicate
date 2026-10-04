@@ -26,7 +26,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     <html lang="id" style={{ colorScheme: 'dark' }}>
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="theme-color" content="#0e1320" />
         <title>Layanan Tidak Tersedia · Indicate</title>

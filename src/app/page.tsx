@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 
 import { indexableRobots } from '@/modules/site/seo';
+import { LOCKED_ZOOM_VIEWPORT } from '@/ui/locked-viewport';
 import { controlPlaneIcons } from '@/ui/site/metadata-guard';
 import { resolveGoogleSiteVerification } from '@/core/config/google-verification';
 import { SERVICE_SUMMARY } from '@/ui/site/marketing-content';
@@ -18,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
+  ...LOCKED_ZOOM_VIEWPORT,
   themeColor: '#f4f2ec',
   colorScheme: 'light',
 };
