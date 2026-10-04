@@ -1,8 +1,6 @@
 import type { Viewport } from 'next';
 import type { ReactNode } from 'react';
 
-import { assertNetworkHost } from '@/modules/delivery/network-runtime';
-
 /** Light tenant: browser chrome stays light on all portal pages. */
 export const viewport: Viewport = {
   themeColor: '#ffffff',
@@ -12,11 +10,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default async function NetworkLayout({
+export default function NetworkLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
-  await assertNetworkHost();
+  // Tetap sinkron: layout async yang suspend menampilkan loading milik segmen
+  // induk (spinner root) karena (network)/loading hanya menutupi children.
+  // Guard host sudah di tiap halaman via resolveNetworkSite.
   return <>{children}</>;
 }

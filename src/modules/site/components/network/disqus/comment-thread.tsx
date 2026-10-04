@@ -5,6 +5,12 @@ import { DiscussionEmbed } from 'disqus-react';
 
 import { disqusLanguage, disqusThreadIdentifier, resolveDisqusShortname } from '@/core/config/disqus-forum';
 
+declare global {
+  interface Window {
+    DISQUS?: unknown;
+  }
+}
+
 /**
  * How far ahead of the viewport the embed may start loading.
  *
@@ -13,6 +19,15 @@ import { disqusLanguage, disqusThreadIdentifier, resolveDisqusShortname } from '
  * enough that the iframe is normally painted by the time it is reached.
  */
 const VISIBILITY_ROOT_MARGIN = '400px';
+
+/**
+ * Bound for the third-party thread before the loading copy admits failure.
+ *
+ * @remarks Without a bound a blocked `embed.js` (unregistered domain,
+ * ad-blocker, offline) leaves "Memuat komentar…" on the page forever with no
+ * way to tell a slow load from a dead one.
+ */
+const LOAD_TIMEOUT_MS = 20000;
 
 /**
  * Chrome the thread brings to a template that does not override it.
@@ -24,7 +39,7 @@ const VISIBILITY_ROOT_MARGIN = '400px';
 const THREAD_SECTION_CLASS = 'mt-10 border-t border-current/15 pt-8';
 
 /**
- * Whether this browser can report viewport intersection at all.
+ * Whether this browser cannot report viewport intersection at all.
  *
  * @remarks Read once during the first render rather than inside the effect. The
  * server answers `false` and renders the placeholder, which is also what every
@@ -32,7 +47,7 @@ const THREAD_SECTION_CLASS = 'mt-10 border-t border-current/15 pt-8';
  * old enough to lack the observer starts with the embed already wanted, because
  * there is no intersection callback that could ever ask for it.
  */
-function canObserveIntersection(): boolean {
+function lacksIntersectionObserver(): boolean {
   return typeof window !== 'undefined' && typeof window.IntersectionObserver === 'undefined';
 }
 
@@ -63,7 +78,9 @@ export function CommentThread({
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const headingId = useId();
-  const [nearViewport, setNearViewport] = useState(() => canObserveIntersection());
+  const [nearViewport, setNearViewport] = useState(() => lacksIntersectionObserver());
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -91,7 +108,20 @@ export function CommentThread({
     };
   }, [siteId, articleId, url, title, locale]);
 
+  useEffect(() => {
+    if (!nearViewport || shortname === undefined || loadFailed) return;
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined' && window.DISQUS === undefined) setLoadFailed(true);
+    }, LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [nearViewport, shortname, loadFailed, retryCount]);
+
   if (shortname === undefined) return null;
+
+  const retry = () => {
+    setLoadFailed(false);
+    setRetryCount((count) => count + 1);
+  };
 
   return (
     <section ref={hostRef} className={className ?? THREAD_SECTION_CLASS} aria-labelledby={headingId}>
@@ -99,7 +129,17 @@ export function CommentThread({
         {heading}
       </h2>
       {nearViewport ? (
-        <DiscussionEmbed shortname={shortname} config={config} />
+        loadFailed ? (
+          <p className="mt-3 text-sm opacity-70">
+            Komentar tidak dapat dimuat. Periksa koneksi atau pemblokir iklan, lalu{' '}
+            <button type="button" onClick={retry} className="underline">
+              coba lagi
+            </button>
+            .
+          </p>
+        ) : (
+          <DiscussionEmbed key={`${shortname}:${retryCount}`} shortname={shortname} config={config} />
+        )
       ) : (
         <p className="mt-3 text-sm opacity-70">Memuat komentar…</p>
       )}

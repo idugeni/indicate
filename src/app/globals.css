@@ -860,3 +860,197 @@
   background-color: var(--color-brass);
   color: var(--color-bg);
 }
+
+/* Article print / PDF: professional paper rendering shared by every network
+   template. Screen keeps the full interactive page; print keeps only the
+   article with a publication kop and a source footer. */
+.article-print-masthead,
+.article-print-footer {
+  display: none;
+}
+
+@page {
+  size: A4;
+  margin: 14mm 12mm 16mm;
+}
+
+@media print {
+  [data-template] > header,
+  [data-template] > footer,
+  [data-template] a[href='#main-content'],
+  [data-template] [aria-label='Kembali ke atas'],
+  [data-template] [aria-label='Bagikan artikel'],
+  [data-template] [data-print-button],
+  [data-template] [data-ad-slot],
+  [data-template] [data-sonner-toaster],
+  [data-template] [data-sonner-toast],
+  #main-content article nav[aria-label='Breadcrumb'],
+  #main-content article ~ * {
+    display: none !important;
+  }
+
+  [data-template] {
+    background: #ffffff !important;
+  }
+
+  #main-content {
+    display: block !important;
+  }
+
+  #main-content > div {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  #main-content article {
+    color: #111827 !important;
+    overflow-wrap: anywhere;
+  }
+
+  #main-content article :where(h1, h2, h3, h4, p, li, span, div, time, a, figcaption, blockquote, dd, dt, td, th) {
+    color: #111827 !important;
+  }
+
+  #main-content article :where(div, p, span, aside, footer, figure, section, blockquote, pre) {
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  #main-content article :where(div, aside, footer, figure, section, table, pre) {
+    border-radius: 0 !important;
+  }
+
+  #main-content article :where(div, aside, footer, section) {
+    border-color: #d1d5db !important;
+  }
+
+  #main-content article * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  #main-content article h1 {
+    font-size: 22pt !important;
+    line-height: 1.25 !important;
+    letter-spacing: normal !important;
+  }
+
+  #main-content article :where(h1, h2, h3, h4) {
+    break-after: avoid;
+  }
+
+  #main-content article :where(p, li, blockquote, pre, table, figure) {
+    orphans: 3;
+    widows: 3;
+  }
+
+  #main-content article p,
+  #main-content article li {
+    font-size: 11pt !important;
+    line-height: 1.75 !important;
+  }
+
+  #main-content article p:empty {
+    display: none !important;
+  }
+
+  #main-content article a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  #main-content article figure {
+    break-inside: avoid !important;
+    margin: 0 0 12pt !important;
+    overflow: visible !important;
+  }
+
+  #main-content article img {
+    max-width: 100% !important;
+    height: auto !important;
+    break-inside: avoid;
+  }
+
+  #main-content article section[aria-label='Galeri foto'] {
+    grid-template-columns: 1fr !important;
+    gap: 12pt !important;
+  }
+
+  #main-content article :where(table, pre, blockquote) {
+    break-inside: avoid;
+  }
+
+  #main-content article thead {
+    display: table-header-group;
+  }
+
+  #main-content article tr {
+    break-inside: avoid;
+  }
+
+  #main-content article table {
+    width: 100% !important;
+    border-collapse: collapse;
+    font-size: 9.5pt !important;
+  }
+
+  #main-content article :where(td, th) {
+    border: 1pt solid #d1d5db;
+    padding: 4pt 6pt;
+  }
+
+  #main-content article pre {
+    white-space: pre-wrap;
+    border: 1pt solid #d1d5db;
+    padding: 8pt;
+  }
+
+  #main-content article :where(iframe, audio) {
+    display: none !important;
+  }
+
+  #main-content article .article-print-masthead,
+  #main-content article .article-print-footer {
+    display: block !important;
+  }
+
+  #main-content article .article-print-masthead {
+    border-bottom: 2pt solid #111827;
+    margin-bottom: 14pt;
+    padding-bottom: 10pt;
+  }
+
+  #main-content article .article-print-kicker {
+    font-size: 9pt !important;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 0 0 6pt !important;
+    line-height: 1.4 !important;
+  }
+
+  #main-content article .article-print-meta {
+    font-size: 9.5pt !important;
+    margin: 0 0 2pt !important;
+    line-height: 1.5 !important;
+  }
+
+  #main-content article .article-print-source {
+    font-size: 8.5pt !important;
+    margin: 0 !important;
+    line-height: 1.5 !important;
+  }
+
+  #main-content article .article-print-footer {
+    border-top: 1pt solid #9ca3af;
+    margin-top: 18pt;
+    padding-top: 8pt;
+  }
+
+  #main-content article .article-print-footer p {
+    font-size: 8.5pt !important;
+    margin: 0 0 2pt !important;
+    line-height: 1.5 !important;
+  }
+}

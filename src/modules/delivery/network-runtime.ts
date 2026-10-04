@@ -38,15 +38,6 @@ const requireNetworkContext = cache(async (): Promise<ResolvedSiteContext> => {
 });
 
 /**
- * Reject an unknown or control hostname before tenant content rendering.
- *
- * @returns Nothing when the request resolves to one active site.
- */
-export async function assertNetworkHost(): Promise<void> {
-  await requireNetworkContext();
-}
-
-/**
  * Per-site cache-bypass flag, cached in the Next data cache.
  *
  * @param organizationId - Owning organization of the site.
