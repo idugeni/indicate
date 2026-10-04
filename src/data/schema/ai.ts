@@ -24,6 +24,7 @@ export const aiProviders = pgTable('ai_providers', {
   description: text('description'),
   isActive: boolean('is_active').default(true).notNull(),
   isPrimary: boolean('is_primary').default(false).notNull(),
+  supportsChat: boolean('supports_chat').default(true).notNull(),
   priority: integer('priority').default(100).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -106,6 +107,7 @@ export const aiRoutingPolicies = pgTable('ai_routing_policies', {
   cooldownDurationSec: integer('cooldown_duration_sec').default(60).notNull(),
   requestTimeoutMs: integer('request_timeout_ms').default(60000).notNull(),
   globalConcurrencyLimit: integer('global_concurrency_limit').default(100).notNull(),
+  chainStrategy: text('chain_strategy').default('fallback').notNull(),
   version: integer('version').default(1).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
@@ -114,6 +116,7 @@ export const aiRoutingPolicies = pgTable('ai_routing_policies', {
   check('ai_routing_policies_cooldown_bounds', sql`${table.cooldownDurationSec} BETWEEN 10 AND 3600`),
   check('ai_routing_policies_timeout_bounds', sql`${table.requestTimeoutMs} BETWEEN 1000 AND 300000`),
   check('ai_routing_policies_concurrency_bounds', sql`${table.globalConcurrencyLimit} BETWEEN 1 AND 1000`),
+  check('ai_routing_policies_chain_known', sql`${table.chainStrategy} IN ('fallback', 'round_robin')`),
   check('ai_routing_policies_version_positive', sql`${table.version} > 0`),
 ]);
 

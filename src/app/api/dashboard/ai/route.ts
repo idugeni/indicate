@@ -34,7 +34,7 @@ import { executeGeminiStream } from '@/integrations/ai/gemini-adapter';
 import { createVercelGatewayBudgetGuard } from '@/integrations/ai/gateway/vercel/vercel-gateway';
 import { rankSemanticCandidates, type SemanticCandidate } from '@/integrations/ai/embeddings';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
-import { AI_BREAKER_ERROR_CLASSES, classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, isModelBreakerTripped, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resolveAiModelChain } from '@/modules/ai/ai-router';
+import { AI_BREAKER_ERROR_CLASSES, classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resolveOrderedAiModelChain } from '@/modules/ai/ai-router';
 import type { AiChatPrompt as AdapterPrompt } from '@/integrations/ai/ai-prompt';
 
 const commandSchema = z.object({
@@ -208,7 +208,8 @@ async function handleDraftArticleStream(
   const primaryProviderId = policy.primaryProviderId ?? 'gemini';
   const timeoutMs = Math.min(Math.max(policy.requestTimeoutMs || 60000, 1000), 300000);
   const breakerStore = deps.rateLimit?.store;
-  const streamableChain = resolveAiModelChain(policy).filter((entry) => entry.providerId === primaryProviderId);
+  const chainStartIndex = policy.chainStrategy === 'round_robin' ? await nextChainStartIndex(breakerStore) : 0;
+  const streamableChain = resolveOrderedAiModelChain(policy, chainStartIndex).filter((entry) => entry.providerId === primaryProviderId);
   const runnableChain: typeof streamableChain = [];
   for (const entry of streamableChain) {
     if (!(await isModelBreakerTripped(breakerStore, entry.providerId, entry.modelName))) runnableChain.push(entry);
@@ -260,6 +261,39 @@ async function handleDraftArticleStream(
             const resolved = await resolveStreamCredential(entry);
             if (resolved === null) continue;
             try {
+              if (entry.providerId !== 'gemini') {
+                if (combinedSignal.aborted) throw new Error('AI stream aborted.');
+                const adapter = deps.resolveAdapter(entry.providerId);
+                const result = await adapter.execute(resolved.plainKey, entry.modelName, {
+                  prompt: built.prompt,
+                  systemInstruction: built.systemInstruction,
+                  temperature: 0.7,
+                  maxOutputTokens: 2048,
+                  responseMimeType: 'application/json',
+                  responseSchema: ARTICLE_DRAFT_SCHEMA,
+                });
+                if (combinedSignal.aborted) throw new Error('AI stream aborted.');
+                sentAny = true;
+                send(null, { delta: redactSecrets(result.text).slice(0, 4000) });
+                const latencyMs = Date.now() - startedAt;
+                await recordKeySuccess(deps.db, resolved.credentialId, latencyMs);
+                await recordModelSuccess(breakerStore, entry.providerId, entry.modelName);
+                await deps.budget.recordAiTokenUsage(result.tokensUsage?.total ?? 0);
+                await auditDraftStream(deps.db, {
+                  correlationId: requestId,
+                  providerId: entry.providerId,
+                  modelName: entry.modelName,
+                  credentialId: resolved.credentialId,
+                  organizationId,
+                  status: 'success',
+                  latencyMs,
+                  promptTokens: result.tokensUsage?.prompt ?? 0,
+                  completionTokens: result.tokensUsage?.completion ?? 0,
+                  totalTokens: result.tokensUsage?.total ?? 0,
+                });
+                send('done', { text: redactSecrets(result.text) });
+                return;
+              }
               const result = await executeGeminiStream(
                 resolved.plainKey,
                 entry.modelName,
@@ -299,7 +333,7 @@ async function handleDraftArticleStream(
               send('done', { text: redactSecrets(result.text) });
               return;
             } catch (error) {
-              const aborted = error instanceof Error && error.message === 'Gemini stream aborted.';
+              const aborted = error instanceof Error && /abort/i.test(error.message);
               const latencyMs = Date.now() - startedAt;
               if (!aborted && !sentAny) {
                 const classified = classifyAiError(error);

@@ -12,6 +12,7 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
 | Schema (7 tables + 2 enums) | `src/data/schema/ai.ts`, `ai-cache.ts`, `ai-embeddings.ts` |
 | Router, service, guardrails | `src/modules/ai/` (`ai-router.ts`, `ai-service.ts`, `ai-security.ts`, `ai-crypto.ts`) |
 | Provider adapter (Gemini) | `src/integrations/ai/gemini-adapter.ts` (only `@google/genai` import) |
+| Provider adapter (OpenRouter) | `openrouter` in `src/integrations/ai/adapter-registry.ts` (OpenAI-compatible, `https://openrouter.ai/api/v1`) |
 | Provider adapter (Vercel Gateway) | `vercel-gateway` in `src/integrations/ai/adapter-registry.ts` (OpenAI-compatible, `https://ai-gateway.vercel.sh/v1`) |
 | Gateway transports | `src/integrations/ai/gateway/` (`cloudflare/`, `workers-ai/`, `vercel/` — one folder per gateway) |
 | Budget guard (Redis) | `src/integrations/ai/ai-budget.ts` (250k tokens/day, 60 req/hour, fail-open) |
@@ -27,12 +28,19 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
    Provision (superadmin, `platform.ai.manage`). The plaintext is never
    returned; only version + fingerprint are shown. Rotate with expected version.
 3. Grant `platform.ai.manage` to platform roles through the role-permission flow.
-4. Add the first provider key in the panel (label + secret + priority),
-   then use Test to validate before marking active.
+4. Add the first provider key in the panel (provider + label + secret + priority),
+   then use Test to validate before marking active. Test pings Gemini over
+   `generativelanguage` and OpenAI-compatible providers (`openrouter`,
+   `vercel-gateway`, `openai-compatible`) over their own `/chat/completions`.
 5. Apply migration 237 (`ai_free_tier_gateways`) for the `workers-ai` and
    `vercel-gateway` provider rows, then add their keys in the same panel.
    Set `vercel-gateway` as fallback provider to carry non-critical
    editorial load on the monthly free tier.
+6. Apply migration 247 (`ai_openrouter_provider`) for the `openrouter`
+   provider and its starter models, add the `sk-or-...` key in the same
+   panel, then set `openrouter` as primary provider with an OpenRouter
+   model id (for example `openai/gpt-4o-mini`). Keep a Gemini key as
+   fallback for TTS, transcription, and cover-image modalities.
 
 ## Free-tier gateways
 
@@ -60,13 +68,43 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   from rotation without deleting telemetry.
 - `recordKeyFailure` marks `invalid` keys permanently; re-test after fixing
   the key at the provider, then re-enable.
-- Model failover: routing policy holds `default_model` plus `fallback_provider`
-  and `fallback_model`. When every key for the primary is exhausted, the service
-  retries the chain on the fallback before giving up; an empty fallback provider
-  means the fallback model runs on the primary provider. Both are editable in the
-  panel; the active chain is shown underneath the form. Draft streaming follows
-  the same chain but stays on the primary provider, since its transport is
-  Gemini-specific.
+- Model failover: routing policy holds `primary_provider_id`, `default_model`,
+  plus `fallback_provider` and `fallback_model`. When every key for the
+  primary is exhausted, the service retries the chain on the fallback before
+  giving up; an empty fallback provider means the fallback model runs on the
+  primary provider. All four are editable in the panel; the active chain is
+  shown underneath the form. Draft streaming stays on the primary provider:
+  Gemini entries stream token deltas, OpenAI-compatible entries
+  (`openrouter`, `vercel-gateway`) resolve one non-streaming turn and emit
+  it as a single SSE delta before `done`, so the client contract is unchanged.
+- Chain strategy (`chain_strategy`, `fallback` default): `fallback` tries the
+  chain in fixed order and moves to the next entry on retryable failure;
+  `round_robin` rotates the starting entry per request through the Redis
+  cursor `ai:chain:cursor` (fail-open to fixed order) to spread load, with
+  failover to the next entry preserved. A single-entry chain (one provider,
+  no fallback) is unaffected by either strategy. `rotation_strategy`
+  (`health_aware` default) is orthogonal: it picks the credential *within*
+  one provider, while the chain strategy orders *models* across entries.
+- Modality overrides follow the catalog owner: TTS, transcription, and
+  cover-image models run on their owning provider (`gemini`, seeded by
+  migration 249), never blindly on the primary — so editorial chat can move
+  to `openrouter` while voice and vision stay on Gemini keys.
+- Provider transports: Gemini pings `generativelanguage` with a catalog model
+  owned by the tested provider; OpenAI-compatible probes (`openrouter`,
+  `vercel-gateway`, `openai-compatible`) use `GET /models` so the result
+  never depends on the configured default model. OpenRouter calls carry an
+  `X-Title: Indicate` header.
+- Policy validation: saving rejects unknown provider ids and a default or
+  fallback model whose catalog owner differs from the selected provider.
+  Model names outside the catalog are allowed (the catalog may lag new
+  provider models). Editable numeric guards are `max_retries` (1–10),
+  `per_key_retry_limit` (1–5), `cooldown_duration_sec` (10–3600),
+  `request_timeout_ms` (1s–300s), and `global_concurrency_limit` (1–1000).
+- Chain preview warns when a chain entry has no active credential, so a
+  miswired fallback is visible before the first failed request. New
+  providers are registered through seed migrations; the panel lists them
+  read-only with active and chat-capability flags (`supports_chat` —
+  `workers-ai` is embedding-only and is rejected as primary/fallback).
 - `per_key_retry_limit` (1–5) caps how many times one key is tried per query,
   across both chain entries; `max_retries` caps attempts per chain entry.
 - Retries use exponential backoff with full jitter (500ms base, 3s cap)

@@ -35,6 +35,8 @@ export type AiErrorClass =
   | 'safety_blocked'
   | 'application_error';
 
+export type AiChainStrategy = 'fallback' | 'round_robin';
+
 export type AiAccessChannel = 'web' | 'telegram' | 'api';
 
 export type AiCallerRole =
@@ -105,6 +107,7 @@ export interface AiCredentialRecord {
 export interface AiRoutingPolicy {
   readonly id: string;
   readonly rotationStrategy: AiRotationStrategy;
+  readonly chainStrategy: AiChainStrategy;
   readonly primaryProviderId: string | null;
   readonly fallbackProviderId: string | null;
   readonly defaultModel: string;

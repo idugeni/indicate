@@ -15,12 +15,14 @@ import {
   classifyAiError,
   getActiveRoutingPolicy,
   getAvailableCredentials,
+  getModelOwnerProvider,
   isModelBreakerTripped,
+  nextChainStartIndex,
   recordKeyFailure,
   recordKeySuccess,
   recordModelInfraFailure,
   recordModelSuccess,
-  resolveAiModelChain,
+  resolveOrderedAiModelChain,
   resolveThinkingBudget,
   selectCredential,
 } from '@/modules/ai/ai-router';
@@ -443,12 +445,15 @@ export async function executeAiQuery(
       ? AI_BACKGROUND_PER_KEY_LIMIT
       : Math.min(Math.max(policy.perKeyRetryLimit || 1, 1), 5);
   const breakerStore = deps.rateLimit?.store;
-  const fullChain = resolveAiModelChain(policy, promptData.modelOverride);
+  const overrideProvider =
+    promptData.modelOverride === undefined ? undefined : await getModelOwnerProvider(deps.db, promptData.modelOverride);
+  const chainStartIndex = policy.chainStrategy === 'round_robin' ? await nextChainStartIndex(breakerStore) : 0;
+  const fullChain = resolveOrderedAiModelChain(policy, chainStartIndex, promptData.modelOverride, overrideProvider ?? undefined);
   const openChain: Array<{ readonly providerId: string; readonly modelName: string }> = [];
   for (const entry of fullChain) {
     if (!(await isModelBreakerTripped(breakerStore, entry.providerId, entry.modelName))) openChain.push(entry);
   }
-  const providerChain = openChain.length > 0 ? openChain : fullChain;
+  const providerChain = openChain.length > 0 ? openChain : [...fullChain];
 
   if (deps.cache !== undefined && cacheApplies) {
     const seen = new Set([targetModel]);

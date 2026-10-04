@@ -14,12 +14,23 @@ describe('OpenAiCompatibleAdapter', () => {
     vi.unstubAllGlobals();
   });
 
-  it('menolak muatan gambar dengan error jelas tanpa memanggil provider', async () => {
+  it('mengirim gambar sebagai image_url tanpa menolak', async () => {
     const adapter = new OpenAiCompatibleAdapter();
-    await expect(
-      adapter.execute('router-key', 'model', { prompt: 'hai', images: [{ base64: 'aGVsbG8=', mimeType: 'image/jpeg' }] }),
-    ).rejects.toThrowError(/does not support image/);
-    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+    const result = await adapter.execute('router-key', 'model', { prompt: 'hai', images: [{ base64: 'aGVsbG8=', mimeType: 'image/jpeg' }] });
+    expect(result.text).toBe('ok');
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(init.body as string) as { messages: Array<{ role: string; content: unknown }> };
+    const last = body.messages.at(-1)?.content as Array<Record<string, unknown>>;
+    expect(Array.isArray(last)).toBe(true);
+    expect(last.some((part) => part.type === 'image_url')).toBe(true);
+  });
+
+  it('meminta json_object saat responseMimeType json', async () => {
+    const adapter = new OpenAiCompatibleAdapter();
+    await adapter.execute('router-key', 'model', { prompt: 'hai', responseMimeType: 'application/json' });
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(init.body as string) as { response_format?: { type: string } };
+    expect(body.response_format).toMatchObject({ type: 'json_object' });
   });
 
   it('menjaga jalur teks tanpa perubahan', async () => {

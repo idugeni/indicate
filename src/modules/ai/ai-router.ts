@@ -6,6 +6,7 @@ import { decryptAiKey } from '@/modules/ai/ai-crypto';
 import type { AiRateLimitStore } from '@/modules/ai/ai-rate-limit';
 import type {
   AiAccessChannel,
+  AiChainStrategy,
   AiCredentialRecord,
   AiCredentialStatus,
   AiDb,
@@ -24,6 +25,7 @@ import type {
 export const DEFAULT_AI_ROUTING_POLICY: AiRoutingPolicy = {
   id: 'default',
   rotationStrategy: 'health_aware',
+  chainStrategy: 'fallback',
   primaryProviderId: 'gemini',
   fallbackProviderId: null,
   defaultModel: 'gemini-3.8-flash',
@@ -253,12 +255,13 @@ export function resolveTaskThinkingBudget(
 export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy> {
   try {
     const value = await db.execute(
-      sql`select id, rotation_strategy, primary_provider_id, fallback_provider_id, default_model, fallback_model, max_retries, per_key_retry_limit, cooldown_duration_sec, request_timeout_ms, global_concurrency_limit, updated_at from ai_routing_policies where id = 'default' limit 1`,
+      sql`select id, rotation_strategy, chain_strategy, primary_provider_id, fallback_provider_id, default_model, fallback_model, max_retries, per_key_retry_limit, cooldown_duration_sec, request_timeout_ms, global_concurrency_limit, updated_at from ai_routing_policies where id = 'default' limit 1`,
     );
     const row = toRowArray(value)[0];
     if (typeof row !== 'object' || row === null) return DEFAULT_AI_ROUTING_POLICY;
     const record = row as Record<string, unknown>;
     const strategy = toStringOrNull(record.rotation_strategy);
+    const chainStrategy = toStringOrNull(record.chain_strategy);
     return {
       id: toStringOrNull(record.id) ?? DEFAULT_AI_ROUTING_POLICY.id,
       rotationStrategy:
@@ -270,6 +273,7 @@ export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy>
         strategy === 'health_aware'
           ? strategy
           : DEFAULT_AI_ROUTING_POLICY.rotationStrategy,
+      chainStrategy: chainStrategy === 'round_robin' ? chainStrategy : DEFAULT_AI_ROUTING_POLICY.chainStrategy,
       primaryProviderId: toStringOrNull(record.primary_provider_id),
       fallbackProviderId: toStringOrNull(record.fallback_provider_id),
       defaultModel: toStringOrNull(record.default_model) ?? DEFAULT_AI_ROUTING_POLICY.defaultModel,
@@ -300,6 +304,25 @@ export async function getActiveRoutingPolicy(db: AiDb): Promise<AiRoutingPolicy>
 }
 
 /**
+ * Resolve pemilik katalog satu model modalitas.
+ *
+ * @param db - Runtime database port.
+ * @param modelName - Nama model dari `modelOverride` pemanggil.
+ * @returns Provider pemilik dari `ai_models`, atau null bila katalog tidak mengenalnya.
+ * @remarks Satu baris berproyeksi dan ber-`LIMIT`; null berarti pemanggil memakai primary.
+ */
+export async function getModelOwnerProvider(db: AiDb, modelName: string): Promise<string | null> {
+  try {
+    const value = await db.execute(sql`select provider_id from ai_models where model_name = ${modelName} limit 1`);
+    const row = toRowArray(value)[0];
+    if (typeof row !== 'object' || row === null) return null;
+    return toStringOrNull((row as Record<string, unknown>).provider_id);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Satu langkah dalam rantai failover model.
  */
 export interface AiModelChainEntry {
@@ -312,16 +335,20 @@ export interface AiModelChainEntry {
  *
  * @param policy - Kebijakan routing aktif dari database.
  * @param modelOverride - Model khusus modalitas (sampul, TTS, transkripsi); bila diisi, rantai hanya berisi override tersebut.
+ * @param providerOverride - Provider pemilik override dari katalog; bila diisi, override berjalan di provider itu bukan primary.
  * @returns Satu atau dua entri; fallback ditambahkan bila provider atau modelnya berbeda dari primary.
  * @remarks `fallback_provider_id` yang null dibaca sebagai provider primary, sehingga `fallback_model` yang berbeda tetap menyelamatkan query saat model utama kelebihan beban.
  */
 export function resolveAiModelChain(
   policy: AiRoutingPolicy,
   modelOverride?: string | undefined,
+  providerOverride?: string | undefined,
 ): readonly AiModelChainEntry[] {
   const primaryProviderId = policy.primaryProviderId ?? 'gemini';
   const targetModel = modelOverride ?? policy.defaultModel;
-  if (modelOverride !== undefined) return [{ providerId: primaryProviderId, modelName: targetModel }];
+  if (modelOverride !== undefined) {
+    return [{ providerId: providerOverride ?? primaryProviderId, modelName: targetModel }];
+  }
   const fallbackProviderId = policy.fallbackProviderId ?? primaryProviderId;
   if (fallbackProviderId === primaryProviderId && policy.fallbackModel === targetModel) {
     return [{ providerId: primaryProviderId, modelName: targetModel }];
@@ -330,6 +357,64 @@ export function resolveAiModelChain(
     { providerId: primaryProviderId, modelName: targetModel },
     { providerId: fallbackProviderId, modelName: policy.fallbackModel },
   ];
+}
+
+/** Redis cursor rotating the starting entry of the model chain. */
+export const AI_CHAIN_CURSOR_KEY = 'ai:chain:cursor';
+
+/**
+ * Memutar urutan rantai dari satu titik awal tanpa mengubah isinya.
+ *
+ * @param chain - Rantai dasar primary → fallback dari `resolveAiModelChain`.
+ * @param startIndex - Titik awal putaran; di luar rentang dinormalkan dengan modulo.
+ * @returns Rantai yang sama diputar agar entri awal berbeda tiap request.
+ */
+export function orderAiModelChain(
+  chain: readonly AiModelChainEntry[],
+  startIndex: number,
+): readonly AiModelChainEntry[] {
+  if (chain.length <= 1 || !Number.isFinite(startIndex)) return chain;
+  const start = ((Math.floor(startIndex) % chain.length) + chain.length) % chain.length;
+  if (start === 0) return chain;
+  return [...chain.slice(start), ...chain.slice(0, start)];
+}
+
+/**
+ * Mengambil dan memajukan cursor putaran rantai model.
+ *
+ * @param store - Counter Redis; undefined berarti fail-open ke awal rantai.
+ * @returns Indeks awal untuk request ini; 0 saat Redis tidak tersedia.
+ * @remarks Fail-open: kegagalan Redis menghasilkan urutan fallback, bukan request gagal.
+ */
+export async function nextChainStartIndex(store: AiRateLimitStore | undefined): Promise<number> {
+  if (store === undefined) return 0;
+  try {
+    const cursor = await store.incrby(AI_CHAIN_CURSOR_KEY, 1);
+    return Number.isFinite(cursor) && cursor > 0 ? cursor - 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Menyusun rantai model sesuai strategi rantai kebijakan.
+ *
+ * @param policy - Kebijakan routing aktif dari database.
+ * @param startIndex - Titik awal putaran; hanya dipakai saat `chainStrategy` round_robin.
+ * @param modelOverride - Model khusus modalitas; bila diisi, rantai single tanpa putaran.
+ * @param providerOverride - Provider pemilik override dari katalog.
+ * @returns Satu atau dua entri; round_robin memutar titik awalnya, fallback memakai urutan tetap.
+ */
+export function resolveOrderedAiModelChain(
+  policy: AiRoutingPolicy,
+  startIndex = 0,
+  modelOverride?: string | undefined,
+  providerOverride?: string | undefined,
+): readonly AiModelChainEntry[] {
+  const chain = resolveAiModelChain(policy, modelOverride, providerOverride);
+  const strategy: AiChainStrategy = policy.chainStrategy ?? 'fallback';
+  if (strategy !== 'round_robin' || modelOverride !== undefined) return chain;
+  return orderAiModelChain(chain, startIndex);
 }
 
 /**

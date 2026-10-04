@@ -3,15 +3,17 @@ import type { SQL } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import { aiCredentials, aiMasterSecrets, aiModels, aiQueryInsights, aiRequestLogs, aiRoutingPolicies } from '@/data/schema/ai';
+import { aiCredentials, aiMasterSecrets, aiModels, aiProviders, aiQueryInsights, aiRequestLogs, aiRoutingPolicies } from '@/data/schema/ai';
 import { runtimeConfigAuditLogs } from '@/data/schema/runtime-config';
 import type * as schema from '@/data/schema';
 import type {
+  AiChainStrategy,
   AiCredentialProjection,
   AiCredentialStatus,
   AiMasterStatus,
   AiModelEntry,
   AiOrgTokenUsage,
+  AiProviderEntry,
   AiQueryInsightRow,
   AiRequestLogRow,
   AiRoutingPolicy,
@@ -22,6 +24,7 @@ type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 const CREDENTIAL_LIST_MAX_ROWS = 200;
 const MODEL_LIST_MAX_ROWS = 50;
+const PROVIDER_LIST_MAX_ROWS = 50;
 const LOG_LIST_MAX_ROWS = 50;
 const INSIGHT_LIST_MAX_ROWS = 50;
 const TOKEN_USAGE_ORG_MAX_ROWS = 25;
@@ -153,7 +156,7 @@ export class DrizzleAiRepository {
 
   async createCredential(
     actor: AuthorizedTenantActorContext,
-    input: { readonly label: string; readonly plainKey: string; readonly priority: number; readonly keyMasked: string; readonly now: string },
+    input: { readonly label: string; readonly plainKey: string; readonly priority: number; readonly keyMasked: string; readonly providerId: string; readonly now: string },
   ): Promise<AiCredentialProjection> {
     return this.database.transaction(async (tx) => {
       await this.actorContext(tx, actor);
@@ -164,7 +167,7 @@ export class DrizzleAiRepository {
         .insert(aiCredentials)
         .values({
           organizationId: null,
-          providerId: 'gemini',
+          providerId: input.providerId,
           label: input.label,
           keyEncrypted: cipher,
           keyMasked: input.keyMasked,
@@ -176,7 +179,7 @@ export class DrizzleAiRepository {
         .returning(credentialProjection);
       const row = rows[0] as CredentialProjectionRow | undefined;
       if (row === undefined) throw new Error('AI credential insert returned no row.');
-      await this.audit(tx, actor, 'ai.credential.create', 'ai_credential', row.id, ['label', 'priority'], 'succeeded');
+      await this.audit(tx, actor, 'ai.credential.create', 'ai_credential', row.id, ['label', 'priority', 'providerId'], 'succeeded');
       return mapCredential(row);
     });
   }
@@ -304,6 +307,8 @@ export class DrizzleAiRepository {
       return tx
         .select({
           rotationStrategy: aiRoutingPolicies.rotationStrategy,
+          chainStrategy: aiRoutingPolicies.chainStrategy,
+          primaryProviderId: aiRoutingPolicies.primaryProviderId,
           defaultModel: aiRoutingPolicies.defaultModel,
           fallbackProviderId: aiRoutingPolicies.fallbackProviderId,
           fallbackModel: aiRoutingPolicies.fallbackModel,
@@ -311,6 +316,7 @@ export class DrizzleAiRepository {
           perKeyRetryLimit: aiRoutingPolicies.perKeyRetryLimit,
           cooldownDurationSec: aiRoutingPolicies.cooldownDurationSec,
           requestTimeoutMs: aiRoutingPolicies.requestTimeoutMs,
+          globalConcurrencyLimit: aiRoutingPolicies.globalConcurrencyLimit,
           version: aiRoutingPolicies.version,
           updatedAt: aiRoutingPolicies.updatedAt,
         })
@@ -320,10 +326,12 @@ export class DrizzleAiRepository {
     });
     const row = rows[0];
     if (row === undefined) {
-      return { rotationStrategy: 'health_aware', defaultModel: 'gemini-2.5-flash', fallbackProviderId: null, fallbackModel: 'gemini-2.5-flash', maxRetries: 5, perKeyRetryLimit: 2, cooldownDurationSec: 60, requestTimeoutMs: 60000, version: 1, updatedAt: new Date(0).toISOString() };
+      return { rotationStrategy: 'health_aware', chainStrategy: 'fallback', primaryProviderId: 'gemini', defaultModel: 'gemini-2.5-flash', fallbackProviderId: null, fallbackModel: 'gemini-2.5-flash', maxRetries: 5, perKeyRetryLimit: 2, cooldownDurationSec: 60, requestTimeoutMs: 60000, globalConcurrencyLimit: 100, version: 1, updatedAt: new Date(0).toISOString() };
     }
     return {
       rotationStrategy: row.rotationStrategy,
+      chainStrategy: row.chainStrategy === 'round_robin' ? row.chainStrategy satisfies AiChainStrategy : 'fallback',
+      primaryProviderId: row.primaryProviderId,
       defaultModel: row.defaultModel,
       fallbackProviderId: row.fallbackProviderId,
       fallbackModel: row.fallbackModel,
@@ -331,6 +339,7 @@ export class DrizzleAiRepository {
       perKeyRetryLimit: row.perKeyRetryLimit,
       cooldownDurationSec: row.cooldownDurationSec,
       requestTimeoutMs: row.requestTimeoutMs,
+      globalConcurrencyLimit: row.globalConcurrencyLimit,
       version: row.version,
       updatedAt: iso(row.updatedAt),
     };
@@ -338,29 +347,33 @@ export class DrizzleAiRepository {
 
   async upsertPolicy(
     actor: AuthorizedTenantActorContext,
-    input: { readonly rotationStrategy: AiRoutingPolicy['rotationStrategy']; readonly defaultModel: string; readonly fallbackProviderId: string | null; readonly fallbackModel: string; readonly maxRetries: number; readonly cooldownDurationSec: number; readonly now: string },
+    input: { readonly rotationStrategy: AiRoutingPolicy['rotationStrategy']; readonly chainStrategy: AiChainStrategy; readonly primaryProviderId: string | null; readonly defaultModel: string; readonly fallbackProviderId: string | null; readonly fallbackModel: string; readonly maxRetries: number; readonly perKeyRetryLimit: number; readonly cooldownDurationSec: number; readonly requestTimeoutMs: number; readonly globalConcurrencyLimit: number; readonly now: string },
   ): Promise<AiRoutingPolicy> {
     return this.database.transaction(async (tx) => {
       await this.actorContext(tx, actor);
       const existing = await tx
-        .select({ perKeyRetryLimit: aiRoutingPolicies.perKeyRetryLimit, requestTimeoutMs: aiRoutingPolicies.requestTimeoutMs, version: aiRoutingPolicies.version })
+        .select({ primaryProviderId: aiRoutingPolicies.primaryProviderId, version: aiRoutingPolicies.version })
         .from(aiRoutingPolicies)
         .where(eq(aiRoutingPolicies.id, 'default'))
         .limit(1);
       const prior = existing[0];
       const version = (prior?.version ?? 0) + 1;
+      const primaryProviderId = input.primaryProviderId ?? prior?.primaryProviderId ?? 'gemini';
       const rows = await tx
         .insert(aiRoutingPolicies)
         .values({
           id: 'default',
           rotationStrategy: input.rotationStrategy,
+          chainStrategy: input.chainStrategy,
+          primaryProviderId,
           defaultModel: input.defaultModel,
           fallbackProviderId: input.fallbackProviderId,
           fallbackModel: input.fallbackModel,
           maxRetries: input.maxRetries,
-          perKeyRetryLimit: prior?.perKeyRetryLimit ?? 2,
+          perKeyRetryLimit: input.perKeyRetryLimit,
           cooldownDurationSec: input.cooldownDurationSec,
-          requestTimeoutMs: prior?.requestTimeoutMs ?? 60000,
+          requestTimeoutMs: input.requestTimeoutMs,
+          globalConcurrencyLimit: input.globalConcurrencyLimit,
           version,
           updatedAt: new Date(input.now),
         })
@@ -368,17 +381,24 @@ export class DrizzleAiRepository {
           target: aiRoutingPolicies.id,
           set: {
             rotationStrategy: input.rotationStrategy,
+            chainStrategy: input.chainStrategy,
+            primaryProviderId,
             defaultModel: input.defaultModel,
             fallbackProviderId: input.fallbackProviderId,
             fallbackModel: input.fallbackModel,
             maxRetries: input.maxRetries,
+            perKeyRetryLimit: input.perKeyRetryLimit,
             cooldownDurationSec: input.cooldownDurationSec,
+            requestTimeoutMs: input.requestTimeoutMs,
+            globalConcurrencyLimit: input.globalConcurrencyLimit,
             version,
             updatedAt: new Date(input.now),
           },
         })
         .returning({
           rotationStrategy: aiRoutingPolicies.rotationStrategy,
+          chainStrategy: aiRoutingPolicies.chainStrategy,
+          primaryProviderId: aiRoutingPolicies.primaryProviderId,
           defaultModel: aiRoutingPolicies.defaultModel,
           fallbackProviderId: aiRoutingPolicies.fallbackProviderId,
           fallbackModel: aiRoutingPolicies.fallbackModel,
@@ -386,14 +406,17 @@ export class DrizzleAiRepository {
           perKeyRetryLimit: aiRoutingPolicies.perKeyRetryLimit,
           cooldownDurationSec: aiRoutingPolicies.cooldownDurationSec,
           requestTimeoutMs: aiRoutingPolicies.requestTimeoutMs,
+          globalConcurrencyLimit: aiRoutingPolicies.globalConcurrencyLimit,
           version: aiRoutingPolicies.version,
           updatedAt: aiRoutingPolicies.updatedAt,
         });
       const row = rows[0];
       if (row === undefined) throw new Error('AI policy upsert returned no row.');
-      await this.audit(tx, actor, 'ai.policy.update', 'ai_routing_policy', 'default', ['rotationStrategy', 'defaultModel', 'fallbackProviderId', 'fallbackModel', 'maxRetries', 'cooldownDurationSec'], 'succeeded');
+      await this.audit(tx, actor, 'ai.policy.update', 'ai_routing_policy', 'default', ['rotationStrategy', 'chainStrategy', 'primaryProviderId', 'defaultModel', 'fallbackProviderId', 'fallbackModel', 'maxRetries', 'perKeyRetryLimit', 'cooldownDurationSec', 'requestTimeoutMs', 'globalConcurrencyLimit'], 'succeeded');
       return {
         rotationStrategy: row.rotationStrategy,
+        chainStrategy: row.chainStrategy === 'round_robin' ? row.chainStrategy satisfies AiChainStrategy : 'fallback',
+        primaryProviderId: row.primaryProviderId,
         defaultModel: row.defaultModel,
         fallbackProviderId: row.fallbackProviderId,
         fallbackModel: row.fallbackModel,
@@ -401,10 +424,23 @@ export class DrizzleAiRepository {
         perKeyRetryLimit: row.perKeyRetryLimit,
         cooldownDurationSec: row.cooldownDurationSec,
         requestTimeoutMs: row.requestTimeoutMs,
+        globalConcurrencyLimit: row.globalConcurrencyLimit,
         version: row.version,
         updatedAt: iso(row.updatedAt),
       };
     });
+  }
+
+  async listProviders(actor: AuthorizedTenantActorContext): Promise<readonly AiProviderEntry[]> {
+    const rows = await this.database.transaction(async (tx) => {
+      await this.actorContext(tx, actor);
+      return tx
+        .select({ id: aiProviders.id, name: aiProviders.name, isActive: aiProviders.isActive, supportsChat: aiProviders.supportsChat })
+        .from(aiProviders)
+        .orderBy(aiProviders.priority)
+        .limit(PROVIDER_LIST_MAX_ROWS);
+    });
+    return rows.map((row) => ({ id: row.id, name: row.name, isActive: row.isActive, supportsChat: row.supportsChat }));
   }
 
   async listModels(actor: AuthorizedTenantActorContext): Promise<readonly AiModelEntry[]> {
@@ -412,6 +448,7 @@ export class DrizzleAiRepository {
       await this.actorContext(tx, actor);
       return tx
         .select({
+          providerId: aiModels.providerId,
           modelName: aiModels.modelName,
           displayName: aiModels.displayName,
           releaseStage: aiModels.releaseStage,
@@ -429,6 +466,7 @@ export class DrizzleAiRepository {
         .limit(MODEL_LIST_MAX_ROWS);
     });
     return rows.map((row) => ({
+      providerId: row.providerId,
       modelName: row.modelName,
       displayName: row.displayName,
       releaseStage: row.releaseStage,

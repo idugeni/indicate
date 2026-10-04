@@ -18,6 +18,7 @@ import { AppTooltip } from '@/ui/app-tooltip';
 
 interface CredentialRow {
   readonly id: string;
+  readonly providerId: string;
   readonly label: string;
   readonly keyMasked: string;
   readonly status: string;
@@ -31,14 +32,20 @@ interface CredentialRow {
 
 interface PolicyState {
   readonly rotationStrategy: string;
+  readonly chainStrategy: string;
+  readonly primaryProviderId: string | null;
   readonly defaultModel: string;
   readonly fallbackProviderId: string | null;
   readonly fallbackModel: string;
   readonly maxRetries: number;
+  readonly perKeyRetryLimit: number;
   readonly cooldownDurationSec: number;
+  readonly requestTimeoutMs: number;
+  readonly globalConcurrencyLimit: number;
 }
 
 interface ModelEntry {
+  readonly providerId: string;
   readonly modelName: string;
   readonly displayName: string;
   readonly releaseStage: string | null;
@@ -86,6 +93,7 @@ interface OverviewState {
   readonly credentials: readonly CredentialRow[];
   readonly policy: PolicyState;
   readonly models: readonly ModelEntry[];
+  readonly providers: readonly { readonly id: string; readonly name: string; readonly isActive: boolean; readonly supportsChat: boolean }[];
   readonly recentLogs: readonly LogRow[];
   readonly queryInsights: readonly InsightRow[];
   readonly tokenUsageByOrg: readonly OrgUsageRow[];
@@ -113,6 +121,11 @@ const ROTATION_OPTIONS: Readonly<Record<string, string>> = {
   random: 'Random',
 };
 
+const CHAIN_OPTIONS: Readonly<Record<string, string>> = {
+  fallback: 'Fallback — tries in order',
+  round_robin: 'Round Robin — rotates models',
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
@@ -134,6 +147,7 @@ function toCredential(value: unknown): CredentialRow | null {
   if (row === null || typeof row.id !== 'string' || typeof row.label !== 'string') return null;
   return {
     id: row.id,
+    providerId: asString(row.providerId, 'gemini'),
     label: row.label,
     keyMasked: asString(row.keyMasked, '••••••••••'),
     status: asString(row.status, 'active'),
@@ -157,6 +171,7 @@ function toOverview(value: unknown): OverviewState | null {
         const row = asRecord(entry);
         if (row === null || typeof row.modelName !== 'string') return [];
         const model: ModelEntry = {
+          providerId: asString(row.providerId, ''),
           modelName: row.modelName,
           displayName: asString(row.displayName, row.modelName),
           releaseStage: typeof row.releaseStage === 'string' ? row.releaseStage : null,
@@ -218,17 +233,35 @@ function toOverview(value: unknown): OverviewState | null {
         }];
       })
     : [];
+  const providers: OverviewState['providers'] = Array.isArray(body.providers)
+    ? body.providers.flatMap((entry) => {
+        const row = asRecord(entry);
+        if (row === null || typeof row.id !== 'string') return [];
+        return [{
+          id: row.id,
+          name: asString(row.name, row.id),
+          isActive: row.isActive !== false,
+          supportsChat: row.supportsChat !== false,
+        }];
+      })
+    : [];
   return {
     credentials,
     policy: {
       rotationStrategy: policy === null ? 'health_aware' : asString(policy.rotationStrategy, 'health_aware'),
+      chainStrategy: policy === null ? 'fallback' : asString(policy.chainStrategy, 'fallback'),
+      primaryProviderId: policy === null || typeof policy.primaryProviderId !== 'string' ? null : policy.primaryProviderId,
       defaultModel: policy === null ? 'gemini-2.5-flash' : asString(policy.defaultModel, 'gemini-2.5-flash'),
       fallbackProviderId: policy === null || typeof policy.fallbackProviderId !== 'string' ? null : policy.fallbackProviderId,
       fallbackModel: policy === null ? 'gemini-2.5-flash' : asString(policy.fallbackModel, 'gemini-2.5-flash'),
       maxRetries: policy === null ? 3 : asNumber(policy.maxRetries, 3),
+      perKeyRetryLimit: policy === null ? 2 : asNumber(policy.perKeyRetryLimit, 2),
       cooldownDurationSec: policy === null ? 300 : asNumber(policy.cooldownDurationSec, 300),
+      requestTimeoutMs: policy === null ? 60000 : asNumber(policy.requestTimeoutMs, 60000),
+      globalConcurrencyLimit: policy === null ? 100 : asNumber(policy.globalConcurrencyLimit, 100),
     },
     models,
+    providers,
     recentLogs,
     queryInsights,
     tokenUsageByOrg,
@@ -278,13 +311,19 @@ export function AiManagementPanel({
   const [label, setLabel] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [priority, setPriority] = useState('1');
+  const [providerId, setProviderId] = useState('gemini');
 
   const [rotationStrategy, setRotationStrategy] = useState('health_aware');
+  const [chainStrategy, setChainStrategy] = useState('fallback');
+  const [primaryProviderId, setPrimaryProviderId] = useState('');
   const [defaultModel, setDefaultModel] = useState('gemini-2.5-flash');
   const [fallbackProviderId, setFallbackProviderId] = useState('');
   const [fallbackModel, setFallbackModel] = useState('gemini-2.5-flash');
   const [maxRetries, setMaxRetries] = useState('3');
+  const [perKeyRetryLimit, setPerKeyRetryLimit] = useState('2');
   const [cooldownDurationSec, setCooldownDurationSec] = useState('300');
+  const [timeoutSec, setTimeoutSec] = useState('60');
+  const [concurrencyLimit, setConcurrencyLimit] = useState('100');
 
   const [credQuery, setCredQuery] = useState('');
   const [credPage, setCredPage] = useState(1);
@@ -297,13 +336,18 @@ export function AiManagementPanel({
   const labelId = useId();
   const apiKeyId = useId();
   const priorityId = useId();
+  const providerIdInputId = useId();
+  const primaryProviderIdInputId = useId();
   const fallbackProviderIdInputId = useId();
   const fallbackModelId = useId();
   const credSearchId = useId();
   const insightSearchId = useId();
   const logSearchId = useId();
   const maxRetriesId = useId();
+  const perKeyRetryLimitId = useId();
   const cooldownId = useId();
+  const timeoutSecId = useId();
+  const concurrencyLimitId = useId();
 
   const requestSeq = useRef(0);
   const reload = useCallback(async () => {
@@ -318,11 +362,16 @@ export function AiManagementPanel({
       if (seq !== requestSeq.current) return;
       setOverview(parsed);
       setRotationStrategy(parsed.policy.rotationStrategy);
+      setChainStrategy(parsed.policy.chainStrategy);
+      setPrimaryProviderId(parsed.policy.primaryProviderId ?? '');
       setDefaultModel(parsed.policy.defaultModel);
       setFallbackProviderId(parsed.policy.fallbackProviderId ?? '');
       setFallbackModel(parsed.policy.fallbackModel);
       setMaxRetries(String(parsed.policy.maxRetries));
+      setPerKeyRetryLimit(String(parsed.policy.perKeyRetryLimit));
       setCooldownDurationSec(String(parsed.policy.cooldownDurationSec));
+      setTimeoutSec(String(Math.round(parsed.policy.requestTimeoutMs / 1000)));
+      setConcurrencyLimit(String(parsed.policy.globalConcurrencyLimit));
     } catch {
       if (seq !== requestSeq.current) return;
       setError('Gagal memuat kontrol AI.');
@@ -356,9 +405,10 @@ export function AiManagementPanel({
       return;
     }
     const parsedPriority = Number.parseInt(priority, 10);
+    const provider = providerId.trim().toLowerCase() === '' ? 'gemini' : providerId.trim().toLowerCase();
     void runCommand(
       'ai.credential.create',
-      { label: label.trim(), apiKey: apiKey.trim(), priority: Number.isFinite(parsedPriority) ? parsedPriority : 1 },
+      { label: label.trim(), apiKey: apiKey.trim(), priority: Number.isFinite(parsedPriority) ? parsedPriority : 1, providerId: provider },
       'Kredensial tersimpan sebagai hash; hanya masked yang tampil.',
     ).then(() => {
       setLabel('');
@@ -368,16 +418,69 @@ export function AiManagementPanel({
   };
 
   const handleSavePolicy = () => {
-    const fallback = fallbackProviderId.trim();
+    const knownProviders = new Map((overview?.providers ?? []).map((provider) => [provider.id, provider] as const));
+    const primary = primaryProviderId.trim() === '' ? null : primaryProviderId.trim().toLowerCase();
+    const fallback = fallbackProviderId.trim() === '' ? null : fallbackProviderId.trim().toLowerCase();
+    if (primary !== null && knownProviders.size > 0 && !knownProviders.has(primary)) {
+      setError(`Provider primer tidak dikenal: ${primary}.`);
+      return;
+    }
+    if (primary !== null && knownProviders.get(primary)?.supportsChat === false) {
+      setError(`Provider ${primary} tidak mendukung chat; pilih provider chat dari direktori.`);
+      return;
+    }
+    if (fallback !== null && knownProviders.size > 0 && !knownProviders.has(fallback)) {
+      setError(`Provider fallback tidak dikenal: ${fallback}.`);
+      return;
+    }
+    if (fallback !== null && knownProviders.get(fallback)?.supportsChat === false) {
+      setError(`Provider ${fallback} tidak mendukung chat; pilih provider chat dari direktori.`);
+      return;
+    }
+    const modelOwner = new Map((overview?.models ?? []).map((model) => [model.modelName, model.providerId] as const));
+    const defModel = defaultModel.trim() === '' ? 'gemini-2.5-flash' : defaultModel.trim();
+    const fbModel = fallbackModel.trim() === '' ? 'gemini-2.5-flash' : fallbackModel.trim();
+    const effectivePrimary = primary ?? overview?.policy.primaryProviderId ?? null;
+    const defOwner = modelOwner.get(defModel);
+    if (effectivePrimary !== null && defOwner !== undefined && defOwner !== '' && defOwner !== effectivePrimary) {
+      setError(`Model default ${defModel} milik ${defOwner}, bukan ${effectivePrimary}.`);
+      return;
+    }
+    const fbOwner = modelOwner.get(fbModel);
+    const effectiveFallback = fallback ?? effectivePrimary;
+    if (fallback !== null && effectiveFallback !== null && fbOwner !== undefined && fbOwner !== '' && fbOwner !== effectiveFallback) {
+      setError(`Model fallback ${fbModel} milik ${fbOwner}, bukan ${effectiveFallback}.`);
+      return;
+    }
+    const parsedPerKey = Number.parseInt(perKeyRetryLimit, 10);
+    const parsedTimeoutSec = Number.parseInt(timeoutSec, 10);
+    const parsedConcurrency = Number.parseInt(concurrencyLimit, 10);
+    if (!Number.isFinite(parsedPerKey) || parsedPerKey < 1 || parsedPerKey > 5) {
+      setError('Batas retry per key harus 1–5.');
+      return;
+    }
+    if (!Number.isFinite(parsedTimeoutSec) || parsedTimeoutSec < 1 || parsedTimeoutSec > 300) {
+      setError('Timeout request harus 1–300 detik.');
+      return;
+    }
+    if (!Number.isFinite(parsedConcurrency) || parsedConcurrency < 1 || parsedConcurrency > 1000) {
+      setError('Batas konkurensi global harus 1–1000.');
+      return;
+    }
     void runCommand(
       'ai.policy.update',
       {
         rotationStrategy,
-        defaultModel: defaultModel.trim() === '' ? 'gemini-2.5-flash' : defaultModel.trim(),
-        fallbackProviderId: fallback === '' ? null : fallback,
-        fallbackModel: fallbackModel.trim() === '' ? 'gemini-2.5-flash' : fallbackModel.trim(),
+        chainStrategy,
+        primaryProviderId: primary,
+        defaultModel: defModel,
+        fallbackProviderId: fallback,
+        fallbackModel: fbModel,
         maxRetries: Number.parseInt(maxRetries, 10) || 3,
+        perKeyRetryLimit: parsedPerKey,
         cooldownDurationSec: Number.parseInt(cooldownDurationSec, 10) || 300,
+        requestTimeoutMs: parsedTimeoutSec * 1000,
+        globalConcurrencyLimit: parsedConcurrency,
       },
       'Kebijakan routing tersimpan.',
     );
@@ -401,7 +504,7 @@ export function AiManagementPanel({
   const filteredCredentials = useMemo(() => {
     const query = credQuery.trim().toLowerCase();
     const rows = overview?.credentials ?? [];
-    const matched = query === '' ? [...rows] : rows.filter((row) => row.label.toLowerCase().includes(query) || row.keyMasked.toLowerCase().includes(query) || row.status.toLowerCase().includes(query));
+    const matched = query === '' ? [...rows] : rows.filter((row) => row.label.toLowerCase().includes(query) || row.providerId.toLowerCase().includes(query) || row.keyMasked.toLowerCase().includes(query) || row.status.toLowerCase().includes(query));
     matched.sort((a, b) => a.priority - b.priority);
     return matched;
   }, [overview, credQuery]);
@@ -430,7 +533,33 @@ export function AiManagementPanel({
 
   const stats = overview?.stats;
   const successRate = stats !== undefined && stats.totalRequests > 0 ? Math.round((stats.successfulRequests / stats.totalRequests) * 100) : 100;
-  const modelOptions = overview !== null && overview.models.length > 0 ? overview.models : [{ modelName: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' }];
+  const modelOptions = overview !== null && overview.models.length > 0 ? overview.models : [{ providerId: 'gemini', modelName: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' }];
+  const providerOptions = overview !== null && overview.providers.length > 0
+    ? overview.providers
+    : [{ id: 'gemini', name: 'Google Gemini', isActive: true, supportsChat: true }, { id: 'openrouter', name: 'OpenRouter', isActive: true, supportsChat: true }, { id: 'vercel-gateway', name: 'Vercel AI Gateway', isActive: true, supportsChat: true }];
+  const withCurrentModel = (current: string): readonly { readonly providerId: string; readonly modelName: string; readonly displayName: string }[] =>
+    modelOptions.some((model) => model.modelName === current)
+      ? modelOptions
+      : [...modelOptions, { providerId: '', modelName: current, displayName: `${current} (tidak di katalog)` }];
+  const defaultModelOptions = withCurrentModel(defaultModel.trim() === '' ? 'gemini-2.5-flash' : defaultModel.trim());
+  const fallbackModelOptions = withCurrentModel(fallbackModel.trim() === '' ? 'gemini-2.5-flash' : fallbackModel.trim());
+  const activeCredentialProviders = useMemo(() => {
+    const active = new Set<string>();
+    for (const row of overview?.credentials ?? []) {
+      if (row.status === 'active') active.add(row.providerId);
+    }
+    return active;
+  }, [overview]);
+  const chainWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    const policy = overview?.policy;
+    if (policy === undefined) return warnings;
+    const primary = primaryProviderId.trim() === '' ? (policy.primaryProviderId ?? 'gemini') : primaryProviderId.trim().toLowerCase();
+    const fallback = fallbackProviderId.trim() === '' ? null : fallbackProviderId.trim().toLowerCase();
+    if (!activeCredentialProviders.has(primary)) warnings.push(`Tidak ada kredensial aktif untuk provider primer ${primary}.`);
+    if (fallback !== null && !activeCredentialProviders.has(fallback)) warnings.push(`Tidak ada kredensial aktif untuk provider fallback ${fallback}.`);
+    return warnings;
+  }, [overview, primaryProviderId, fallbackProviderId, activeCredentialProviders]);
 
   return (
     <div className="grid items-start gap-4">
@@ -481,13 +610,30 @@ export function AiManagementPanel({
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <SectionCard icon={KeyRound} title="Tambah API Key" eyebrow="Kredensial">
           <div className="space-y-3 pt-1">
-            <div className="space-y-1.5">
-              <Label htmlFor={labelId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Label kredensial</Label>
-              <Input id={labelId} value={label} onChange={(event) => setLabel(event.target.value)} disabled={busy} placeholder="cth: Gemini Primary Prod 1" className="h-8 font-sans text-xs" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={labelId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Label kredensial</Label>
+                <Input id={labelId} value={label} onChange={(event) => setLabel(event.target.value)} disabled={busy} placeholder="cth: OpenRouter Prod 1" className="h-8 font-sans text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={providerIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider</Label>
+                <DashboardSelect
+                  id={providerIdInputId}
+                  value={providerId}
+                  disabled={busy}
+                  placeholder="Pilih provider"
+                  ariaLabel="Provider kredensial"
+                  onValueChange={(next) => { if (next !== null) setProviderId(next); }}
+                >
+                  {providerOptions.map((provider) => (
+                    <DashboardSelectItem key={provider.id} value={provider.id}>{provider.name}</DashboardSelectItem>
+                  ))}
+                </DashboardSelect>
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor={apiKeyId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Gemini API key</Label>
-              <Input id={apiKeyId} type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} disabled={busy} placeholder="AIza…" autoComplete="off" spellCheck={false} className="h-8 font-mono text-xs" />
+              <Label htmlFor={apiKeyId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">API key</Label>
+              <Input id={apiKeyId} type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} disabled={busy} placeholder="sk-or-… / AIza…" autoComplete="off" spellCheck={false} className="h-8 font-mono text-xs" />
               <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">Disimpan sebagai hash satu arah; plain tidak pernah tampil lagi.</p>
             </div>
             <div className="space-y-1.5">
@@ -520,25 +666,61 @@ export function AiManagementPanel({
                 </DashboardSelect>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ai-model" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Model default</Label>
+                <Label htmlFor={primaryProviderIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider primer</Label>
                 <DashboardSelect
-                  id="ai-model"
-                  value={defaultModel}
+                  id={primaryProviderIdInputId}
+                  value={primaryProviderId}
                   disabled={busy}
-                  placeholder="Pilih model"
-                  ariaLabel="Model default"
-                  onValueChange={(next) => { if (next !== null) setDefaultModel(next); }}
+                  placeholder="Pilih provider primer"
+                  ariaLabel="Provider primer"
+                  onValueChange={(next) => { if (next !== null) setPrimaryProviderId(next); }}
                 >
-                  {modelOptions.map((model) => (
-                    <DashboardSelectItem key={model.modelName} value={model.modelName}>{model.displayName}</DashboardSelectItem>
+                  <DashboardSelectItem value="">Ikut kebijakan tersimpan</DashboardSelectItem>
+                  {providerOptions.map((provider) => (
+                    <DashboardSelectItem key={provider.id} value={provider.id}>{provider.name}</DashboardSelectItem>
                   ))}
                 </DashboardSelect>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-model" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Model default</Label>
+              <DashboardSelect
+                id="ai-model"
+                value={defaultModel}
+                disabled={busy}
+                placeholder="Pilih model"
+                ariaLabel="Model default"
+                onValueChange={(next) => { if (next !== null) setDefaultModel(next); }}
+              >
+                {defaultModelOptions.map((model) => (
+                  <DashboardSelectItem key={model.modelName} value={model.modelName}>{model.displayName}</DashboardSelectItem>
+                ))}
+              </DashboardSelect>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-chain" className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Strategi rantai model</Label>
+              <DashboardSelect
+                id="ai-chain"
+                value={chainStrategy}
+                disabled={busy}
+                placeholder="Pilih strategi rantai"
+                ariaLabel="Strategi rantai model"
+                onValueChange={(next) => { if (next !== null) setChainStrategy(next); }}
+              >
+                {Object.entries(CHAIN_OPTIONS).map(([value, text]) => (
+                  <DashboardSelectItem key={value} value={value}>{text}</DashboardSelectItem>
+                ))}
+              </DashboardSelect>
+              <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">Fallback mencoba sesuai urutan saat gagal; Round Robin memutar model awal tiap request untuk menyebar beban.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label htmlFor={maxRetriesId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Maksimal retry (1–10)</Label>
+                <Label htmlFor={maxRetriesId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Retry/entri (1–10)</Label>
                 <Input id={maxRetriesId} type="number" min={1} max={10} value={maxRetries} onChange={(event) => setMaxRetries(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={perKeyRetryLimitId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Retry per key (1–5)</Label>
+                <Input id={perKeyRetryLimitId} type="number" min={1} max={5} value={perKeyRetryLimit} onChange={(event) => setPerKeyRetryLimit(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={cooldownId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Cooldown detik (10–3600)</Label>
@@ -547,18 +729,54 @@ export function AiManagementPanel({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor={fallbackProviderIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider fallback (kosong = nonaktif)</Label>
-                <Input id={fallbackProviderIdInputId} value={fallbackProviderId} onChange={(event) => setFallbackProviderId(event.target.value)} disabled={busy} placeholder="cth: gemini" className="h-8 font-mono text-xs" />
+                <Label htmlFor={timeoutSecId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Timeout detik (1–300)</Label>
+                <Input id={timeoutSecId} type="number" min={1} max={300} value={timeoutSec} onChange={(event) => setTimeoutSec(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={concurrencyLimitId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Konkurensi global (1–1000)</Label>
+                <Input id={concurrencyLimitId} type="number" min={1} max={1000} value={concurrencyLimit} onChange={(event) => setConcurrencyLimit(event.target.value)} disabled={busy} className="h-8 font-mono text-xs" />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={fallbackProviderIdInputId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Provider fallback</Label>
+                <DashboardSelect
+                  id={fallbackProviderIdInputId}
+                  value={fallbackProviderId}
+                  disabled={busy}
+                  placeholder="Tanpa fallback"
+                  ariaLabel="Provider fallback"
+                  onValueChange={(next) => { if (next !== null) setFallbackProviderId(next); }}
+                >
+                  <DashboardSelectItem value="">Tanpa fallback (satu provider)</DashboardSelectItem>
+                  {providerOptions.map((provider) => (
+                    <DashboardSelectItem key={provider.id} value={provider.id}>{provider.name}</DashboardSelectItem>
+                  ))}
+                </DashboardSelect>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={fallbackModelId} className="font-mono text-[11px] uppercase tracking-wider text-paper-dim">Model fallback</Label>
-                <Input id={fallbackModelId} value={fallbackModel} onChange={(event) => setFallbackModel(event.target.value)} disabled={busy} placeholder="gemini-2.5-flash" className="h-8 font-mono text-xs" />
+                <DashboardSelect
+                  id={fallbackModelId}
+                  value={fallbackModel}
+                  disabled={busy}
+                  placeholder="Pilih model fallback"
+                  ariaLabel="Model fallback"
+                  onValueChange={(next) => { if (next !== null) setFallbackModel(next); }}
+                >
+                  {fallbackModelOptions.map((model) => (
+                    <DashboardSelectItem key={model.modelName} value={model.modelName}>{model.displayName}</DashboardSelectItem>
+                  ))}
+                </DashboardSelect>
               </div>
             </div>
             <p className="m-0 font-mono text-[11px] leading-relaxed text-paper-faint">
-              Rantai aktif: {overview?.policy.defaultModel ?? defaultModel}
-              {overview?.policy.fallbackProviderId ? ` → ${overview.policy.fallbackProviderId}/${overview.policy.fallbackModel}` : ' → (tanpa fallback)'}
+              Rantai aktif ({overview?.policy.chainStrategy ?? 'fallback'}): {overview?.policy.primaryProviderId ?? 'gemini'}/{overview?.policy.defaultModel ?? defaultModel}
+              {overview?.policy.fallbackProviderId ? ` → ${overview.policy.fallbackProviderId}/${overview.policy.fallbackModel}` : ' → (tanpa fallback, satu provider)'}
             </p>
+            {chainWarnings.map((warning) => (
+              <p key={warning} className="m-0 font-sans text-[11px] leading-relaxed text-brass">{warning}</p>
+            ))}
             <Button type="button" variant="outline" size="sm" onClick={handleSavePolicy} disabled={busy} className="w-full">
               <span>Simpan kebijakan</span>
             </Button>
@@ -568,7 +786,7 @@ export function AiManagementPanel({
 
       <SectionCard icon={KeyRound} title={`Pool Kredensial (${filteredCredentials.length})`} eyebrow="Keys">
         <div className="space-y-3 pt-1">
-          <Input id={credSearchId} value={credQuery} onChange={(event) => { setCredQuery(event.target.value); setCredPage(1); }} disabled={busy} placeholder="Cari label, status, atau masked key…" aria-label="Cari kredensial AI" className="h-8 font-sans text-xs" />
+          <Input id={credSearchId} value={credQuery} onChange={(event) => { setCredQuery(event.target.value); setCredPage(1); }} disabled={busy} placeholder="Cari label, provider, status, atau masked key…" aria-label="Cari kredensial AI" className="h-8 font-sans text-xs" />
           {visibleCredentials.length === 0 ? (
             <EmptyState compact title={busy ? 'Memuat kredensial…' : 'Belum ada kredensial yang cocok.'} />
           ) : (
@@ -577,6 +795,7 @@ export function AiManagementPanel({
               <TableHeader>
                 <TableRow>
                   <TableHead scope="col">Label / Masked</TableHead>
+                  <TableHead scope="col">Provider</TableHead>
                   <TableHead scope="col">Status</TableHead>
                   <TableHead scope="col">Prioritas</TableHead>
                   <TableHead scope="col">Request ok/err</TableHead>
@@ -591,6 +810,9 @@ export function AiManagementPanel({
                     <TableCell>
                       <p className="m-0 font-sans text-xs font-medium text-paper">{row.label}</p>
                       <p className="m-0 mt-0.5 font-mono text-[11px] text-paper-faint">{row.keyMasked}</p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-[10px] lowercase">{row.providerId}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(row.status)}`}>{row.status}</Badge>
@@ -650,6 +872,7 @@ export function AiManagementPanel({
               <TableHeader>
                 <TableRow>
                   <TableHead scope="col">Model</TableHead>
+                  <TableHead scope="col">Provider</TableHead>
                   <TableHead scope="col">RPM</TableHead>
                   <TableHead scope="col">TPM</TableHead>
                   <TableHead scope="col">Status</TableHead>
@@ -664,6 +887,9 @@ export function AiManagementPanel({
                         <p className="m-0 font-mono text-[11px] text-paper">{model.modelName}</p>
                         <p className="m-0 mt-0.5 font-sans text-[11px] text-paper-faint">{model.displayName}{model.isDefault ? ' · default' : ''}</p>
                       </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-[10px] lowercase">{model.providerId === '' ? '−' : model.providerId}</Badge>
+                      </TableCell>
                       <TableCell className="font-mono text-xs text-paper-dim">{model.rpmLimit === null ? '∞' : model.rpmLimit.toLocaleString('id-ID')}</TableCell>
                       <TableCell className="font-mono text-xs text-paper-dim">{model.tpmLimit === null ? '∞' : model.tpmLimit.toLocaleString('id-ID')}</TableCell>
                       <TableCell>
@@ -675,6 +901,41 @@ export function AiManagementPanel({
               </TableBody>
             </Table>
           )}
+        </div>
+      </SectionCard>
+
+      <SectionCard icon={KeyRound} title={`Provider (${overview?.providers.length ?? 0})`} eyebrow="Directory">
+        <div className="space-y-3 pt-1">
+          {(overview?.providers.length ?? 0) === 0 ? (
+            <EmptyState compact title={busy ? 'Memuat provider…' : 'Belum ada provider terdaftar.'} />
+          ) : (
+            <Table>
+              <caption className="sr-only">Direktori provider AI control plane</caption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">ID</TableHead>
+                  <TableHead scope="col">Nama</TableHead>
+                  <TableHead scope="col">Status</TableHead>
+                  <TableHead scope="col">Chat</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(overview?.providers ?? []).map((provider) => (
+                  <TableRow key={provider.id}>
+                    <TableCell className="font-mono text-[11px] text-paper">{provider.id}</TableCell>
+                    <TableCell className="font-sans text-xs text-paper-dim">{provider.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(provider.isActive ? 'success' : 'open')}`}>{provider.isActive ? 'active' : 'inactive'}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(provider.supportsChat ? 'success' : 'open')}`}>{provider.supportsChat ? 'chat' : 'embed'}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          <p className="m-0 font-sans text-[11px] leading-relaxed text-paper-faint">Provider baru didaftarkan lewat migrasi seed; kredensial tiap provider ditambah di form atas.</p>
         </div>
       </SectionCard>
 

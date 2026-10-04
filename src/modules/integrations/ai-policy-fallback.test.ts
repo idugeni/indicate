@@ -30,6 +30,8 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
     recordBlockedCredential: async () => {},
     getPolicy: async () => ({
       rotationStrategy: 'health_aware',
+      chainStrategy: 'fallback',
+      primaryProviderId: 'gemini',
       defaultModel: 'gemini-2.5-flash',
       fallbackProviderId: null,
       fallbackModel: 'gemini-2.5-flash',
@@ -37,6 +39,7 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
       perKeyRetryLimit: 2,
       cooldownDurationSec: 60,
       requestTimeoutMs: 60000,
+      globalConcurrencyLimit: 100,
       version: 1,
       updatedAt: '2026-09-30T00:00:00.000Z',
     }),
@@ -44,18 +47,26 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
       captured.policyInput = { ...input };
       return {
         rotationStrategy: input.rotationStrategy,
+        chainStrategy: input.chainStrategy,
+        primaryProviderId: input.primaryProviderId,
         defaultModel: input.defaultModel,
         fallbackProviderId: input.fallbackProviderId,
         fallbackModel: input.fallbackModel,
         maxRetries: input.maxRetries,
-        perKeyRetryLimit: 2,
+        perKeyRetryLimit: input.perKeyRetryLimit,
         cooldownDurationSec: input.cooldownDurationSec,
-        requestTimeoutMs: 60000,
+        requestTimeoutMs: input.requestTimeoutMs,
+        globalConcurrencyLimit: input.globalConcurrencyLimit,
         version: 2,
         updatedAt: '2026-09-30T01:00:00.000Z',
       };
     },
     listModels: async () => [],
+    listProviders: async () => [
+      { id: 'gemini', name: 'Google Gemini', isActive: true, supportsChat: true },
+      { id: 'openrouter', name: 'OpenRouter', isActive: true, supportsChat: true },
+      { id: 'backup', name: 'Backup', isActive: true, supportsChat: true },
+    ],
     listRequestLogs: async () => [],
     listQueryInsights: async () => [],
     getTokenUsageByOrg: async () => [],
@@ -68,13 +79,17 @@ function stubRepository(captured: { policyInput?: unknown }): AiRepositoryPort {
 }
 
 describe('aiPolicyUpdateSchema fallback terkonfigurasi', () => {
-  it('menerima fallbackProviderId null dan default fallbackModel', () => {
+  it('menerima chainStrategy fallback sebagai default', () => {
     const parsed = aiPolicyUpdateSchema.parse({
       rotationStrategy: 'health_aware',
       defaultModel: 'gemini-2.5-flash',
       maxRetries: 3,
       cooldownDurationSec: 60,
     });
+    expect(parsed.chainStrategy).toBe('fallback');
+    expect(parsed.perKeyRetryLimit).toBe(2);
+    expect(parsed.requestTimeoutMs).toBe(60000);
+    expect(parsed.globalConcurrencyLimit).toBe(100);
     expect(parsed.fallbackProviderId).toBeNull();
     expect(parsed.fallbackModel).toBe('gemini-3.6-flash');
   });
@@ -106,20 +121,24 @@ describe('aiPolicyUpdateSchema fallback terkonfigurasi', () => {
 });
 
 describe('AiService.updatePolicy fallback', () => {
-  it('meneruskan fallbackProviderId dan fallbackModel ke repository', async () => {
+  it('meneruskan primaryProviderId, fallbackProviderId, dan fallbackModel ke repository', async () => {
     const captured: { policyInput?: unknown } = {};
     const service = new AiService(stubRepository(captured), { now: () => new Date('2026-09-30T00:00:00.000Z') });
     const result = await service.updatePolicy(actor(), {
       rotationStrategy: 'health_aware',
-      defaultModel: 'gemini-3.6-flash',
+      chainStrategy: 'round_robin',
+      primaryProviderId: 'openrouter',
+      defaultModel: 'openai/gpt-4o-mini',
       fallbackProviderId: 'backup',
       fallbackModel: 'gemini-2.5-flash',
       maxRetries: 5,
       cooldownDurationSec: 300,
     });
     expect(result.ok).toBe(true);
-    expect(captured.policyInput).toMatchObject({ fallbackProviderId: 'backup', fallbackModel: 'gemini-2.5-flash' });
+    expect(captured.policyInput).toMatchObject({ chainStrategy: 'round_robin', primaryProviderId: 'openrouter', fallbackProviderId: 'backup', fallbackModel: 'gemini-2.5-flash' });
     if (result.ok) {
+      expect(result.value.chainStrategy).toBe('round_robin');
+      expect(result.value.primaryProviderId).toBe('openrouter');
       expect(result.value.fallbackProviderId).toBe('backup');
       expect(result.value.fallbackModel).toBe('gemini-2.5-flash');
     }

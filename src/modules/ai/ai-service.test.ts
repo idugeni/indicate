@@ -61,7 +61,7 @@ interface FakeDb {
   readonly logs: AiRequestLogEntry[];
 }
 
-function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record<string, unknown> = POLICY_ROW): FakeDb {
+function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record<string, unknown> = POLICY_ROW, ownerProvider: string | null = null): FakeDb {
   const adapterCalls: { readonly providerId: string; readonly modelName: string }[] = [];
   const logs: AiRequestLogEntry[] = [];
   let credentialSelect = 0;
@@ -70,6 +70,9 @@ function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record
       const text = sqlText(query);
       if (text.includes('ai_routing_policies')) return [{ ...policyRow }];
       if (text.includes('decrypt_ai_key')) return [{ plain: 'plain-test-key' }];
+      if (text.includes('provider_id') && text.includes('ai_models')) {
+        return ownerProvider === null ? [] : [{ provider_id: ownerProvider }];
+      }
       if (text.includes('key_encrypted')) {
         const rows = credentialSelects[Math.min(credentialSelect, credentialSelects.length - 1)] ?? [];
         credentialSelect += 1;
@@ -135,6 +138,75 @@ describe('executeAiQuery fallback terkonfigurasi', () => {
 });
 
 describe('executeAiQuery fallback satu provider', () => {
+describe('executeAiQuery strategi rantai', () => {
+  function chainStore() {
+    let cursor = 0;
+    return {
+      get: async () => null,
+      incrby: async () => {
+        cursor += 1;
+        return cursor;
+      },
+      expire: async () => {},
+    };
+  }
+
+  const ROUND_ROBIN_POLICY = {
+    ...POLICY_ROW,
+    chain_strategy: 'round_robin',
+    primary_provider_id: 'gemini',
+    fallback_provider_id: 'gemini',
+    default_model: 'gemini-3.8-flash',
+    fallback_model: 'gemini-3.6-flash',
+  };
+
+  it('fallback mencoba sesuai urutan saat primary gagal', async () => {
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini')], [credentialRow('cred-1', 'gemini')]],
+      { ...ROUND_ROBIN_POLICY, chain_strategy: 'fallback' },
+    );
+    const result = await executeAiQuery(depsFor(fake, undefined, ['gemini-3.8-flash']), PROMPT);
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(fake.adapterCalls.map((call) => call.modelName)).toEqual(['gemini-3.8-flash', 'gemini-3.6-flash']);
+  });
+
+  it('round_robin memutar model awal tiap request untuk menyebar beban', async () => {
+    const store = chainStore();
+    const rows = [
+      [credentialRow('cred-1', 'gemini')],
+      [credentialRow('cred-1', 'gemini')],
+      [credentialRow('cred-1', 'gemini')],
+      [credentialRow('cred-1', 'gemini')],
+    ];
+    const fake = setup(rows, ROUND_ROBIN_POLICY);
+    const deps = depsFor(fake, { rateLimit: { store } });
+    const first = await executeAiQuery(deps, PROMPT);
+    const second = await executeAiQuery(deps, PROMPT);
+    expect(first.modelName).toBe('gemini-3.8-flash');
+    expect(second.modelName).toBe('gemini-3.6-flash');
+  });
+
+  it('round_robin rantai tunggal tetap satu model', async () => {
+    const store = chainStore();
+    const singlePolicy = { ...ROUND_ROBIN_POLICY, fallback_model: 'gemini-3.8-flash' };
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], singlePolicy);
+    const result = await executeAiQuery(depsFor(fake, { rateLimit: { store } }), PROMPT);
+    expect(result.modelName).toBe('gemini-3.8-flash');
+    expect(fake.adapterCalls).toHaveLength(1);
+  });
+
+  it('modelOverride berjalan di provider pemilik katalog bukan primary', async () => {
+    const openrouterPolicy = { ...POLICY_ROW, primary_provider_id: 'openrouter', default_model: 'openai/gpt-4o-mini' };
+    const fake = setup([[credentialRow('cred-gemini-1', 'gemini')]], openrouterPolicy, 'gemini');
+    const result = await executeAiQuery(
+      depsFor(fake),
+      { ...PROMPT, modelOverride: 'gemini-3.8-flash-tts' },
+    );
+    expect(result.providerId).toBe('gemini');
+    expect(result.modelName).toBe('gemini-3.8-flash-tts');
+    expect(fake.adapterCalls).toEqual([{ providerId: 'gemini', modelName: 'gemini-3.8-flash-tts' }]);
+  });
+});
   const SAME_PROVIDER_POLICY = {
     ...POLICY_ROW,
     primary_provider_id: 'gemini',

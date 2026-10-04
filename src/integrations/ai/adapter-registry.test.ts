@@ -1,11 +1,36 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getAiAdapter } from '@/integrations/ai/adapter-registry';
 
 describe('getAiAdapter', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), { status: 200 })),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('mengembalikan adapter gemini', () => {
     expect(getAiAdapter('gemini').providerId).toBe('gemini');
     expect(getAiAdapter('GEMINI').providerId).toBe('gemini');
+  });
+
+  it('mengembalikan adapter openrouter di atas chat-completions', async () => {
+    const adapter = getAiAdapter('openrouter');
+    expect(adapter.providerId).toBe('openrouter');
+    expect(getAiAdapter('OpenRouter').providerId).toBe('openrouter');
+    await expect(adapter.execute('', 'openai/gpt-4o-mini', { prompt: 'hai' })).rejects.toThrow(/router-provided key/);
+  });
+
+  it('openrouter mengirim X-Title OpenRouter', async () => {
+    const adapter = getAiAdapter('openrouter');
+    await adapter.execute('sk-or-test', 'openai/gpt-4o-mini', { prompt: 'hai' });
+    const init = vi.mocked(fetch).mock.calls.at(0)?.at(1) as RequestInit;
+    expect((init.headers as Record<string, string>)['X-Title']).toBe('Indicate');
   });
 
   it('mengembalikan stub openai-compatible tanpa kunci', async () => {

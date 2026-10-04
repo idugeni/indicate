@@ -4,6 +4,7 @@ import type { AiAdapterResponse, AiChatPrompt, AiProviderAdapter } from '@/integ
 import type { CloudflareGatewayConfig } from '@/integrations/ai/gateway/cloudflare/cloudflare-gateway';
 import { executeGeminiAdapter } from '@/integrations/ai/gemini-adapter';
 import { OpenAiCompatibleAdapter } from '@/integrations/ai/openai-compatible-adapter';
+import { OPENROUTER_BASE_URL } from '@/integrations/ai/gateway/openrouter/openrouter-gateway';
 import { VERCEL_GATEWAY_BASE_URL } from '@/integrations/ai/gateway/vercel/vercel-gateway';
 
 /**
@@ -25,6 +26,7 @@ export class GeminiAdapterWrapper implements AiProviderAdapter {
 const adapters: ReadonlyMap<string, AiProviderAdapter> = new Map<string, AiProviderAdapter>([
   ['gemini', new GeminiAdapterWrapper()],
   ['openai-compatible', new OpenAiCompatibleAdapter()],
+  ['openrouter', new OpenAiCompatibleAdapter('openrouter', OPENROUTER_BASE_URL, { 'X-Title': 'Indicate' })],
   ['vercel-gateway', new OpenAiCompatibleAdapter('vercel-gateway', VERCEL_GATEWAY_BASE_URL)],
 ]);
 

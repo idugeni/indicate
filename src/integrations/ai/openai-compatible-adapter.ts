@@ -10,10 +10,12 @@ import type { AiAdapterResponse, AiChatPrompt, AiProviderAdapter } from '@/integ
 export class OpenAiCompatibleAdapter implements AiProviderAdapter {
   readonly providerId: string;
   private readonly baseUrl: string;
+  private readonly extraHeaders: Readonly<Record<string, string>>;
 
-  constructor(providerId = 'openai-compatible', baseUrl = 'https://api.openai.com/v1') {
+  constructor(providerId = 'openai-compatible', baseUrl = 'https://api.openai.com/v1', extraHeaders: Readonly<Record<string, string>> = {}) {
     this.providerId = providerId;
     this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.extraHeaders = extraHeaders;
   }
 
   /**
@@ -27,22 +29,28 @@ export class OpenAiCompatibleAdapter implements AiProviderAdapter {
    */
   async execute(plainKey: string, modelName: string, promptData: AiChatPrompt): Promise<AiAdapterResponse> {
     if (plainKey.length === 0) throw new Error('OpenAI-compatible adapter requires a router-provided key.');
-    if (promptData.images !== undefined && promptData.images.length > 0) {
-      throw new Error('OpenAI-compatible adapter does not support image input.');
-    }
-    const messages: Array<{ role: string; content: string }> = [];
+    const messages: Array<{ role: string; content: unknown }> = [];
     if (promptData.systemInstruction !== undefined) {
       messages.push({ role: 'system', content: promptData.systemInstruction });
     }
     for (const message of (promptData.history ?? []).slice(-6)) {
       messages.push({ role: message.role === 'model' ? 'assistant' : message.role, content: message.text });
     }
-    messages.push({ role: 'user', content: promptData.prompt });
+    const images = promptData.images ?? [];
+    if (images.length > 0) {
+      const content: Array<Record<string, unknown>> = [{ type: 'text', text: promptData.prompt }];
+      for (const image of images.slice(0, 4)) {
+        content.push({ type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.base64}` } });
+      }
+      messages.push({ role: 'user', content });
+    } else {
+      messages.push({ role: 'user', content: promptData.prompt });
+    }
     let res: Response;
     try {
       res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${plainKey}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${plainKey}`, ...this.extraHeaders },
         body: JSON.stringify({
           model: modelName,
           messages,
@@ -52,6 +60,7 @@ export class OpenAiCompatibleAdapter implements AiProviderAdapter {
           presence_penalty: promptData.presencePenalty,
           frequency_penalty: promptData.frequencyPenalty,
           seed: promptData.seed,
+          ...(promptData.responseMimeType === 'application/json' ? { response_format: { type: 'json_object' } } : {}),
         }),
       });
     } catch {

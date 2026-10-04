@@ -2,6 +2,8 @@ export type AiCredentialStatus = 'active' | 'inactive' | 'disabled' | 'exhausted
 
 export type AiRotationStrategy = 'health_aware' | 'round_robin' | 'least_used' | 'lowest_error_rate' | 'priority_based' | 'random';
 
+export type AiChainStrategy = 'fallback' | 'round_robin';
+
 export interface AiCredentialProjection {
   readonly id: string;
   readonly providerId: string;
@@ -24,6 +26,8 @@ export interface AiCredentialProjection {
 
 export interface AiRoutingPolicy {
   readonly rotationStrategy: AiRotationStrategy;
+  readonly chainStrategy: AiChainStrategy;
+  readonly primaryProviderId: string | null;
   readonly defaultModel: string;
   readonly fallbackProviderId: string | null;
   readonly fallbackModel: string;
@@ -31,8 +35,16 @@ export interface AiRoutingPolicy {
   readonly perKeyRetryLimit: number;
   readonly cooldownDurationSec: number;
   readonly requestTimeoutMs: number;
+  readonly globalConcurrencyLimit: number;
   readonly version: number;
   readonly updatedAt: string;
+}
+
+export interface AiProviderEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly isActive: boolean;
+  readonly supportsChat: boolean;
 }
 
 export interface AiRequestLogRow {
@@ -76,6 +88,7 @@ export interface AiOrgTokenUsage {
 }
 
 export interface AiModelEntry {
+  readonly providerId: string;
   readonly modelName: string;
   readonly displayName: string;
   readonly releaseStage: string | null;
@@ -92,6 +105,7 @@ export interface AiOverview {
   readonly credentials: readonly AiCredentialProjection[];
   readonly policy: AiRoutingPolicy;
   readonly models: readonly AiModelEntry[];
+  readonly providers: readonly AiProviderEntry[];
   readonly recentLogs: readonly AiRequestLogRow[];
   readonly queryInsights: readonly AiQueryInsightRow[];
   readonly tokenUsageByOrg: readonly AiOrgTokenUsage[];

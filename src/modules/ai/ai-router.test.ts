@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, isModelBreakerTripped, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
+import { AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, getModelOwnerProvider, isModelBreakerTripped, nextChainStartIndex, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveOrderedAiModelChain, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
 import type { AiCredentialRecord, AiRoutingPolicy } from '@/modules/ai/ai-types';
 
 function makeCredential(overrides: Partial<AiCredentialRecord> & { id: string }): AiCredentialRecord {
@@ -158,6 +158,7 @@ function makePolicy(overrides?: Partial<AiRoutingPolicy>): AiRoutingPolicy {
   return {
     id: 'default',
     rotationStrategy: 'health_aware',
+    chainStrategy: 'fallback',
     primaryProviderId: 'gemini',
     fallbackProviderId: null,
     defaultModel: 'gemini-3.8-flash',
@@ -199,6 +200,70 @@ describe('resolveAiModelChain', () => {
     expect(resolveAiModelChain(makePolicy(), 'gemini-3.1-flash-image')).toEqual([
       { providerId: 'gemini', modelName: 'gemini-3.1-flash-image' },
     ]);
+  });
+
+  it('modelOverride memakai provider pemilik katalog', () => {
+    expect(resolveAiModelChain(makePolicy({ primaryProviderId: 'openrouter' }), 'gemini-3.8-flash-tts', 'gemini')).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash-tts' },
+    ]);
+  });
+});
+
+describe('getModelOwnerProvider', () => {
+  it('mengembalikan provider pemilik dari katalog', async () => {
+    const db = { execute: async () => [{ provider_id: 'gemini' }] };
+    expect(await getModelOwnerProvider(db, 'gemini-3.8-flash-tts')).toBe('gemini');
+  });
+
+  it('null saat katalog tidak mengenal model atau db gagal', async () => {
+    expect(await getModelOwnerProvider({ execute: async () => [] }, 'openai/gpt-9-future')).toBeNull();
+    expect(await getModelOwnerProvider({ execute: async () => { throw new Error('down'); } }, 'm')).toBeNull();
+  });
+});
+
+describe('resolveOrderedAiModelChain', () => {
+  it('fallback memakai urutan tetap apa pun startIndex', () => {
+    const policy = makePolicy({ chainStrategy: 'fallback', fallbackProviderId: 'backup', fallbackModel: 'gemini-2.5-flash' });
+    expect(resolveOrderedAiModelChain(policy, 1)).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'backup', modelName: 'gemini-2.5-flash' },
+    ]);
+  });
+
+  it('round_robin memutar titik awal rantai', () => {
+    const policy = makePolicy({ chainStrategy: 'round_robin', fallbackProviderId: 'backup', fallbackModel: 'gemini-2.5-flash' });
+    expect(resolveOrderedAiModelChain(policy, 0).map((entry) => entry.modelName)).toEqual(['gemini-3.8-flash', 'gemini-2.5-flash']);
+    expect(resolveOrderedAiModelChain(policy, 1).map((entry) => entry.modelName)).toEqual(['gemini-2.5-flash', 'gemini-3.8-flash']);
+    expect(resolveOrderedAiModelChain(policy, 2).map((entry) => entry.modelName)).toEqual(['gemini-3.8-flash', 'gemini-2.5-flash']);
+  });
+
+  it('round_robin rantai tunggal tetap satu entri', () => {
+    const policy = makePolicy({ chainStrategy: 'round_robin', fallbackProviderId: null, fallbackModel: 'gemini-3.8-flash' });
+    expect(resolveOrderedAiModelChain(policy, 1)).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+    ]);
+  });
+
+  it('modelOverride menonaktifkan putaran', () => {
+    const policy = makePolicy({ chainStrategy: 'round_robin' });
+    expect(resolveOrderedAiModelChain(policy, 1, 'gemini-3.1-flash-image')).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.1-flash-image' },
+    ]);
+  });
+});
+
+describe('nextChainStartIndex', () => {
+  it('memajukan cursor redis per request', async () => {
+    const { store } = makeBreakerStore();
+    expect(await nextChainStartIndex(store)).toBe(0);
+    expect(await nextChainStartIndex(store)).toBe(1);
+    expect(await nextChainStartIndex(store)).toBe(2);
+  });
+
+  it('fail-open ke 0 tanpa store atau saat redis gagal', async () => {
+    expect(await nextChainStartIndex(undefined)).toBe(0);
+    const failing = { get: async () => null, incrby: async () => { throw new Error('down'); }, expire: async () => {} };
+    expect(await nextChainStartIndex(failing)).toBe(0);
   });
 });
 

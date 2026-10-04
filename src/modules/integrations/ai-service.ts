@@ -5,6 +5,7 @@ import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope 
 import type { Result } from '@/core/result';
 import {
   maskAiKey,
+  type AiChainStrategy,
   type AiCredentialProjection,
   type AiCredentialStatus,
   type AiMasterProvision,
@@ -12,6 +13,7 @@ import {
   type AiModelEntry,
   type AiOrgTokenUsage,
   type AiOverview,
+  type AiProviderEntry,
   type AiQueryInsightRow,
   type AiRequestLogRow,
   type AiRotationStrategy,
@@ -31,15 +33,16 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 export interface AiRepositoryPort {
   listCredentials(actor: AuthorizedTenantActorContext): Promise<readonly AiCredentialProjection[]>;
-  createCredential(actor: AuthorizedTenantActorContext, input: { readonly label: string; readonly plainKey: string; readonly priority: number; readonly keyMasked: string; readonly now: string }): Promise<AiCredentialProjection>;
+  createCredential(actor: AuthorizedTenantActorContext, input: { readonly label: string; readonly plainKey: string; readonly priority: number; readonly keyMasked: string; readonly providerId: string; readonly now: string }): Promise<AiCredentialProjection>;
   updateCredentialStatus(actor: AuthorizedTenantActorContext, credentialId: string, status: AiCredentialStatus, cooldownUntil: string | null, now: string): Promise<AiCredentialProjection | null>;
   deleteCredential(actor: AuthorizedTenantActorContext, credentialId: string): Promise<boolean>;
   decryptCredentialKey(actor: AuthorizedTenantActorContext, credentialId: string): Promise<string | null>;
   recordCredentialTest(actor: AuthorizedTenantActorContext, credentialId: string, ok: boolean, latencyMs: number, errorClass: string | null, errorMessage: string | null, now: string): Promise<void>;
   recordBlockedCredential(actor: AuthorizedTenantActorContext, credentialId: string, errorClass: string, cooldownUntil: string, now: string): Promise<void>;
   getPolicy(actor: AuthorizedTenantActorContext): Promise<AiRoutingPolicy>;
-  upsertPolicy(actor: AuthorizedTenantActorContext, input: { readonly rotationStrategy: AiRotationStrategy; readonly defaultModel: string; readonly fallbackProviderId: string | null; readonly fallbackModel: string; readonly maxRetries: number; readonly cooldownDurationSec: number; readonly now: string }): Promise<AiRoutingPolicy>;
+  upsertPolicy(actor: AuthorizedTenantActorContext, input: { readonly rotationStrategy: AiRotationStrategy; readonly chainStrategy: AiChainStrategy; readonly primaryProviderId: string | null; readonly defaultModel: string; readonly fallbackProviderId: string | null; readonly fallbackModel: string; readonly maxRetries: number; readonly perKeyRetryLimit: number; readonly cooldownDurationSec: number; readonly requestTimeoutMs: number; readonly globalConcurrencyLimit: number; readonly now: string }): Promise<AiRoutingPolicy>;
   listModels(actor: AuthorizedTenantActorContext): Promise<readonly AiModelEntry[]>;
+  listProviders(actor: AuthorizedTenantActorContext): Promise<readonly AiProviderEntry[]>;
   listRequestLogs(actor: AuthorizedTenantActorContext): Promise<readonly AiRequestLogRow[]>;
   listQueryInsights(actor: AuthorizedTenantActorContext): Promise<readonly AiQueryInsightRow[]>;
   getTokenUsageByOrg(actor: AuthorizedTenantActorContext): Promise<readonly AiOrgTokenUsage[]>;
@@ -58,7 +61,7 @@ export interface AiTestResult {
 }
 
 const FALLBACK_MODELS: readonly AiModelEntry[] = [
-  { modelName: 'gemini-3.8-flash', displayName: 'Gemini 3.8 Flash', releaseStage: 'stable', contextWindow: 1048576, outputTokenLimit: 65536, rpmLimit: null, tpmLimit: null, rpdLimit: null, supportsTools: true, isDefault: true },
+  { providerId: 'gemini', modelName: 'gemini-3.8-flash', displayName: 'Gemini 3.8 Flash', releaseStage: 'stable', contextWindow: 1048576, outputTokenLimit: 65536, rpmLimit: null, tpmLimit: null, rpdLimit: null, supportsTools: true, isDefault: true },
 ];
 
 function errorClassForStatus(status: number): string {
@@ -66,6 +69,23 @@ function errorClassForStatus(status: number): string {
   if (status === 400 || status === 401 || status === 403) return 'invalid_key';
   if (status >= 500) return 'provider_unavailable';
   return 'api_error';
+}
+
+/**
+ * OpenAI-compatible chat base URLs per provider for credential probing.
+ *
+ * @remarks Duplicated from `src/integrations/ai/adapter-registry.ts` to keep
+ * the modules → integrations dependency direction intact; both maps must stay
+ * aligned when a provider endpoint changes.
+ */
+const OPENAI_COMPATIBLE_BASE_URLS: Readonly<Record<string, string>> = {
+  'openai-compatible': 'https://api.openai.com/v1',
+  'vercel-gateway': 'https://ai-gateway.vercel.sh/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
+};
+
+function openAiCompatibleBaseUrl(providerId: string): string | null {
+  return OPENAI_COMPATIBLE_BASE_URLS[providerId] ?? null;
 }
 
 export class AiService {
@@ -115,10 +135,11 @@ export class AiService {
   async overview(actor: AuthorizedTenantActorContext): Promise<Result<AiOverview, PublicErrorEnvelope>> {
     if (!this.canManage(actor)) return this.denied(actor, 'ai.overview.denied');
     try {
-      const [credentials, policy, models, recentLogs, queryInsights, tokenUsageByOrg, master] = await Promise.all([
+      const [credentials, policy, models, providers, recentLogs, queryInsights, tokenUsageByOrg, master] = await Promise.all([
         this.repository.listCredentials(actor),
         this.repository.getPolicy(actor),
         this.repository.listModels(actor),
+        this.repository.listProviders(actor),
         this.repository.listRequestLogs(actor),
         this.repository.listQueryInsights(actor),
         this.repository.getTokenUsageByOrg(actor),
@@ -137,6 +158,7 @@ export class AiService {
           credentials,
           policy,
           models: models.length > 0 ? models : FALLBACK_MODELS,
+          providers,
           recentLogs,
           queryInsights,
           tokenUsageByOrg,
@@ -150,10 +172,10 @@ export class AiService {
   }
 
   /**
-   * Store a Gemini credential in the DB-encrypted envelope; only the mask is readable.
+   * Store one provider credential in the DB-encrypted envelope; only the mask is readable.
    *
    * @param actor - Tenant actor; requires the platform AI grant.
-   * @param raw - Unvalidated `{ label, apiKey, priority }` payload.
+   * @param raw - Unvalidated `{ label, apiKey, priority, providerId }` payload.
    * @returns Masked projection; the plain key is never returned or persisted.
    */
   async createCredential(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<AiCredentialProjection, PublicErrorEnvelope>> {
@@ -165,6 +187,7 @@ export class AiService {
         label: parsed.data.label,
         plainKey: parsed.data.apiKey,
         priority: parsed.data.priority,
+        providerId: parsed.data.providerId,
         keyMasked: maskAiKey(parsed.data.apiKey),
         now: this.clock.now().toISOString(),
       });
@@ -175,7 +198,7 @@ export class AiService {
   }
 
   /**
-   * Ping Gemini with a decrypted credential and record the outcome counters.
+   * Ping one credential against its own provider transport and record the outcome counters.
    *
    * @param actor - Tenant actor; requires the platform AI grant.
    * @param raw - Unvalidated `{ credentialId }` payload.
@@ -199,12 +222,20 @@ export class AiService {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), Math.min(policy.requestTimeoutMs, 30_000));
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(policy.defaultModel)}:generateContent`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': plain },
-          body: JSON.stringify({ contents: [{ parts: [{ text: 'Ping. Balas dengan OK.' }] }] }),
-          signal: controller.signal,
-        });
+        const baseUrl = openAiCompatibleBaseUrl(target.providerId);
+        const response =
+          baseUrl === null
+            ? await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(await this.probeModelFor(actor, target.providerId, policy.defaultModel))}:generateContent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': plain },
+                body: JSON.stringify({ contents: [{ parts: [{ text: 'Ping. Balas dengan OK.' }] }] }),
+                signal: controller.signal,
+              })
+            : await fetch(`${baseUrl}/models`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${plain}` },
+                signal: controller.signal,
+              });
         const latencyMs = Date.now() - started;
         const now = this.clock.now().toISOString();
         if (response.ok) {
@@ -230,6 +261,23 @@ export class AiService {
       }
     } catch {
       return this.failure(actor, 'The credential test is temporarily unavailable.');
+    }
+  }
+
+  /**
+   * Pick a probe model owned by one provider for the Gemini ping.
+   *
+   * @param actor - Tenant actor; the model directory is control-plane wide.
+   * @param providerId - Provider whose key is under test.
+   * @param fallback - Policy default used when the catalog knows no model for the provider.
+   * @returns Catalog model of the provider, or the policy default.
+   */
+  private async probeModelFor(actor: AuthorizedTenantActorContext, providerId: string, fallback: string): Promise<string> {
+    try {
+      const models = await this.repository.listModels(actor);
+      return models.find((model) => model.providerId === providerId)?.modelName ?? fallback;
+    } catch {
+      return fallback;
     }
   }
 
@@ -283,7 +331,7 @@ export class AiService {
    * Replace the singleton rotation policy, including the configured failover chain.
    *
    * @param actor - Tenant actor; requires the platform AI grant.
-   * @param raw - Unvalidated `{ rotationStrategy, defaultModel, fallbackProviderId, fallbackModel, maxRetries, cooldownDurationSec }` payload.
+   * @param raw - Unvalidated `{ rotationStrategy, chainStrategy, primaryProviderId, defaultModel, fallbackProviderId, fallbackModel, maxRetries, perKeyRetryLimit, cooldownDurationSec, requestTimeoutMs, globalConcurrencyLimit }` payload.
    * @returns Stored policy.
    */
   async updatePolicy(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<AiRoutingPolicy, PublicErrorEnvelope>> {
@@ -291,10 +339,59 @@ export class AiService {
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the policy fields.', actor.requestId) };
     if (!this.canManage(actor)) return this.denied(actor, 'ai.policy.update.denied');
     try {
+      const mismatch = await this.validateModelChain(actor, parsed.data);
+      if (mismatch !== null) return { ok: false, error: createPublicError('INVALID_INPUT', mismatch, actor.requestId) };
       const value = await this.repository.upsertPolicy(actor, { ...parsed.data, now: this.clock.now().toISOString() });
       return { ok: true, value };
     } catch {
       return this.failure(actor, 'The routing policy could not be saved.');
+    }
+  }
+
+  /**
+   * Validate provider existence and model-provider pairing for one policy write.
+   *
+   * @param actor - Tenant actor; models and providers are control-plane wide.
+   * @param input - Parsed policy payload with resolved defaults.
+   * @returns Indonesian field message when invalid; null when the chain is consistent.
+   * @remarks Unknown model names are allowed (catalog may lag new provider models);
+   * only known catalog entries are checked against their owning provider.
+   */
+  private async validateModelChain(
+    actor: AuthorizedTenantActorContext,
+    input: { readonly primaryProviderId: string | null; readonly defaultModel: string; readonly fallbackProviderId: string | null; readonly fallbackModel: string },
+  ): Promise<string | null> {
+    try {
+      const [providers, models, stored] = await Promise.all([
+        this.repository.listProviders(actor),
+        this.repository.listModels(actor),
+        this.repository.getPolicy(actor),
+      ]);
+      const chatCapable = new Map(providers.map((provider) => [provider.id, provider.supportsChat] as const));
+      const primary = input.primaryProviderId ?? stored.primaryProviderId;
+      if (primary !== null && !chatCapable.has(primary)) return `Provider primer tidak dikenal: ${primary}.`;
+      if (primary !== null && chatCapable.get(primary) === false) {
+        return `Provider ${primary} tidak mendukung chat; pilih provider chat dari direktori.`;
+      }
+      if (input.fallbackProviderId !== null && !chatCapable.has(input.fallbackProviderId)) {
+        return `Provider fallback tidak dikenal: ${input.fallbackProviderId}.`;
+      }
+      if (input.fallbackProviderId !== null && chatCapable.get(input.fallbackProviderId) === false) {
+        return `Provider ${input.fallbackProviderId} tidak mendukung chat; pilih provider chat dari direktori.`;
+      }
+      const owner = new Map(models.map((model) => [model.modelName, model.providerId] as const));
+      const defaultOwner = owner.get(input.defaultModel);
+      if (primary !== null && defaultOwner !== undefined && defaultOwner !== primary) {
+        return `Model default ${input.defaultModel} milik ${defaultOwner}, bukan ${primary}.`;
+      }
+      const fallbackOwner = owner.get(input.fallbackModel);
+      const fallbackProvider = input.fallbackProviderId ?? primary;
+      if (fallbackProvider !== null && fallbackOwner !== undefined && fallbackOwner !== fallbackProvider) {
+        return `Model fallback ${input.fallbackModel} milik ${fallbackOwner}, bukan ${fallbackProvider}.`;
+      }
+      return null;
+    } catch {
+      return null;
     }
   }
 
