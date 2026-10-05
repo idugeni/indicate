@@ -229,6 +229,7 @@ describe('readBridgeArticles', () => {
     author_avatar: null,
     author_url: null,
     cover_image_url: 'https://cdn.example/cover.jpg',
+    lead_media_id: null,
     published_at: new Date('2026-10-04T10:00:00.000Z'),
     updated_at: new Date('2026-10-04T10:00:00.000Z'),
     body: 'Isi lengkap berita UPT.',
@@ -272,6 +273,13 @@ describe('readBridgeArticles', () => {
     const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
     await expect(repository.resolveArticleId({ ...CONTEXT }, 'berita-upt')).resolves.toBe('art-upt-1');
     await expect(repository.resolveArticleId({ ...CONTEXT }, 'tidak-ada')).resolves.toBeNull();
+  });
+
+  it('memakai lead pemilik sebagai sampul saat cover kosong', async () => {
+    const leadDetail = { ...bridgeDetail, cover_image_url: null, lead_media_id: 'lead-1' };
+    const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [leadDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]).toMatchObject({ imageUrl: 'https://portal.example/api/network/media/lead-1' });
   });
 
   it('menggabungkan duplikat bridge apex dan kota menjadi satu baris', async () => {

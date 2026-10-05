@@ -132,6 +132,7 @@ type BridgeDetail = {
   readonly author_avatar: string | null;
   readonly author_url: string | null;
   readonly cover_image_url: string | null;
+  readonly lead_media_id: string | null;
   readonly published_at: Date | string;
   readonly updated_at: Date | string;
   readonly body: string;
@@ -601,7 +602,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           audioUrl: detail.audio_url,
           durationSeconds: detail.duration_seconds,
           imageMediaType: null,
-          imageUrl: detail.cover_image_url ?? (detail.article_type === 'video' ? youtubeThumbnailUrl(detail.video_url) : null),
+          imageUrl: detail.cover_image_url ?? (detail.lead_media_id !== null ? absoluteMediaUrl(context, detail.lead_media_id) : null) ?? (detail.article_type === 'video' ? youtubeThumbnailUrl(detail.video_url) : null),
           thumbnailUrl: null,
           imageWidth: null,
           imageHeight: null,

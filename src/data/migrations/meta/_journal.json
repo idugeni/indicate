@@ -1877,6 +1877,13 @@
       "when": 1791342000000,
       "tag": "20261006020000_role_permission_guard_single",
       "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1791345600000,
+      "tag": "20261006030000_bridge_media_visibility",
+      "breakpoints": true
     }
   ]
 }

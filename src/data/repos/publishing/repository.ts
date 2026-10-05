@@ -454,7 +454,32 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         .innerJoin(domains, and(eq(domains.organizationId, sites.organizationId), eq(domains.id, sites.domainId), eq(domains.status, 'active')))
         .leftJoin(regions, and(eq(regions.organizationId, sites.organizationId), eq(regions.id, sites.regionId)))
         .where(and(eq(sites.organizationId, context.organizationId), eq(sites.id, context.siteId), eq(sites.normalizedHostname, context.normalizedHostname), eq(sites.status, 'active'), eq(sites.activationState, 'active'), eq(sites.routingVersion, context.routingVersion), or(sql`${sites.regionId} IS NULL`, eq(regions.status, 'active')))).limit(1);
-      if (mediaRows[0] === undefined || siteRows[0] === undefined) return null;
+      if (siteRows[0] === undefined) return null;
+      if (mediaRows[0] !== undefined) {
+        const sameOrg = await this.authorizeSameOrgMedia(transaction, context, mediaRows[0], siteRows[0].site, mediaId);
+        if (sameOrg !== null) return sameOrg;
+      }
+      return this.authorizeBridgeMedia(transaction, context, mediaId);
+    });
+  }
+
+  /**
+   * Otorisasi media milik organisasi penyaji (jalur lama, tak berubah).
+   *
+   * @param transaction - Transaksi tenant publik.
+   * @param context - Konteks hostname penyaji.
+   * @param mediaRow - Baris media se-organisasi yang sudah aktif.
+   * @param siteRow - Baris situs penyaji yang sudah tervalidasi.
+   * @param mediaId - Id media yang diminta.
+   * @returns Aset bila dirujuk konten tayang, null bila tidak.
+   */
+  private async authorizeSameOrgMedia(
+    transaction: Transaction,
+    context: HostnameContext,
+    mediaRow: typeof media.$inferSelect,
+    siteRow: typeof sites.$inferSelect,
+    mediaId: string,
+  ) {
       const settings = await transaction.select().from(siteSettings).where(and(eq(siteSettings.organizationId, context.organizationId), eq(siteSettings.siteId, context.siteId))).limit(1);
       const ownMediaIds = settings[0] === undefined ? [] : [settings[0].logoMediaId, settings[0].faviconMediaId, settings[0].defaultMediaId].filter((value): value is string => value !== null);
       let inheritedMediaIds: string[] = [];
@@ -466,7 +491,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
         const parent = parentRows[0];
         if (parent !== undefined) inheritedMediaIds = [parent.logoMediaId, parent.faviconMediaId, parent.defaultMediaId].filter((value): value is string => value !== null);
       }
-      const asset = mapMedia(mediaRows[0]);
+      const asset = mapMedia(mediaRow);
       if (asset.owner.kind === 'organization') {
         const refs = await transaction.select({ id: publishers.id }).from(publishers)
           .where(and(eq(publishers.organizationId, context.organizationId), eq(publishers.status, 'active'), sql`${publishers.contacts}->>'logoUrl' LIKE '%/' || ${escapeLikePattern(mediaId)} ESCAPE '\\'`)).limit(1);
@@ -475,14 +500,35 @@ export class DrizzlePublishingRepository implements PublishingRepository {
           && await this.isOrgArticleMediaVisible(transaction, context, mediaId)) return asset;
         return null;
       }
-      const site = { id: siteRows[0].site.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRows[0].site.normalizedHostname, domainId: siteRows[0].site.domainId, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
+      const site = { id: siteRow.id, organizationId: context.organizationId, active: true, normalizedHostname: siteRow.normalizedHostname, domainId: siteRow.domainId, settingsMediaIds: [...new Set([...ownMediaIds, ...inheritedMediaIds])] };
       const articleRefs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articles.id, status: articles.status }).from(articles).where(and(eq(articles.organizationId, context.organizationId), eq(articles.id, asset.owner.articleId))).limit(1))
         .map((row) => ({ id: row.id, organizationId: context.organizationId, active: row.status === 'active', leadMediaId: null, title: '', slug: '' }));
       const refs = asset.owner.kind !== 'article' ? [] : (await transaction.select({ id: articleSites.id, organizationId: articleSites.organizationId, articleId: articleSites.articleId, siteId: articleSites.siteId, active: articleSites.active, state: articleSites.state }).from(articleSites).where(and(eq(articleSites.organizationId, context.organizationId), eq(articleSites.siteId, context.siteId), eq(articleSites.articleId, asset.owner.articleId), eq(articleSites.active, true))).limit(1))
         .map((row) => ({ id: row.id, organizationId: row.organizationId, articleId: row.articleId, siteId: row.siteId, active: row.active, state: row.state, publishedUrl: null, publishedAt: null, version: 0 }));
       if (!canPublicAccessMedia({ context, media: asset, site, articles: articleRefs, articleSites: refs })) return null;
       return asset;
-    });
+  }
+
+  /**
+   * Otorisasi media milik org pemilik yang dirujuk artikel bridge tayang.
+   *
+   * @param transaction - Transaksi tenant publik.
+   * @param context - Konteks hostname penyaji.
+   * @param mediaId - Id media yang diminta.
+   * @returns Aset bila artikel pemilik yang tayang di portal ini merujuknya
+   * (lead, body, sampul, logo penerbit, avatar penulis), null bila tidak.
+   * @remarks Rujukan adalah gerbangnya — media yang tidak dirujuk konten
+   * tayang tetap tidak terlihat lintas-org, mempertahankan isolasi tenant.
+   */
+  private async authorizeBridgeMedia(transaction: Transaction, context: HostnameContext, mediaId: string) {
+    try {
+      const rows = await transaction.execute(sql`SELECT * FROM indicate_private.authorize_bridge_media(${context.organizationId}::uuid, ${context.siteId}::uuid, ${mediaId}::uuid)`);
+      const row = (Array.isArray(rows) ? rows : [])[0] as typeof media.$inferSelect | undefined;
+      if (row === undefined) return null;
+      return mapMedia(row);
+    } catch {
+      return null;
+    }
   }
 
   private async isOrgArticleMediaVisible(transaction: Transaction, context: HostnameContext, mediaId: string): Promise<boolean> {
@@ -498,7 +544,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     if (override.length > 0) return true;
     const inline = await transaction.select({ id: articles.id }).from(articles)
       .innerJoin(articleSites, and(eq(articleSites.organizationId, articles.organizationId), eq(articleSites.articleId, articles.id)))
-      .where(and(liveArticle, publishedCopy, sql`${articles.bodyJson}::text LIKE ${`%media:${escapeLikePattern(mediaId)}%`} ESCAPE '\\'`)).limit(1);
+      .where(and(liveArticle, publishedCopy, sql`(${articles.bodyJson}::text LIKE ${`%/api/network/media/${escapeLikePattern(mediaId)}%`} ESCAPE '\\' OR ${articles.bodyJson}::text LIKE ${`%media:${escapeLikePattern(mediaId)}%`} ESCAPE '\\')`)).limit(1);
     return inline.length > 0;
   }
 

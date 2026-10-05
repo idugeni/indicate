@@ -72,6 +72,7 @@ interface HarnessSelects {
   readonly media: readonly unknown[];
   readonly publishers: readonly unknown[];
   readonly extra?: readonly (readonly unknown[])[];
+  readonly exec?: readonly unknown[];
 }
 
 interface RecordedQueryCall {
@@ -93,7 +94,7 @@ function buildHarness(selects: HarnessSelects) {
   }
   chainable.limit = terminal;
   const transaction = {
-    execute: async () => [],
+    execute: async () => [...(selects.exec ?? [])],
     select: () => chainable,
   };
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
@@ -140,6 +141,18 @@ describe('authorizePublicMedia organization article images', () => {
 
   it('menolak media organisasi bukan gambar walau dirujuk', async () => {
     const repository = harness({ media: [{ ...mediaRow(), purpose: 'article-inline', mediaType: 'application/pdf' }], publishers: [], extra: [[], [], [{ id: 'a1' }]] });
+    await expect(repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1')).resolves.toBe(null);
+  });
+});
+
+describe('authorizePublicMedia bridge media', () => {
+  it('mengizinkan media pemilik yang dirujuk artikel bridge tayang', async () => {
+    const repository = harness({ media: [], publishers: [], exec: [mediaRow()] });
+    expect((await repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1'))?.id).toBe('m-org');
+  });
+
+  it('menolak media tanpa rujukan bridge tayang', async () => {
+    const repository = harness({ media: [], publishers: [], exec: [] });
     await expect(repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1')).resolves.toBe(null);
   });
 });
