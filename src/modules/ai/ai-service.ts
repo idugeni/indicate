@@ -24,6 +24,7 @@ import {
   recordKeySuccess,
   recordModelInfraFailure,
   recordModelSuccess,
+  resolveCascadeChain,
   resolveOrderedAiModelChain,
   resolveThinkingBudget,
   selectCredential,
@@ -622,7 +623,8 @@ export async function executeAiQuery(
   const overrideProvider =
     promptData.modelOverride === undefined ? undefined : await getModelOwnerProvider(deps.db, promptData.modelOverride);
   const chainStartIndex = policy.chainStrategy === 'round_robin' ? await nextChainStartIndex(breakerStore) : 0;
-  const fullChain = resolveOrderedAiModelChain(policy, chainStartIndex, promptData.modelOverride, overrideProvider ?? undefined);
+  const configuredChain = resolveOrderedAiModelChain(policy, chainStartIndex, promptData.modelOverride, overrideProvider ?? undefined);
+  const fullChain = await resolveCascadeChain(deps.db, configuredChain, promptData.modelOverride);
   const openChain: Array<{ readonly providerId: string; readonly modelName: string }> = [];
   for (const entry of fullChain) {
     if (!(await isModelBreakerTripped(breakerStore, entry.providerId, entry.modelName))) openChain.push(entry);

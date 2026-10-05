@@ -72,7 +72,16 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   plus `fallback_provider` and `fallback_model`. When every key for the
   primary is exhausted, the service retries the chain on the fallback before
   giving up; an empty fallback provider means the fallback model runs on the
-  primary provider. All four are editable in the panel; the active chain is
+  primary provider. After the configured entries the router appends a
+  same-provider cascade (`resolveCascadeChain`, max 4 entries total, so the
+  live chain reads primary → fallback → cascade): active
+  catalog models ordered by priority, excluding voice/transcription/embedding/
+  image/research modalities and modality overrides. Credentials stay
+  provider-scoped, so stepping down models reuses the same key pool — one
+  Gemini key serves `3.8-flash`, then `3.6-flash`, and so on. The cascade
+  costs one small indexed catalog read per query and is skipped for explicit
+  `modelOverride` calls; tripped cascade models are filtered by the breaker
+  like configured entries. All four are editable in the panel; the active chain is
   shown underneath the form. No static provider/model fallback exists in
   code: without an armed `default` row (or with an unset primary), requests
   fail closed (`ROUTING_UNCONFIGURED`) instead of guessing a provider. Draft streaming stays on the primary provider:
@@ -82,6 +91,15 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
 - Cost posture (`cost_mode`, `throughput` default): `throughput` asks OpenRouter
   for fastest-first routing, `price` asks for cheapest-first. Stored on the
   policy row (migration 264), editable in the panel, honored per request.
+- Free-tier model priority (probed live 2026-10-05, 17 `:free` models, chat +
+  strict `json_schema` + long-context scenarios): `nvidia/nemotron-3-super-120b-a12b:free`
+  first (8/8, ~446ms, most consistent), then `liquid/lfm-2.5-2.6b:free` (8/8,
+  watch for mixed-script tokens), then `qwen/qwen3.8-27b:free` (fast but
+  upstream 429 bursts — only safe behind the breaker). `dots-studio/dots-3-note-preview:free`
+  is excluded (recurring AtlasCloud 400 bursts), `google/gemma-4-*` are dead
+  upstream (provider key invalid), and `thinkingmachines/inkling*` are
+  harness-gated (403). Only the top three plus dots-studio serve strict
+  structured output; the rest 404 on `require_parameters`.
 - Chain health: the panel Ringkasan tab shows live breaker state per chain
   entry (healthy / tripped with consecutive failures / no active credential),
   read from Redis without calling providers.
@@ -91,7 +109,13 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   id vanished; listing failures skip that provider with no changes. TTS,
   transcription, and embedding rows are never auto-deactivated, and nothing
   is ever auto-reactivated — re-enable from the catalog table instead. Every
-  auto-deactivation writes an `ai.model.auto_deactivate` audit row.
+  auto-deactivation writes an `ai.model.auto_deactivate` audit row. The
+  response also carries `policyWarnings` when the armed policy points at a
+  model that is inactive in the catalog or missing from its live listing, so
+  a dangling chain is visible before requests start failing. A listed-but-dead
+  model (present in the listing yet 400 on every call, incident 2026-10-04)
+  is caught at runtime by the breaker instead, which trips on consecutive
+  `application_error`/`malformed_response`.
 - Chain strategy (`chain_strategy`, `fallback` default): `fallback` tries the
   chain in fixed order and moves to the next entry on retryable failure;
   `round_robin` rotates the starting entry per request through the Redis
@@ -136,8 +160,10 @@ by design (`bootstrap-schema.ts` rejects unknown `AI_*` keys in production).
   across both chain entries; `max_retries` caps attempts per chain entry.
 - Retries use exponential backoff with full jitter (500ms base, 3s cap)
   between key attempts, per the provider's retry guidance for 429/5xx.
-- Model circuit breaker: 5 consecutive infra failures (`provider_unavailable`,
-  `timeout`, `rate_limit`, `quota_exhausted`) trip one model for 120s in Redis
+- Model circuit breaker: 5 consecutive failures (`provider_unavailable`,
+  `timeout`, `rate_limit`, `quota_exhausted`, plus `application_error` and
+  `malformed_response` for listed-but-dead models that 400 on every call)
+  trip one model for 120s in Redis
   (`ai:breaker:{provider}:{model}`); tripped models are skipped unless every
   entry is tripped (half-open). Success decays the counter. Redis down means
   fail-open, like every other guard here.

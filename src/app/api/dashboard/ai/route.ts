@@ -34,7 +34,7 @@ import { executeGeminiStream } from '@/integrations/ai/gemini-adapter';
 import { createVercelGatewayBudgetGuard, vercelGatewayBudgetScope } from '@/integrations/ai/gateway/vercel/vercel-gateway';
 import { rankSemanticCandidates, type SemanticCandidate } from '@/integrations/ai/embeddings';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
-import { AI_BREAKER_ERROR_CLASSES, classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resolveOrderedAiModelChain } from '@/modules/ai/ai-router';
+import { AI_BREAKER_ERROR_CLASSES, classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resolveCascadeChain, resolveOrderedAiModelChain } from '@/modules/ai/ai-router';
 import type { AiChatPrompt as AdapterPrompt } from '@/integrations/ai/ai-prompt';
 
 const commandSchema = z.object({
@@ -269,8 +269,9 @@ async function handleDraftArticleStream(
   const timeoutMs = Math.min(Math.max(policy.requestTimeoutMs || 60000, 1000), 300000);
   const breakerStore = deps.rateLimit?.store;
   const chainStartIndex = policy.chainStrategy === 'round_robin' ? await nextChainStartIndex(breakerStore) : 0;
-  const streamableChain = resolveOrderedAiModelChain(policy, chainStartIndex).filter((entry) => entry.providerId === primaryProviderId);
-  const runnableChain: typeof streamableChain = [];
+  const configuredStreamable = resolveOrderedAiModelChain(policy, chainStartIndex).filter((entry) => entry.providerId === primaryProviderId);
+  const streamableChain = await resolveCascadeChain(deps.db, configuredStreamable, undefined);
+  const runnableChain: Array<{ readonly providerId: string; readonly modelName: string }> = [];
   for (const entry of streamableChain) {
     if (!(await isModelBreakerTripped(breakerStore, entry.providerId, entry.modelName))) runnableChain.push(entry);
   }

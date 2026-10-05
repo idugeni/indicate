@@ -434,14 +434,145 @@ export const AI_BREAKER_WINDOW_SECONDS = 120;
 
 /**
  * Kelas error yang menandai modelnya (bukan key-nya) sedang bermasalah.
+ *
+ * @remarks `application_error` dan `malformed_response` ikut dihitung karena
+ * 400/respons kosong beruntun adalah sinyal model mati di sisi provider
+ * (insiden 2026-10-04: dua model gratis 400 di setiap request tanpa pernah
+ * men-trip breaker). Ambang 5 beruntun dalam 120 detik plus reset saat
+ * sukses membuat 400 sesekali karena prompt tertentu tidak ikut men-trip.
  */
 export const AI_BREAKER_ERROR_CLASSES: readonly AiErrorClass[] = [
   'provider_unavailable',
   'timeout',
   'rate_limit',
   'quota_exhausted',
+  'application_error',
+  'malformed_response',
 ];
 
+/**
+ * Batas total entri rantai setelah kaskade model sekatalog.
+ *
+ * @remarks Rantai terkonfigurasi maksimal 2 entri (primary → fallback);
+ * kaskade menempelkan model se-provider sampai batas ini agar upaya per
+ * query tetap terikat `AI_MAX_TOTAL_ATTEMPTS` dan deadline keseluruhan.
+ */
+export const AI_MAX_CHAIN_ENTRIES = 4;
+
+/**
+ * Rekomendasi tugas yang tidak boleh masuk kaskade teks.
+ *
+ * @remarks Superset dari daftar lindung sweep: selain modalitas suara,
+ * transkripsi, dan embedding, model gambar dan riset otonom juga tidak
+ * cocok sebagai lanjutan chat redaksi.
+ */
+const NON_CHAT_TASKS: ReadonlySet<string> = new Set([
+  'tts',
+  'speech synthesis',
+  'transcribe',
+  'transcription',
+  'embeddings',
+  'image generation',
+  'research',
+]);
+
+/**
+ * List model teks se-provider untuk kaskade turun-model.
+ *
+ * @param db - Runtime database port.
+ * @param providerId - Provider pemilik pool kredensial.
+ * @param exclude - Model yang sudah ada di rantai terkonfigurasi.
+ * @param limit - Maksimal nama dikembalikan.
+ * @returns Nama model aktif berprioritas teratas; kosong saat DB gagal.
+ * @remarks Satu `SELECT` berproyeksi dua kolom dan ber-`LIMIT`; gagal
+ * berarti tanpa kaskade, bukan request gagal.
+ */
+export async function getCascadeModels(
+  db: AiDb,
+  providerId: string,
+  exclude: readonly string[],
+  limit: number,
+): Promise<string[]> {
+  if (limit <= 0) return [];
+  const capped = Math.min(Math.max(limit, 1), AI_MAX_CHAIN_ENTRIES);
+  try {
+    const value = await db.execute(
+      sql`select model_name, task_recommendation from ai_models where provider_id = ${providerId} and is_active = true order by priority asc limit ${capped * 3}`,
+    );
+    const out: string[] = [];
+    const banned = new Set(exclude);
+    for (const row of toRowArray(value)) {
+      const record = asRecord(row);
+      const name = record === null ? null : toStringOrNull(record.model_name);
+      const task = record === null ? null : toStringOrNull(record.task_recommendation);
+      if (name === null || banned.has(name)) continue;
+      if (task !== null && NON_CHAT_TASKS.has(task)) continue;
+      out.push(name);
+      banned.add(name);
+      if (out.length >= capped) break;
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Tempelkan model kaskade di belakang entri terkonfigurasi.
+ *
+ * @param chain - Rantai dasar dari `resolveOrderedAiModelChain`.
+ * @param cascades - Nama model per provider dari `getCascadeModels`.
+ * @param cap - Batas total entri; default `AI_MAX_CHAIN_ENTRIES`.
+ * @returns Rantai bertambah tanpa duplikat dan tanpa melampaui batas.
+ * @remarks Kaskade selalu menempel di belakang rantai terkonfigurasi (yang
+ * sudah utuh di `out` sejak awal), sehingga pilihan eksplisit operator
+ * tidak pernah disalip model sekatalog.
+ */
+export function expandChainWithCascade(
+  chain: readonly AiModelChainEntry[],
+  cascades: ReadonlyMap<string, readonly string[]>,
+  cap: number = AI_MAX_CHAIN_ENTRIES,
+): AiModelChainEntry[] {
+  const out = [...chain];
+  const seen = new Set(chain.map((entry) => `${entry.providerId}:${entry.modelName}`));
+  for (const entry of chain) {
+    for (const modelName of cascades.get(entry.providerId) ?? []) {
+      if (out.length >= cap) return out;
+      const key = `${entry.providerId}:${modelName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ providerId: entry.providerId, modelName });
+    }
+  }
+  return out;
+}
+
+/**
+ * Susun rantai penuh: konfigurasi operator plus kaskade sekatalog.
+ *
+ * @param db - Runtime database port untuk daftar model se-provider.
+ * @param chain - Rantai dasar primary → fallback.
+ * @param modelOverride - Model khusus modalitas; bila diisi, kaskade
+ * dilewati karena override adalah niat satu-model yang eksplisit.
+ * @returns Rantai siap coba; pool kredensial tiap entri tetap milik
+ * providernya, sehingga turun-model memakai key yang sama.
+ */
+export async function resolveCascadeChain(
+  db: AiDb,
+  chain: readonly AiModelChainEntry[],
+  modelOverride: string | undefined,
+): Promise<readonly AiModelChainEntry[]> {
+  if (modelOverride !== undefined) return chain;
+  if (chain.length >= AI_MAX_CHAIN_ENTRIES) return chain;
+  const room = AI_MAX_CHAIN_ENTRIES - chain.length;
+  const configured = chain.map((entry) => entry.modelName);
+  const cascades = new Map<string, readonly string[]>();
+  for (const entry of chain) {
+    if (cascades.has(entry.providerId)) continue;
+    cascades.set(entry.providerId, await getCascadeModels(db, entry.providerId, configured, room));
+  }
+  return expandChainWithCascade(chain, cascades);
+}
 /**
  * Kunci Redis untuk hitungan gagal satu model.
  *

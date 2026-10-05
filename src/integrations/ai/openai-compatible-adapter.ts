@@ -24,6 +24,65 @@ function resolveReasoningEffort(budget: number | undefined): 'low' | 'medium' | 
 }
 
 /**
+ * Maps one Gemini-style schema type to its JSON Schema lowercase form.
+ *
+ * @param value - Raw `type` value from a catalog schema.
+ * @returns Lowercase JSON Schema type; unknown values pass through untouched.
+ * @remarks Catalog schemas (`ai-response-schemas.ts`) speak Gemini (`STRING`,
+ * `OBJECT`, `ARRAY`); OpenAI-compatible providers reject anything but
+ * lowercase (`Invalid type: OBJECT` observed live on Nvidia, 2026-10-05).
+ */
+function toJsonSchemaType(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  switch (value) {
+    case 'STRING':
+      return 'string';
+    case 'NUMBER':
+      return 'number';
+    case 'INTEGER':
+      return 'integer';
+    case 'BOOLEAN':
+      return 'boolean';
+    case 'ARRAY':
+      return 'array';
+    case 'OBJECT':
+      return 'object';
+    default:
+      return value;
+  }
+}
+
+/**
+ * Converts a Gemini-style response schema to provider-neutral JSON Schema.
+ *
+ * @param schema - Catalog schema with possible uppercase type tokens.
+ * @returns Deep copy with type tokens lowercased; structure, enums, and
+ * required lists preserved.
+ */
+export function toOpenAiJsonSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === 'type') {
+      out[key] = toJsonSchemaType(value);
+    } else if (key === 'properties' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const props: Record<string, unknown> = {};
+      for (const [propKey, propValue] of Object.entries(value as Record<string, unknown>)) {
+        props[propKey] =
+          typeof propValue === 'object' && propValue !== null && !Array.isArray(propValue)
+            ? toOpenAiJsonSchema(propValue as Record<string, unknown>)
+            : propValue;
+      }
+      out[key] = props;
+    } else if (key === 'items' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      out[key] = toOpenAiJsonSchema(value as Record<string, unknown>);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+/**
  * Builds the response format for structured output.
  *
  * @param promptData - Prompt carrying an optional schema and MIME type.
@@ -39,7 +98,7 @@ function buildResponseFormat(promptData: AiChatPrompt): Record<string, unknown> 
     !Array.isArray(schema) &&
     Object.keys(schema).length > 0
   ) {
-    return { type: 'json_schema', json_schema: { name: 'indicate', strict: true, schema } };
+    return { type: 'json_schema', json_schema: { name: 'indicate', strict: true, schema: toOpenAiJsonSchema(schema as Record<string, unknown>) } };
   }
   if (promptData.responseMimeType === 'application/json') return { type: 'json_object' };
   return undefined;

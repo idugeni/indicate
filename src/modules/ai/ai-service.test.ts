@@ -61,7 +61,7 @@ interface FakeDb {
   readonly logs: AiRequestLogEntry[];
 }
 
-function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record<string, unknown> = POLICY_ROW, ownerProvider: string | null = null, orgLimits: Record<string, unknown> | null = null): FakeDb {
+function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record<string, unknown> = POLICY_ROW, ownerProvider: string | null = null, orgLimits: Record<string, unknown> | null = null, cascadeRows: Record<string, unknown>[] | null = null): FakeDb {
   const adapterCalls: { readonly providerId: string; readonly modelName: string }[] = [];
   const logs: AiRequestLogEntry[] = [];
   let credentialSelect = 0;
@@ -72,6 +72,7 @@ function setup(credentialSelects: Record<string, unknown>[][], policyRow: Record
       if (text.includes('organizations')) return orgLimits === null ? [] : [{ ...orgLimits }];
       if (text.includes('decrypt_ai_key')) return [{ plain: 'plain-test-key' }];
       if (text.includes('provider_id') && text.includes('ai_models')) {
+        if (cascadeRows !== null && text.includes('task_recommendation')) return [...cascadeRows];
         return ownerProvider === null ? [] : [{ provider_id: ownerProvider }];
       }
       if (text.includes('key_encrypted')) {
@@ -333,6 +334,46 @@ describe('executeAiQuery strategi rantai', () => {
     };
     await executeAiQuery(depsFor(fake, { rateLimit: { store } }, ['gemini-3.8-flash']), PROMPT);
     expect(bumped).toContain('ai:breaker:gemini:gemini-3.8-flash:1');
+  });
+
+  it('400 beruntun menaikkan counter breaker model', async () => {
+    const fake = setup(
+      [[credentialRow('cred-1', 'gemini')], [credentialRow('cred-1', 'gemini')]],
+      SAME_PROVIDER_POLICY,
+    );
+    const bumped: string[] = [];
+    const store = {
+      get: async () => null,
+      incrby: async (key: string, delta: number) => {
+        bumped.push(`${key}:${delta}`);
+        return delta;
+      },
+      expire: async () => {},
+    };
+    const badRequestDeps: AiServiceDeps = {
+      ...depsFor(fake, { rateLimit: { store } }),
+      resolveAdapter: () => ({
+        execute: async () => {
+          throw new Error('OpenAI-compatible request rejected with status 400: {"error":{"message":"Bad Request"}}.');
+        },
+      }),
+    };
+    const result = await executeAiQuery(badRequestDeps, PROMPT);
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(bumped).toContain('ai:breaker:gemini:gemini-3.8-flash:1');
+  });
+
+  it('turun ke model sekatalog dalam pool key yang sama', async () => {
+    const singlePolicy = { ...SAME_PROVIDER_POLICY, fallback_model: 'gemini-3.8-flash' };
+    const cascade = [{ model_name: 'gemini-3.6-flash', task_recommendation: 'general chat' }];
+    const fake = setup([[credentialRow('cred-1', 'gemini')]], singlePolicy, null, null, cascade);
+    const result = await executeAiQuery(depsFor(fake, undefined, ['gemini-3.8-flash']), PROMPT);
+    expect(result.modelName).toBe('gemini-3.6-flash');
+    expect(result.error).toBeUndefined();
+    expect(fake.adapterCalls).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
   });
 });
 

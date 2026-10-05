@@ -5,10 +5,10 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { aiCredentials, aiModels, aiProviders } from '@/data/schema/ai';
+import { aiCredentials, aiModels, aiProviders, aiRoutingPolicies } from '@/data/schema/ai';
 import { runtimeConfigAuditLogs } from '@/data/schema/runtime-config';
 import { authorized } from '@/app/api/internal/maintenance/view-flush/route';
-import { diffCatalogModels, normalizeListingId } from '@/modules/ai/ai-model-sweep';
+import { diffCatalogModels, findDanglingPolicyModels, normalizeListingId, type SweepPolicyReference } from '@/modules/ai/ai-model-sweep';
 import { OPENROUTER_BASE_URL } from '@/integrations/ai/gateway/openrouter/openrouter-gateway';
 import { VERCEL_GATEWAY_BASE_URL } from '@/integrations/ai/gateway/vercel/vercel-gateway';
 
@@ -41,6 +41,7 @@ async function handleGET(request: Request) {
   const now = new Date();
   const deactivated: string[] = [];
   const skipped: string[] = [];
+  const liveByProvider = new Map<string, ReadonlySet<string>>();
 
   const providers = await runtime.db
     .select({ id: aiProviders.id, isActive: aiProviders.isActive, supportsChat: aiProviders.supportsChat })
@@ -102,6 +103,7 @@ async function handleGET(request: Request) {
       skipped.push(provider.id);
       continue;
     }
+    liveByProvider.set(provider.id, live);
     const diff = diffCatalogModels(
       models.filter((row) => row.providerId === provider.id),
       live,
@@ -125,8 +127,42 @@ async function handleGET(request: Request) {
     }
   }
 
+  const policyRows = await runtime.db
+    .select({
+      primaryProviderId: aiRoutingPolicies.primaryProviderId,
+      fallbackProviderId: aiRoutingPolicies.fallbackProviderId,
+      defaultModel: aiRoutingPolicies.defaultModel,
+      fallbackModel: aiRoutingPolicies.fallbackModel,
+    })
+    .from(aiRoutingPolicies)
+    .where(eq(aiRoutingPolicies.id, 'default'))
+    .limit(1);
+  const policy = policyRows[0];
+  const policyRefs: SweepPolicyReference[] =
+    policy === undefined || policy.primaryProviderId === null
+      ? []
+      : [
+          { role: 'default', providerId: policy.primaryProviderId, modelName: policy.defaultModel },
+          {
+            role: 'fallback',
+            providerId: policy.fallbackProviderId ?? policy.primaryProviderId,
+            modelName: policy.fallbackModel,
+          },
+        ];
+  const policyWarnings = findDanglingPolicyModels(
+    policyRefs,
+    models.map((row) => ({
+      id: row.id,
+      providerId: row.providerId,
+      modelName: row.modelName,
+      taskRecommendation: row.taskRecommendation,
+      isActive: row.isActive,
+    })),
+    liveByProvider,
+  );
+
   return NextResponse.json(
-    { requestId, checkedAt: now.toISOString(), deactivated, skipped },
+    { requestId, checkedAt: now.toISOString(), deactivated, skipped, policyWarnings },
     { headers: { 'Cache-Control': 'private, no-store' } },
   );
 }

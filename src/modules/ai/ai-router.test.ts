@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { AI_BREAKER_WINDOW_SECONDS, AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, getActiveRoutingPolicy, getModelOwnerProvider, getRoundRobinCursor, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveMaxRetries, resolveOrderedAiModelChain, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
+import { AI_BREAKER_ERROR_CLASSES, AI_BREAKER_WINDOW_SECONDS, AI_MAX_CHAIN_ENTRIES, AI_TASK_THINKING_BUDGET, BACKGROUND_MAX_RETRIES, INTERACTIVE_MAX_RETRIES, aiBreakerKey, classifyAiError, expandChainWithCascade, getActiveRoutingPolicy, getCascadeModels, getModelOwnerProvider, getRoundRobinCursor, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resetAiRotationState, resolveAiModelChain, resolveCascadeChain, resolveMaxRetries, resolveOrderedAiModelChain, resolveTaskThinkingBudget, selectCredential, shouldAlertBreakerTrip } from '@/modules/ai/ai-router';
 import type { AiCredentialRecord, AiRoutingPolicy } from '@/modules/ai/ai-types';
 
 function makeCredential(overrides: Partial<AiCredentialRecord> & { id: string }): AiCredentialRecord {
@@ -319,6 +319,17 @@ describe('model circuit breaker', () => {
     expect(calls).toContain('expire:ai:breaker:gemini:gemini-3.8-flash:1');
   });
 
+  it('400 dan respons kosong beruntun ikut men-trip model', async () => {
+    expect(AI_BREAKER_ERROR_CLASSES).toContain('application_error');
+    expect(AI_BREAKER_ERROR_CLASSES).toContain('malformed_response');
+    const { store } = makeBreakerStore();
+    expect(await isModelBreakerTripped(store, 'openrouter', 'dots-studio/dots-3-note-preview:free')).toBe(false);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await recordModelInfraFailure(store, 'openrouter', 'dots-studio/dots-3-note-preview:free');
+    }
+    expect(await isModelBreakerTripped(store, 'openrouter', 'dots-studio/dots-3-note-preview:free')).toBe(true);
+  });
+
   it('fail-open tanpa store dan saat redis mati', async () => {
     expect(await isModelBreakerTripped(undefined, 'gemini', 'gemini-3.8-flash')).toBe(false);
     await recordModelInfraFailure(undefined, 'gemini', 'gemini-3.8-flash');
@@ -357,6 +368,75 @@ describe('resolveTaskThinkingBudget', () => {
       includeThoughts: true,
     });
     expect(resolveTaskThinkingBudget('tak-dikenal', undefined, 'web')?.thinkingBudget).toBe(-1);
+  });
+});
+
+describe('model cascade sekatalog', () => {
+  const rows = [
+    { model_name: 'gemini-3.8-flash', task_recommendation: 'default chat' },
+    { model_name: 'gemini-3.8-flash-tts', task_recommendation: 'speech synthesis' },
+    { model_name: 'gemini-3.6-flash', task_recommendation: 'general chat' },
+    { model_name: 'gemini-embedding-2', task_recommendation: 'embeddings' },
+  ];
+  const db = { execute: async () => rows };
+
+  it('melewati modalitas non-chat dan model terkonfigurasi', async () => {
+    expect(await getCascadeModels(db, 'gemini', ['gemini-3.8-flash'], 4)).toEqual(['gemini-3.6-flash']);
+  });
+
+  it('fail-open tanpa kaskade saat db gagal', async () => {
+    const broken = { execute: async () => { throw new Error('down'); } };
+    expect(await getCascadeModels(broken, 'gemini', [], 4)).toEqual([]);
+  });
+
+  it('menempelkan tanpa duplikat sampai batas', () => {
+    const expanded = expandChainWithCascade(
+      [{ providerId: 'gemini', modelName: 'gemini-3.8-flash' }],
+      new Map([['gemini', ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.7-flash']]]),
+      2,
+    );
+    expect(expanded).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
+    expect(AI_MAX_CHAIN_ENTRIES).toBe(4);
+  });
+
+  it('melewati kaskade untuk override modalitas', async () => {
+    const chain = [{ providerId: 'gemini', modelName: 'gemini-3.8-flash-tts' }];
+    await expect(resolveCascadeChain(db, chain, 'gemini-3.8-flash-tts')).resolves.toEqual(chain);
+  });
+
+  it('menurunkan model dalam pool key yang sama', async () => {
+    const expanded = await resolveCascadeChain(
+      db,
+      [{ providerId: 'gemini', modelName: 'gemini-3.8-flash' }],
+      undefined,
+    );
+    expect(expanded).toEqual([
+      { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      { providerId: 'gemini', modelName: 'gemini-3.6-flash' },
+    ]);
+  });
+
+  it('kaskade tidak menyalip fallback terkonfigurasi', () => {
+    const expanded = expandChainWithCascade(
+      [
+        { providerId: 'openrouter', modelName: 'nvidia/nemotron-3-super-120b-a12b:free' },
+        { providerId: 'gemini', modelName: 'gemini-3.8-flash' },
+      ],
+      new Map([
+        ['openrouter', ['dots-studio/dots-3-note-preview:free']],
+        ['gemini', ['gemini-3.6-flash']],
+      ]),
+      4,
+    );
+    expect(expanded.map((entry) => entry.modelName)).toEqual([
+      'nvidia/nemotron-3-super-120b-a12b:free',
+      'gemini-3.8-flash',
+      'dots-studio/dots-3-note-preview:free',
+      'gemini-3.6-flash',
+    ]);
   });
 });
 

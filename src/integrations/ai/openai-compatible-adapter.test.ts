@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { OpenAiCompatibleAdapter } from '@/integrations/ai/openai-compatible-adapter';
+import { OpenAiCompatibleAdapter, toOpenAiJsonSchema } from '@/integrations/ai/openai-compatible-adapter';
 
 function okJson(body: unknown): Response {
   return new Response(JSON.stringify(body), { status: 200 });
@@ -44,6 +44,42 @@ describe('OpenAiCompatibleAdapter', () => {
     await adapter.execute('router-key', 'model', { prompt: 'hai', responseMimeType: 'application/json' });
     const body = lastBody() as { response_format?: { type: string } };
     expect(body.response_format).toMatchObject({ type: 'json_object' });
+  });
+
+  it('menurunkan skema Gemini ke JSON Schema lowercase', () => {
+    expect(
+      toOpenAiJsonSchema({
+        type: 'OBJECT',
+        properties: {
+          title: { type: 'STRING' },
+          tags: { type: 'ARRAY', items: { type: 'STRING' } },
+          risk: { type: 'STRING', enum: ['rendah', 'tinggi'] },
+        },
+        required: ['title'],
+      }),
+    ).toEqual({
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+        risk: { type: 'string', enum: ['rendah', 'tinggi'] },
+      },
+      required: ['title'],
+    });
+  });
+
+  it('mengirim skema lowercase saat adapter structured', async () => {
+    const adapter = new OpenAiCompatibleAdapter();
+    await adapter.execute('router-key', 'model', {
+      prompt: 'hai',
+      responseSchema: { type: 'OBJECT', properties: { text: { type: 'STRING' } }, required: ['text'] },
+    });
+    const body = lastBody() as { response_format?: { json_schema?: { schema?: unknown } } };
+    expect(body.response_format?.json_schema?.schema).toEqual({
+      type: 'object',
+      properties: { text: { type: 'string' } },
+      required: ['text'],
+    });
   });
 
   it('menjaga jalur teks tanpa perubahan', async () => {

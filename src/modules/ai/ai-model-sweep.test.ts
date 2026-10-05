@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { diffCatalogModels, normalizeListingId } from '@/modules/ai/ai-model-sweep';
+import { diffCatalogModels, findDanglingPolicyModels, normalizeListingId } from '@/modules/ai/ai-model-sweep';
 
 describe('diffCatalogModels', () => {
   it('menonaktifkan baris aktif yang hilang dari listing', () => {
@@ -35,5 +35,45 @@ describe('normalizeListingId', () => {
     expect(normalizeListingId({ name: 'x/y' })).toBe('x/y');
     expect(normalizeListingId('')).toBeNull();
     expect(normalizeListingId(null)).toBeNull();
+  });
+});
+
+describe('findDanglingPolicyModels', () => {
+  const catalog = [
+    { id: 'a', providerId: 'openrouter', modelName: 'gone/model', taskRecommendation: 'default chat', isActive: false },
+    { id: 'b', providerId: 'openrouter', modelName: 'kept/model', taskRecommendation: 'default chat', isActive: true },
+  ];
+
+  it('menandai model policy yang nonaktif di katalog', () => {
+    expect(
+      findDanglingPolicyModels(
+        [{ role: 'default', providerId: 'openrouter', modelName: 'gone/model' }],
+        catalog,
+        new Map([['openrouter', new Set(['gone/model', 'kept/model'])]]),
+      ),
+    ).toEqual(['default model openrouter/gone/model is inactive in catalog']);
+  });
+
+  it('menandai model policy yang hilang dari listing live', () => {
+    expect(
+      findDanglingPolicyModels(
+        [{ role: 'fallback', providerId: 'openrouter', modelName: 'kept/model' }],
+        catalog,
+        new Map([['openrouter', new Set(['other/model'])]]),
+      ),
+    ).toEqual(['fallback model openrouter/kept/model missing from live listing']);
+  });
+
+  it('diam saat rantai sehat atau listing tak tersedia', () => {
+    expect(
+      findDanglingPolicyModels(
+        [
+          { role: 'default', providerId: 'openrouter', modelName: 'kept/model' },
+          { role: 'fallback', providerId: 'vercel-gateway', modelName: 'any/model' },
+        ],
+        catalog,
+        new Map([['openrouter', new Set(['kept/model'])]]),
+      ),
+    ).toEqual([]);
   });
 });

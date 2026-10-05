@@ -70,3 +70,44 @@ export function normalizeListingId(value: unknown): string | null {
   }
   return null;
 }
+
+/** One routing-policy model reference checked by the sweep. */
+export interface SweepPolicyReference {
+  readonly role: 'default' | 'fallback';
+  readonly providerId: string;
+  readonly modelName: string;
+}
+
+/**
+ * Flag policy models that the catalog or live listings no longer support.
+ *
+ * @param refs - Default and fallback references from the armed policy.
+ * @param catalog - Catalog rows for the referenced providers.
+ * @param liveByProvider - Live model ids keyed by provider; providers
+ * without a listing are skipped, never flagged.
+ * @returns Human-readable warnings; empty when the chain resolves cleanly.
+ * @remarks Read-only: the sweep never rewrites operator policy, it only
+ * surfaces the dangle so the next cron or operator run repoints the chain
+ * before requests start failing.
+ */
+export function findDanglingPolicyModels(
+  refs: readonly SweepPolicyReference[],
+  catalog: readonly SweepCatalogModel[],
+  liveByProvider: ReadonlyMap<string, ReadonlySet<string>>,
+): readonly string[] {
+  const warnings: string[] = [];
+  for (const ref of refs) {
+    const row = catalog.find(
+      (entry) => entry.providerId === ref.providerId && entry.modelName === ref.modelName,
+    );
+    if (row !== undefined && !row.isActive) {
+      warnings.push(`${ref.role} model ${ref.providerId}/${ref.modelName} is inactive in catalog`);
+      continue;
+    }
+    const live = liveByProvider.get(ref.providerId);
+    if (live !== undefined && !live.has(ref.modelName)) {
+      warnings.push(`${ref.role} model ${ref.providerId}/${ref.modelName} missing from live listing`);
+    }
+  }
+  return warnings;
+}
