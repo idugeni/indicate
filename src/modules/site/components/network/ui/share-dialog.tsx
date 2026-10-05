@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Check, Link2, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +21,19 @@ export type TemplateShareButtonProps = {
 };
 
 /**
+ * Resolve a browser-absolute article URL for user actions only.
+ *
+ * @param value - Relative article path or legacy absolute URL.
+ * @returns Absolute URL when already absolute or when `window` exists, else the input unchanged.
+ * @remarks Never called during render: `window.location.origin` differs between SSR and hydration.
+ */
+function toAbsoluteArticleUrl(value: string): string {
+  if (/^https?:\/\//iu.test(value)) return value;
+  if (typeof window === 'undefined') return value;
+  return `${window.location.origin}${value.startsWith('/') ? value : `/${value}`}`;
+}
+
+/**
  * Share button opening the channel dialog on every platform.
  *
  * @param props - Article slug, title, optional href, plus caller shape classes.
@@ -31,9 +44,7 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
   const [copied, setCopied] = useState(false);
 
   const path = href ?? `/${slug}`;
-  const url = typeof window === 'undefined' ? path : /^https?:\/\//iu.test(path) ? path : `${window.location.origin}${path}`;
-
-  const channels = buildShareChannels(title, url);
+  const channels = buildShareChannels(title, path);
   const circleByKey: Record<ShareChannelKey, string> = {
     whatsapp: 'bg-[#25D366] group-hover:bg-[#1DA851]',
     x: 'bg-black ring-1 ring-white/30 group-hover:bg-[#333333]',
@@ -49,12 +60,25 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(toAbsoluteArticleUrl(path));
       setCopied(true);
       toast.success('Tautan tersalin');
     } catch {
       toast.error('Gagal menyalin tautan');
     }
+  };
+
+  const openChannel = (event: ReactMouseEvent<HTMLAnchorElement>, key: ShareChannelKey) => {
+    const absolute = toAbsoluteArticleUrl(path);
+    if (absolute === path) return;
+    event.preventDefault();
+    const target = buildShareChannels(title, absolute).find((channel) => channel.key === key);
+    if (target === undefined) return;
+    if (target.href.startsWith('mailto:')) {
+      window.open(target.href, '_self');
+      return;
+    }
+    window.open(target.href, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -93,6 +117,7 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
                   target={href.startsWith('mailto:') ? undefined : '_blank'}
                   rel={href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
                   aria-label={`Bagikan ke ${label}`}
+                  onClick={(event) => openChannel(event, key)}
                   className="group flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-3 font-sans text-[10px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)] sm:gap-1.5 sm:px-1 sm:text-[11px]"
                 >
                   <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors ${circleByKey[key]}`}>
@@ -114,7 +139,7 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
             ) : (
               <Link2 className="h-4 w-4 flex-none text-[var(--tpl-faint,#94a3b8)]" aria-hidden="true" />
             )}
-            <span className="min-w-0 flex-1 truncate">{copied ? 'Tautan tersalin!' : url}</span>
+            <span className="min-w-0 flex-1 truncate">{copied ? 'Tautan tersalin!' : path}</span>
           </button>
         </DialogContent>
       </Dialog>
