@@ -6,7 +6,6 @@ import type { ReactNode } from 'react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import type { ContactChannel } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
-import { ShareButtons, type ShareButtonsSkin } from '@/modules/site/components/network/cards/share-buttons';
 import type { SidebarChannel, SidebarTopic } from '@/modules/site/components/network/ui/article-sidebar-data';
 import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-form';
 import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -270,34 +269,5 @@ export function ArticleSidebarIkutiKami({ channels }: { readonly channels: reado
         })}
       </p>
     </SidebarSection>
-  );
-}
-
-/**
- * Panel bagikan untuk rail artikel.
- *
- * @remarks Disembunyikan di bawah `lg`: rail menumpuk di bawah konten pada
- * ponsel sehingga panel ini menduplikasi baris bagikan pada kepala artikel.
- *
- * @param skin - Warna netral tombol bagikan dari tema template.
- * @param article - Artikel yang dibagikan.
- * @param canonical - URL kanonis artikel.
- * @returns Kartu bagikan bertema template.
- */
-export function ArticleSidebarShare({
-  skin,
-  article,
-  canonical,
-}: {
-  readonly skin: ShareButtonsSkin;
-  readonly article: ArticleListItem;
-  readonly canonical: string;
-}) {
-  return (
-    <div className="hidden lg:block">
-      <SidebarSection label="Bagikan artikel" title="Bagikan">
-        <ShareButtons skin={skin} article={article} canonical={canonical} />
-      </SidebarSection>
-    </div>
   );
 }

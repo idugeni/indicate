@@ -17,8 +17,7 @@ import { RedEditorialShell } from '@/modules/site/components/network/templates/r
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { ArticleBylineMeta } from '@/modules/site/components/network/ui/article-byline-meta';
 import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-editorial/theme';
-import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
-import { ArticlePrintButton } from '@/modules/site/components/network/ui/article-print-button';
+import { ArticleActionStrip } from '@/modules/site/components/network/ui/article-action-strip';
 import { ArticlePrintFooter, ArticlePrintMasthead } from '@/modules/site/components/network/ui/article-print-sheet';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import { AdSlot } from '@/modules/ads/ad-slot';
@@ -27,7 +26,7 @@ import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules
 import { RedEditorialPicks } from '@/modules/site/components/network/templates/red-editorial/cards/picks';
 import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { selectArticleSidebar } from '@/modules/site/components/network/ui/article-sidebar-data';
-import { ArticleSidebarBacaJuga, ArticleSidebarIkutiKami, ArticleSidebarKanal, ArticleSidebarNewsletter, ArticleSidebarShare, ArticleSidebarTerbaru, ArticleSidebarTerpopuler, ArticleSidebarTopik } from '@/modules/site/components/network/ui/article-sidebar';
+import { ArticleSidebarBacaJuga, ArticleSidebarIkutiKami, ArticleSidebarKanal, ArticleSidebarNewsletter, ArticleSidebarTerbaru, ArticleSidebarTerpopuler, ArticleSidebarTopik } from '@/modules/site/components/network/ui/article-sidebar';
 
 export function RedEditorialArticle({
   site,
@@ -97,7 +96,7 @@ export function RedEditorialArticle({
             {article.description}
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:px-5">
+          <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:px-5">
             <p className="m-0 flex min-w-0 items-center gap-3">
               <AuthorAvatar skin={RED_EDITORIAL.authorAvatar} name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
               <span className="min-w-0">
@@ -107,11 +106,8 @@ export function RedEditorialArticle({
                 <ArticleBylineMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={`/${article.slug}`} className="text-slate-600" />
               </span>
             </p>
-            <span className="flex flex-wrap items-center gap-2">
-              <ShareButtons skin={RED_EDITORIAL.shareButtons} article={article} canonical={canonical} />
-              <ArticlePrintButton title={article.title} />
-            </span>
           </div>
+          <ArticleActionStrip skin={RED_EDITORIAL.shareButtons} article={article} canonical={canonical} />
           </header>
 
           <aside aria-label="Catatan editorial" className="mt-6 border-l-[3px] border-[#b91c1c] pl-4">
@@ -271,7 +267,6 @@ export function RedEditorialArticle({
 
           </article>
         <aside aria-label="Sidebar artikel" className="grid min-w-0 gap-6 print:hidden lg:sticky lg:top-20">
-          <ArticleSidebarShare skin={RED_EDITORIAL.shareButtons} article={article} canonical={canonical} />
           <ArticleSidebarBacaJuga articles={sidebar.bacaJuga} />
           <AdSlot site={site} slot="sidebar-top" />
           <ArticleSidebarTerpopuler articles={sidebar.terpopuler} />
