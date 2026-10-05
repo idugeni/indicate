@@ -605,7 +605,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           audioUrl: detail.audio_url,
           durationSeconds: detail.duration_seconds,
           imageMediaType: null,
-          imageUrl: detail.cover_image_url ?? (detail.lead_media_id !== null ? absoluteMediaUrl(context, detail.lead_media_id) : null) ?? (detail.article_type === 'video' ? youtubeThumbnailUrl(detail.video_url) : null),
+          imageUrl: detail.cover_image_url ?? (detail.lead_media_id !== null ? `https://${pair.originHost}/api/network/media/${detail.lead_media_id}` : null) ?? (detail.article_type === 'video' ? youtubeThumbnailUrl(detail.video_url) : null),
           thumbnailUrl: null,
           imageWidth: null,
           imageHeight: null,

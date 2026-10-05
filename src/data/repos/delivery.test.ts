@@ -283,6 +283,14 @@ describe('readBridgeArticles', () => {
     expect(site?.articles[0]).toMatchObject({ imageUrl: 'https://portal.example/api/network/media/lead-1' });
   });
 
+  it('sampul bridge apex menunjuk portal kota pemilik', async () => {
+    const cityRow = { ...bridgeAssignment, id: 'bridge-city', siteId: 's-city', originHost: 'wonosobo.portal.example' };
+    const leadDetail = { ...bridgeDetail, cover_image_url: null, lead_media_id: 'lead-1' };
+    const { repository } = harness({ articles: [], bridgeAssignments: [cityRow], bridgeDetails: [leadDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT, siteId: 's-apex' }, {});
+    expect(site?.articles[0]).toMatchObject({ imageUrl: 'https://wonosobo.portal.example/api/network/media/lead-1' });
+  });
+
   it('menggabungkan duplikat bridge apex dan kota menjadi satu baris', async () => {
     const apexRow = { ...bridgeAssignment, id: 'bridge-apex', siteId: 's-apex' };
     const cityRow = { ...bridgeAssignment, id: 'bridge-city', siteId: 's-city' };
