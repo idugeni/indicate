@@ -4,6 +4,9 @@ on:
   pull_request:
     paths-ignore:
       - '**/*.md'
+  # push:main sengaja menjalankan ulang gate penuh walau SHA sama dengan PR:
+  # aggregator quality-gate (+ build Vercel) adalah syarat deployment, dan
+  # cancel-in-progress per job mencegah antrean saat push beruntun.
   push:
     branches: [main]
     paths-ignore:
@@ -34,7 +37,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
       - run: npm run db:bootstrap:check
       - run: npm run typecheck
       - name: audit production dependencies (tahan outage registry singkat)
@@ -146,12 +149,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
+      # `npm run perf` sudah mencakup perf:db-access (lihat package.json);
+      # langkah eksplisit kedua dihapus agar budget tidak dipindai dua kali.
+      # Hard gate AGENTS.md §"Database access & egress" tetap hidup di dalam
+      # `perf`: no unbounded select().from(), whole-set reads hanya menyusut
+      # terhadap ratchet scripts/perf/db-access-budget.mjs.
       - run: npm run perf
-      # Hard gate for AGENTS.md §"Database access & egress": no unbounded
-      # select().from() may be introduced, and whole-set reads may only shrink
-      # against the committed ratchet in scripts/perf/db-access-budget.mjs.
-      - name: database-access budget
-        run: npm run perf:db-access
 
   docs:
     runs-on: ubuntu-26.04
@@ -168,10 +171,9 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint:md
       - run: npm run lint:md:citations
-      - uses: lycheeverse/lychee-action@v2
-        with:
-          args: --no-progress --timeout 20 --max-retries 2 --exclude-path 'docs/vercel-multi-tenant/**' --exclude 'https://www.whatsmydns.net/*' '*.md' 'docs/**/*.md' '.github/**/*.md' 'workers/**/*.md' 'src/**/*.md' 'public/**/*.md'
-          fail: true
+      # Tanpa lychee di sini: docs-gate.yml berjalan setiap ada perubahan
+      # **/*.md (termasuk PR campuran kode+md dan jadwal mingguan), sehingga
+      # crawl link jaringan yang mahal hanya terjadi sekali per SHA.
 
   quality-gate:
     runs-on: ubuntu-26.04
