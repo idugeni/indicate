@@ -25,9 +25,12 @@ export const DISQUS_SCRIPT_HOSTS = ['https://*.disqus.com', 'https://*.disquscdn
  * Origins allowed to frame Disqus.
  *
  * @remarks The comment thread, the login popup, and the single-sign-on iframe
- * are all documents served from `disqus.com`.
+ * are all documents served from `disqus.com`. The bare domain must be listed
+ * beside the wildcard: `*.disqus.com` matches subdomains only, while the
+ * embed also frames `https://disqus.com/` itself — without it the browser
+ * blocks the channel frame and the thread never fills.
  */
-export const DISQUS_FRAME_HOSTS = ['https://*.disqus.com'] as const;
+export const DISQUS_FRAME_HOSTS = ['https://disqus.com', 'https://*.disqus.com'] as const;
 
 /**
  * Class name `count.js` scans for to fill in a comment count.
