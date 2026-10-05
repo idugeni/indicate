@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getControlHosts, isProductionEdge } from '@/core/config/edge-hosts';
-import { DISQUS_FRAME_HOSTS, DISQUS_SCRIPT_HOSTS } from '@/core/security/disqus-contract';
+import { DISQUS_FRAME_HOSTS, DISQUS_SCRIPT_HOSTS, DISQUS_STYLE_HOSTS } from '@/core/security/disqus-contract';
 import { normalizeRequestHostname } from '@/core/hostname/normalize-request-hostname';
 import { ensureRequestId, REQUEST_ID_HEADER } from '@/core/observability/request-id';
 import { ensureTraceContext, TRACEPARENT_HEADER } from '@/core/observability/trace-context';
@@ -50,7 +50,7 @@ function contentSecurityPolicy(): string {
   return [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com " + DISQUS_STYLE_HOSTS.join(' '),
     `frame-src https://challenges.cloudflare.com ${DISQUS_FRAME_HOSTS.join(' ')} ${adsense.frameHosts.join(' ')}`,
     "img-src 'self' https: data: blob:",
     "font-src 'self' https: data:",

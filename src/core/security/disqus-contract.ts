@@ -22,6 +22,15 @@ export const DISQUS_SHORTNAME_PATTERN = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/u;
 export const DISQUS_SCRIPT_HOSTS = ['https://*.disqus.com', 'https://*.disquscdn.com'] as const;
 
 /**
+ * Origins allowed to serve Disqus stylesheets.
+ *
+ * @remarks The thread renders inside a sourceless (`src=""`) iframe, which
+ * inherits the parent page's policy instead of carrying Disqus's own. Without
+ * this entry the browser blocks the embed's CSS and the thread never paints.
+ */
+export const DISQUS_STYLE_HOSTS = ['https://*.disquscdn.com'] as const;
+
+/**
  * Origins allowed to frame Disqus.
  *
  * @remarks The comment thread, the login popup, and the single-sign-on iframe
