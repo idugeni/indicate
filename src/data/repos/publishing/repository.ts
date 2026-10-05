@@ -519,12 +519,41 @@ export class DrizzlePublishingRepository implements PublishingRepository {
    * (lead, body, sampul, logo penerbit, avatar penulis), null bila tidak.
    * @remarks Rujukan adalah gerbangnya — media yang tidak dirujuk konten
    * tayang tetap tidak terlihat lintas-org, mempertahankan isolasi tenant.
+   * Baris SQL mentah berbentuk snake_case sehingga dipetakan eksplisit ke
+   * `MediaRow` sebelum `mapMedia`: meneruskan baris mentah membuat semua
+   * kolom camelCase menjadi undefined.
    */
   private async authorizeBridgeMedia(transaction: Transaction, context: HostnameContext, mediaId: string) {
     try {
       const rows = await transaction.execute(sql`SELECT * FROM indicate_private.authorize_bridge_media(${context.organizationId}::uuid, ${context.siteId}::uuid, ${mediaId}::uuid)`);
-      const row = (Array.isArray(rows) ? rows : [])[0] as typeof media.$inferSelect | undefined;
-      if (row === undefined) return null;
+      const raw = (Array.isArray(rows) ? rows : [])[0] as Record<string, unknown> | undefined;
+      if (raw === undefined) return null;
+      const textOrNull = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+      const row = {
+        id: String(raw.id ?? ''),
+        organizationId: String(raw.organization_id ?? ''),
+        objectKey: textOrNull(raw.object_key) ?? '',
+        purpose: textOrNull(raw.purpose) ?? '',
+        mediaType: textOrNull(raw.media_type) ?? '',
+        sizeBytes: typeof raw.size_bytes === 'number' ? raw.size_bytes : 0,
+        checksum: textOrNull(raw.checksum) ?? '',
+        thumbObjectKey: textOrNull(raw.thumb_object_key),
+        widthPx: typeof raw.width_px === 'number' ? raw.width_px : null,
+        heightPx: typeof raw.height_px === 'number' ? raw.height_px : null,
+        altText: textOrNull(raw.alt_text),
+        caption: textOrNull(raw.caption),
+        sortOrder: typeof raw.sort_order === 'number' ? raw.sort_order : 0,
+        focalX: typeof raw.focal_x === 'number' ? raw.focal_x : null,
+        focalY: typeof raw.focal_y === 'number' ? raw.focal_y : null,
+        articleId: textOrNull(raw.article_id),
+        siteId: textOrNull(raw.site_id),
+        organizationAsset: raw.organization_asset === true,
+        state: textOrNull(raw.state) ?? '',
+        version: typeof raw.version === 'number' ? raw.version : 0,
+        createdAt: raw.created_at instanceof Date ? raw.created_at : new Date(),
+        updatedAt: raw.updated_at instanceof Date ? raw.updated_at : new Date(),
+      } as typeof media.$inferSelect;
+      if (row.id === '' || row.objectKey === '') return null;
       return mapMedia(row);
     } catch {
       return null;

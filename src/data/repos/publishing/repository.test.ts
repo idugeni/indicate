@@ -146,9 +146,36 @@ describe('authorizePublicMedia organization article images', () => {
 });
 
 describe('authorizePublicMedia bridge media', () => {
+  const rawRow = {
+    organization_id: 'o2',
+    id: 'm-org',
+    object_key: 'o/o2/p/article-cover/y=2026/m=10/organization/05-cover-abcdef1234567890.jpeg',
+    purpose: 'article-cover',
+    media_type: 'image/jpeg',
+    size_bytes: 73926,
+    checksum: 'abc',
+    thumb_object_key: null,
+    width_px: 1280,
+    height_px: 720,
+    alt_text: null,
+    caption: null,
+    sort_order: 0,
+    focal_x: null,
+    focal_y: null,
+    article_id: null,
+    site_id: null,
+    organization_asset: true,
+    state: 'active',
+    version: 1,
+    created_at: new Date('2026-10-05T09:17:46.000Z'),
+    updated_at: new Date('2026-10-05T09:17:46.000Z'),
+  };
+
   it('mengizinkan media pemilik yang dirujuk artikel bridge tayang', async () => {
-    const repository = harness({ media: [], publishers: [], exec: [mediaRow()] });
-    expect((await repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1'))?.id).toBe('m-org');
+    const repository = harness({ media: [], publishers: [], exec: [rawRow] });
+    const asset = await repository.authorizePublicMedia({ ...CONTEXT }, 'm-org', 'req-1');
+    expect(asset?.id).toBe('m-org');
+    expect(asset?.objectKey).toBe(rawRow.object_key);
   });
 
   it('menolak media tanpa rujukan bridge tayang', async () => {
