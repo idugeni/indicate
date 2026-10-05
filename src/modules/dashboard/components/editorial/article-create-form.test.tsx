@@ -172,7 +172,7 @@ describe('Formulir tulis artikel', () => {
     );
   });
 
-  it('mengisi wilayah, kota, dan sumber otomatis dari penerbit humas', async () => {
+  it('mengisi wilayah dan kota otomatis dari penerbit humas tanpa mengisi sumber', async () => {
     const humas: PublisherEntity = {
       id: 'p-humas',
       name: 'RUTAN KELAS II B WONOSOBO',
@@ -195,9 +195,7 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByLabelText('Penerbit'));
     await user.click(await screen.findByRole('option', { name: 'RUTAN KELAS II B WONOSOBO' }));
     expect(screen.getByLabelText('Kota / kabupaten')).toBeDefined();
-    expect((screen.getByLabelText('Sumber', { selector: 'input' }) as HTMLInputElement).value).toBe(
-      'RUTAN KELAS II B WONOSOBO',
-    );
+    expect((screen.getByLabelText('Sumber', { selector: 'input' }) as HTMLInputElement).value).toBe('');
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
@@ -206,7 +204,7 @@ describe('Formulir tulis artikel', () => {
         expect.objectContaining({
           publisherId: 'p-humas',
           regionId: 'r-2',
-          source: 'RUTAN KELAS II B WONOSOBO',
+          source: '',
         }),
       ),
     );

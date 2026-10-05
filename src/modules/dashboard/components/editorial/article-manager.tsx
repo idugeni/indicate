@@ -117,6 +117,16 @@ const STATUS_LABELS: Readonly<Record<string, string>> = {
   archived: 'Arsip',
 };
 
+const SORT_OPTIONS: ReadonlyArray<{ readonly value: string; readonly label: string }> = [
+  { value: 'published-desc', label: 'Terbaru (tayang)' },
+  { value: 'updated', label: 'Terakhir diubah' },
+  { value: 'published-asc', label: 'Terlama (tayang)' },
+  { value: 'syndicated', label: 'Portal terbanyak' },
+  { value: 'title', label: 'Judul A-Z' },
+];
+
+const DEFAULT_SORT = 'published-desc';
+
 function formatLong(value: string | null | undefined): string {
   if (value === null || value === undefined) return '—';
   const time = new Date(value).getTime();
@@ -244,12 +254,14 @@ export function ArticleManager({
   const tagId = useId();
   const siteId = useId();
   const statusId = useId();
+  const sortId = useId();
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [tag, setTag] = useState('');
   const [site, setSite] = useState('');
   const [status, setStatus] = useState('active');
+  const [sort, setSort] = useState<string>(DEFAULT_SORT);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ArchiveArticle | null>(null);
@@ -266,6 +278,7 @@ export function ArticleManager({
     const needle = search.trim();
     const parts = [
       `status=${encodeURIComponent(status === '' ? 'active' : status)}`,
+      `sort=${encodeURIComponent(sort)}`,
       ...(needle === '' ? [] : [`search=${encodeURIComponent(needle)}`]),
       ...(category === '' ? [] : [`categoryId=${encodeURIComponent(category)}`]),
       ...(tag === '' ? [] : [`tag=${encodeURIComponent(tag)}`]),
@@ -273,7 +286,7 @@ export function ArticleManager({
     ];
     const timer = window.setTimeout(() => onFilterApply(`&${parts.join('&')}`), 350);
     return () => window.clearTimeout(timer);
-  }, [search, category, tag, site, status, onFilterApply]);
+  }, [search, category, tag, site, status, sort, onFilterApply]);
 
   const categoryNames = useMemo(
     () => new Map(categories.map((item) => [item.id, item.name] as const)),
@@ -391,6 +404,7 @@ export function ArticleManager({
     setTag('');
     setSite('');
     setStatus('active');
+    setSort(DEFAULT_SORT);
     resetPage();
   };
 
@@ -493,7 +507,7 @@ export function ArticleManager({
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1">
             <Label htmlFor={categoryId} className="text-xs font-medium text-paper-dim">
               Kategori
@@ -560,6 +574,22 @@ export function ArticleManager({
               }}
               placeholder="Semua status"
               options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor={sortId} className="text-xs font-medium text-paper-dim">
+              Urutan
+            </Label>
+            <SearchCombobox
+              id={sortId}
+              value={sort}
+              onValueChange={(next) => {
+                setSort(next ?? DEFAULT_SORT);
+                resetPage();
+              }}
+              placeholder="Pilih urutan"
+              options={SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
             />
           </div>
         </div>

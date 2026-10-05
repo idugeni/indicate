@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { TipTapBodyView } from '@/modules/site/components/tiptap-body-view';
 
@@ -77,6 +78,104 @@ describe('TipTapBodyView', () => {
     expect(images[0]?.getAttribute('srcset')).toContain('/api/network/media/0199a2b3-4c5d-7e8f-9012-3456789abcde?variant=thumb 640w');
     expect(images[0]?.getAttribute('alt')).toBe('Pasar pagi');
     expect(container.textContent).toContain('Suasana pasar');
+  });
+
+  it('merender galeri 2 gambar berdampingan dan membuang item tak aman', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'imageGallery',
+          attrs: {
+            images: [
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Satu', title: 'Keterangan satu' },
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcdf', alt: '', title: '' },
+              { src: 'javascript:alert(1)', alt: 'jahat' },
+            ],
+          },
+        },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(screen.getByRole('group', { name: 'Galeri 2 gambar' })).toBeDefined();
+    const images = container.querySelectorAll('img');
+    expect(images).toHaveLength(2);
+    expect(images[0]?.getAttribute('alt')).toBe('Satu');
+    expect(images[1]?.getAttribute('alt')).toBe('Gambar artikel');
+    expect(container.textContent).toContain('Keterangan satu');
+    expect(container.innerHTML).not.toContain('javascript:');
+  });
+
+  it('merender galeri 3 gambar sebagai korsel dengan penghitung', async () => {
+    const user = userEvent.setup();
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'imageGallery',
+          attrs: {
+            images: [
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Satu', title: '' },
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcdf', alt: 'Dua', title: '' },
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcd0', alt: 'Tiga', title: '' },
+            ],
+          },
+        },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(screen.getByRole('group', { name: 'Galeri 3 gambar' })).toBeDefined();
+    expect(container.querySelectorAll('img')).toHaveLength(1);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Dua');
+    expect(container.textContent).toContain('2/3');
+    await user.click(screen.getByRole('button', { name: 'Foto berikutnya' }));
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Tiga');
+    expect(container.textContent).toContain('3/3');
+    expect(screen.queryByRole('button', { name: 'Foto berikutnya' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Foto sebelumnya' }));
+    await user.click(screen.getByRole('button', { name: 'Foto sebelumnya' }));
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Satu');
+    expect(screen.queryByRole('button', { name: 'Foto sebelumnya' })).toBeNull();
+  });
+
+  it('merender galeri 4 gambar sebagai hero penuh plus 3 sejajar', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'imageGallery',
+          attrs: {
+            images: ['e', 'f', '0', '1'].map((seed) => ({
+              src: `media:0199a2b3-4c5d-7e8f-9012-3456789abcd${seed}`,
+              alt: '',
+              title: '',
+            })),
+          },
+        },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(screen.getByRole('group', { name: 'Galeri 4 gambar' })).toBeDefined();
+    expect(container.querySelectorAll('img')).toHaveLength(4);
+    expect(container.querySelector('.grid-cols-3')).not.toBe(null);
+  });
+
+  it('merender galeri 1 gambar membentang penuh', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'imageGallery', attrs: { images: [{ src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: '', title: '' }] } },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(container.querySelectorAll('img')).toHaveLength(1);
+    expect(container.querySelector('.col-span-2')).not.toBe(null);
+  });
+
+  it('melewatkan galeri tanpa gambar valid', () => {
+    const doc = { type: 'doc', content: [{ type: 'imageGallery', attrs: { images: [{ src: 'javascript:alert(1)' }] } }] };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(container.querySelectorAll('img')).toHaveLength(0);
   });
 
   it('melewatkan srcset untuk gambar eksternal', () => {

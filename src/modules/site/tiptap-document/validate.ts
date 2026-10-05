@@ -11,6 +11,7 @@ import {
   ALLOWED_MARKS,
   ALLOWED_NODES,
   COLOR_PATTERN,
+  GALLERY_MAX_IMAGES,
   isRecord,
   isTipTapDoc,
   TABLE_MAX_COLS,
@@ -129,6 +130,18 @@ export function validateTipTapDoc(value: unknown): { readonly ok: true; readonly
       const title = isRecord(node.attrs) ? (node.attrs.title ?? node.attrs.caption) : undefined;
       if (title !== undefined && title !== null && (typeof title !== 'string' || Array.from(title).length > 500)) return 'invalid-image-caption';
     }
+    if (node.type === 'imageGallery') {
+      const images = isRecord(node.attrs) ? node.attrs.images : undefined;
+      if (!Array.isArray(images) || images.length === 0 || images.length > GALLERY_MAX_IMAGES) return 'invalid-gallery-size';
+      for (const item of images) {
+        if (!isRecord(item)) return 'invalid-gallery-item';
+        if (!isSafeMediaSrc(item.src)) return 'unsafe-gallery-src';
+        const alt = item.alt;
+        if (alt !== undefined && alt !== null && (typeof alt !== 'string' || Array.from(alt).length > 300)) return 'invalid-gallery-alt';
+        const title = item.title ?? item.caption;
+        if (title !== undefined && title !== null && (typeof title !== 'string' || Array.from(title).length > 500)) return 'invalid-gallery-caption';
+      }
+    }
     if (node.type === 'youtube' || node.type === 'video') {
       const attrs = isRecord(node.attrs) ? node.attrs : {};
       const candidate = attrs.src ?? attrs.videoId ?? attrs.id;
@@ -179,6 +192,19 @@ export function extractTipTapImages(doc: unknown): readonly { readonly mediaId: 
       if (src.startsWith('media:') && UUID_PATTERN.test(src.slice('media:'.length)) && isSafeMediaSrc(src)) {
         const alt = isRecord(node.attrs) && typeof node.attrs.alt === 'string' && node.attrs.alt.trim() !== '' ? node.attrs.alt.trim().slice(0, 300) : null;
         const title = isRecord(node.attrs) ? (node.attrs.title ?? node.attrs.caption) : undefined;
+        const caption = typeof title === 'string' && title.trim() !== '' ? title.trim().slice(0, 500) : null;
+        images.push({ mediaId: src.slice('media:'.length), alt, caption });
+      }
+      return;
+    }
+    if (node.type === 'imageGallery') {
+      const items = isRecord(node.attrs) && Array.isArray(node.attrs.images) ? node.attrs.images : [];
+      for (const item of items) {
+        if (!isRecord(item) || typeof item.src !== 'string') continue;
+        const src = item.src.trim();
+        if (!src.startsWith('media:') || !UUID_PATTERN.test(src.slice('media:'.length)) || !isSafeMediaSrc(src)) continue;
+        const alt = typeof item.alt === 'string' && item.alt.trim() !== '' ? item.alt.trim().slice(0, 300) : null;
+        const title = item.title ?? item.caption;
         const caption = typeof title === 'string' && title.trim() !== '' ? title.trim().slice(0, 500) : null;
         images.push({ mediaId: src.slice('media:'.length), alt, caption });
       }

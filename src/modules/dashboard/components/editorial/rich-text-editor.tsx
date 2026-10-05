@@ -16,7 +16,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, Link2, Loader2, Upload, WandSparkles } from 'lucide-react';
+import { ChevronDown, Images, Link2, Loader2, Upload, WandSparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,9 @@ import { Separator } from '@/components/ui/separator';
 import type { MediaOwner } from '@/modules/publishing/models';
 import { detectDriveEmbed, detectSocialEmbed, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
 import { DriveEmbed, FacebookEmbed, InstagramEmbed, TikTokEmbed, TwitterEmbed } from '@/modules/dashboard/components/editorial/embed-nodes';
+import { ImageGallery } from '@/modules/dashboard/components/editorial/gallery-node';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
+import { GALLERY_MAX_IMAGES } from '@/modules/site/tiptap-document/types';
 import { AppTooltip } from '@/ui/app-tooltip';
 
 export interface RichTextDocChange {
@@ -45,15 +47,26 @@ function rewritePreviewSources(doc: TipTapDoc, mapping: ReadonlyMap<string, stri
       if (stored !== undefined) return { ...node, attrs: { ...attrs, src: stored } };
       return node;
     }
+    if (record.type === 'imageGallery' && typeof record.attrs === 'object' && record.attrs !== null) {
+      const attrs = record.attrs as Readonly<Record<string, unknown>>;
+      if (!Array.isArray(attrs.images)) return node;
+      let changed = false;
+      const images = attrs.images.map((item) => {
+        if (typeof item !== 'object' || item === null || Array.isArray(item)) return item;
+        const entry = item as Readonly<Record<string, unknown>>;
+        const src = typeof entry.src === 'string' ? entry.src : '';
+        const stored = mapping.get(src);
+        if (stored === undefined) return item;
+        changed = true;
+        return { ...entry, src: stored };
+      });
+      if (!changed) return node;
+      return { ...node, attrs: { ...attrs, images } };
+    }
     if (Array.isArray(record.content)) return { ...node, content: record.content.map((child) => rewrite(child as { readonly [key: string]: unknown })) };
     return node;
   };
   return rewrite(doc as unknown as { readonly [key: string]: unknown }) as unknown as TipTapDoc;
-}
-
-function fileStem(name: string): string {
-  const stem = name.replace(/\.[a-z0-9]{1,10}$/iu, '').trim();
-  return stem === '' ? 'gambar' : stem;
 }
 
 /**
@@ -64,6 +77,7 @@ function fileStem(name: string): string {
  * @param command - Dashboard dispatcher for `media.reserve`, `media.complete`, and `media.read`.
  * @param owner - Media owner for inline uploads; defaults to the organization.
  * @param ownerOrganizationId - Target org for the bytes when filing on behalf of another org.
+ * @param onImageStored - Reports each stored upload with its target org for cross-org warnings.
  * @param onPolish - Polish-body action from the host form; when absent no polish button renders.
  * @param polishBusy - AI polish in flight.
  * @param polishDisabled - Disable the polish button even when idle.
@@ -78,6 +92,7 @@ export function RichTextEditor({
   command,
   owner = { kind: 'organization' },
   ownerOrganizationId,
+  onImageStored,
   onPolish,
   polishBusy = false,
   polishDisabled = false,
@@ -90,6 +105,7 @@ export function RichTextEditor({
   readonly command: CommandFn;
   readonly owner?: MediaOwner;
   readonly ownerOrganizationId?: string | null;
+  readonly onImageStored?: ((mediaId: string, ownerOrganizationId: string | null) => void) | undefined;
   readonly onPolish?: (() => void) | undefined;
   readonly polishBusy?: boolean;
   readonly polishDisabled?: boolean;
@@ -105,7 +121,9 @@ export function RichTextEditor({
   const socialInputId = useId();
   const selectedCaptionInputId = useId();
   const fileInputId = useId();
+  const galleryInputId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const srcMap = useRef(new Map<string, string>());
   const onDocChangeRef = useRef(onDocChange);
   useEffect(() => {
@@ -156,6 +174,7 @@ export function RichTextEditor({
         TikTokEmbed,
         FacebookEmbed,
         DriveEmbed,
+        ImageGallery,
         Underline,
         Highlight.configure({ multicolor: false }),
         TextStyle,
@@ -206,17 +225,63 @@ export function RichTextEditor({
     setUploading(true);
     setStatus('Mengunggah gambar…');
     try {
-      const { storedSrc, previewUrl } = await uploadEditorImage(file, owner, command, {
+      const { storedSrc, previewUrl, mediaId } = await uploadEditorImage(file, owner, command, {
         ...(ownerOrganizationId === undefined || ownerOrganizationId === null ? {} : { ownerOrganizationId }),
       });
+      onImageStored?.(mediaId, ownerOrganizationId ?? null);
       if (previewUrl !== storedSrc) srcMap.current.set(previewUrl, storedSrc);
-      editor.chain().focus().setImage({ src: previewUrl, alt: fileStem(file.name), title: fileStem(file.name) }).run();
+      editor.chain().focus().setImage({ src: previewUrl, alt: '', title: '' }).run();
       setStatus('Gambar tersisip.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Gagal mengunggah gambar.');
     } finally {
       setUploading(false);
       if (fileRef.current !== null) fileRef.current.value = '';
+    }
+  }
+
+  async function insertGallery(files: readonly File[]): Promise<void> {
+    if (editor === null || uploading) return;
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    const skippedCount = files.length - imageFiles.length;
+    const picked = imageFiles.slice(0, GALLERY_MAX_IMAGES);
+    const overflowCount = imageFiles.length - picked.length;
+    if (picked.length === 0) {
+      setStatus('Galeri dibatalkan: pilih 1 sampai 4 berkas gambar (JPEG, PNG, WebP, AVIF, HEIC).');
+      if (galleryRef.current !== null) galleryRef.current.value = '';
+      return;
+    }
+    setUploading(true);
+    try {
+      const images: { readonly src: string; readonly alt: string; readonly title: string }[] = [];
+      const failed: { readonly name: string; readonly reason: string }[] = [];
+      for (let index = 0; index < picked.length; index += 1) {
+        const file = picked[index]!;
+        setStatus(`Mengunggah galeri ${index + 1}/${picked.length}…`);
+        try {
+          const { storedSrc, previewUrl, mediaId } = await uploadEditorImage(file, owner, command, {
+            ...(ownerOrganizationId === undefined || ownerOrganizationId === null ? {} : { ownerOrganizationId }),
+          });
+          onImageStored?.(mediaId, ownerOrganizationId ?? null);
+          if (previewUrl !== storedSrc) srcMap.current.set(previewUrl, storedSrc);
+          images.push({ src: previewUrl, alt: '', title: '' });
+        } catch (error) {
+          failed.push({ name: file.name, reason: error instanceof Error ? error.message : 'Gagal mengunggah galeri.' });
+        }
+      }
+      if (images.length === 0) {
+        setStatus(`Galeri gagal: ${failed.map((entry) => entry.name).join(', ')}. ${failed[0]?.reason ?? 'Coba lagi.'}`);
+        return;
+      }
+      editor.chain().focus().insertContent({ type: 'imageGallery', attrs: { images } }).run();
+      const notes: string[] = [];
+      if (overflowCount > 0) notes.push(`${overflowCount} gambar diabaikan (maks ${GALLERY_MAX_IMAGES})`);
+      if (skippedCount > 0) notes.push(`${skippedCount} berkas bukan gambar dilewati`);
+      if (failed.length > 0) notes.push(`${failed.length} gagal (${failed.map((entry) => entry.name).join(', ')})`);
+      setStatus(notes.length === 0 ? `Galeri tersisip (${images.length} gambar).` : `Galeri tersisip (${images.length} gambar; ${notes.join('; ')}).`);
+    } finally {
+      setUploading(false);
+      if (galleryRef.current !== null) galleryRef.current.value = '';
     }
   }
 
@@ -258,7 +323,7 @@ export function RichTextEditor({
       setStatus('URL gambar tidak valid: gunakan alamat https langsung ke berkas gambar.');
       return;
     }
-    const alt = imageUrlAlt.trim() === '' ? 'gambar' : imageUrlAlt.trim().slice(0, 300);
+    const alt = imageUrlAlt.trim().slice(0, 300);
     editor.chain().focus().setImage({ src, alt, title: alt }).run();
     setOpenPanel(null);
     setImageUrlDraft('');
@@ -286,7 +351,7 @@ export function RichTextEditor({
   function applySelectedCaption(): void {
     if (editor === null) return;
     const next = selectedCaptionRef.current?.value.trim() ?? '';
-    editor.chain().focus().updateAttributes('image', { alt: next }).run();
+    editor.chain().focus().updateAttributes('image', { alt: next, title: next }).run();
     setSelectedImage((prev) => (prev === null ? prev : { ...prev, alt: next }));
     setStatus(next === '' ? 'Keterangan gambar dikosongkan.' : 'Keterangan gambar diperbarui.');
   }
@@ -361,6 +426,19 @@ export function RichTextEditor({
                   >
                     <Link2 className="h-3.5 w-3.5 text-paper-faint" aria-hidden="true" />
                     Dari URL luar
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => {
+                      setImageMenuOpen(false);
+                      galleryRef.current?.click();
+                    }}
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-left font-sans text-xs text-paper transition-colors hover:bg-bg-raised-2 disabled:opacity-50"
+                  >
+                    <Images className="h-3.5 w-3.5 text-paper-faint" aria-hidden="true" />
+                    Galeri hingga 4 gambar
                   </button>
                 </div>
               </PopoverContent>
@@ -568,6 +646,11 @@ export function RichTextEditor({
       <input ref={fileRef} id={fileInputId} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/x-icon,.ico,.heic,.heif" aria-label="Pilih berkas gambar" disabled={busy} className="sr-only" onChange={(event) => {
         const file = event.target.files?.[0];
         if (file !== undefined) void insertUpload(file);
+      }} />
+      <input ref={galleryRef} id={galleryInputId} type="file" accept="image/jpeg,image/png,image/webp,image/avif,.heic,.heif" multiple aria-label="Pilih hingga 4 berkas gambar galeri" disabled={busy} className="sr-only" onChange={(event) => {
+        const files = [...(event.target.files ?? [])];
+        if (files.length > 0) void insertGallery(files);
+        else if (galleryRef.current !== null) galleryRef.current.value = '';
       }} />
 
       {editor !== null && selectedImage !== null ? (

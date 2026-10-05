@@ -247,6 +247,43 @@ describe('validateTipTapDoc', () => {
       validateTipTapDoc({ type: 'doc', content: [{ type: 'drive', attrs: { src: 'https://drive.google.com/drive/home' } }] }).ok,
     ).toBe(false);
   });
+
+  it('menerima galeri inline 1 sampai 4 gambar dan menolak sisanya', () => {
+    const item = (id: string) => ({ src: `media:${id}`, alt: '', title: '' });
+    const good = {
+      type: 'doc',
+      content: [
+        {
+          type: 'imageGallery',
+          attrs: {
+            images: [
+              item('0199a2b3-4c5d-7e8f-9012-3456789abcde'),
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcdf', alt: 'Pasar pagi', title: 'Suasana pasar' },
+            ],
+          },
+        },
+      ],
+    };
+    expect(validateTipTapDoc(good).ok).toBe(true);
+    const five = {
+      type: 'doc',
+      content: [{ type: 'imageGallery', attrs: { images: ['a', 'b', 'c', 'd', 'e'].map((seed) => item(`0199a2b3-4c5d-7e8f-9012-3456789abc${seed}`)) } }],
+    };
+    expect(validateTipTapDoc(five)).toEqual({ ok: false, reason: 'invalid-gallery-size' });
+    expect(validateTipTapDoc({ type: 'doc', content: [{ type: 'imageGallery', attrs: { images: [] } }] })).toEqual({
+      ok: false,
+      reason: 'invalid-gallery-size',
+    });
+    expect(
+      validateTipTapDoc({ type: 'doc', content: [{ type: 'imageGallery', attrs: { images: [{ src: 'javascript:alert(1)' }] } }] }),
+    ).toEqual({ ok: false, reason: 'unsafe-gallery-src' });
+    expect(
+      validateTipTapDoc({
+        type: 'doc',
+        content: [{ type: 'imageGallery', attrs: { images: [{ src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'x'.repeat(301) }] } }],
+      }),
+    ).toEqual({ ok: false, reason: 'invalid-gallery-alt' });
+  });
 });
 
 describe('tiptapToText', () => {
@@ -283,5 +320,27 @@ describe('extractTipTapImages', () => {
     ]);
     expect(extractTipTapImages({ type: 'paragraph' })).toEqual([]);
     expect(extractTipTapImages(null)).toEqual([]);
+  });
+
+  it('mengekstrak gambar galeri inline bersama gambar tunggal', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'imageGallery',
+          attrs: {
+            images: [
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Satu', title: 'Keterangan satu' },
+              { src: 'media:0199a2b3-4c5d-7e8f-9012-3456789abcdf' },
+              { src: 'javascript:alert(1)' },
+            ],
+          },
+        },
+      ],
+    };
+    expect(extractTipTapImages(doc)).toEqual([
+      { mediaId: '0199a2b3-4c5d-7e8f-9012-3456789abcde', alt: 'Satu', caption: 'Keterangan satu' },
+      { mediaId: '0199a2b3-4c5d-7e8f-9012-3456789abcdf', alt: null, caption: null },
+    ]);
   });
 });

@@ -251,17 +251,17 @@ describe('ArticleManager server-driven', () => {
   it('mengirim status bawaan aktif ke server dengan debounce', async () => {
     const onFilterApply = vi.fn();
     render(<ArticleManager data={DATA} onFilterApply={onFilterApply} />);
-    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active'), { timeout: 2000 });
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active&sort=published-desc'), { timeout: 2000 });
   });
 
   it('mengenkode pencarian ke query server beserta status bawaan', async () => {
     const onFilterApply = vi.fn();
     render(<ArticleManager data={DATA} onFilterApply={onFilterApply} />);
-    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active'), { timeout: 2000 });
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active&sort=published-desc'), { timeout: 2000 });
     onFilterApply.mockClear();
     fireEvent.change(screen.getByLabelText('Pencarian'), { target: { value: 'banjir & wonosobo' } });
     await waitFor(
-      () => expect(onFilterApply).toHaveBeenCalledWith('&status=active&search=banjir%20%26%20wonosobo'),
+      () => expect(onFilterApply).toHaveBeenCalledWith('&status=active&sort=published-desc&search=banjir%20%26%20wonosobo'),
       { timeout: 2000 },
     );
   });
@@ -274,7 +274,18 @@ describe('ArticleManager server-driven', () => {
     onFilterApply.mockClear();
     await user.click(screen.getByLabelText('Status'));
     await user.click(await screen.findByRole('option', { name: 'Draf' }));
-    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=draft'), { timeout: 2000 });
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=draft&sort=published-desc'), { timeout: 2000 });
+  });
+
+  it('mengirim perubahan urutan ke query server dari tanggal terbaru', async () => {
+    const user = userEvent.setup();
+    const onFilterApply = vi.fn();
+    render(<ArticleManager data={DATA} onFilterApply={onFilterApply} />);
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active&sort=published-desc'), { timeout: 2000 });
+    onFilterApply.mockClear();
+    await user.click(screen.getByLabelText('Urutan'));
+    await user.click(await screen.findByRole('option', { name: 'Terakhir diubah' }));
+    await waitFor(() => expect(onFilterApply).toHaveBeenCalledWith('&status=active&sort=updated'), { timeout: 2000 });
   });
 
   it('allTags mengutamakan tagOptions model', async () => {

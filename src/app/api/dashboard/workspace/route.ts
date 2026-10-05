@@ -87,7 +87,8 @@ async function handleGET(request: Request) {
   const value = (name: string) => url.searchParams.get(name) ?? undefined;
   const parsed = querySchema.safeParse({
     organizationId: value('organizationId'), view: value('view'), regionId: value('regionId'), siteId: value('siteId'), categoryId: value('categoryId'), publisherId: value('publisherId'), authorId: value('authorId'),
-    publicationState: value('publicationState'), search: value('search'), actorId: value('actorId'), action: value('action'), targetType: value('targetType'), outcome: value('outcome'), from: value('from'), to: value('to'),
+    publicationState: value('publicationState'), search: value('search'), siteHostname: value('siteHostname'), status: value('status'), tag: value('tag'), sort: value('sort'),
+    limit: value('limit'), cursor: value('cursor'), actorId: value('actorId'), action: value('action'), targetType: value('targetType'), outcome: value('outcome'), from: value('from'), to: value('to'),
   });
   if (!parsed.success) {
     const filterIssues = parsed.error.issues.filter((issue) => !['organizationId', 'view'].includes(String(issue.path[0])));

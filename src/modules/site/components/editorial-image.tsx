@@ -27,8 +27,8 @@ export function EditorialImage({
   focalY = null,
   eager = false,
   className = 'aspect-video w-full object-cover',
-  figureClassName = 'm-0 overflow-hidden rounded-2xl shadow-sm',
-  captionClassName = 'px-6 pb-4 text-center font-sans text-sm opacity-80',
+  figureClassName = 'm-0 mb-6 overflow-hidden rounded-2xl shadow-sm',
+  captionClassName = 'px-6 py-3 text-center font-sans text-sm opacity-80',
 }: {
   readonly src: string;
   readonly thumbSrc?: string | null;

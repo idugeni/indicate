@@ -688,6 +688,7 @@
     border-radius: 0.5rem;
     max-width: 100%;
     height: auto;
+    margin: 0 0 0.75rem;
   }
 
   .tiptap-canvas pre {

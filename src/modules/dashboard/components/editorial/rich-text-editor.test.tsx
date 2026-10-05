@@ -1,9 +1,36 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { RichTextEditor } from '@/modules/dashboard/components/editorial/rich-text-editor';
+import { RichTextEditor, type RichTextDocChange } from '@/modules/dashboard/components/editorial/rich-text-editor';
+
+vi.mock('@/modules/dashboard/components/editorial/editor-image-upload', () => ({
+  uploadEditorImage: vi.fn(async (file: File) => {
+    if (file.name.includes('gagal')) throw new Error('Gagal mengunggah. Periksa koneksi lalu coba lagi.');
+    return {
+      storedSrc: `/api/network/media/${file.name}`,
+      previewUrl: `blob:pratinjau-${file.name}`,
+      mediaId: file.name,
+      version: 1,
+      sizeBytes: 10,
+      savingsBytes: 0,
+      compressedBlob: file,
+      compressedMediaType: 'image/webp',
+    };
+  }),
+}));
+
+function galleryImagesOf(changes: readonly RichTextDocChange[]): readonly unknown[] {
+  const nodes = changes.flatMap((change) => change.doc.content ?? []);
+  const gallery = nodes.find((node) => node.type === 'imageGallery');
+  const images = gallery?.attrs?.images;
+  return Array.isArray(images) ? images : [];
+}
+
+function imageFile(name: string, type = 'image/webp'): File {
+  return new File(['isi'], name, { type });
+}
 
 afterEach(() => {
   cleanup();
@@ -49,6 +76,62 @@ describe('RichTextEditor', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Dari URL luar' }));
     expect(screen.getByLabelText('URL gambar')).toBeDefined();
     expect(screen.getByLabelText(/Alt/)).toBeDefined();
+  });
+
+  it('menyediakan pemilih galeri multi-berkas hingga 4 gambar', async () => {
+    const user = userEvent.setup();
+    render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
+    await user.click(screen.getByRole('button', { name: 'Sisipkan gambar' }));
+    expect(screen.getByRole('menuitem', { name: 'Galeri hingga 4 gambar' })).toBeDefined();
+    const picker = screen.getByLabelText('Pilih hingga 4 berkas gambar galeri') as HTMLInputElement;
+    expect(picker.multiple).toBe(true);
+    expect(picker.accept).toContain('image/webp');
+  });
+
+  it('membatasi galeri pada 4 gambar pertama dan memberi tahu sisanya', async () => {
+    const changes: RichTextDocChange[] = [];
+    const user = userEvent.setup();
+    render(<RichTextEditor onDocChange={(change) => changes.push(change)} command={async () => null} labelledBy="body-label" />);
+    const picker = screen.getByLabelText('Pilih hingga 4 berkas gambar galeri');
+    await user.upload(picker, [1, 2, 3, 4, 5].map((n) => imageFile(`foto-${n}.webp`)));
+    await waitFor(() => expect(screen.getByRole('status').textContent ?? '').toContain('1 gambar diabaikan'));
+    expect(galleryImagesOf(changes)).toHaveLength(4);
+  });
+
+  it('tetap menyisipkan gambar yang berhasil bila sebagian gagal', async () => {
+    const changes: RichTextDocChange[] = [];
+    const user = userEvent.setup();
+    render(<RichTextEditor onDocChange={(change) => changes.push(change)} command={async () => null} labelledBy="body-label" />);
+    const picker = screen.getByLabelText('Pilih hingga 4 berkas gambar galeri');
+    await user.upload(picker, [imageFile('lolos.webp'), imageFile('gagal-putus.webp')]);
+    await waitFor(() => expect(screen.getByRole('status').textContent ?? '').toContain('1 gagal'));
+    expect(galleryImagesOf(changes)).toHaveLength(1);
+  });
+
+  it('melaporkan tiap unggahan galeri yang tersimpan beserta org-nya', async () => {
+    const stored: { readonly mediaId: string; readonly ownerOrganizationId: string | null }[] = [];
+    const user = userEvent.setup();
+    render(
+      <RichTextEditor
+        onDocChange={() => {}}
+        command={async () => null}
+        labelledBy="body-label"
+        onImageStored={(mediaId, ownerOrganizationId) => stored.push({ mediaId, ownerOrganizationId })}
+      />,
+    );
+    const picker = screen.getByLabelText('Pilih hingga 4 berkas gambar galeri');
+    await user.upload(picker, [imageFile('lolos.webp'), imageFile('gagal-putus.webp')]);
+    await waitFor(() => expect(screen.getByRole('status').textContent ?? '').toContain('1 gagal'));
+    expect(stored).toEqual([{ mediaId: 'lolos.webp', ownerOrganizationId: null }]);
+  });
+
+  it('menolak galeri tanpa berkas gambar valid', async () => {
+    const changes: RichTextDocChange[] = [];
+    render(<RichTextEditor onDocChange={(change) => changes.push(change)} command={async () => null} labelledBy="body-label" />);
+    const picker = screen.getByLabelText('Pilih hingga 4 berkas gambar galeri');
+    fireEvent.change(picker, { target: { files: [new File(['x'], 'dokumen.pdf', { type: 'application/pdf' })] } });
+    await waitFor(() => expect(screen.getByRole('status').textContent ?? '').toContain('dibatalkan'));
+    expect(galleryImagesOf(changes)).toHaveLength(0);
   });
 
   it('menolak URL gambar yang tidak aman', async () => {

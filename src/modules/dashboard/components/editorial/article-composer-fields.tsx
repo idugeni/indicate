@@ -43,7 +43,7 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
     willPublish, viewsInput, setViewsInput, bumpViews, editorStats, statItems, featuredId,
     featuredPreviewUrl, coverUrl, articleType, setArticleType, videoUrl, setVideoUrl,
     audioUrl, setAudioUrl, durationInput, setDurationInput, isSponsored, setIsSponsored,
-    modeProblem,
+    modeProblem, foreignMediaIds, handleInlineStored,
   } = state;
   const shortLength = articleType === 'short' ? bodyText.trim().length : null;
   const hasVideoCover = featuredId !== null || coverUrl.trim() !== '';
@@ -299,6 +299,13 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
                   {bodyJsonProblem}
                 </p>
               )}
+              {foreignMediaIds.length === 0 ? null : (
+                <p className="m-0 font-mono text-[11px] text-brass" role="alert">
+                  {foreignMediaIds.length === 1
+                    ? '1 gambar milik organisasi lain masih tertanam — tetap tayang via bridge, atau unggah ulang setelah penerbit dipilih.'
+                    : `${foreignMediaIds.length} gambar milik organisasi lain masih tertanam — tetap tayang via bridge, atau unggah ulang setelah penerbit dipilih.`}
+                </p>
+              )}
               {aiAction === 'polish' && polished === '' ? <AiPending label="Memoles alur dan EYD" /> : null}
               {polished !== '' ? (
                 <div className="space-y-1.5 rounded border border-hairline bg-bg p-2.5">
@@ -326,6 +333,7 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
                   onDocChange={handleRichChange}
                   command={command ?? (async () => { throw new Error('Unggahan media tidak tersedia di pratinjau.'); })}
                   ownerOrganizationId={foreignOwnerOrg}
+                  onImageStored={handleInlineStored}
                   onPolish={polishBodyInline}
                   polishBusy={aiAction === 'polish'}
                   polishDisabled={!aiReady || bodyText.trim() === ''}

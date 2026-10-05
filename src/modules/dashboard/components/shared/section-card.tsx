@@ -15,7 +15,7 @@ export function SectionCard({
   readonly children: ReactNode;
 }) {
   return (
-    <section aria-label={title}>
+    <section aria-label={title} className="min-w-0">
       <Card className="rounded-lg border border-hairline bg-bg-raised shadow-none ring-0">
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 border-b border-hairline px-4 pb-2.5 pt-3 sm:px-5 sm:pb-3 sm:pt-3.5">
           <CardTitle className="flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">

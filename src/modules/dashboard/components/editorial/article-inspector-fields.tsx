@@ -86,7 +86,7 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
     pickLibraryCover, aiAction, aiReady,
   } = state;
   return (
-        <div className="grid content-start gap-6 lg:sticky lg:top-[72px]">
+        <div className="grid min-w-0 content-start gap-6 lg:sticky lg:top-[72px]">
           <SectionCard icon={SlidersHorizontal} title="Inspektor artikel" eyebrow="Periksa">
             <div className="space-y-5">
               <section aria-label="Publikasi" className="space-y-3">

@@ -3,6 +3,7 @@ import { AtSign, Camera, ClipboardList, FileText, FolderOpen, HardDrive, Music2,
 
 import { extractDriveUrl, extractFacebookUrl, extractInstagramUrl, extractTikTokUrl, extractTweetUrl, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, resolveMediaSrc, resolveMediaThumbSrc, type TipTapNode } from '@/modules/site/tiptap-document';
 import { EditorialImage } from '@/modules/site/components/editorial-image';
+import { GalleryCarousel } from '@/modules/site/components/gallery-carousel';
 import { editorialLinkRel } from '@/modules/site/editorial-link-rel';
 
 function renderTextNode(node: TipTapNode, key: string): ReactNode {
@@ -226,6 +227,63 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
     const caption = typeof node.attrs?.title === 'string' && node.attrs.title.trim() !== '' ? node.attrs.title : typeof node.attrs?.caption === 'string' && node.attrs.caption.trim() !== '' ? node.attrs.caption : null;
     return (
       <EditorialImage key={key} src={src} thumbSrc={resolveMediaThumbSrc(rawSrc)} alt={rawAlt === '' ? 'Gambar artikel' : rawAlt} caption={caption} />
+    );
+  }
+  if (node.type === 'imageGallery') {
+    const rawItems = Array.isArray(node.attrs?.images) ? node.attrs.images : [];
+    const items = (rawItems as readonly unknown[])
+      .filter((item): item is { readonly src?: unknown; readonly alt?: unknown; readonly title?: unknown; readonly caption?: unknown } => typeof item === 'object' && item !== null && !Array.isArray(item))
+      .map((item) => {
+        const rawSrc = typeof item.src === 'string' ? item.src : '';
+        const rawAlt = typeof item.alt === 'string' ? item.alt : '';
+        const rawTitle = typeof item.title === 'string' && item.title.trim() !== '' ? item.title : typeof item.caption === 'string' && item.caption.trim() !== '' ? item.caption : null;
+        return { rawSrc, alt: rawAlt === '' ? 'Gambar artikel' : rawAlt, caption: rawTitle };
+      })
+      .filter((item) => item.rawSrc !== '' && isSafeMediaSrc(item.rawSrc));
+    if (items.length === 0) return null;
+    const resolved = items.map((item) => ({
+      src: resolveMediaSrc(item.rawSrc),
+      thumbSrc: resolveMediaThumbSrc(item.rawSrc),
+      alt: item.alt,
+      caption: item.caption,
+    }));
+    const cell = (entry: (typeof resolved)[number], index: number, cellClassName?: string) => (
+      <div key={`${entry.src}-${index}`} className={cellClassName}>
+        <EditorialImage
+          src={entry.src}
+          thumbSrc={entry.thumbSrc}
+          alt={entry.alt}
+          caption={entry.caption}
+          className="aspect-[4/3] w-full object-cover"
+          figureClassName="m-0 overflow-hidden rounded-xl"
+        />
+      </div>
+    );
+    if (resolved.length === 3) {
+      return <GalleryCarousel key={key} items={resolved} />;
+    }
+    if (resolved.length === 4) {
+      const [hero, ...rest] = resolved as [ (typeof resolved)[number], ...(typeof resolved)[number][] ];
+      return (
+        <div key={key} role="group" aria-label="Galeri 4 gambar" className="space-y-2">
+          <EditorialImage
+            src={hero.src}
+            thumbSrc={hero.thumbSrc}
+            alt={hero.alt}
+            caption={hero.caption}
+            className="aspect-video w-full object-cover"
+            figureClassName="m-0 overflow-hidden rounded-xl"
+          />
+          <div className="grid grid-cols-3 gap-2">
+            {rest.map((entry, index) => cell(entry, index + 1))}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div key={key} className="grid grid-cols-2 gap-2" role="group" aria-label={`Galeri ${resolved.length} gambar`}>
+        {resolved.map((entry, index) => cell(entry, index, resolved.length === 1 ? 'col-span-2' : undefined))}
+      </div>
     );
   }
   if (node.type === 'youtube' || node.type === 'video') {

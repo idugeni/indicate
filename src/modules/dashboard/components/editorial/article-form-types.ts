@@ -120,3 +120,62 @@ export function toCoverLibraryItem(value: unknown): CoverLibraryItem | null {
     version: row.version,
   };
 }
+
+/**
+ * Kumpulkan id media inline dari dokumen TipTap.
+ *
+ * @param doc - Dokumen TipTap naskah (null saat kosong).
+ * @returns Id unik `media/<uuid>` yang dirujuk node gambar dan galeri, maksimal 24.
+ */
+export function collectInlineMediaIds(doc: unknown): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const collectSrc = (src: unknown): void => {
+    if (typeof src !== 'string') return;
+    const match = /\/api\/network\/media\/([0-9a-fA-F-]{36})/.exec(src);
+    if (match?.[1] !== undefined && !seen.has(match[1])) {
+      seen.add(match[1]);
+      ids.push(match[1]);
+    }
+  };
+  const visit = (node: unknown): void => {
+    if (typeof node !== 'object' || node === null) return;
+    const record = node as { readonly type?: unknown; readonly attrs?: unknown; readonly content?: unknown };
+    if ((record.type === 'image' || record.type === 'imageGallery') && typeof record.attrs === 'object' && record.attrs !== null) {
+      const attrs = record.attrs as Readonly<Record<string, unknown>>;
+      collectSrc(attrs.src);
+      if (Array.isArray(attrs.images)) {
+        for (const item of attrs.images) {
+          if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+            collectSrc((item as Readonly<Record<string, unknown>>).src);
+          }
+        }
+      }
+    }
+    if (Array.isArray(record.content)) for (const child of record.content) visit(child);
+    if (ids.length >= 24) return;
+  };
+  const root = (doc as { readonly content?: unknown } | null)?.content;
+  if (Array.isArray(root)) for (const child of root) visit(child);
+  return ids;
+}
+
+/**
+ * Temukan media ter-embed yang pemiliknya beda dari org artikel.
+ *
+ * @param present - Id media yang masih dipakai (sampul + inline yang ada di draf).
+ * @param orgByMediaId - Org tercatat saat tiap media diunggah/dipilih.
+ * @param articleOrg - Org efektif artikel; string kosong berarti belum tentu.
+ * @returns Id asing yang perlu peringatan; kosong berarti semua selaras.
+ */
+export function findForeignMediaIds(
+  present: readonly string[],
+  orgByMediaId: Readonly<Record<string, string | null>>,
+  articleOrg: string,
+): string[] {
+  if (articleOrg === '') return [];
+  return present.filter((id) => {
+    const owner = orgByMediaId[id] ?? null;
+    return owner !== null && owner !== articleOrg;
+  });
+}

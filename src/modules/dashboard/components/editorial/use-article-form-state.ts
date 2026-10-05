@@ -32,7 +32,9 @@ import {
   LIBRARY_PAGE,
   PENDING_CATEGORY_PREFIX,
   blobToDataUrl,
+  collectInlineMediaIds,
   fileNameOf,
+  findForeignMediaIds,
   toCoverLibraryItem,
   type CoverLibraryItem,
 } from '@/modules/dashboard/components/editorial/article-form-types';
@@ -103,6 +105,8 @@ export function useArticleFormState({
   const [extraCategories, setExtraCategories] = useState<readonly CategoryEntity[]>([]);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
   const [featuredOrgId, setFeaturedOrgId] = useState<string | null>(null);
+  /** Org tercatat tiap gambar inline saat diunggah (null = org sesi saat itu). */
+  const [inlineMediaOrgs, setInlineMediaOrgs] = useState<Readonly<Record<string, string | null>>>({});
   const [featuredName, setFeaturedName] = useState('');
   const [featuredPreviewUrl, setFeaturedPreviewUrl] = useState<string | null>(null);
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
@@ -291,6 +295,30 @@ export function useArticleFormState({
   const effectiveOwnerOrg = selectedPublisher?.ownerOrganizationId ?? null;
   const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
 
+  const effectiveArticleOrg = foreignOwnerOrg ?? (organizationId === '' ? '' : organizationId);
+
+  /**
+   * Catat org tiap gambar inline dan ingatkan bila penerbit belum dipilih.
+   *
+   * @param mediaId - Id media yang baru tersimpan.
+   * @param ownerOrg - Org target unggahan (null = org sesi saat itu).
+   */
+  const handleInlineStored = (mediaId: string, ownerOrg: string | null): void => {
+    setInlineMediaOrgs((prev) => (prev[mediaId] === (ownerOrg ?? organizationId) ? prev : { ...prev, [mediaId]: ownerOrg }));
+    if (publisherId === null || publisherId === '') {
+      toast.warning('Penerbit belum dipilih — gambar masuk organisasi aktif. Memilih penerbit beda org nanti memicu peringatan.');
+    }
+  };
+
+  /** Id media asing yang masih dipakai draf dibanding org artikel efektif. */
+  const foreignMediaIds = useMemo(() => {
+    const present = collectInlineMediaIds(bodyJsonDraft);
+    if (featuredId !== null) present.push(featuredId);
+    const orgByMediaId: Record<string, string | null> = { ...inlineMediaOrgs };
+    if (featuredId !== null) orgByMediaId[featuredId] = featuredOrgId;
+    return findForeignMediaIds(present, orgByMediaId, effectiveArticleOrg);
+  }, [bodyJsonDraft, featuredId, inlineMediaOrgs, featuredOrgId, effectiveArticleOrg]);
+
   const formSnapshot = useMemo(() => ({
     slug,
     titleText,
@@ -339,7 +367,6 @@ export function useArticleFormState({
             setIsNational(false);
           }
         }
-        if (source.trim() === '') setSource(picked.name);
       }
     } else if (!touchedAuthor.current) setAuthorId(defaultAuthorId);
   };
@@ -657,6 +684,7 @@ export function useArticleFormState({
     coverBlobRef.current = null;
     coverRemoteRef.current = { url, mimeType: item.mediaType };
     setFeaturedId(item.id);
+    setFeaturedOrgId(null);
     setFeaturedName(fileNameOf(item.objectKey));
     setFeaturedVersion(item.version);
     setFeaturedFocal(null);
@@ -807,6 +835,9 @@ export function useArticleFormState({
       setFeaturedCaption('');
       setFeaturedFocal(null);
       setFeaturedPreviewUrl(previewUrl === '' ? storedSrc : previewUrl);
+      if (publisherId === null || publisherId === '') {
+        toast.warning('Penerbit belum dipilih — sampul masuk organisasi aktif. Memilih penerbit beda org nanti memicu peringatan.');
+      }
       setFeaturedStatus(savingsBytes > 0 ? `Terkompresi ${formatBytes(file.size)} → ${formatBytes(sizeBytes)} (WebP).` : null);
     } catch (error) {
       setFeaturedStatus(error instanceof Error ? error.message : 'Gagal mengunggah gambar sampul. Coba lagi.');
@@ -1092,6 +1123,7 @@ export function useArticleFormState({
       coverRemoteRef.current = null;
       setCoverUrl('');
       setBodyJsonDraft(null);
+      setInlineMediaOrgs({});
       setRichResetKey((key) => key + 1);
     });
   };
@@ -1117,7 +1149,7 @@ export function useArticleFormState({
     articleType, setArticleType, videoUrl, setVideoUrl, audioUrl, setAudioUrl,
     durationInput, setDurationInput, isSponsored, setIsSponsored,
     titleVariants, polished, setPolished, polishRounds, aiAction, aiReady, generatingTitles,
-    bumpViews, handleRichChange, handlePublisherChange, handleAuthorChange,
+    bumpViews, handleRichChange, handleInlineStored, handlePublisherChange, handleAuthorChange,
     handleTitleChange, handleSlugChange, applyPolishedBody,
     refineTitles, refineDescription, polishBodyInline, transcribeFileInline, classifyInline,
     openLibrary, pickLibraryCover, handleCreateCategory, handleFeaturedFile,
@@ -1127,6 +1159,7 @@ export function useArticleFormState({
     defaultCategoryName, authorOptions, activeAuthors,
     effectiveCategoryIds, bodyJsonProblem, modeProblem,
     selectedPublisher, foreignOwnerOrg, selectedAuthor, tagSuggestions,
+    foreignMediaIds,
     libraryFiltered, libraryVisible, command, handleCreateArticle,
   };
 }

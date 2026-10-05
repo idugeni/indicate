@@ -48,6 +48,7 @@ export const ALLOWED_NODES = new Set([
   'tiktok',
   'facebook',
   'drive',
+  'imageGallery',
 ]);
 
 export const ALLOWED_MARKS = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link', 'highlight', 'textStyle']);
@@ -56,6 +57,9 @@ export const COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/iu;
 export const TEXT_ALIGN_VALUES = new Set(['left', 'center', 'right', 'justify']);
 export const TABLE_MAX_ROWS = 30;
 export const TABLE_MAX_COLS = 12;
+
+/** Jumlah gambar terbanyak dalam satu blok galeri inline. */
+export const GALLERY_MAX_IMAGES = 4;
 
 export function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
