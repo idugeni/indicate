@@ -3,7 +3,10 @@ import { after, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
+import { AI_EMBED_OPERATION_REINDEX, type AiOperationControls } from '@/modules/ai/ai-operation-guards';
 import { reindexArticleEmbeddings } from '@/modules/ai/ai-embeddings';
+import { createAiBudgetGuard } from '@/modules/ai/ai-security';
+import { createAiModelRateLimitStore } from '@/modules/ai/ai-rate-limit';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { fetchCachedAnalytics, fetchCachedDashboard, NextDashboardCacheInvalidator } from '@/modules/dashboard/dashboard-dal';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
@@ -143,7 +146,17 @@ function scheduleArticleReindex(organizationId: string, value: unknown): void {
       try {
         const context = await getServerRuntimeContext();
         const runtime = getSharedRuntimeDatabase(context.bootstrap);
-        await reindexArticleEmbeddings(runtime.db, { organizationId, articleId });
+        const redis = context.config.redis;
+        const controls: AiOperationControls = {
+          db: runtime.db,
+          budget: createAiBudgetGuard({ url: redis.url, token: redis.token, namespace: redis.namespace }),
+          store: createAiModelRateLimitStore({ url: redis.url, token: redis.token, namespace: redis.namespace }),
+        };
+        await reindexArticleEmbeddings(
+          runtime.db,
+          { organizationId, articleId },
+          { controls, operation: AI_EMBED_OPERATION_REINDEX },
+        );
       } catch {
         /* Stale vectors stay queryable; the next save retries. */
       }

@@ -24,7 +24,13 @@ import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
 import { SEMANTIC_CANDIDATE_LIMIT, embedQueryVector, reindexArticleEmbeddings, toSemanticCandidate, type WorkersAiCredentials } from '@/modules/ai/ai-embeddings';
 import type { AiDb } from '@/modules/ai/ai-types';
 import type { AiAdapterResult, AiServiceDeps } from '@/modules/ai/ai-service';
-import { computeRetryDelayMs, normalizeCachePrompt } from '@/modules/ai/ai-service';
+import { acquireAiGlobalSlot, computeRetryDelayMs, normalizeCachePrompt, releaseAiGlobalSlot } from '@/modules/ai/ai-service';
+import {
+  AI_EMBED_OPERATION_QUERY,
+  AI_EMBED_OPERATION_REINDEX,
+  checkOperationBudgetQuota,
+  type AiOperationControls,
+} from '@/modules/ai/ai-operation-guards';
 import type { AiChatPrompt as ServicePrompt } from '@/modules/ai/ai-types';
 import { createAiBudgetGuard, redactSecrets } from '@/modules/ai/ai-security';
 import { checkAiModelRateLimit, createAiModelRateLimitStore, estimateAiInputTokens, getAiModelLimits } from '@/modules/ai/ai-rate-limit';
@@ -193,7 +199,7 @@ async function auditDraftStream(db: AiDb, entry: {
   readonly modelName: string;
   readonly credentialId: string | null;
   readonly organizationId: string;
-  readonly status: 'success' | 'failed';
+  readonly status: 'success' | 'failed' | 'blocked';
   readonly retryCount: number;
   readonly latencyMs: number;
   readonly promptTokens: number;
@@ -237,6 +243,24 @@ function workersAiConfigFor(context: ServerRuntimeContext): WorkersAiCredentials
   };
 }
 
+/**
+ * Builds the shared embedding control surface from the assembled runtime config.
+ *
+ * @param db - Runtime database port for limit reads and audit writes.
+ * @param redis - Upstash connection details plus the environment namespace.
+ * @returns Budget guard plus namespaced rate-limit/quota/breaker store (`{namespace}:ai:*`).
+ */
+function embeddingControlsFor(
+  db: AiDb,
+  redis: { readonly url: string; readonly token: string; readonly namespace: string },
+): AiOperationControls {
+  return {
+    db,
+    budget: createAiBudgetGuard({ url: redis.url, token: redis.token, namespace: redis.namespace }),
+    store: createAiModelRateLimitStore({ url: redis.url, token: redis.token, namespace: redis.namespace }),
+  };
+}
+
 /** SSE headers shared by the live draft stream and the cache-hit shortcut. */
 const DRAFT_STREAM_HEADERS = {
   'Content-Type': 'text/event-stream; charset=utf-8',
@@ -257,12 +281,58 @@ async function handleDraftArticleStream(
   if (!built.ok) return response(createPublicError('INVALID_INPUT', built.error, requestId));
   const secret = scanPrompt(built.prompt);
   if (!secret.ok) return response(createPublicError('INVALID_INPUT', secret.reason, requestId));
-  const budget = await deps.budget.checkAiBudgetSafeguard();
-  if (!budget.allowed) {
+  // Parity note: no scanPromptForInjection/wrap here by design — the non-stream
+  // draft-article path runs as role 'editor' (staff), which skips both in
+  // executeAiQuery. The prompt is server-composed from truncated fields and
+  // secret-scanned above; the route carries no AiCallerRole to do better.
+  const preflightStartedAt = Date.now();
+  // Budget + org-quota parity with executeAiQuery via the shared pre-flight
+  // (same order, same fail-open and pre-charge-on-allow semantics). The quota
+  // leg was previously missing on this path.
+  const quotaVerdict = await checkOperationBudgetQuota(
+    {
+      db: deps.db,
+      budget: deps.budget,
+      ...(deps.rateLimit?.store === undefined ? {} : { store: deps.rateLimit.store }),
+    },
+    { organizationId, estimatedTokens: estimateAiInputTokens(built.prompt, 0) },
+  );
+  if (!quotaVerdict.allowed) {
+    const guardrail = quotaVerdict.gate === 'budget' ? 'budget-guardrail' : 'org-quota-guardrail';
+    await auditDraftStream(deps.db, {
+      correlationId: requestId,
+      providerId: guardrail,
+      modelName: guardrail,
+      credentialId: null,
+      organizationId,
+      status: 'blocked',
+      retryCount: 0,
+      latencyMs: Date.now() - preflightStartedAt,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      errorClass: quotaVerdict.errorClass,
+      errorMessage: quotaVerdict.message,
+    });
     return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Layanan AI sedang sibuk. Silakan coba lagi.', requestId));
   }
   const policy = await getActiveRoutingPolicy(deps.db);
   if (policy === null || policy.primaryProviderId === null) {
+    await auditDraftStream(deps.db, {
+      correlationId: requestId,
+      providerId: 'exhausted',
+      modelName: 'none',
+      credentialId: null,
+      organizationId,
+      status: 'blocked',
+      retryCount: 0,
+      latencyMs: Date.now() - preflightStartedAt,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      errorClass: 'ROUTING_UNCONFIGURED',
+      errorMessage: 'Routing AI belum dikonfigurasi.',
+    });
     return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Routing AI belum dikonfigurasi. Silakan coba lagi.', requestId));
   }
   const primaryProviderId = policy.primaryProviderId;
@@ -298,6 +368,20 @@ async function handleDraftArticleStream(
       const hit = await deps.cache.lookup(cacheKey, modelName).catch(() => null);
       if (hit !== null) {
         const text = redactSecrets(hit.responseText);
+        // Parity with executeAiQuery cache hits: served drafts stay observable.
+        await auditDraftStream(deps.db, {
+          correlationId: requestId,
+          providerId: 'semantic-cache',
+          modelName: hit.modelName,
+          credentialId: null,
+          organizationId,
+          status: 'success',
+          retryCount: 0,
+          latencyMs: Date.now() - preflightStartedAt,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+        });
         return new Response(
           new ReadableStream<Uint8Array>({
             start(controller) {
@@ -317,6 +401,21 @@ async function handleDraftArticleStream(
       const limits = await getAiModelLimits(deps.db, targetModel);
       const verdict = await checkAiModelRateLimit(breakerStore, limits, targetModel, estimateAiInputTokens(built.prompt, 0));
       if (!verdict.allowed) {
+        await auditDraftStream(deps.db, {
+          correlationId: requestId,
+          providerId: 'rate-limit-guardrail',
+          modelName: targetModel,
+          credentialId: null,
+          organizationId,
+          status: 'blocked',
+          retryCount: 0,
+          latencyMs: Date.now() - preflightStartedAt,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          errorClass: 'rate_limited',
+          errorMessage: `Model ${targetModel} exceeded rate limit`,
+        });
         return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Layanan AI sedang sibuk. Silakan coba lagi.', requestId));
       }
     } catch {
@@ -342,6 +441,8 @@ async function handleDraftArticleStream(
         }
       }, 15_000);
       const run = async (): Promise<void> => {
+        // Same per-instance concurrency bound as single-shot queries.
+        await acquireAiGlobalSlot(policy.globalConcurrencyLimit);
         try {
           let sentAny = false;
           let lastFailure: { readonly errorClass: string; readonly message: string } | null = null;
@@ -496,6 +597,7 @@ async function handleDraftArticleStream(
           send('error', { error: 'Layanan AI sedang sibuk. Silakan coba lagi.' });
         } finally {
           clearInterval(heartbeat);
+          releaseAiGlobalSlot();
           try {
             controller.close();
           } catch {
@@ -568,6 +670,8 @@ async function handlePOST(request: Request) {
         const queryVector = await embedQueryVector(runtime.db, organizationId, query, {
           provider: 'auto',
           workersAi: workersAiConfigFor(context),
+          controls: embeddingControlsFor(runtime.db, context.config.redis),
+          operation: AI_EMBED_OPERATION_QUERY,
         });
         if (queryVector !== null) {
           try {
@@ -620,7 +724,12 @@ async function handlePOST(request: Request) {
         const result = await reindexArticleEmbeddings(
           runtime.db,
           { organizationId, articleId: articleId.data },
-          { provider: 'auto', workersAi: workersAiConfigFor(context) },
+          {
+            provider: 'auto',
+            workersAi: workersAiConfigFor(context),
+            controls: embeddingControlsFor(runtime.db, context.config.redis),
+            operation: AI_EMBED_OPERATION_REINDEX,
+          },
         );
         return result.ok
           ? NextResponse.json({ ok: true, chunks: result.chunks, embedded: result.embedded, embeddingProvider: result.embeddingProvider })

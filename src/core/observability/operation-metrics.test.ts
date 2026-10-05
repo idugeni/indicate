@@ -68,11 +68,26 @@ describe('recordOperation aggregation', () => {
       'route', 'operation', 'provider', 'count', 'avgDurationMs', 'maxDurationMs', 'dbQueries', 'dbMs',
       'redisCommands', 'redisMs', 'cacheHits', 'cacheMisses', 'totalPayloadBytes', 'maxPayloadBytes',
       'bytesKinds', 'tenantCount', 'tenantOverflow', 'topTenant', 'topTenantCount', 'statuses',
+      'models', 'modelOverflow', 'totalTokens',
     ]);
     for (const entry of operations) {
       for (const key of Object.keys(entry)) expect(allowed.has(key)).toBe(true);
     }
     expect(JSON.stringify(operations)).not.toMatch(/body|prompt|token|secret|cookie|authorization/i);
+  });
+
+  it('mencatat dimensi model dan token pada rollup', () => {
+    recordOperation({ route: 'ai', operation: 'ai.embed.query', provider: 'gemini', model: 'gemini-embedding-2', durationMs: 10, tenantId: 'org-1', status: 200, tokens: 42 });
+    recordOperation({ route: 'ai', operation: 'ai.embed.query', provider: 'gemini', model: 'gemini-embedding-2', durationMs: 20, tenantId: 'org-1', status: 200, tokens: 8 });
+    recordOperation({ route: 'ai', operation: 'ai.embed.query', provider: 'workers-ai', model: '@cf/baai/bge-base-en-v1.5', durationMs: 5, tenantId: 'org-1', status: 200 });
+    flushOperationMetrics(1_060_000);
+    const { operations } = rollupContext();
+    expect(operations).toHaveLength(2);
+    const gemini = operations.find((entry) => entry.provider === 'gemini');
+    expect(gemini).toMatchObject({ models: ['gemini-embedding-2'], totalTokens: 50 });
+    const workers = operations.find((entry) => entry.provider === 'workers-ai');
+    expect(workers).toMatchObject({ models: ['@cf/baai/bge-base-en-v1.5'] });
+    expect(workers).not.toHaveProperty('totalTokens');
   });
 
   it('flush kosong tidak me-log dan me-reset jendela', () => {

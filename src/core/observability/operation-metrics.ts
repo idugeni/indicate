@@ -14,6 +14,8 @@ export interface OperationSample {
   readonly operation: string;
   /** Provider dimension, e.g. `vercel`, `upstash-redis`, `supabase-postgres`. */
   readonly provider: string;
+  /** Model dimension for AI operations, e.g. `gemini-2.5-flash`; omitted otherwise. */
+  readonly model?: string | undefined;
   /** Tenant UUID when the caller knows it; omitted otherwise. */
   readonly tenantId?: string | undefined;
   /** Wall-clock duration of the operation. */
@@ -26,6 +28,8 @@ export interface OperationSample {
   readonly redisCommands?: number | undefined;
   /** Redis time inside the operation. */
   readonly redisMs?: number | undefined;
+  /** Token usage credited to the operation (estimated or provider-reported). */
+  readonly tokens?: number | undefined;
   /** Cache hits credited to the operation. */
   readonly cacheHit?: number | undefined;
   /** Cache misses credited to the operation. */
@@ -60,6 +64,9 @@ interface OperationAggregate {
   tenants: Set<string>;
   tenantCounts: Map<string, number>;
   tenantOverflow: number;
+  models: Set<string>;
+  modelOverflow: number;
+  totalTokens: number;
   statuses: Map<number, number>;
   bytesKinds: Set<string>;
 }
@@ -70,6 +77,8 @@ const ROLLUP_OPERATION_THRESHOLD = 500;
 const ROLLUP_INTERVAL_MS = 60_000;
 /** Distinct tenants tracked per aggregate; beyond this only the count grows. */
 const MAX_TENANTS_PER_AGGREGATE = 200;
+/** Distinct models tracked per aggregate; the catalog bounds this in practice. */
+const MAX_MODELS_PER_AGGREGATE = 50;
 /** Operations included per rollup line, ranked by count. */
 const MAX_OPERATIONS_PER_ROLLUP = 50;
 
@@ -113,6 +122,9 @@ export function recordOperation(sample: OperationSample): void {
         tenants: new Set<string>(),
         tenantCounts: new Map<string, number>(),
         tenantOverflow: 0,
+        models: new Set<string>(),
+        modelOverflow: 0,
+        totalTokens: 0,
         statuses: new Map<number, number>(),
         bytesKinds: new Set<string>(),
       };
@@ -126,6 +138,13 @@ export function recordOperation(sample: OperationSample): void {
     aggregate.dbMs += toFiniteNumber(sample.dbMs);
     aggregate.redisCommands += toFiniteNumber(sample.redisCommands);
     aggregate.redisMs += toFiniteNumber(sample.redisMs);
+    aggregate.totalTokens += toFiniteNumber(sample.tokens);
+    if (sample.model !== undefined && sample.model !== '') {
+      if (!aggregate.models.has(sample.model)) {
+        if (aggregate.models.size < MAX_MODELS_PER_AGGREGATE) aggregate.models.add(sample.model);
+        else aggregate.modelOverflow += 1;
+      }
+    }
     aggregate.cacheHits += toFiniteNumber(sample.cacheHit);
     aggregate.cacheMisses += toFiniteNumber(sample.cacheMiss);
     const payloadBytes = toFiniteNumber(sample.payloadBytes);
@@ -204,6 +223,9 @@ export function flushOperationMetrics(now: number = Date.now()): void {
         ...(aggregate.bytesKinds.size === 0 ? {} : { bytesKinds: [...aggregate.bytesKinds].sort() }),
         tenantCount: aggregate.tenants.size,
         tenantOverflow: aggregate.tenantOverflow,
+        ...(aggregate.models.size === 0 ? {} : { models: [...aggregate.models].sort() }),
+        ...(aggregate.modelOverflow === 0 ? {} : { modelOverflow: aggregate.modelOverflow }),
+        ...(aggregate.totalTokens === 0 ? {} : { totalTokens: aggregate.totalTokens }),
         ...(topTenant === null ? {} : { topTenant, topTenantCount }),
         ...(Object.keys(statuses).length === 0 ? {} : { statuses }),
       };

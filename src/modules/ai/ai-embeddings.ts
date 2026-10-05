@@ -3,12 +3,25 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 
-import { embedTexts, type EmbedFetch } from '@/integrations/ai/embeddings';
+import { embedTexts, GEMINI_EMBEDDING_MODEL, type EmbedFetch } from '@/integrations/ai/embeddings';
 import type { SemanticCandidate } from '@/integrations/ai/embeddings';
 import {
   WORKERS_AI_DEFAULT_EMBEDDING_MODEL,
   embedTextsViaWorkersAi,
 } from '@/integrations/ai/gateway/workers-ai/workers-ai-embedding';
+import {
+  AI_EMBED_GUARD_PROVIDER,
+  AI_EMBED_OPERATION,
+  AI_EMBED_OPERATION_QUERY,
+  AI_EMBED_OPERATION_REINDEX,
+  checkEmbeddingTransport,
+  checkOperationBudgetQuota,
+  estimateEmbeddingTokens,
+  logOperationResult,
+  recordEmbeddingOperation,
+  recordEmbeddingTransportOutcome,
+  type AiOperationControls,
+} from '@/modules/ai/ai-operation-guards';
 import { resolveApiKey } from '@/modules/ai/ai-router';
 import type { AiDb, AiThinkingConfig } from '@/modules/ai/ai-types';
 
@@ -82,6 +95,15 @@ export interface ReindexEmbeddingsOptions {
   readonly provider?: EmbeddingProvider | undefined;
   readonly workersAiFetchImpl?: EmbedFetch | undefined;
   readonly workersAi?: WorkersAiCredentials | undefined;
+  /**
+   * Shared budget/quota/rate-limit/breaker/logging boundary; absent keeps the
+   * legacy unguarded behavior (fail-open) for offline callers and unit tests.
+   */
+  readonly controls?: AiOperationControls | undefined;
+  /** Metrics/audit operation label; defaults per caller (`ai.embed.reindex` here). */
+  readonly operation?: string | undefined;
+  /** Audit correlation id; generated per call when absent. */
+  readonly correlationId?: string | undefined;
 }
 
 /** Urutan provider embedding; `auto` memakai Workers AI dulu lalu Gemini. */
@@ -100,6 +122,15 @@ export interface QueryEmbeddingConfig {
   readonly fetchImpl?: EmbedFetch | undefined;
   readonly workersAiFetchImpl?: EmbedFetch | undefined;
   readonly workersAi?: WorkersAiCredentials | undefined;
+  /**
+   * Shared budget/quota/rate-limit/breaker/logging boundary; absent keeps the
+   * legacy unguarded behavior (fail-open) for offline callers and unit tests.
+   */
+  readonly controls?: AiOperationControls | undefined;
+  /** Metrics/audit operation label; defaults to `ai.embed.query`. */
+  readonly operation?: string | undefined;
+  /** Audit correlation id; generated per call when absent. */
+  readonly correlationId?: string | undefined;
 }
 
 function toRowArray(value: unknown): readonly unknown[] {
@@ -202,6 +233,11 @@ export function toSemanticCandidate(row: unknown): SemanticCandidate | null {
  * @param organizationId - Tenant scope for the Gemini credential lookup.
  * @param options - Provider order plus injectable transports for tests.
  * @returns Vectors aligned with the input plus the provider that filled them.
+ * @remarks When `options.controls` is present, one budget-plus-quota
+ * pre-flight runs first (fail-open), then each attempted transport passes a
+ * per-model rate-limit plus breaker gate. Guards add Redis/DB calls only —
+ * never extra provider calls. Exactly one audit row and at least one metrics
+ * sample describe the outcome; vectors and raw texts are never logged.
  */
 export async function embedArticleChunks(
   chunks: readonly string[],
@@ -212,6 +248,322 @@ export async function embedArticleChunks(
   const provider = options?.provider ?? TASK_MODEL_PROFILE.embed.provider ?? 'auto';
   const empty = chunks.map(() => null);
   if (chunks.length === 0) return { vectors: [], provider: 'none' };
+  const controls = options?.controls;
+  if (controls === undefined) return embedArticleChunksUnguarded(chunks, db, organizationId, options, provider, empty);
+  const operation = options?.operation ?? AI_EMBED_OPERATION;
+  const correlationId = options?.correlationId ?? `emb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedMs = Date.now();
+  const estimatedTokens = estimateEmbeddingTokens(chunks);
+  const budgetQuota = await checkOperationBudgetQuota(controls, { organizationId, estimatedTokens });
+  if (!budgetQuota.allowed) {
+    await logOperationResult(controls, {
+      correlationId,
+      channel: 'embed',
+      providerId: AI_EMBED_GUARD_PROVIDER,
+      modelName: AI_EMBED_GUARD_PROVIDER,
+      credentialId: null,
+      organizationId,
+      status: 'blocked',
+      retryCount: 0,
+      latencyMs: Date.now() - startedMs,
+      promptTokens: estimatedTokens,
+      completionTokens: 0,
+      totalTokens: estimatedTokens,
+      errorClass: budgetQuota.errorClass,
+      errorMessage: budgetQuota.message,
+    });
+    recordEmbeddingOperation({
+      operation,
+      provider: AI_EMBED_GUARD_PROVIDER,
+      model: AI_EMBED_GUARD_PROVIDER,
+      organizationId,
+      durationMs: Date.now() - startedMs,
+      status: 429,
+      tokens: estimatedTokens,
+    });
+    return { vectors: [...empty], provider: 'none' };
+  }
+  const workersModel = options?.workersAi?.model ?? WORKERS_AI_DEFAULT_EMBEDDING_MODEL;
+  const geminiModel = options?.embedModel ?? GEMINI_EMBEDDING_MODEL;
+  const attemptStartedMs = Date.now();
+  if ((provider === 'workers-ai' || provider === 'auto') && options?.workersAi !== undefined) {
+    const gate = await checkEmbeddingTransport(controls, {
+      providerId: 'workers-ai',
+      modelName: workersModel,
+      estimatedTokens,
+    });
+    if (!gate.allowed) {
+      recordEmbeddingOperation({
+        operation,
+        provider: 'workers-ai',
+        model: workersModel,
+        organizationId,
+        durationMs: Date.now() - attemptStartedMs,
+        status: 429,
+        tokens: estimatedTokens,
+      });
+      if (provider === 'workers-ai') {
+        await logOperationResult(controls, {
+          correlationId,
+          channel: 'embed',
+          providerId: 'workers-ai',
+          modelName: workersModel,
+          credentialId: null,
+          organizationId,
+          status: 'blocked',
+          retryCount: 0,
+          latencyMs: Date.now() - startedMs,
+          promptTokens: estimatedTokens,
+          completionTokens: 0,
+          totalTokens: estimatedTokens,
+          errorClass: gate.errorClass,
+          errorMessage: gate.message,
+        });
+        return { vectors: [...empty], provider: 'workers-ai' };
+      }
+    } else {
+      try {
+        const vectors = await embedTextsViaWorkersAi(
+          {
+            accountId: options.workersAi.accountId,
+            apiToken: options.workersAi.apiToken,
+            model: options.workersAi.model ?? WORKERS_AI_DEFAULT_EMBEDDING_MODEL,
+          },
+          chunks,
+          { ...(options.workersAiFetchImpl === undefined ? {} : { fetchImpl: options.workersAiFetchImpl }) },
+        );
+        const served = vectors.some((vector) => vector !== null);
+        await recordEmbeddingTransportOutcome(controls, {
+          providerId: 'workers-ai',
+          modelName: workersModel,
+          succeeded: served,
+        });
+        recordEmbeddingOperation({
+          operation,
+          provider: 'workers-ai',
+          model: workersModel,
+          organizationId,
+          durationMs: Date.now() - attemptStartedMs,
+          status: 200,
+          tokens: estimatedTokens,
+        });
+        if (served) {
+          await logOperationResult(controls, {
+            correlationId,
+            channel: 'embed',
+            providerId: 'workers-ai',
+            modelName: workersModel,
+            credentialId: null,
+            organizationId,
+            status: 'success',
+            retryCount: 0,
+            latencyMs: Date.now() - startedMs,
+            promptTokens: estimatedTokens,
+            completionTokens: 0,
+            totalTokens: estimatedTokens,
+          });
+          return { vectors, provider: 'workers-ai' };
+        }
+        if (provider === 'workers-ai') {
+          await logOperationResult(controls, {
+            correlationId,
+            channel: 'embed',
+            providerId: 'workers-ai',
+            modelName: workersModel,
+            credentialId: null,
+            organizationId,
+            status: 'success',
+            retryCount: 0,
+            latencyMs: Date.now() - startedMs,
+            promptTokens: estimatedTokens,
+            completionTokens: 0,
+            totalTokens: estimatedTokens,
+          });
+          return { vectors, provider: 'workers-ai' };
+        }
+      } catch {
+        await recordEmbeddingTransportOutcome(controls, {
+          providerId: 'workers-ai',
+          modelName: workersModel,
+          succeeded: false,
+        });
+        recordEmbeddingOperation({
+          operation,
+          provider: 'workers-ai',
+          model: workersModel,
+          organizationId,
+          durationMs: Date.now() - attemptStartedMs,
+          status: 500,
+          tokens: estimatedTokens,
+        });
+        if (provider === 'workers-ai') {
+          await logOperationResult(controls, {
+            correlationId,
+            channel: 'embed',
+            providerId: 'workers-ai',
+            modelName: workersModel,
+            credentialId: null,
+            organizationId,
+            status: 'failed',
+            retryCount: 0,
+            latencyMs: Date.now() - startedMs,
+            promptTokens: estimatedTokens,
+            completionTokens: 0,
+            totalTokens: estimatedTokens,
+            errorClass: 'transport_error',
+            errorMessage: 'Workers AI embedding transport failed.',
+          });
+          return { vectors: [...empty], provider: 'workers-ai' };
+        }
+      }
+    }
+  }
+  if (provider === 'workers-ai') return { vectors: [...empty], provider: 'workers-ai' };
+  const geminiGate = await checkEmbeddingTransport(controls, {
+    providerId: 'gemini',
+    modelName: geminiModel,
+    estimatedTokens,
+  });
+  if (!geminiGate.allowed) {
+    recordEmbeddingOperation({
+      operation,
+      provider: 'gemini',
+      model: geminiModel,
+      organizationId,
+      durationMs: Date.now() - attemptStartedMs,
+      status: 429,
+      tokens: estimatedTokens,
+    });
+    await logOperationResult(controls, {
+      correlationId,
+      channel: 'embed',
+      providerId: 'gemini',
+      modelName: geminiModel,
+      credentialId: null,
+      organizationId,
+      status: 'blocked',
+      retryCount: 0,
+      latencyMs: Date.now() - startedMs,
+      promptTokens: estimatedTokens,
+      completionTokens: 0,
+      totalTokens: estimatedTokens,
+      errorClass: geminiGate.errorClass,
+      errorMessage: geminiGate.message,
+    });
+    return { vectors: [...empty], provider: 'none' };
+  }
+  const geminiStartedMs = Date.now();
+  try {
+    const plainKey = await resolveApiKey(db, 'gemini', { organizationId });
+    if (plainKey === null) {
+      recordEmbeddingOperation({
+        operation,
+        provider: 'gemini',
+        model: geminiModel,
+        organizationId,
+        durationMs: Date.now() - geminiStartedMs,
+        status: 500,
+        tokens: estimatedTokens,
+      });
+      await logOperationResult(controls, {
+        correlationId,
+        channel: 'embed',
+        providerId: 'gemini',
+        modelName: geminiModel,
+        credentialId: null,
+        organizationId,
+        status: 'failed',
+        retryCount: 0,
+        latencyMs: Date.now() - startedMs,
+        promptTokens: estimatedTokens,
+        completionTokens: 0,
+        totalTokens: estimatedTokens,
+        errorClass: 'missing_credential',
+        errorMessage: 'No active Gemini credential for this organization.',
+      });
+      return { vectors: [...empty], provider: 'none' };
+    }
+    const vectors = await embedTexts(plainKey, chunks, {
+      ...(options?.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+      ...(options?.embedModel === undefined ? {} : { model: options.embedModel }),
+    });
+    const served = vectors.some((vector) => vector !== null);
+    await recordEmbeddingTransportOutcome(controls, {
+      providerId: 'gemini',
+      modelName: geminiModel,
+      succeeded: served,
+    });
+    recordEmbeddingOperation({
+      operation,
+      provider: 'gemini',
+      model: geminiModel,
+      organizationId,
+      durationMs: Date.now() - geminiStartedMs,
+      status: 200,
+      tokens: estimatedTokens,
+    });
+    await logOperationResult(controls, {
+      correlationId,
+      channel: 'embed',
+      providerId: 'gemini',
+      modelName: geminiModel,
+      credentialId: null,
+      organizationId,
+      status: 'success',
+      retryCount: 0,
+      latencyMs: Date.now() - startedMs,
+      promptTokens: estimatedTokens,
+      completionTokens: 0,
+      totalTokens: estimatedTokens,
+    });
+    return { vectors, provider: served ? 'gemini' : 'none' };
+  } catch {
+    await recordEmbeddingTransportOutcome(controls, {
+      providerId: 'gemini',
+      modelName: geminiModel,
+      succeeded: false,
+    });
+    recordEmbeddingOperation({
+      operation,
+      provider: 'gemini',
+      model: geminiModel,
+      organizationId,
+      durationMs: Date.now() - geminiStartedMs,
+      status: 500,
+      tokens: estimatedTokens,
+    });
+    await logOperationResult(controls, {
+      correlationId,
+      channel: 'embed',
+      providerId: 'gemini',
+      modelName: geminiModel,
+      credentialId: null,
+      organizationId,
+      status: 'failed',
+      retryCount: 0,
+      latencyMs: Date.now() - startedMs,
+      promptTokens: estimatedTokens,
+      completionTokens: 0,
+      totalTokens: estimatedTokens,
+      errorClass: 'transport_error',
+      errorMessage: 'Gemini embedding transport failed.',
+    });
+    return { vectors: [...empty], provider: 'none' };
+  }
+}
+
+/**
+ * Legacy unguarded embedding path, preserved byte-for-byte for callers without
+ * controls (offline callers and unit tests).
+ */
+async function embedArticleChunksUnguarded(
+  chunks: readonly string[],
+  db: AiDb,
+  organizationId: string,
+  options: ReindexEmbeddingsOptions | undefined,
+  provider: EmbeddingProvider,
+  empty: Array<null>,
+): Promise<{ readonly vectors: Array<readonly number[] | null>; readonly provider: 'workers-ai' | 'gemini' | 'none' }> {
   if ((provider === 'workers-ai' || provider === 'auto') && options?.workersAi !== undefined) {
     try {
       const vectors = await embedTextsViaWorkersAi(
@@ -263,6 +615,9 @@ export async function embedQueryVector(
     ...(config?.fetchImpl === undefined ? {} : { fetchImpl: config.fetchImpl }),
     ...(config?.workersAiFetchImpl === undefined ? {} : { workersAiFetchImpl: config.workersAiFetchImpl }),
     ...(config?.workersAi === undefined ? {} : { workersAi: config.workersAi }),
+    ...(config?.controls === undefined ? {} : { controls: config.controls }),
+    operation: config?.operation ?? AI_EMBED_OPERATION_QUERY,
+    ...(config?.correlationId === undefined ? {} : { correlationId: config.correlationId }),
   });
   return vectors[0] ?? null;
 }
@@ -317,7 +672,10 @@ export async function reindexArticleEmbeddings(
     let vectors: Array<readonly number[] | null> = chunks.map(() => null);
     let embeddingProvider: 'workers-ai' | 'gemini' | 'none' = 'none';
     try {
-      const resolved = await embedArticleChunks(chunks, db, input.organizationId, options);
+      const resolved = await embedArticleChunks(chunks, db, input.organizationId, {
+        ...options,
+        operation: options?.operation ?? AI_EMBED_OPERATION_REINDEX,
+      });
       vectors = resolved.vectors;
       embeddingProvider = resolved.provider;
     } catch {

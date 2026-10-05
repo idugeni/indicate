@@ -284,9 +284,10 @@ export function getAiConcurrencyUsage(): { readonly active: number; readonly que
  *
  * @param limit - `globalConcurrencyLimit` from the active policy.
  * @remarks Fail-open: non-positive or non-finite limits skip gating so a
- * misconfigured policy never blocks answers.
+ * misconfigured policy never blocks answers. Shared with the streaming entry
+ * so live streams hold the same per-instance bound as single-shot queries.
  */
-async function acquireAiGlobalSlot(limit: number): Promise<void> {
+export async function acquireAiGlobalSlot(limit: number): Promise<void> {
   if (!Number.isFinite(limit) || limit <= 0) return;
   if (aiActiveSlots < limit) {
     aiActiveSlots += 1;
@@ -298,7 +299,7 @@ async function acquireAiGlobalSlot(limit: number): Promise<void> {
 }
 
 /** Release one provider slot, handing it to the oldest waiter first. */
-function releaseAiGlobalSlot(): void {
+export function releaseAiGlobalSlot(): void {
   const next = aiSlotWaiters.shift();
   if (next !== undefined) {
     next();
