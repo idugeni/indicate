@@ -1,5 +1,5 @@
 import { Send } from 'lucide-react';
-import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
+import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-form';
 
 export function WarmEditorialNewsletter() {
   return (
@@ -14,25 +14,12 @@ export function WarmEditorialNewsletter() {
           </p>
         </div>
         <div className="min-w-0">
-          <div className="flex flex-col gap-2.5 sm:flex-row">
-            <label htmlFor="warm-editorial-newsletter-email" className="sr-only">
-              Alamat email
-            </label>
-            <TemplateInput
-              id="warm-editorial-newsletter-email"
-              type="email"
-              required
-              placeholder="Masukkan alamat email"
-              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
-            />
-            {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
-            <TemplateButton
-              type="button"
-              className="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
-            >
-              Berlangganan
-            </TemplateButton>
-          </div>
+          <NewsletterForm
+            inputId="warm-editorial-newsletter-email"
+            formClassName="flex flex-col gap-2.5 sm:flex-row"
+            inputClassName="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
+            buttonClassName="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
+          />
           <p className="m-0 mt-2.5 font-sans text-xs text-slate-600">
             Kami menghargai privasi Anda. Tidak ada spam, hanya berita penting.
           </p>

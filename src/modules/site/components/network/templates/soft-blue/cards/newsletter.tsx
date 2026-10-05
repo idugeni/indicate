@@ -1,5 +1,5 @@
 import { Lock } from 'lucide-react';
-import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
+import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-form';
 
 export function SoftBlueNewsletter() {
   return (
@@ -15,24 +15,12 @@ export function SoftBlueNewsletter() {
           <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-slate-600">
             Berita penting, dikurasi setiap hari. Tanpa spam, hanya informasi berkualitas.
           </p>
-          <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-            <label htmlFor="soft-blue-newsletter-email" className="sr-only">
-              Alamat email
-            </label>
-            <TemplateInput
-              id="soft-blue-newsletter-email"
-              type="email"
-              required
-              placeholder="Masukkan alamat email"
-              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
-            />
-            <TemplateButton
-              type="button"
-              className="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
-            >
-              Berlangganan
-            </TemplateButton>
-          </div>
+          <NewsletterForm
+            inputId="soft-blue-newsletter-email"
+            formClassName="mt-5 flex flex-col gap-2.5 sm:flex-row"
+            inputClassName="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
+            buttonClassName="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
+          />
           <p className="m-0 mt-2.5 flex items-center gap-1.5 font-sans text-xs text-slate-600">
             <Lock className="h-3.5 w-3.5" aria-hidden="true" />
             Kami menjaga privasi Anda. Tidak ada spam.

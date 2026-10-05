@@ -1,5 +1,5 @@
 import { ArrowRight, Mail } from 'lucide-react';
-import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
+import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-form';
 
 import { cn } from '@/ui/cn';
 
@@ -29,27 +29,19 @@ export function DarkNavyNewsletter({ compact = false }: { readonly compact?: boo
           </p>
         </div>
         <div className="min-w-0">
-          <div className="flex flex-col gap-2.5 sm:flex-row">
-            <label htmlFor="dark-navy-newsletter-email" className="sr-only">
-              Alamat email
-            </label>
-            <TemplateInput
-              id="dark-navy-newsletter-email"
-              type="email"
-              required
-              placeholder="Masukkan alamat email"
-              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
-            />
-            {/* Pendaftaran dinonaktifkan sengaja hingga backend newsletter tersedia. */}
-            <TemplateButton
-              type="button"
-              aria-label="Berlangganan newsletter"
-              className="h-11 w-full flex-none rounded-full px-6 sm:w-11 sm:px-0"
-            >
-              <span className="sm:hidden">Berlangganan</span>
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </TemplateButton>
-          </div>
+          <NewsletterForm
+            inputId="dark-navy-newsletter-email"
+            formClassName="flex flex-col gap-2.5 sm:flex-row"
+            inputClassName="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
+            buttonClassName="h-11 w-full flex-none rounded-full px-6 sm:w-11 sm:px-0"
+            buttonAriaLabel="Berlangganan newsletter"
+            buttonChildren={
+              <>
+                <span className="sm:hidden">Berlangganan</span>
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </>
+            }
+          />
         </div>
       </div>
     </section>

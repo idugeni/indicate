@@ -1,5 +1,5 @@
 import { ArrowRight, Mail } from 'lucide-react';
-import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
+import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-form';
 
 export function RedEditorialNewsletter() {
   return (
@@ -24,25 +24,18 @@ export function RedEditorialNewsletter() {
           </div>
         </div>
         <div className="min-w-0">
-          <div className="flex flex-col gap-2.5 sm:flex-row">
-            <label htmlFor="red-editorial-newsletter-email" className="sr-only">
-              Alamat email
-            </label>
-            <TemplateInput
-              id="red-editorial-newsletter-email"
-              type="email"
-              required
-              placeholder="Masukkan alamat email"
-              className="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
-            />
-            <TemplateButton
-              type="button"
-              className="h-11 w-full flex-none rounded-full px-6 text-sm ring-1 ring-white/25 sm:w-auto"
-            >
-              Berlangganan
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </TemplateButton>
-          </div>
+          <NewsletterForm
+            inputId="red-editorial-newsletter-email"
+            formClassName="flex flex-col gap-2.5 sm:flex-row"
+            inputClassName="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
+            buttonClassName="h-11 w-full flex-none rounded-full px-6 text-sm ring-1 ring-white/25 sm:w-auto"
+            buttonChildren={
+              <>
+                Berlangganan
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </>
+            }
+          />
         </div>
       </div>
     </section>
