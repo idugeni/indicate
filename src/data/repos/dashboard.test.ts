@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ArticleRecord } from '@/modules/dashboard/models';
-import { articleUnchanged, insertChunks, sameJson } from '@/data/repos/dashboard';
+import { articleUnchanged, findBridgeAncestorHostnames, insertChunks, sameJson } from '@/data/repos/dashboard';
 
 describe('Pemotongan sisipan massal', () => {
   it('tidak menghasilkan pernyataan untuk koleksi kosong', () => {
@@ -29,6 +29,29 @@ describe('Perbandingan nilai untuk diff tenant', () => {
     expect(sameJson([{ label: 'a', path: '/a' }], [{ label: 'a', path: '/a' }])).toBe(true);
     expect(sameJson([{ label: 'a', path: '/a' }], [{ label: 'b', path: '/a' }])).toBe(false);
     expect(sameJson(null, undefined)).toBe(false);
+  });
+});
+
+describe('findBridgeAncestorHostnames', () => {
+  it('mengembalikan hostname leluhur yang terdeduplikasi', async () => {
+    const execute = async () => [
+      { hostname: 'wonosobo.portal.example' },
+      { hostname: 'portal.example' },
+      { hostname: 'portal.example' },
+      { hostname: '' },
+      { hostname: null },
+    ];
+    await expect(findBridgeAncestorHostnames(execute, 'org-1', ['s-city'])).resolves.toEqual([
+      'wonosobo.portal.example',
+      'portal.example',
+    ]);
+  });
+
+  it('kosong saat tanpa situs atau db gagal', async () => {
+    const execute = async () => [{ hostname: 'portal.example' }];
+    await expect(findBridgeAncestorHostnames(execute, 'org-1', [])).resolves.toEqual([]);
+    const broken = async () => { throw new Error('down'); };
+    await expect(findBridgeAncestorHostnames(broken, 'org-1', ['s-city'])).resolves.toEqual([]);
   });
 });
 

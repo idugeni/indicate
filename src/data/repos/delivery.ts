@@ -74,6 +74,35 @@ function ancestorSiteIds(context: ResolvedSiteContext) {
   ) select id from ancestry)`;
 }
 
+/** One bridge assignment row as read for listings. */
+export interface BridgeAssignmentRow {
+  readonly id: string;
+  readonly siteId: string;
+  readonly sourceOrganizationId: string;
+  readonly sourceArticleId: string;
+  readonly publishedAt: Date;
+}
+
+/**
+ * Collapse duplicate bridge rows for one article to a single display row.
+ *
+ * @param rows - Published assignment rows in listing scope, possibly holding
+ * the same owner article on several portals of one lineage.
+ * @param siteId - Portal rendering the listing; its own row wins ties.
+ * @returns One row per owner article, preferring the rendering portal.
+ * @remarks Listings union ancestors and descendants, so an article bridged
+ * to both apex and city would otherwise render twice on each portal.
+ */
+export function dedupeBridgeAssignmentRows<T extends BridgeAssignmentRow>(rows: readonly T[], siteId: string): T[] {
+  const byArticle = new Map<string, T>();
+  for (const row of rows) {
+    const key = `${row.sourceOrganizationId}:${row.sourceArticleId}`;
+    const current = byArticle.get(key);
+    if (current === undefined || (current.siteId !== siteId && row.siteId === siteId)) byArticle.set(key, row);
+  }
+  return [...byArticle.values()];
+}
+
 /** One row from `fetch_assigned_article_details`: public display columns only. */
 type BridgeDetail = {
   readonly article_id: string;
@@ -402,8 +431,10 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    * @param context - Resolved tenant hostname context serving the page.
    * @param query - Listing/detail filters mirrored from the local query.
    * @returns Assignment/detail pairs, newest first, capped for listings.
-   * @remarks Listings inherit ancestor assignments (apex -> region -> city),
-   * mirroring `lineageSiteIds` downward; a detail resolves only on the site
+   * @remarks Listings union ancestor and descendant assignments, so a city
+   * bridge surfaces on its apex and region while an apex bridge still fans
+   * down to its cities; duplicates collapse to one row per owner article
+   * preferring the rendering portal. A detail resolves only on the site
    * holding the assignment, mirroring the local one-article-one-URL rule.
    * Owner content arrives exclusively through the `SECURITY DEFINER`
    * `fetch_assigned_article_details` reader, grouped by owner org so one
@@ -411,7 +442,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    */
   private async readBridgePairs(transaction: Transaction, context: ResolvedSiteContext, query: NetworkContentQuery): Promise<readonly BridgePair[]> {
     const siteScope = query.articleSlug === undefined
-      ? sql`${portalAssignments.siteId} in ${ancestorSiteIds(context)}`
+      ? sql`(${portalAssignments.siteId} in ${ancestorSiteIds(context)} OR ${portalAssignments.siteId} in ${lineageSiteIds(context)})`
       : eq(portalAssignments.siteId, context.siteId);
     const assignments = await transaction.select({
       id: portalAssignments.id,
@@ -426,8 +457,10 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       .limit(100);
     const usable = assignments.filter((row): row is typeof row & { readonly publishedAt: Date } => row.publishedAt !== null);
     if (usable.length === 0) return [];
-    const byOwner = new Map<string, { readonly rows: typeof usable; ids: string[] }>();
-    for (const row of usable) {
+    const displayable = dedupeBridgeAssignmentRows(usable, context.siteId);
+    if (displayable.length === 0) return [];
+    const byOwner = new Map<string, { readonly rows: typeof displayable; ids: string[] }>();
+    for (const row of displayable) {
       const group = byOwner.get(row.sourceOrganizationId) ?? { rows: [], ids: [] as string[] };
       (group.rows as unknown[]).push(row);
       group.ids.push(row.sourceArticleId);

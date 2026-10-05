@@ -1,6 +1,6 @@
 import { describe, expect, it, expectTypeOf } from 'vitest';
 
-import { DrizzleDeliveryRepository, resolvePublisherAttribution } from '@/data/repos/delivery';
+import { DrizzleDeliveryRepository, dedupeBridgeAssignmentRows, resolvePublisherAttribution } from '@/data/repos/delivery';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import type { ArticleListItem, NetworkArticle } from '@/modules/delivery/models';
 
@@ -272,6 +272,38 @@ describe('readBridgeArticles', () => {
     const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
     await expect(repository.resolveArticleId({ ...CONTEXT }, 'berita-upt')).resolves.toBe('art-upt-1');
     await expect(repository.resolveArticleId({ ...CONTEXT }, 'tidak-ada')).resolves.toBeNull();
+  });
+
+  it('menggabungkan duplikat bridge apex dan kota menjadi satu baris', async () => {
+    const apexRow = { ...bridgeAssignment, id: 'bridge-apex', siteId: 's-apex' };
+    const cityRow = { ...bridgeAssignment, id: 'bridge-city', siteId: 's-city' };
+    const { repository } = harness({ articles: [], bridgeAssignments: [apexRow, cityRow], bridgeDetails: [bridgeDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT, siteId: 's-apex' }, {});
+    expect(site?.articles).toHaveLength(1);
+    expect(site?.articles[0]).toMatchObject({ id: 'art-upt-1', articleSiteId: 'bridge-apex' });
+  });
+});
+
+describe('dedupeBridgeAssignmentRows', () => {
+  const row = (id: string, siteId: string) => ({
+    id,
+    siteId,
+    sourceOrganizationId: 'org-upt',
+    sourceArticleId: 'art-upt-1',
+    publishedAt: new Date('2026-10-05T09:17:46.000Z'),
+  });
+
+  it('memenangkan baris portal penyaji saat duplikat', () => {
+    expect(dedupeBridgeAssignmentRows([row('a', 's-city'), row('b', 's-apex')], 's-apex')).toEqual([row('b', 's-apex')]);
+  });
+
+  it('mempertahankan baris pertama tanpa duplikat', () => {
+    const rows = [row('a', 's-city'), { ...row('b', 's-city'), sourceArticleId: 'art-lain' }];
+    expect(dedupeBridgeAssignmentRows(rows, 's-apex')).toEqual(rows);
+  });
+
+  it('kosong saat tanpa baris', () => {
+    expect(dedupeBridgeAssignmentRows([], 's-apex')).toEqual([]);
   });
 });
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
@@ -157,6 +157,48 @@ const INSERT_CHUNK_ROWS = 200;
 export function* insertChunks<T>(rows: readonly T[]): Generator<readonly T[]> {
   for (let offset = 0; offset < rows.length; offset += INSERT_CHUNK_ROWS) {
     yield rows.slice(offset, offset + INSERT_CHUNK_ROWS);
+  }
+}
+
+/**
+ * Hostnames of transitive ancestors for bridge invalidation fan-out.
+ *
+ * @param execute - Raw query runner from the ambient transaction.
+ * @param organizationId - Organization owning the assigned sites.
+ * @param siteIds - Assigned site ids whose listings changed.
+ * @returns Distinct ancestor hostnames (region, apex); empty when none.
+ * @remarks A city bridge also renders on its region and apex listings, so
+ * those portals must purge together with the assigned sites — the same
+ * related-hostnames contract `completeInvalidationValues` documents.
+ * Depth is at most 3 (apex -> region -> city); failures yield no
+ * ancestors rather than failing the publication.
+ */
+export async function findBridgeAncestorHostnames(
+  execute: (query: SQL) => Promise<unknown>,
+  organizationId: string,
+  siteIds: readonly string[],
+): Promise<string[]> {
+  if (siteIds.length === 0) return [];
+  try {
+    const value = await execute(sql`WITH RECURSIVE ancestry AS (
+      SELECT s.id, s.parent_site_id, s.normalized_hostname FROM sites s
+      WHERE s.organization_id = ${organizationId} AND s.id = ANY(${sqlStringArray([...siteIds])}::uuid[])
+      UNION ALL
+      SELECT p.id, p.parent_site_id, p.normalized_hostname FROM sites p
+      JOIN ancestry c ON p.id = c.parent_site_id
+      WHERE p.organization_id = ${organizationId}
+    ) SELECT DISTINCT normalized_hostname AS hostname FROM ancestry`);
+    const rows = Array.isArray(value) ? value : [];
+    const hostnames = new Set<string>();
+    for (const row of rows) {
+      if (typeof row === 'object' && row !== null) {
+        const hostname = (row as Record<string, unknown>).hostname;
+        if (typeof hostname === 'string' && hostname !== '') hostnames.add(hostname);
+      }
+    }
+    return [...hostnames];
+  } catch {
+    return [];
   }
 }
 
@@ -1668,8 +1710,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         set: { state: 'published', stateOccurredAt: now, publishedAt: now, updatedAt: now, version: sql`${portalAssignments.version} + 1` },
       });
     }
+    const ancestorHostnames = await findBridgeAncestorHostnames(
+      (query: unknown) => transaction.execute(query as Parameters<Transaction['execute']>[0]),
+      actor.organizationId,
+      siteRows.map((site) => site.id),
+    );
     for (const site of siteRows) {
-      await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, reason, articleSlugs: [slug] }) as never);
+      await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, relatedHostnames: ancestorHostnames, reason, articleSlugs: [slug] }) as never);
     }
     await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action: 'publication.bridge.request', targetType: 'portal_assignment', targetId: articleId, outcome: 'succeeded', changedFields: ['state'], requestId: actor.requestId, before: null, after: { ownerOrganizationId, articleId, siteIds: siteRows.map((site) => site.id) } });
     return rows.map((row) => row.id);
