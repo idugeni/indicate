@@ -57,6 +57,16 @@ type FlushDelta = Map<string, FlushEntry & { count: number }>;
  */
 const SCAN_BATCH_SIZE = 1000;
 
+/**
+ * Batas halaman SCAN per eksekusi flush.
+ *
+ * @remarks Satu halaman = 1 SCAN + 1 EVAL, jadi batas ini memagari perintah
+ * Redis per flush (500 halaman = maks ~1000 perintah + pipeline restore).
+ * Kunci yang belum ter-pop mempertahankan EXPIRE 7-harinya dan ikut flush
+ * 3-jam berikutnya — tidak ada pageview yang hilang diam-diam, hanya ditunda.
+ */
+export const VIEW_FLUSH_MAX_SCAN_PAGES = 500;
+
 const POP_PAGE_SCRIPT = `
 local out = {}
 for _, key in ipairs(KEYS) do
@@ -110,9 +120,12 @@ async function handleGET(request: Request) {
     const deltas: FlushDelta = new Map();
     let invalid = 0;
     let cursor = 0;
+    let pages = 0;
+    let truncated = false;
     do {
       const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: SCAN_BATCH_SIZE });
       cursor = Number(next);
+      pages += 1;
       if (keys.length > 0) {
         const popped = (await redis.eval(POP_PAGE_SCRIPT, keys, [])) as string[];
         const outcome = collectPoppedDeltas(popped);
@@ -127,8 +140,13 @@ async function handleGET(request: Request) {
         }
         invalid += outcome.invalidKeys.length;
       }
+      if (cursor !== 0 && pages >= VIEW_FLUSH_MAX_SCAN_PAGES) {
+        truncated = true;
+        auditFlushIssue(requestId, 'view-flush.scan.truncated', { pages, keys: deltas.size + invalid });
+        break;
+      }
     } while (cursor !== 0);
-    if (deltas.size === 0 && invalid === 0) return NextResponse.json({ requestId, keys: 0, applied: 0, skipped: 0, orphans: 0, invalid: 0 }, { headers: noStore });
+    if (deltas.size === 0 && invalid === 0) return NextResponse.json({ requestId, keys: 0, applied: 0, skipped: 0, orphans: 0, invalid: 0, truncated }, { headers: noStore });
     const runtime = getSharedRuntimeDatabase(context.bootstrap);
     const byOrg = new Map<string, { key: string; entry: FlushEntry & { count: number } }[]>();
     for (const [key, entry] of deltas) {
@@ -219,7 +237,7 @@ async function handleGET(request: Request) {
         auditFlushIssue(requestId, 'view-flush.org.skipped', { organizationId, rows: rows.length, error: error instanceof Error ? error.message : 'unknown' });
       }
     }
-    return NextResponse.json({ requestId, keys: deltas.size + invalid, applied, skipped, orphans, invalid }, { headers: noStore });
+    return NextResponse.json({ requestId, keys: deltas.size + invalid, applied, skipped, orphans, invalid, truncated }, { headers: noStore });
   }
 }
 

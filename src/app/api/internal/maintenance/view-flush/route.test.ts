@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { authorized, collectPoppedDeltas } from '@/app/api/internal/maintenance/view-flush/route';
+import { authorized, collectPoppedDeltas, VIEW_FLUSH_MAX_SCAN_PAGES } from '@/app/api/internal/maintenance/view-flush/route';
 
 function requestWith(auth: string | null): Request {
   const headers = new Headers();
@@ -61,5 +61,14 @@ describe('collectPoppedDeltas', () => {
       'pv:production:org-1:site-1:rel-4',
       'pv:production:org-1:site-1:rel-5',
     ]);
+  });
+});
+
+describe('view-flush scan bound', () => {
+  it('memagari halaman SCAN agar perintah Redis per flush terbatas', () => {
+    // Satu halaman = 1 SCAN + 1 EVAL; 500 halaman x 1000 kunci = 500rb kunci,
+    // jauh di atas volume normal, namun memagar perintah < ~1000 + restore.
+    expect(VIEW_FLUSH_MAX_SCAN_PAGES).toBe(500);
+    expect(VIEW_FLUSH_MAX_SCAN_PAGES).toBeGreaterThan(0);
   });
 });

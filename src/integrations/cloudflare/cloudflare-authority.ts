@@ -9,6 +9,25 @@ interface SslSetting { readonly value: string }
 
 const MAX_PURGE_FILES_PER_REQUEST = 30;
 
+/**
+ * Time-to-live for zone lookups.
+ *
+ * @remarks Zone IDs are effectively immutable and zone lookups ride the
+ * publish/provisioning path (bursty, not per-request), so a 1-hour TTL
+ * absorbs dispatch bursts without risking day-long staleness after a zone
+ * delete/recreate. Serverless instances recycle in minutes anyway; the TTL
+ * matters for long-lived and test runtimes.
+ */
+export const ZONE_CACHE_TTL_MS = 3_600_000;
+
+/** Upper bound on cached zones; one entry is a few hundred bytes. */
+export const ZONE_CACHE_MAX_ENTRIES = 1_000;
+
+interface ZoneCacheEntry {
+  readonly zone: Zone;
+  readonly expiresAt: number;
+}
+
 /** Social preview crawlers bypass the probe challenge; must stay the first custom WAF rule. */
 export const CRAWLER_SKIP_EXPRESSION =
   '(lower(http.user_agent) contains "facebookexternalhit") or (lower(http.user_agent) contains "twitterbot") or (lower(http.user_agent) contains "linkedinbot") or (lower(http.user_agent) contains "whatsapp") or (lower(http.user_agent) contains "telegrambot") or (lower(http.user_agent) contains "slackbot") or (lower(http.user_agent) contains "discordbot")';
@@ -142,22 +161,41 @@ export class CloudflareAuthorityAdapter implements CloudflareAuthorityPort {
     });
   }
 
-  private readonly zoneCache = new Map<string, Zone>();
+  private readonly zoneCache = new Map<string, ZoneCacheEntry>();
+
+  private zoneCacheGet(hostname: string, now: number): Zone | null {
+    const entry = this.zoneCache.get(hostname);
+    if (entry === undefined) return null;
+    if (entry.expiresAt <= now) {
+      this.zoneCache.delete(hostname);
+      return null;
+    }
+    return entry.zone;
+  }
+
+  private zoneCacheSet(hostname: string, zone: Zone, now: number): void {
+    if (!this.zoneCache.has(hostname) && this.zoneCache.size >= ZONE_CACHE_MAX_ENTRIES) {
+      const oldest = this.zoneCache.keys().next();
+      if (!oldest.done) this.zoneCache.delete(oldest.value);
+    }
+    this.zoneCache.set(hostname, { zone, expiresAt: now + ZONE_CACHE_TTL_MS });
+  }
 
   private async zoneForHostname(hostname: string): Promise<Zone> {
-    const hit = this.zoneCache.get(hostname);
-    if (hit !== undefined) return hit;
+    const now = Date.now();
+    const hit = this.zoneCacheGet(hostname, now);
+    if (hit !== null) return hit;
     const exact = await this.call<Zone[]>(`/zones?name=${encodeURIComponent(hostname)}&per_page=5`);
     const direct = exact.find((zone) => zone.name === hostname);
     if (direct !== undefined) {
-      this.zoneCache.set(hostname, direct);
+      this.zoneCacheSet(hostname, direct, now);
       return direct;
     }
     for (let page = 1; ; page += 1) {
       const zones = await this.call<Zone[]>(`/zones?per_page=50&page=${page}`);
       const match = zones.find((zone) => hostname === zone.name || hostname.endsWith(`.${zone.name}`));
       if (match !== undefined) {
-        this.zoneCache.set(hostname, match);
+        this.zoneCacheSet(hostname, match, now);
         return match;
       }
       if (zones.length < 50) break;

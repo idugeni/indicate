@@ -4,6 +4,64 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 
 import { Redis } from '@upstash/redis';
 
+import { logEvent } from '@/core/observability/logger';
+import { recordOperation } from '@/core/observability/operation-metrics';
+
+/**
+ * Wire-byte threshold above which a snapshot write emits a bandwidth warning.
+ *
+ * @remarks Warn-only, never a hard block: the live fleet wire size sits near
+ * ~73 KiB (3.65 MB raw at ~50x gzip), so 512 KiB leaves ~7x headroom before a
+ * revision starts approaching the quota-exhaustion regime documented above.
+ * Crossing it means tenant/config growth is re-inflating the blob and the
+ * snapshot shape needs attention, not that the write should fail.
+ */
+export const SNAPSHOT_WIRE_WARN_BYTES = 512 * 1024;
+
+/** Measure the Upstash REST wire size of an encoded snapshot value. */
+export function snapshotWireSizeOf(encoded: string): number {
+  return Buffer.byteLength(encoded, 'utf8');
+}
+
+function warnOversize(kind: 'snapshot' | 'cache-aside', key: string, wireBytes: number): void {
+  try {
+    logEvent('warn', {
+      event: 'redis.snapshot.oversize',
+      context: { kind, key, wireBytes, thresholdBytes: SNAPSHOT_WIRE_WARN_BYTES },
+    });
+  } catch {
+    /* telemetry must never fail the write */
+  }
+}
+
+/** Wire bytes of a Redis payload without logging its content. */
+function wireBytesOf(raw: unknown): number {
+  if (typeof raw === 'string') return Buffer.byteLength(raw, 'utf8');
+  if (raw !== null && typeof raw === 'object') {
+    try {
+      return Buffer.byteLength(JSON.stringify(raw), 'utf8');
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+/** Record one Redis call into the operation rollup; never throws. */
+function recordRedisCall(operation: string, started: number, commands: number, bytes: number, hit: boolean): void {
+  const durationMs = Date.now() - started;
+  recordOperation({
+    route: 'cache',
+    operation,
+    provider: 'upstash-redis',
+    durationMs,
+    redisCommands: commands,
+    redisMs: durationMs,
+    payloadBytes: bytes,
+    ...(hit ? { cacheHit: 1 } : { cacheMiss: 1 }),
+  });
+}
+
 /**
  * Second-layer runtime snapshot cache in shared Redis (not per-instance).
  * Keys include the revision so stale reads are impossible by construction;
@@ -70,7 +128,11 @@ export class UpstashSnapshotStore {
 
   async read(environment: string, revision: number): Promise<unknown | null> {
     try {
-      return decodeSnapshot(await this.redis.get(`${this.namespace}:snapshot:${environment}:v${revision}`));
+      const started = Date.now();
+      const raw = await this.redis.get(`${this.namespace}:snapshot:${environment}:v${revision}`);
+      const value = decodeSnapshot(raw);
+      recordRedisCall('redis.get', started, 1, wireBytesOf(raw), value !== null);
+      return value;
     } catch {
       return null;
     }
@@ -78,7 +140,12 @@ export class UpstashSnapshotStore {
 
   async write(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void> {
     try {
-      await this.redis.set(`${this.namespace}:snapshot:${environment}:v${revision}`, encodeSnapshot(model), { ex: ttlSeconds });
+      const encoded = encodeSnapshot(model);
+      const started = Date.now();
+      const key = `snapshot:${environment}:v${revision}`;
+      if (snapshotWireSizeOf(encoded) > SNAPSHOT_WIRE_WARN_BYTES) warnOversize('snapshot', key, snapshotWireSizeOf(encoded));
+      await this.redis.set(`${this.namespace}:${key}`, encoded, { ex: ttlSeconds });
+      recordRedisCall('redis.set', started, 1, snapshotWireSizeOf(encoded), true);
     } catch {
       /* best-effort: write failure does not fail the refresh */
     }
@@ -86,7 +153,9 @@ export class UpstashSnapshotStore {
 
   async touch(environment: string, revision: number, ttlSeconds: number): Promise<void> {
     try {
+      const started = Date.now();
       await this.redis.expire(`${this.namespace}:snapshot:${environment}:v${revision}`, ttlSeconds);
+      recordRedisCall('redis.expire', started, 1, 0, true);
     } catch {
       /* best-effort: an unextended key simply expires on schedule */
     }
@@ -102,7 +171,11 @@ export class UpstashSnapshotStore {
    */
   async readKey(key: string): Promise<unknown | null> {
     try {
-      return decodeSnapshot(await this.redis.get(`${this.namespace}:${key}`));
+      const started = Date.now();
+      const raw = await this.redis.get(`${this.namespace}:${key}`);
+      const value = decodeSnapshot(raw);
+      recordRedisCall('redis.get', started, 1, wireBytesOf(raw), value !== null);
+      return value;
     } catch {
       return null;
     }
@@ -117,7 +190,11 @@ export class UpstashSnapshotStore {
   async readMany(keys: readonly string[]): Promise<readonly (unknown | null)[]> {
     if (keys.length === 0) return [];
     try {
-      return (await this.redis.mget(...keys.map((key) => `${this.namespace}:${key}`))).map((raw) => decodeSnapshot(raw));
+      const started = Date.now();
+      const raws = await this.redis.mget(...keys.map((key) => `${this.namespace}:${key}`));
+      const values = raws.map((raw) => decodeSnapshot(raw));
+      recordRedisCall('redis.mget', started, 1, raws.reduce<number>((total, raw) => total + wireBytesOf(raw), 0), values.some((value) => value !== null));
+      return values;
     } catch {
       return keys.map(() => null);
     }
@@ -134,7 +211,11 @@ export class UpstashSnapshotStore {
    */
   async writeKey(key: string, model: unknown, ttlSeconds: number): Promise<void> {
     try {
-      await this.redis.set(`${this.namespace}:${key}`, maybeCompress(JSON.stringify(model)), { ex: ttlSeconds });
+      const encoded = maybeCompress(JSON.stringify(model));
+      const started = Date.now();
+      if (snapshotWireSizeOf(encoded) > SNAPSHOT_WIRE_WARN_BYTES) warnOversize('cache-aside', key, snapshotWireSizeOf(encoded));
+      await this.redis.set(`${this.namespace}:${key}`, encoded, { ex: ttlSeconds });
+      recordRedisCall('redis.set', started, 1, snapshotWireSizeOf(encoded), true);
     } catch {
       /* best-effort: write failure does not fail the refresh */
     }

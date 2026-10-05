@@ -5,6 +5,7 @@ const set = vi.fn();
 const expire = vi.fn();
 const del = vi.fn();
 const mget = vi.fn();
+const logEvent = vi.fn();
 
 vi.mock('@upstash/redis', () => ({
   Redis: class {
@@ -16,7 +17,13 @@ vi.mock('@upstash/redis', () => ({
   },
 }));
 
-const { UpstashSnapshotStore } = await import('@/integrations/redis/upstash-snapshot-store');
+vi.mock('@/core/observability/logger', () => ({
+  logEvent,
+}));
+
+const { SNAPSHOT_WIRE_WARN_BYTES, UpstashSnapshotStore, snapshotWireSizeOf } = await import(
+  '@/integrations/redis/upstash-snapshot-store'
+);
 
 function store() {
   return new UpstashSnapshotStore({ url: 'https://redis.test', token: 'token', namespace: 'prod' });
@@ -110,5 +117,62 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
   it('read mengembalikan null saat redis gagal', async () => {
     get.mockRejectedValueOnce(new Error('redis_unavailable'));
     expect(await store().read('test', 7)).toBeNull();
+  });
+});
+
+describe('UpstashSnapshotStore perlindungan ukuran', () => {
+  beforeEach(() => {
+    set.mockReset();
+    logEvent.mockReset();
+  });
+
+  it('threshold memberi headroom ~7x dari ukuran armada (~73 KiB wire)', () => {
+    expect(SNAPSHOT_WIRE_WARN_BYTES).toBe(512 * 1024);
+    expect(snapshotWireSizeOf('gzip:')).toBeGreaterThan(0);
+  });
+
+  it('write normal di bawah threshold tidak me-log warning', async () => {
+    const model = { environment: 'test', configurationVersion: 7, sites: [{ siteId: 's-1' }] };
+    await store().write('test', 7, model, 3600);
+    expect(set).toHaveBeenCalledOnce();
+    expect(logEvent).not.toHaveBeenCalled();
+  });
+
+  it('write raksasa tetap sukses (best-effort) tetapi me-log warning oversize', async () => {
+    // Payload deterministik berentropi tinggi agar wire size melewati threshold.
+    let seed = 0x9e3779b9;
+    const nextHex = () => {
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      return (seed >>> 0).toString(16).padStart(8, '0');
+    };
+    const blob = Array.from({ length: 40_000 }, () => `${nextHex()}${nextHex()}${nextHex()}`).join('');
+    await store().write('test', 8, { blob }, 3600);
+    expect(set).toHaveBeenCalledOnce();
+    const [, stored] = set.mock.calls[0] as [string, string];
+    expect(snapshotWireSizeOf(stored)).toBeGreaterThan(SNAPSHOT_WIRE_WARN_BYTES);
+    expect(logEvent).toHaveBeenCalledOnce();
+    const [level, fields] = logEvent.mock.calls[0] as [string, { event: string; context: Record<string, unknown> }];
+    expect(level).toBe('warn');
+    expect(fields.event).toBe('redis.snapshot.oversize');
+    expect(fields.context.kind).toBe('snapshot');
+    // Round-trip tetap utuh: proteksi tidak merusak kompresi/fallback.
+    get.mockResolvedValueOnce(stored);
+    expect(await store().read('test', 8)).toEqual({ blob });
+  });
+
+  it('writeKey raksasa me-log warning tanpa menggagalkan tulis', async () => {
+    let seed = 0x85ebca6b;
+    const nextHex = () => {
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      return (seed >>> 0).toString(16).padStart(8, '0');
+    };
+    const blob = Array.from({ length: 40_000 }, () => `${nextHex()}${nextHex()}${nextHex()}`).join('');
+    await store().writeKey('snapshot:raksasa', { blob }, 180);
+    expect(set).toHaveBeenCalledOnce();
+    expect(logEvent).toHaveBeenCalledOnce();
   });
 });

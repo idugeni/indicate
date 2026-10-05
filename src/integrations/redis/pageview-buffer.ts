@@ -2,6 +2,8 @@ import 'server-only';
 
 import { Redis } from '@upstash/redis';
 
+import { recordOperation } from '@/core/observability/operation-metrics';
+
 /**
  * Read raw pageview counters in one round-trip.
  *
@@ -15,9 +17,12 @@ export async function readPageviewCounts(input: {
   readonly keys: readonly string[];
 }): Promise<readonly number[]> {
   if (input.keys.length === 0) return [];
+  const started = Date.now();
   try {
     const redis = new Redis({ url: input.url, token: input.token });
     const raws = await redis.mget(...input.keys);
+    const durationMs = Date.now() - started;
+    recordOperation({ route: 'cache', operation: 'redis.mget', provider: 'upstash-redis', durationMs, redisCommands: 1, redisMs: durationMs, payloadBytes: raws.reduce<number>((total, raw) => total + (typeof raw === 'string' ? Buffer.byteLength(raw, 'utf8') : 8), 0), cacheHit: 1 });
     return raws.map((raw) => {
       const value = typeof raw === 'number' ? raw : Number(raw);
       return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;

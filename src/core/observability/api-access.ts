@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { logApiAccess, logEvent } from '@/core/observability/logger';
+import { recordOperation } from '@/core/observability/operation-metrics';
 import { REQUEST_ID_HEADER, resolveRequestId } from '@/core/observability/request-id';
 import { traceIdsFromHeaders } from '@/core/observability/trace-context';
 
@@ -26,6 +27,8 @@ export function withApiAccess<T extends [Request, ...unknown[]]>(
     try {
       const response = await handler(...args);
       response.headers.set(REQUEST_ID_HEADER, requestId);
+      const durationMs = Date.now() - started;
+      recordOperation({ route, operation: 'http', provider: 'vercel', durationMs, status: response.status });
       if (accessLog === 'full' || response.status >= 400) {
         logApiAccess({
           requestId,
@@ -33,19 +36,21 @@ export function withApiAccess<T extends [Request, ...unknown[]]>(
           method: request.method,
           route,
           status: response.status,
-          durationMs: Date.now() - started,
+          durationMs,
         });
       }
       return response;
     } catch (error) {
       const eventId = crypto.randomUUID();
+      const durationMs = Date.now() - started;
+      recordOperation({ route, operation: 'http', provider: 'vercel', durationMs, status: 500 });
       logEvent('error', {
         event: 'api.unhandled',
         requestId,
         ...(trace === null ? {} : { traceId: trace.traceId }),
         method: request.method,
         route,
-        durationMs: Date.now() - started,
+        durationMs,
         context: {
           eventId,
           name: error instanceof Error ? error.name : 'UnknownError',

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { withApiAccess } from '@/core/observability/api-access';
@@ -15,7 +16,7 @@ import {
 const HISTORY_DAYS = 90;
 
 async function handleGET() {
-  const snapshot = await loadSnapshot();
+  const snapshot = await loadCachedSnapshot();
   return NextResponse.json(snapshot, {
     headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
   });
@@ -75,6 +76,11 @@ async function loadSnapshot() {
     })),
   };
 }
+
+const loadCachedSnapshot = unstable_cache(loadSnapshot, ['status-api-snapshot'], {
+  revalidate: 60,
+  tags: ['status'],
+});
 
 /**
  * Status publik agregat untuk halaman status.

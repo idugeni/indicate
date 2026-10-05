@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { CloudflareAuthorityAdapter } from '@/integrations/cloudflare/cloudflare-authority';
+import {
+  CloudflareAuthorityAdapter,
+  ZONE_CACHE_MAX_ENTRIES,
+  ZONE_CACHE_TTL_MS,
+} from '@/integrations/cloudflare/cloudflare-authority';
 
 interface Call {
   readonly url: string;
@@ -63,6 +67,55 @@ describe('zoneForHostname pagination', () => {
     await adapter.purgeHostname('fakta01.my.id');
     await adapter.purgeHostname('fakta01.my.id');
     expect(calls.filter((call) => !call.url.includes('/purge_cache'))).toHaveLength(1);
+  });
+
+  it('mengambil ulang zone setelah TTL kedaluwarsa', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-10-05T00:00:00.000Z'));
+      const { adapter, calls } = harness([zone('z1', 'fakta01.my.id')], []);
+      await adapter.purgeHostname('fakta01.my.id');
+      await adapter.purgeHostname('fakta01.my.id');
+      expect(calls.filter((call) => call.url.includes('/zones?name='))).toHaveLength(1);
+      vi.setSystemTime(new Date('2026-10-05T00:00:00.000Z').getTime() + ZONE_CACHE_TTL_MS + 1);
+      await adapter.purgeHostname('fakta01.my.id');
+      expect(calls.filter((call) => call.url.includes('/zones?name='))).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('membatasi memori cache dengan mengusir entri tertua', async () => {
+    expect(ZONE_CACHE_MAX_ENTRIES).toBeGreaterThan(10);
+    const exact = Array.from({ length: ZONE_CACHE_MAX_ENTRIES + 1 }, (slot, index) => zone(`z${index}`, `host${index}.example`));
+    const seen = new Map<string, { id: string; name: string }>(exact.map((entry) => [entry.name, entry]));
+    const calls: string[] = [];
+    const fetcher = (async (url: string) => {
+      calls.push(url);
+      if (url.includes('/zones?name=')) {
+        const name = decodeURIComponent(url.split('/zones?name=')[1]?.split('&')[0] ?? '');
+        const match = seen.get(name);
+        return jsonResponse(match === undefined ? [] : [match]);
+      }
+      return jsonResponse({});
+    }) as unknown as typeof fetch;
+    const adapter = new CloudflareAuthorityAdapter('acct', 'token', 'target.example', async () => [], fetcher);
+    const zoneCalls = () => calls.filter((url) => url.includes('/zones?name=')).length;
+    for (const entry of exact) {
+      await adapter.purgeHostname(entry.name);
+    }
+    expect(zoneCalls()).toBe(ZONE_CACHE_MAX_ENTRIES + 1);
+    // Entri pertama sudah terusir: lookup ulang memanggil API lagi.
+    await adapter.purgeHostname(exact[0]?.name ?? '');
+    expect(zoneCalls()).toBe(ZONE_CACHE_MAX_ENTRIES + 2);
+    // Entri terakhir masih hangat: tanpa panggilan API baru.
+    await adapter.purgeHostname(exact[exact.length - 1]?.name ?? '');
+    expect(zoneCalls()).toBe(ZONE_CACHE_MAX_ENTRIES + 2);
+  });
+
+  it('TTL satu jam dan batas seribu entri terdokumentasi', () => {
+    expect(ZONE_CACHE_TTL_MS).toBe(3_600_000);
+    expect(ZONE_CACHE_MAX_ENTRIES).toBe(1_000);
   });
 });
 

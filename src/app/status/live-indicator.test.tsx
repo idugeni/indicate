@@ -4,17 +4,10 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 
 import { StatusLiveIndicator } from '@/app/status/live-indicator';
 
-const refresh = vi.fn();
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh }),
-}));
-
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.useRealTimers();
-  refresh.mockClear();
 });
 
 describe('StatusLiveIndicator', () => {
@@ -22,13 +15,17 @@ describe('StatusLiveIndicator', () => {
     vi.useFakeTimers();
   });
 
-  it('me-refresh route saat snapshot sehat', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
+  it('memperbarui waktu dari API tanpa router.refresh', async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ generatedAt: '2026-10-01T00:15:00.000Z' }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
     render(<StatusLiveIndicator generatedAt="2026-10-01T00:00:00.000Z" />);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/status', { cache: 'no-store' });
     expect(screen.getByText('LIVE 15M CYCLE')).toBeDefined();
   });
 
@@ -41,7 +38,6 @@ describe('StatusLiveIndicator', () => {
       await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
     });
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(refresh).not.toHaveBeenCalled();
     Object.defineProperty(document, 'hidden', { value: false, configurable: true });
   });
 
@@ -57,7 +53,6 @@ describe('StatusLiveIndicator', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
     });
-    expect(refresh).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(screen.getByText('DATA BASI — MENCOBA LAGI')).toBeDefined());
   });
 });
