@@ -10,6 +10,7 @@ function formatMoment(value: string): string {
   const time = new Date(value).getTime();
   if (Number.isNaN(time)) return value;
   return new Date(time).toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
     day: '2-digit',
     month: 'short',
     year: 'numeric',

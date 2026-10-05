@@ -594,9 +594,14 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean
 }) {
-  const [width] = React.useState(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  })
+  const [width, setWidth] = React.useState("60%")
+
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setWidth(`${Math.floor(Math.random() * 40) + 50}%`)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   return (
     <div
