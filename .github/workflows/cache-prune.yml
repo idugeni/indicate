@@ -1,17 +1,39 @@
 name: Cache Prune
 
-# Actions cache menumpuk tiap push (batas repo 10 GB): hapus entri yang
-# tidak disentuh 14 hari. Entri aktif tetap dipakai ulang CI berikutnya;
-# yang terhapus dibangun ulang otomatis saat dibutuhkan.
+# Actions cache menumpuk tiap push (batas repo 10 GB). Strategi retensi:
+# 1) simpan N terbaru per ref (main default 3, PR default 1),
+# 2) hapus semua cache PR yang sudah closed,
+# 3) hapus entri tak tersentuh > max-age-days (default 7),
+# 4) tegakkan budget total (default 8 GB, sisakan headroom) dengan
+#    menghapus yang terlama dulu. Entri yang terhapus dibangun ulang
+#    otomatis saat dibutuhkan.
 on:
   schedule:
-    # Senin 03:30 Asia/Jakarta, sebelum dependabot mingguan.
-    - cron: '30 20 * * 0'
+    # Harian 03:30 Asia/Jakarta. Mingguan tidak cukup untuk ~20 push/hari.
+    - cron: '30 20 * * *'
   workflow_dispatch:
+    inputs:
+      keep-main:
+        description: 'Cache terbaru refs/heads/main yang disimpan'
+        default: '3'
+      keep-pr:
+        description: 'Cache terbaru tiap refs/pull yang disimpan'
+        default: '1'
+      max-age-days:
+        description: 'Hapus cache tak tersentuh lebih lama dari ini (hari)'
+        default: '7'
+      size-budget-gb:
+        description: 'Budget total cache (GB)'
+        default: '8'
 
 permissions:
   actions: write
   contents: read
+  pull-requests: read
+
+concurrency:
+  group: cache-prune
+  cancel-in-progress: false
 
 jobs:
   prune:
@@ -20,13 +42,94 @@ jobs:
     steps:
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IN_KEEP_MAIN: ${{ inputs.keep-main }}
+          IN_KEEP_PR: ${{ inputs.keep-pr }}
+          IN_MAX_AGE_DAYS: ${{ inputs.max-age-days }}
+          IN_SIZE_BUDGET_GB: ${{ inputs.size-budget-gb }}
         run: |
-          cutoff=$(date -d '14 days ago' +%s)
+          set -euo pipefail
+          KEEP_MAIN="${IN_KEEP_MAIN:-3}"
+          KEEP_PR="${IN_KEEP_PR:-1}"
+          MAX_AGE_DAYS="${IN_MAX_AGE_DAYS:-7}"
+          SIZE_BUDGET_GB="${IN_SIZE_BUDGET_GB:-8}"
+          BUDGET=$((SIZE_BUDGET_GB * 1024 * 1024 * 1024))
           deleted=0
+
+          delete_id() {
+            local id="$1" why="$2"
+            if gh cache delete "$id" >/dev/null 2>&1; then
+              echo "deleted ${id} (${why})"
+              deleted=$((deleted + 1))
+            else
+              echo "skip ${id} (sudah hilang)"
+            fi
+          }
+
+          CACHES="$(gh cache list --limit 100 --json id,key,ref,lastAccessedAt,sizeInBytes)"
+          COUNT="$(echo "$CACHES" | jq 'length')"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "no caches"
+            exit 0
+          fi
+          echo "start count=${COUNT}"
+
+          # 1) Retensi per ref: simpan N terbaru.
+          while read -r ref; do
+            [ -z "$ref" ] && continue
+            case "$ref" in
+              refs/heads/main) keep="$KEEP_MAIN" ;;
+              refs/pull/*) keep="$KEEP_PR" ;;
+              *) keep=2 ;;
+            esac
+            i=0
+            while read -r id; do
+              [ -z "$id" ] && continue
+              i=$((i + 1))
+              if [ "$i" -gt "$keep" ]; then
+                delete_id "$id" "ref=${ref} melebihi ${keep}"
+              fi
+            done < <(echo "$CACHES" | jq -r --arg ref "$ref" \
+              'map(select(.ref == $ref)) | sort_by(.lastAccessedAt) | reverse | .[].id')
+          done < <(echo "$CACHES" | jq -r '.[].ref' | sort -u)
+
+          CACHES="$(gh cache list --limit 100 --json id,ref,lastAccessedAt,sizeInBytes)"
+
+          # 2) Hapus cache PR yang PR-nya sudah closed.
+          OPEN_PRS="$(gh pr list --state open --json number -q '.[].number' || true)"
+          while read -r id ref; do
+            [ -z "$id" ] && continue
+            case "$ref" in
+              refs/pull/*/merge)
+                num="$(echo "$ref" | sed -E 's|refs/pull/([0-9]+)/merge|\1|')"
+                if ! echo "$OPEN_PRS" | grep -qx "$num"; then
+                  delete_id "$id" "PR #${num} closed"
+                fi
+                ;;
+            esac
+          done < <(echo "$CACHES" | jq -r '.[] | "\(.id) \(.ref)"')
+          CACHES="$(gh cache list --limit 100 --json id,ref,lastAccessedAt,sizeInBytes)"
+
+          # 3) Umur: hapus yang tak tersentuh > batas.
+          cutoff="$(date -d "${MAX_AGE_DAYS} days ago" +%s)"
           while read -r id at; do
             [ -z "$id" ] && continue
             if [ "$(date -d "$at" +%s)" -lt "$cutoff" ]; then
-              gh cache delete "$id" && deleted=$((deleted + 1))
+              delete_id "$id" "tak tersentuh > ${MAX_AGE_DAYS} hari"
             fi
-          done < <(gh cache list --limit 100 --json id,lastAccessedAt -q '.[] | "\(.id) \(.lastAccessedAt)"')
-          echo "deleted=${deleted}"
+          done < <(echo "$CACHES" | jq -r '.[] | "\(.id) \(.lastAccessedAt)"')
+          CACHES="$(gh cache list --limit 100 --json id,lastAccessedAt,sizeInBytes)"
+
+          # 4) Budget: selagi di atas budget, hapus yang terlama dulu.
+          total="$(echo "$CACHES" | jq '[.[].sizeInBytes] | add // 0')"
+          while [ "$total" -gt "$BUDGET" ]; do
+            oldest="$(echo "$CACHES" | jq -r 'sort_by(.lastAccessedAt) | .[0] | "\(.id) \(.sizeInBytes)"')"
+            [ -z "$oldest" ] && break
+            oid="$(echo "$oldest" | cut -d' ' -f1)"
+            osz="$(echo "$oldest" | cut -d' ' -f2)"
+            delete_id "$oid" "budget ${SIZE_BUDGET_GB}GB, total ${total}"
+            total=$((total - osz))
+            CACHES="$(gh cache list --limit 100 --json id,lastAccessedAt,sizeInBytes)"
+          done
+
+          remain="$(echo "$CACHES" | jq 'length')"
+          echo "deleted=${deleted} remain=${remain}"

@@ -123,9 +123,13 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**', 'next.config.ts', 'tsconfig.json') }}
+          # Kunci stabil per lockfile: actions/cache immutable, jadi kunci
+          # per-commit (hash src) membuat entri ~300MB baru tiap push dan
+          # menumpuk hingga lewat batas 10 GB. Kunci stabil = hit pakai
+          # ulang, hanya lock change yang buat entri baru.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
       - run: npm ci --no-audit --no-fund
       - run: npm run build
 
