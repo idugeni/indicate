@@ -4,7 +4,8 @@ import { AD_SLOTS, type AdSlotId } from '@/modules/ads/slots';
 import { AdSensePush } from '@/modules/ads/adsense-push';
 import { TEMPLATE_AD_MAP } from '@/modules/ads/placement-map';
 import { resolveAdSlot, safeTemplateId, type CampaignAdOverrides } from '@/modules/ads/config';
-import type { AdCreative } from '@/modules/ads/creatives';
+import { isRenderableCreative, type AdCreative } from '@/modules/ads/creatives';
+import { MobileAnchorAd } from '@/modules/ads/mobile-anchor-ad';
 
 interface AdSlotProps {
   readonly site: NetworkSiteData;
@@ -109,7 +110,7 @@ export function AdSlot({ site, slot, eager = false, campaign, className = '' }: 
     resolved.creative.height > 0
       ? `${resolved.creative.width} / ${resolved.creative.height}`
       : null;
-  if (resolved.creative === null) return null;
+  if (!isRenderableCreative(resolved.creative)) return null;
 
   return (
     <div data-ad-slot={slot} className={`my-6 min-w-0 md:my-8${visibility}${className === '' ? '' : ` ${className}`}`}>
@@ -149,7 +150,7 @@ function ZoneSlots({
   if (templateId === null || slots.length === 0) return null;
   const active = slots.filter((slot) => {
     const resolved = resolveAdSlot({ templateId, overrides: site.settings.ads ?? {}, slot, campaign: campaign ?? site.settings.adCampaigns });
-    return resolved.enabled && resolved.creative !== null;
+    return resolved.enabled && isRenderableCreative(resolved.creative);
   });
   if (active.length === 0) return null;
   return (
@@ -217,5 +218,33 @@ export function AdShellBottom({ site, campaign }: { readonly site: NetworkSiteDa
       className="mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6"
       campaign={campaign}
     />
+  );
+}
+
+/**
+ * Phone-only sticky anchor: renders `mobile-banner` inside the dismissible
+ * bottom bar, or nothing when the slot is off.
+ *
+ * @param site - Resolved tenant site.
+ * @param campaign - Optional per-render campaign override (highest precedence).
+ * @returns Dismissible anchor bar, or null when the slot is disabled, unmapped, or creativeless.
+ * @remarks The bar chrome (sticky container + close button) must never mount
+ * without an ad: an ungated wrapper leaks an empty strip above the footer on
+ * phones even though every slot defaults to off.
+ */
+export function MobileAnchorSlot({ site, campaign }: { readonly site: NetworkSiteData; readonly campaign?: CampaignAdOverrides | undefined }) {
+  const templateId = safeTemplateId(site.settings.colors.templateId);
+  if (templateId === null) return null;
+  const resolved = resolveAdSlot({
+    templateId,
+    overrides: site.settings.ads ?? {},
+    slot: 'mobile-banner',
+    campaign: campaign ?? site.settings.adCampaigns,
+  });
+  if (!resolved.enabled || !isRenderableCreative(resolved.creative)) return null;
+  return (
+    <MobileAnchorAd>
+      <AdSlot site={site} slot="mobile-banner" campaign={campaign} />
+    </MobileAnchorAd>
   );
 }

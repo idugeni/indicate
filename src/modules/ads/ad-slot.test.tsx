@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
 import { AD_SLOT_IDS } from '@/modules/ads/slots';
-import { AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
+import { AdShellBottom, AdShellTop, AdSlot, MobileAnchorSlot } from '@/modules/ads/ad-slot';
 
 function allOn(): Record<string, unknown> {
   return Object.fromEntries(
@@ -132,7 +132,7 @@ describe('AdSlot', () => {
     expect(html).not.toContain('data-ad-slot="123"');
   });
 
-  it('tanpa clientId tidak merender markup iklan (fallback null)', () => {
+  it('tanpa clientId tidak merender apa pun (bukan kotak kosong)', () => {
     const html = renderToStaticMarkup(
       <AdSlot
         site={siteFor('clean-blue', {
@@ -141,12 +141,10 @@ describe('AdSlot', () => {
         slot="leaderboard"
       />,
     );
-    expect(html).not.toContain('adsbygoogle');
-    expect(html).not.toContain('data-ad-client');
-    expect(html).not.toContain('siap untuk penyedia');
+    expect(html).toBe('');
   });
 
-  it('clientId kosong dianggap absen (fallback null)', () => {
+  it('clientId kosong dianggap absen (tidak merender apa pun)', () => {
     const html = renderToStaticMarkup(
       <AdSlot
         site={siteFor('clean-blue', {
@@ -155,8 +153,7 @@ describe('AdSlot', () => {
         slot="leaderboard"
       />,
     );
-    expect(html).not.toContain('adsbygoogle');
-    expect(html).not.toContain('data-ad-client');
+    expect(html).toBe('');
   });
 
   it('tidak memakai lebar tetap pada wadah luar, hanya batas maksimum', () => {
@@ -204,5 +201,41 @@ describe('AdShellBottom', () => {
     expect(renderToStaticMarkup(<AdShellBottom site={siteFor('warm-editorial', allOn())} />)).toContain(
       'data-ad-slot="footer-banner"',
     );
+  });
+});
+
+describe('MobileAnchorSlot', () => {
+  it('tidak merender bilah jangkar saat slot default nonaktif', () => {
+    expect(renderToStaticMarkup(<MobileAnchorSlot site={siteFor('clean-blue')} />)).toBe('');
+  });
+
+  it('tidak merender bilah jangkar saat aktif tanpa kreatif', () => {
+    const html = renderToStaticMarkup(
+      <MobileAnchorSlot site={siteFor('clean-blue', { 'mobile-banner': { enabled: true } })} />,
+    );
+    expect(html).toBe('');
+  });
+
+  it('tidak merender bilah jangkar saat penyedia tanpa clientId', () => {
+    const html = renderToStaticMarkup(
+      <MobileAnchorSlot
+        site={siteFor('clean-blue', {
+          'mobile-banner': { enabled: true, creative: { kind: 'provider', provider: 'adsense' } },
+        })}
+      />,
+    );
+    expect(html).toBe('');
+  });
+
+  it('merender bilah beserta tombol tutup saat slot terisi', () => {
+    const html = renderToStaticMarkup(
+      <MobileAnchorSlot
+        site={siteFor('clean-blue', {
+          'mobile-banner': { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/m.png' } },
+        })}
+      />,
+    );
+    expect(html).toContain('data-ad-slot="mobile-banner"');
+    expect(html).toContain('Tutup iklan');
   });
 });

@@ -63,3 +63,20 @@ export function isAdCreative(value: unknown): value is AdCreative {
   }
   return false;
 }
+
+/**
+ * Decide whether a validated creative produces visible markup.
+ *
+ * @param creative - Validated creative or null when the slot has none.
+ * @returns True when rendering emits an image, HTML, or a real provider unit.
+ * @remarks A provider creative without a usable client id renders nothing
+ * (see `AdProvider`), so callers must treat it like a missing creative
+ * instead of reserving an empty box.
+ */
+export function isRenderableCreative(creative: AdCreative | null): creative is AdCreative {
+  if (creative === null) return false;
+  if (creative.kind === 'provider') {
+    return creative.provider === 'adsense' && (creative.clientId?.trim() ?? '') !== '';
+  }
+  return true;
+}

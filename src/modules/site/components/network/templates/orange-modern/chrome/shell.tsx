@@ -7,8 +7,7 @@ import { ORANGE_MODERN } from '@/modules/site/components/network/templates/orang
 import { OrangeModernHeader } from '@/modules/site/components/network/templates/orange-modern/chrome/site-header';
 import { OrangeModernFooter } from '@/modules/site/components/network/templates/orange-modern/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
-import { AdHeaderTop, AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
-import { MobileAnchorAd } from '@/modules/ads/mobile-anchor-ad';
+import { AdHeaderTop, AdShellBottom, AdShellTop, MobileAnchorSlot } from '@/modules/ads/ad-slot';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -42,9 +41,7 @@ export function OrangeModernShell({
       </main>
       <AdShellBottom site={site} />
       <OrangeModernFooter site={site} />
-      <MobileAnchorAd>
-        <AdSlot site={site} slot="mobile-banner" />
-      </MobileAnchorAd>
+      <MobileAnchorSlot site={site} />
       <TemplateBackToTop />
     </div>
   );

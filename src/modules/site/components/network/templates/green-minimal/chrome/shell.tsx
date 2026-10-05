@@ -7,8 +7,7 @@ import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green
 import { GreenMinimalHeader } from '@/modules/site/components/network/templates/green-minimal/chrome/site-header';
 import { GreenMinimalFooter } from '@/modules/site/components/network/templates/green-minimal/chrome/site-footer';
 import { TemplateBackToTop } from '@/modules/site/components/network/chrome/back-to-top';
-import { AdHeaderTop, AdShellBottom, AdShellTop, AdSlot } from '@/modules/ads/ad-slot';
-import { MobileAnchorAd } from '@/modules/ads/mobile-anchor-ad';
+import { AdHeaderTop, AdShellBottom, AdShellTop, MobileAnchorSlot } from '@/modules/ads/ad-slot';
 
 /**
  * Cangkang tunggal template: skip-link + header + main + footer + back-to-top
@@ -42,9 +41,7 @@ export function GreenMinimalShell({
       </main>
       <AdShellBottom site={site} />
       <GreenMinimalFooter site={site} />
-      <MobileAnchorAd>
-        <AdSlot site={site} slot="mobile-banner" />
-      </MobileAnchorAd>
+      <MobileAnchorSlot site={site} />
       <TemplateBackToTop />
     </div>
   );
