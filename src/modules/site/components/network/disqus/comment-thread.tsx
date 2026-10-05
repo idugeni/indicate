@@ -138,7 +138,15 @@ export function CommentThread({
             .
           </p>
         ) : (
-          <DiscussionEmbed key={`${shortname}:${retryCount}`} shortname={shortname} config={config} />
+          // Warna eksplisit heksadesimal: Disqus mencicipi warna wadah untuk
+          // mewarnai thread-nya, tetapi parsernya hanya paham rgb/heks/nama dan
+          // melempar pada `lab()`/`oklch()` yang dihasilkan Tailwind v4 —
+          // thread macet dengan iframe kosong. Wadah ini hanya menaungi skrip
+          // Disqus; isi thread hidup di iframe terisolasi sehingga tampilan
+          // situs tidak berubah.
+          <div style={{ color: '#334155' }}>
+            <DiscussionEmbed key={`${shortname}:${retryCount}`} shortname={shortname} config={config} />
+          </div>
         )
       ) : (
         <p className="mt-3 text-sm opacity-70">Memuat komentar…</p>
