@@ -278,6 +278,15 @@
     background-color: #b88d3a;
   }
 
+  /* Phantom horizontal bar guard: Chromium can paint one with zero scrollable
+     overflow (desktop-site emulation, upstream bug). WebKit/Blink only —
+     Firefox has no axis-split scrollbar styling, so it is unchanged there.
+     This hides the indicator even for real overflow: treat any future
+     horizontal-overflow report as layout first, not styling. */
+  html::-webkit-scrollbar:horizontal {
+    height: 0;
+  }
+
   html:has(.dashboard-scroll, .status-scroll) {
     scrollbar-color: var(--hairline-strong) var(--bg);
     color-scheme: dark;
