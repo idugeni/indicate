@@ -907,9 +907,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       await this.authorize(transaction, actor, permission);
       const scope = actor.regionScopeId ?? null;
       const geography = await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId })
-        .from(regions).where(eq(regions.organizationId, actor.organizationId));
+        .from(regions).where(eq(regions.organizationId, actor.organizationId)).limit(500);
       const rows = await transaction
-        .select({ siteId: articleSites.siteId, hostname: sites.normalizedHostname, slug: articles.slug })
+        .select({ siteId: articleSites.siteId, hostname: sites.normalizedHostname, slug: articles.slug, regionId: sites.regionId })
         .from(articleSites)
         .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .innerJoin(sites, and(eq(sites.organizationId, articleSites.organizationId), eq(sites.id, articleSites.siteId)))
@@ -922,10 +922,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         ))
         .limit(200);
       const bySite = new Map<string, { readonly hostname: string; readonly slugs: Set<string> }>();
-      const siteRegions = new Map((await transaction.select({ id: sites.id, regionId: sites.regionId })
-        .from(sites).where(eq(sites.organizationId, actor.organizationId))).map((site) => [site.id, site.regionId] as const));
       for (const row of rows) {
-        if (!regionScopeCovers(scope, siteRegions.get(row.siteId) ?? null, geography)) continue;
+        if (!regionScopeCovers(scope, row.regionId, geography)) continue;
         const entry = bySite.get(row.siteId) ?? { hostname: row.hostname, slugs: new Set<string>() };
         entry.slugs.add(row.slug);
         bySite.set(row.siteId, entry);
