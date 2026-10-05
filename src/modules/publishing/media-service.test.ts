@@ -257,6 +257,59 @@ describe('MediaService completeUpload', () => {
   });
 });
 
+describe('MediaService pesan penolakan Indonesia', () => {
+  const FOREIGN_ORG = '0199a2b3-4c5d-7e8f-9012-3456789abc01';
+
+  it('menolak lintas organisasi dengan penjelasan saat reserve memakai org lain', async () => {
+    const { service } = harness();
+    const result = await service.reserveUpload(actor, { ...upload, ownerOrganizationId: FOREIGN_ORG });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+    expect(result.error.error.message).toContain('lintas organisasi');
+  });
+
+  it('menjelaskan sesi unggahan kedaluwarsa saat complete tanpa reservasi', async () => {
+    const { service } = harness({ readReservation: async () => null });
+    const result = await service.completeUpload(actor, { reservationId: ARTICLE });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+    expect(result.error.error.message).toContain('kedaluwarsa');
+  });
+
+  it('menjelaskan media tak terlihat di organisasi aktif saat read kosong', async () => {
+    const { service } = harness({ authorizeTenantMedia: async () => null });
+    const result = await service.authorizeTenantRead(actor, { mediaId: MEDIA });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+    expect(result.error.error.message).toContain('organisasi aktif');
+  });
+
+  it('menjelaskan izin peran kurang saat read ditolak repositori', async () => {
+    const { service } = harness({
+      authorizeTenantMedia: async () => {
+        throw new PublishingAccessDeniedError();
+      },
+    });
+    const result = await service.authorizeTenantRead(actor, { mediaId: MEDIA });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+    expect(result.error.error.message).toContain('izin');
+  });
+
+  it('menolak lintas organisasi dengan penjelasan saat read memakai org lain', async () => {
+    const { service } = harness();
+    const result = await service.authorizeTenantRead(actor, { mediaId: MEDIA, ownerOrganizationId: FOREIGN_ORG });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
+    expect(result.error.error.message).toContain('lintas organisasi');
+  });
+});
+
 describe('MediaService read archive', () => {
   it('membaca list dan memetakan akses ditolak', async () => {
     const okHarness = harness();

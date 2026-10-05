@@ -11,6 +11,19 @@ import type { Result } from '@/core/result';
 import { mediaArchiveSchema, mediaCompletionSchema, mediaListSchema, mediaMetadataSchema, mediaReadManySchema, mediaReadSchema, mediaReservationSchema } from '@/modules/publishing/schemas';
 
 interface ClockLike { now(): Date }
+
+/**
+ * Pesan penolakan media berbahasa Indonesia untuk pemanggil dasbor terotentikasi.
+ *
+ * @remarks Setiap pesan hanya menyebut sisi aktor (peran, organisasi aktif, sesi unggahan)
+ * dan kemungkinan umum, tanpa menyebut data organisasi lain, sehingga aman ditampilkan
+ * di UI. Kode tetap `RESOURCE_UNAVAILABLE` (404) agar kontrak status tidak berubah.
+ */
+const MEDIA_DENIAL_CROSS_ORG = 'Akses lintas organisasi ditolak. Media yang diminta berada di luar organisasi aktif Anda; minta administrator untuk memprosesnya dari organisasi pemilik media tersebut.';
+const MEDIA_DENIAL_NO_PERMISSION = 'Peran Anda di organisasi ini tidak memiliki izin untuk operasi media ini. Minta administrator organisasi untuk memperbarui peran Anda.';
+const MEDIA_DENIAL_NOT_FOUND = 'Media tidak ditemukan di organisasi aktif Anda. Kemungkinan penyebabnya: media milik organisasi lain, sudah diarsip, atau sudah dihapus.';
+const MEDIA_DENIAL_SCOPE = 'Unggahan ditolak untuk peran atau cakupan wilayah Anda di organisasi ini. Periksa peran Anda atau pastikan konten berada dalam wilayah kerja Anda.';
+const MEDIA_DENIAL_RESERVATION_GONE = 'Sesi unggahan tidak ditemukan atau sudah kedaluwarsa. Silakan unggah ulang berkasnya.';
 export interface MediaPolicy {
   readonly maxBytes: number;
   readonly allowedTypes: readonly string[];
@@ -45,6 +58,23 @@ export class MediaService {
   private failure(actor: AuthorizedTenantActorContext): Result<never, PublicErrorEnvelope> { return { ok: false, error: createPublicError('DEPENDENCY_UNAVAILABLE', 'The media operation could not be completed.', actor.requestId) }; }
 
   /**
+   * Penolakan terotorisasi dengan pesan Indonesia yang menjelaskan penyebabnya.
+   *
+   * @param actor - Aktor pemanggil dasbor/API.
+   * @param action - Nama aksi untuk jejak audit (sama seperti `denied`).
+   * @param targetType - Jenis target untuk jejak audit.
+   * @param message - Penjelasan Indonesia yang aman ditampilkan: hanya menyebut sisi aktor
+   * (peran, organisasi aktif, status sesi unggahan), tidak pernah menyebut data organisasi lain.
+   * @returns Envelope `RESOURCE_UNAVAILABLE` (tetap 404) dengan pesan yang bisa ditindaklanjuti.
+   * @remarks Permukaan publik/edge/webhook tetap memakai `denied` yang generik demi
+   * anti-enumerasi; varian rinci ini hanya untuk pemanggil dasbor yang sudah terotentikasi.
+   */
+  private async deniedAs(actor: AuthorizedTenantActorContext, action: string, targetType: string, message: string): Promise<Result<never, PublicErrorEnvelope>> {
+    try { await this.repository.recordDenial(actor, action, targetType, this.clock.now().toISOString()); } catch { /* preserve the non-disclosing external boundary */ }
+    return { ok: false, error: createPublicError('RESOURCE_UNAVAILABLE', message, actor.requestId) };
+  }
+
+  /**
    * Alihkan konteks tulis media ke org pemilik bila diminta.
    *
    * @param actor - Aktor pemanggil dasbor/API.
@@ -64,10 +94,10 @@ export class MediaService {
     if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId) };
     const value = parsed.data;
     const routed = this.ownerActorFor(actor, value.ownerOrganizationId ?? null);
-    if (routed.denied) return this.denied(actor, 'media.upload.reserve.denied', 'media');
+    if (routed.denied) return this.deniedAs(actor, 'media.upload.reserve.denied', 'media', MEDIA_DENIAL_CROSS_ORG);
     const effective = routed.actor;
     if (value.owner.kind === 'organization' && !isArticleScopedPurpose(value.purpose) && effective.regionScopeId !== undefined && effective.regionScopeId !== null) {
-      return this.denied(actor, 'media.upload.reserve.denied', 'media');
+      return this.deniedAs(actor, 'media.upload.reserve.denied', 'media', MEDIA_DENIAL_SCOPE);
     }
     if (!this.policy.allowedTypes.includes(value.mediaType) || value.sizeBytes > this.policy.maxBytes) {
       return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, {
@@ -114,7 +144,7 @@ export class MediaService {
       }
       return { ok: false, error: createPublicError('CONFLICT', 'A unique media key could not be reserved.', actor.requestId) };
     } catch (error) {
-      if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.reserve.denied', 'media');
+      if (error instanceof PublishingAccessDeniedError) return this.deniedAs(actor, 'media.upload.reserve.denied', 'media', MEDIA_DENIAL_SCOPE);
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengunggah media.', actor.requestId) };
       return this.failure(actor);
     }
@@ -128,11 +158,11 @@ export class MediaService {
   async completeUpload(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<MediaAssetRecord, PublicErrorEnvelope>> {
     const parsed = mediaCompletionSchema.safeParse(raw); if (!parsed.success) return { ok: false, error: createPublicError('INVALID_INPUT', 'Invalid upload completion.', actor.requestId) };
     const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
-    if (routed.denied) return this.denied(actor, 'media.upload.complete.denied', 'media');
+    if (routed.denied) return this.deniedAs(actor, 'media.upload.complete.denied', 'media', MEDIA_DENIAL_CROSS_ORG);
     const effective = routed.actor;
     try {
       const reservation = await this.repository.readReservation(effective, parsed.data.reservationId);
-      if (reservation === null || reservation.status !== 'reserved' || new Date(reservation.expiresAt) < this.clock.now()) return this.denied(actor, 'media.upload.complete.denied', 'media');
+      if (reservation === null || reservation.status !== 'reserved' || new Date(reservation.expiresAt) < this.clock.now()) return this.deniedAs(actor, 'media.upload.complete.denied', 'media', MEDIA_DENIAL_RESERVATION_GONE);
       const metadata = await this.storage.headExact(reservation.objectKey);
       const valid = metadata !== null && metadata.contentType === reservation.expectedMediaType
         && metadata.contentLength === reservation.expectedSizeBytes && metadata.checksum !== null
@@ -159,7 +189,7 @@ export class MediaService {
       }
       return { ok: true, value: await this.repository.activateMedia(effective, { reservationId: reservation.id, mediaId: this.identifiers.create(), mediaType: metadata.contentType, sizeBytes: metadata.contentLength, checksum: metadata.checksum, thumbObjectKey, widthPx: parsed.data.widthPx ?? null, heightPx: parsed.data.heightPx ?? null, altText: parsed.data.altText ?? null, caption: parsed.data.caption ?? null, sortOrder: parsed.data.sortOrder ?? null, focalX: parsed.data.focalX ?? null, focalY: parsed.data.focalY ?? null, now: this.clock.now().toISOString() }) };
     } catch (error) {
-      if (error instanceof PublishingAccessDeniedError) return this.denied(actor, 'media.upload.complete.denied', 'media');
+      if (error instanceof PublishingAccessDeniedError) return this.deniedAs(actor, 'media.upload.complete.denied', 'media', MEDIA_DENIAL_SCOPE);
       if (error instanceof PublishingSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan tidak aktif. Hubungi administrator agar dapat mengunggah media.', actor.requestId) };
       return this.failure(actor);
     }
@@ -177,11 +207,11 @@ export class MediaService {
   async authorizeTenantRead(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ExactObjectAuthorization, PublicErrorEnvelope>> {
     const parsed = mediaReadSchema.safeParse(raw); if (!parsed.success) return this.denied(actor, 'media.access.denied', 'media');
     const routed = this.ownerActorFor(actor, parsed.data.ownerOrganizationId ?? null);
-    if (routed.denied) return this.denied(actor, 'media.access.denied', 'media');
+    if (routed.denied) return this.deniedAs(actor, 'media.access.denied', 'media', MEDIA_DENIAL_CROSS_ORG);
     try {
-      const media = await this.repository.authorizeTenantMedia(routed.actor, parsed.data.mediaId); if (media === null) return this.denied(actor, 'media.access.denied', 'media');
+      const media = await this.repository.authorizeTenantMedia(routed.actor, parsed.data.mediaId); if (media === null) return this.deniedAs(actor, 'media.access.denied', 'media', MEDIA_DENIAL_NOT_FOUND);
       return { ok: true, value: await this.storage.authorizeExactGet(media.objectKey, this.policy.readTtlSeconds) };
-    } catch (error) { return error instanceof PublishingAccessDeniedError ? this.denied(actor, 'media.access.denied', 'media') : this.failure(actor); }
+    } catch (error) { return error instanceof PublishingAccessDeniedError ? this.deniedAs(actor, 'media.access.denied', 'media', MEDIA_DENIAL_NO_PERMISSION) : this.failure(actor); }
   }
 
   /**
