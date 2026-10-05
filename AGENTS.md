@@ -120,6 +120,13 @@ When schema, SQL functions, indexes, RLS, or database behavior changes:
 - Do not add unnecessary polling or client effects.
 - Follow the repository image-cost policy.
 
+### File Edits (`default.edit`)
+
+- Read the target region with `default.read` (with `offset`/`limit`) before every edit. Never guess `oldString`.
+- Use a minimal unique `oldString` (3-5 lines). Copy-paste exactly from `read` output, including whitespace and indentation.
+- `oldString` must match exactly once. Add surrounding context to disambiguate; never use `replaceAll` for a single-site change.
+- On `Could not find oldString`: re-read the region, shrink the scope, never retry the same `oldString`. After 2 failures, stop and report intended change + target lines.
+
 ## 8. Verification
 
 For code changes:

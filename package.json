@@ -36,6 +36,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
+    "format": "npx -y prettier@3.6.2 --write .",
+    "format:check": "npx -y prettier@3.6.2 --check .",
     "lint:md": "npx -y markdownlint-cli2 \"*.md\" \"docs/**/*.md\" \".github/**/*.md\" \"workers/**/*.md\" \"src/**/*.md\" \"public/**/*.md\"",
     "lint:md:citations": "node scripts/qa/doc-citations.mjs",
     "lint:docs": "npm run lint:md && npm run lint:md:citations",

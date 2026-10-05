@@ -1,5 +1,11 @@
 {
   "$schema": "https://prettierjs.io/schemas/prettier.json",
   "proseWrap": "preserve",
-  "printWidth": 100
+  "printWidth": 100,
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "all",
+  "useTabs": false,
+  "tabWidth": 2,
+  "endOfLine": "lf"
 }

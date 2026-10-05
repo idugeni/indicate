@@ -1,0 +1,11 @@
+.next
+.vercel
+coverage
+node_modules
+tmp
+.agents
+.claude
+.kiro
+next-env.d.ts
+*.tsbuildinfo
+package-lock.json
