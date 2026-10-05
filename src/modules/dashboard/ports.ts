@@ -66,6 +66,8 @@ export interface DashboardRepository {
   operationsSummary(actor: AuthorizedTenantActorContext, permission: string): Promise<OperationsProjection>;
   /** Enqueue a manual cache purge per site (null = all in scope); executed directly by the dispatcher. */
   enqueueCachePurge(actor: AuthorizedTenantActorContext, permission: string, siteId: string | null): Promise<readonly CachePurgeTarget[]>;
+  /** Enqueue publisher-change purges for portals rendering this publisher; returns purged site count. */
+  enqueuePublisherInvalidation(actor: AuthorizedTenantActorContext, permission: string, publisherId: string): Promise<number>;
   recordDenied(actor: AuthorizedTenantActorContext, action: string, targetType: string): Promise<void>;
   /**
    * Resolve an active organization id by slug across org boundaries (platform stewards only).

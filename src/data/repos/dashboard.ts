@@ -888,6 +888,60 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   }
 
   /**
+   * Enqueue publisher-change purges for portals rendering this publisher.
+   *
+   * @param actor - Calling actor; logo edits need the publisher-manage grant.
+   * @param permission - Membership permission guarding the enqueue.
+   * @param publisherId - Publisher whose logoUrl just changed.
+   * @returns Count of portal tasks enqueued.
+   * @remarks Only portals carrying published copies of this publisher's
+   * articles purge — never the whole network. Bridge-served portals in
+   * other orgs are out of tenant scope here and refresh on their next
+   * publish event; reason `publisher.changed` already narrows paths to
+   * the article corpus. Failures propagate so the service can downgrade
+   * them to telemetry instead of failing the publisher save.
+   */
+  async enqueuePublisherInvalidation(actor: AuthorizedTenantActorContext, permission: string, publisherId: string): Promise<number> {
+    return this.database.transaction(async (transaction) => {
+      await this.establishContext(transaction, actor);
+      await this.authorize(transaction, actor, permission);
+      const scope = actor.regionScopeId ?? null;
+      const geography = await transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId })
+        .from(regions).where(eq(regions.organizationId, actor.organizationId));
+      const rows = await transaction
+        .select({ siteId: articleSites.siteId, hostname: sites.normalizedHostname, slug: articles.slug })
+        .from(articleSites)
+        .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
+        .innerJoin(sites, and(eq(sites.organizationId, articleSites.organizationId), eq(sites.id, articleSites.siteId)))
+        .where(and(
+          eq(articleSites.organizationId, actor.organizationId),
+          eq(articleSites.active, true),
+          eq(articleSites.state, 'published'),
+          eq(articles.status, 'active'),
+          eq(articles.publisherId, publisherId),
+        ))
+        .limit(200);
+      const bySite = new Map<string, { readonly hostname: string; readonly slugs: Set<string> }>();
+      const siteRegions = new Map((await transaction.select({ id: sites.id, regionId: sites.regionId })
+        .from(sites).where(eq(sites.organizationId, actor.organizationId))).map((site) => [site.id, site.regionId] as const));
+      for (const row of rows) {
+        if (!regionScopeCovers(scope, siteRegions.get(row.siteId) ?? null, geography)) continue;
+        const entry = bySite.get(row.siteId) ?? { hostname: row.hostname, slugs: new Set<string>() };
+        entry.slugs.add(row.slug);
+        bySite.set(row.siteId, entry);
+      }
+      const now = new Date();
+      for (const [siteId, entry] of bySite) {
+        await transaction.insert(invalidationTasks).values(completeInvalidationValues({
+          organizationId: actor.organizationId, siteId, currentHostname: entry.hostname,
+          reason: 'publisher.changed', articleSlugs: [...entry.slugs].slice(0, 50), now,
+        }));
+      }
+      return bySite.size;
+    });
+  }
+
+  /**
    * Scoped configuration read: identity, geography, and access collections only.
    *
    * Reads 7 narrow tables instead of the 17-table `load()` hydration; articles,

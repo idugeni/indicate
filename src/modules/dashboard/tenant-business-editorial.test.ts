@@ -118,6 +118,47 @@ describe('TenantBusinessService publishers', () => {
     expect(result.value.verifiedBy).toBe(null);
   });
 
+  it('memurge portal saat logo penerbit berubah', async () => {
+    const enqueued: Array<{ readonly publisherId: string }> = [];
+    const fake = harness({ publishers: [{ ...verifiedPublisher, contacts: {} }] });
+    const serviceWithPurge = fake.service;
+    (serviceWithPurge as unknown as { repository: { enqueuePublisherInvalidation: (...args: readonly unknown[]) => Promise<number> } }).repository.enqueuePublisherInvalidation =
+      async (...args: readonly unknown[]) => {
+        enqueued.push({ publisherId: args[2] as string });
+        return 3;
+      };
+    const changed = await serviceWithPurge.updatePublisher(actor, {
+      ...publisherInput,
+      id: ID,
+      expectedVersion: 1,
+      contacts: { logoUrl: '/api/network/media/m-1' },
+    });
+    expect(changed.ok).toBe(true);
+    expect(enqueued).toEqual([{ publisherId: ID }]);
+  });
+
+  it('tidak memurge saat logo tidak berubah dan tetap sukses bila purge gagal', async () => {
+    const calls: unknown[][] = [];
+    const fake = harness({ publishers: [{ ...verifiedPublisher, contacts: {} }] });
+    const serviceWithPurge = fake.service;
+    (serviceWithPurge as unknown as { repository: { enqueuePublisherInvalidation: (...args: readonly unknown[]) => Promise<number> } }).repository.enqueuePublisherInvalidation =
+      async (...args: readonly unknown[]) => {
+        calls.push([...args]);
+        throw new Error('redis down');
+      };
+    const same = await serviceWithPurge.updatePublisher(actor, { ...publisherInput, id: ID, expectedVersion: 1 });
+    expect(same.ok).toBe(true);
+    expect(calls).toHaveLength(0);
+    const changed = await serviceWithPurge.updatePublisher(actor, {
+      ...publisherInput,
+      id: ID,
+      expectedVersion: 2,
+      contacts: { logoUrl: '/api/network/media/m-1' },
+    });
+    expect(changed.ok).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
   it('mewajibkan bukti saat submit dan alasan saat reject', async () => {
     const draft = { ...verifiedPublisher, verificationStatus: 'unverified', evidenceReference: null };
     const noEvidence = harness({ publishers: [draft] });

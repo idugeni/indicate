@@ -614,15 +614,25 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     }});
   }
 
-  updatePublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
-    return this.mutate({ actor, raw, schema: publisherUpdateSchema, permission: DASHBOARD_PERMISSIONS.publisherManage, action: 'publisher.update', targetType: 'publisher', scope: ['publishers', 'articles', 'articleSites'], execute: (transaction, value, now) => {
+  async updatePublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
+    let logoChanged = false;
+    const result = await this.mutate({ actor, raw, schema: publisherUpdateSchema, permission: DASHBOARD_PERMISSIONS.publisherManage, action: 'publisher.update', targetType: 'publisher', scope: ['publishers', 'articles', 'articleSites'], execute: (transaction, value, now) => {
       const before = requireRecord(transaction.state.publishers, value.id); requireVersion(before, value.expectedVersion);
       if (value.name !== before.name) requirePublisherNameAvailable(transaction.state, value.name);
       const identityChanged = before.name !== value.name || before.type !== value.type || before.attributionLabel !== value.attributionLabel
         || JSON.stringify(before.contacts) !== JSON.stringify(value.contacts) || before.evidenceReference !== value.evidenceReference;
+      logoChanged = (before.contacts as Readonly<Record<string, string | undefined>> | undefined)?.logoUrl !== (value.contacts as Readonly<Record<string, string | undefined>> | undefined)?.logoUrl;
       const after: PublisherRecord = { ...before, ...value, verificationStatus: identityChanged && before.verificationStatus === 'verified' ? 'unverified' : before.verificationStatus, verifiedBy: identityChanged ? null : before.verifiedBy, verifiedAt: identityChanged ? null : before.verifiedAt, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.publishers, after); this.audit(transaction, 'publisher.update', 'publisher', after.id, before, after); return after;
     }});
+    if (result.ok && logoChanged) {
+      try {
+        await this.repository.enqueuePublisherInvalidation(actor, DASHBOARD_PERMISSIONS.publisherManage, result.value.id);
+      } catch {
+        /* Purge telemetry only; the publisher save already committed. */
+      }
+    }
+    return result;
   }
 
   submitPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
