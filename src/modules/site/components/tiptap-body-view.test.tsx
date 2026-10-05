@@ -142,6 +142,21 @@ describe('TipTapBodyView', () => {
     expect(container.textContent).toBe('');
   });
 
+  it('melewatkan paragraf kosong agar tidak menggandakan jarak antar-blok', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Isi' }] },
+        { type: 'paragraph', content: [] },
+        { type: 'paragraph', content: [{ type: 'text', text: '   ' }] },
+        { type: 'paragraph', content: [{ type: 'hardBreak' }] },
+      ],
+    };
+    const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
+    expect(container.querySelectorAll('p')).toHaveLength(2);
+    expect(container.querySelectorAll('br')).toHaveLength(1);
+  });
+
   it('merender tabel, perataan, stabilo, dan warna teks', () => {
     const cell = (text: string) => ({ type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] });
     const doc = {

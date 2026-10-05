@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 // Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
-import { ArrowRight, MapPin } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Eye, MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
@@ -62,7 +62,7 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
             <span aria-hidden="true" className="h-px w-8 bg-[var(--tpl-primary,#b91c1c)]" />
             {kicker}
           </p>
-          <h1 className="m-0 mt-4 min-h-[121px] font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#230d0d)] sm:min-h-[162px] sm:text-5xl">
+          <h1 className="m-0 mt-4 min-h-[3lh] font-serif text-4xl font-bold leading-[1.12] tracking-tight text-[var(--tpl-ink,#230d0d)] sm:text-5xl">
             {head === '' ? (
               article.title
             ) : (
@@ -74,10 +74,20 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           <p className="m-0 mt-4 line-clamp-2 max-w-xl text-[15px] leading-relaxed text-[var(--tpl-muted,#705050)]">
             {article.description}
           </p>
-          <p className="m-0 mt-3 font-sans text-xs tabular-nums text-[var(--tpl-faint,#ac9393)]">
-            {formatDate(article.publishedAt, 'long')} · {reading} mnt baca · {formatFullViews(article.viewCount)} pembaca
-            {' · '}
-            <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" />
+          <p className="m-0 mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-sans text-xs tabular-nums text-[var(--tpl-faint,#ac9393)]">
+            <span className="inline-flex items-center gap-1">
+              <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+              {formatDate(article.publishedAt, 'long')}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+              {reading} mnt baca
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+              {formatFullViews(article.viewCount)} pembaca
+            </span>
+            <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" iconClassName="h-3 w-3 opacity-70" />
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
@@ -95,6 +105,8 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           <Link
             href={article.href}
             aria-label={article.title}
+            aria-hidden="true"
+            tabIndex={-1}
             className="block overflow-hidden rounded-2xl shadow-md transition-shadow duration-200 hover:shadow-lg"
           >
             <Image
@@ -121,7 +133,9 @@ export function RedEditorialHero({ articles }: { readonly articles: readonly Art
           </p>
           <Link
             href={article.href}
-            aria-label={`Buka: ${article.title}`}
+            aria-label={`Baca selengkapnya: ${article.title}`}
+            aria-hidden="true"
+            tabIndex={-1}
             className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] text-white shadow-md transition-colors hover:bg-[var(--tpl-primary-dark,#7f1212)]"
           >
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

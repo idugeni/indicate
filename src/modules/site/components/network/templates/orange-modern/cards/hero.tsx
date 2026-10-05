@@ -1,7 +1,7 @@
 import Image from 'next/image';
 // Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
-import { ArrowRight, MapPin } from 'lucide-react';
+import { ArrowRight, MapPin, Tag } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/orange-modern/ui/article-meta';
@@ -21,6 +21,8 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
         <Link
           href={article.href}
           aria-label={article.title}
+          aria-hidden="true"
+          tabIndex={-1}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
           <Image
@@ -36,7 +38,7 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
         </Link>
         {article.categoryName === null ? null : (
           <span className="absolute left-4 top-4 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-lg bg-[var(--tpl-primary,#ea580c)] px-3 py-1 font-sans text-xs font-bold text-white shadow-md">
-            <MapPin className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+            <Tag className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
             <span className="min-w-0 truncate">{article.categoryName}</span>
           </span>
         )}
@@ -49,12 +51,6 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
       </div>
 
       <div className="min-w-0">
-        {article.categoryName === null ? null : (
-          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold uppercase tracking-wider text-[var(--tpl-primary,#ea580c)]">
-            <span aria-hidden="true" className="h-0.5 w-8 rounded-full bg-[var(--tpl-primary,#ea580c)]" />
-            {article.categoryName}
-          </p>
-        )}
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
           <Link href={article.href} className="hover:text-[var(--tpl-primary,#ea580c)]">
             {article.title}
@@ -75,7 +71,9 @@ export function OrangeModernHero({ article }: { readonly article: ArticleListIte
           </div>
           <Link
             href={article.href}
-            aria-label={`Baca: ${article.title}`}
+            aria-label={`Baca selengkapnya: ${article.title}`}
+            aria-hidden="true"
+            tabIndex={-1}
             className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#ea580c)] text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#c2410c)]"
           >
             <ArrowRight className="h-5 w-5" aria-hidden="true" />

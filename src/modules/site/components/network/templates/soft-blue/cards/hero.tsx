@@ -20,6 +20,8 @@ export function SoftBlueHero({ article }: { readonly article: ArticleListItem })
       <Link
         href={article.href}
         aria-label={article.title}
+        aria-hidden="true"
+        tabIndex={-1}
         className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
       >
         <Image

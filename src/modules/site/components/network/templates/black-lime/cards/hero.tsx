@@ -68,6 +68,8 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
         <Link
           href={article.href}
           aria-label={article.title}
+          aria-hidden="true"
+          tabIndex={-1}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
           <Image
@@ -89,7 +91,9 @@ export function BlackLimeHero({ article }: { readonly article: ArticleListItem }
         )}
         <Link
           href={article.href}
-          aria-label={`Buka: ${article.title}`}
+          aria-label={`Baca selengkapnya: ${article.title}`}
+          aria-hidden="true"
+          tabIndex={-1}
           className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--tpl-primary,#c5f82a)] text-[var(--tpl-on-primary,#0a0c07)] shadow-md transition-colors hover:bg-[var(--tpl-primary-dark,#9ecb14)]"
         >
           <ArrowUpRight className="h-4 w-4" aria-hidden="true" />

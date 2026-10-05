@@ -1,7 +1,7 @@
 import Image from 'next/image';
 // Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, BadgeCheck, Calendar, ChevronRight, Eye, Flag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Building2, ChevronRight, Eye, Flag, MapPin, Newspaper } from 'lucide-react';
 
 import { buildSeoDocument, resolveArticleCanonical } from '@/modules/site/seo';
 import { resolveContactChannels, resolvePublisherChannels } from '@/modules/site/company-contact';
@@ -15,6 +15,7 @@ import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { DarkNavyShell } from '@/modules/site/components/network/templates/dark-navy/chrome/shell';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { ArticleBylineMeta } from '@/modules/site/components/network/ui/article-byline-meta';
 import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
 import { ShareButtons } from '@/modules/site/components/network/cards/share-buttons';
 import { ArticlePrintButton } from '@/modules/site/components/network/ui/article-print-button';
@@ -103,19 +104,7 @@ export function DarkNavyArticle({
                 <span className="block truncate font-sans text-sm font-bold text-[#eaf0fb]">
                   {bylineName}
                 </span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-xs tabular-nums text-[#9aa9c4]">
-                  <span className="inline-flex items-center gap-1">
-                    <Calendar className="h-3 w-3" aria-hidden="true" />
-                    <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'long')}</time>
-                  </span>
-                  <span aria-hidden="true">·</span>
-                  <span>{reading} menit baca</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Eye className="h-3 w-3" aria-hidden="true" />
-                    {formatFullViews(article.viewCount)} pembaca
-                  </span>
-                </span>
+                <ArticleBylineMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={`/${article.slug}`} className="text-[#9aa9c4]" />
               </span>
             </p>
             <span className="flex flex-wrap items-center gap-2">
@@ -158,12 +147,12 @@ export function DarkNavyArticle({
             <ArticleAudioPlayer audioUrl={article.audioUrl} durationSeconds={article.durationSeconds} title={article.title} />
           ) : null}
 
-          <div className="mt-8 space-y-6">
+          <div className="mt-8 space-y-7">
             <ArticleRichBodyView
               body={article.body}
               bodyJson={article.bodyJson}
-              paragraphClassName="text-justify font-sans text-[17px] leading-[1.85] text-[#eaf0fb]"
-              listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.85] text-[#eaf0fb] [list-style:disc]"
+              paragraphClassName="text-justify font-sans text-[17px] leading-[1.75] text-[#eaf0fb]"
+              listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.75] text-[#eaf0fb] [list-style:disc]"
             />
           </div>
           <ArticleGallery images={article.gallery} title={article.title} />
@@ -212,10 +201,23 @@ export function DarkNavyArticle({
                     <BadgeCheck className="h-4 w-4 flex-none text-[#2f7bff]" aria-label="Penerbit terverifikasi" />
                   ) : null}
                 </p>
-                <p className="m-0 mt-0.5 truncate font-sans text-xs text-[#9aa9c4]">
-                  Penerbit
-                  {article.officialInstitution ? ` · ${article.officialInstitution}` : ''}
-                  {article.publisherCity ? ` · ${article.publisherCity}` : ''}
+                <p className="m-0 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 font-sans text-xs text-[#9aa9c4]">
+                  <span className="inline-flex items-center gap-1">
+                    <Newspaper className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    Penerbit
+                  </span>
+                  {article.officialInstitution ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Building2 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                      {article.officialInstitution}
+                    </span>
+                  ) : null}
+                  {article.publisherCity ? (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3 w-3 opacity-70" aria-hidden="true" />
+                      {article.publisherCity}
+                    </span>
+                  ) : null}
                 </p>
               </div>
             </div>
@@ -304,12 +306,12 @@ export function DarkNavyArticle({
           ) : null}
 
           {newer !== null || older !== null ? (
-            <nav aria-label="Navigasi artikel" className="mt-10 grid grid-cols-1 gap-3 border-t border-[#1b2c4f] pt-6 sm:grid-cols-2 sm:gap-4">
+            <nav aria-label="Navigasi artikel" className="mt-10 grid grid-cols-1 gap-4 border-t border-[#1b2c4f] pt-6 sm:mt-12 sm:grid-cols-2 sm:gap-5 sm:pt-8 md:gap-6">
               <div className={`min-w-0 ${newer !== null && older === null ? 'col-span-2' : ''}`}>
                 {newer !== null ? (
                   <Link
                     href={newer.href}
-                    className="group flex h-full items-start gap-3 rounded-2xl bg-[#0e1a33] p-4 shadow-sm ring-1 ring-[#1b2c4f]/60 transition-all hover:shadow-md hover:ring-[#2f7bff]/50 sm:p-5"
+                    className="group relative block min-h-48 overflow-hidden rounded-2xl bg-[#0e1a33] shadow-sm ring-1 ring-[#1b2c4f]/60 transition-all hover:shadow-md hover:ring-[#2f7bff]/50 sm:min-h-56"
                   >
                     <Image
                       unoptimized
@@ -317,18 +319,17 @@ export function DarkNavyArticle({
                       alt=""
                       aria-hidden="true"
                       loading="lazy"
-                      width={112}
-                      height={112}
-                      className="h-14 w-14 flex-none rounded-xl object-cover"
+                      fill
+                      sizes="(max-width: 640px) 100vw, 50vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#14294f] text-[#2f7bff] transition-colors group-hover:bg-[#2f7bff] group-hover:text-white">
-                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                    <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+                    <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                      <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                      Lebih baru
                     </span>
-                    <span className="min-w-0">
-                      <span className="block font-sans text-[11px] font-bold uppercase tracking-wider text-[#5f6f8c]">
-                        Lebih baru
-                      </span>
-                      <span className="mt-1 block font-sans text-sm font-semibold leading-snug text-[#eaf0fb] group-hover:text-[#2f7bff]">
+                    <span className="absolute inset-x-0 bottom-0 block p-4 sm:p-5">
+                      <span className="line-clamp-2 block font-sans text-base font-bold leading-snug text-white sm:text-lg">
                         {newer.title}
                       </span>
                     </span>
@@ -339,7 +340,7 @@ export function DarkNavyArticle({
                 {older !== null ? (
                   <Link
                     href={older.href}
-                    className="group flex h-full flex-row-reverse items-start gap-3 rounded-2xl bg-[#0e1a33] p-4 text-right shadow-sm ring-1 ring-[#1b2c4f]/60 transition-all hover:shadow-md hover:ring-[#2f7bff]/50 sm:p-5"
+                    className="group relative block min-h-48 overflow-hidden rounded-2xl bg-[#0e1a33] shadow-sm ring-1 ring-[#1b2c4f]/60 transition-all hover:shadow-md hover:ring-[#2f7bff]/50 sm:min-h-56"
                   >
                     <Image
                       unoptimized
@@ -347,18 +348,17 @@ export function DarkNavyArticle({
                       alt=""
                       aria-hidden="true"
                       loading="lazy"
-                      width={112}
-                      height={112}
-                      className="h-14 w-14 flex-none rounded-xl object-cover"
+                      fill
+                      sizes="(max-width: 640px) 100vw, 50vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#14294f] text-[#2f7bff] transition-colors group-hover:bg-[#2f7bff] group-hover:text-white">
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+                    <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                      Lebih lama
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </span>
-                    <span className="min-w-0">
-                      <span className="block font-sans text-[11px] font-bold uppercase tracking-wider text-[#5f6f8c]">
-                        Lebih lama
-                      </span>
-                      <span className="mt-1 block font-sans text-sm font-semibold leading-snug text-[#eaf0fb] group-hover:text-[#2f7bff]">
+                    <span className="absolute inset-x-0 bottom-0 block p-4 text-right sm:p-5">
+                      <span className="line-clamp-2 block font-sans text-base font-bold leading-snug text-white sm:text-lg">
                         {older.title}
                       </span>
                     </span>

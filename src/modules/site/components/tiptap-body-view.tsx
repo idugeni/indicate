@@ -42,6 +42,21 @@ function textAlignOf(node: TipTapNode): 'left' | 'center' | 'right' | 'justify' 
   return align === 'left' || align === 'center' || align === 'right' || align === 'justify' ? align : undefined;
 }
 
+/**
+ * Decide whether a TipTap paragraph carries no visible text.
+ *
+ * @param node - Paragraph node to inspect.
+ * @returns True when the paragraph has no children or only whitespace text.
+ * @remarks Blank editor paragraphs would otherwise mount an empty `<p>` that
+ * still consumes the body's inter-block spacing, doubling the perceived gap.
+ * A lone `hardBreak` is intentional whitespace and is kept.
+ */
+function isBlankParagraph(node: TipTapNode): boolean {
+  const content = node.content ?? [];
+  if (content.length === 0) return true;
+  return content.every((child) => child.type === 'text' && (typeof child.text === 'string' ? child.text : '').trim() === '');
+}
+
 function YouTubeCard({ videoId }: { readonly videoId: string }) {
   return (
     <span className="block overflow-hidden rounded-2xl">
@@ -133,6 +148,7 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
   if (node.type === 'hardBreak') return <br key={key} />;
   if (node.type === 'horizontalRule') return <hr key={key} />;
   if (node.type === 'paragraph') {
+    if (isBlankParagraph(node)) return null;
     const align = textAlignOf(node);
     return (
       <p key={key} className={context.paragraphClassName} style={align === undefined ? undefined : { textAlign: align }}>

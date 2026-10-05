@@ -1,6 +1,7 @@
 import Image from 'next/image';
 // Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
+import { MapPin } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
@@ -16,22 +17,32 @@ export function CleanBlueHero({ article }: { readonly article: ArticleListItem }
 
   return (
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
-      <Link
-        href={article.href}
-        aria-label={article.title}
-        className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
-      >
-        <Image
-          unoptimized
-          src={src}
-          alt=""
-          priority
-          className="aspect-[16/10] w-full object-cover"
-          width={article.imageWidth ?? 1200}
-          height={article.imageHeight ?? 750}
-          sizes="(max-width: 1024px) 100vw, 50vw"
-        />
-      </Link>
+      <div className="relative min-w-0">
+        <Link
+          href={article.href}
+          aria-label={article.title}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
+        >
+          <Image
+            unoptimized
+            src={src}
+            alt=""
+            priority
+            className="aspect-[16/10] w-full object-cover"
+            width={article.imageWidth ?? 1200}
+            height={article.imageHeight ?? 750}
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+        </Link>
+        {article.publisherCity === null || article.publisherCity === '' ? null : (
+          <p className="m-0 absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 font-sans text-xs font-semibold text-slate-900 backdrop-blur">
+            <MapPin className="h-3.5 w-3.5 flex-none text-[#1a5fd0]" aria-hidden="true" />
+            <span className="min-w-0 truncate">{article.publisherCity}</span>
+          </p>
+        )}
+      </div>
 
       <div className="min-w-0">
         {article.categoryName === null ? null : (

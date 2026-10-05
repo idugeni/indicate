@@ -21,6 +21,8 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
         <Link
           href={article.href}
           aria-label={article.title}
+          aria-hidden="true"
+          tabIndex={-1}
           className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
         >
           <Image
@@ -35,7 +37,7 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
           />
         </Link>
         {article.publisherCity === null || article.publisherCity === '' ? null : (
-          <p className="m-0 absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full bg-[#0e1b33]/70 px-3 py-1.5 font-sans text-xs font-semibold text-white backdrop-blur">
+          <p className="m-0 absolute bottom-4 left-4 flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full bg-[#0e1b33]/90 px-3 py-1.5 font-sans text-xs font-semibold text-white backdrop-blur">
             <MapPin className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
             <span className="min-w-0 truncate">{article.publisherCity}</span>
           </p>
@@ -72,7 +74,9 @@ export function PurpleEditorialHero({ article }: { readonly article: ArticleList
             <PurpleEditorialHeroActions slug={article.slug} title={article.title} href={article.href} />
             <Link
               href={article.href}
-              aria-label={`Baca: ${article.title}`}
+              aria-label={`Baca selengkapnya: ${article.title}`}
+              aria-hidden="true"
+              tabIndex={-1}
               className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary-soft,#ede9fe)] text-[var(--tpl-primary,#7c3aed)] transition-colors hover:bg-[var(--tpl-primary,#7c3aed)] hover:text-white"
             >
               <ArrowRight className="h-4 w-4" aria-hidden="true" />

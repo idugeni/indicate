@@ -33,14 +33,14 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
     return () => window.clearTimeout(id);
   }, [count, paused, index]);
 
-  const article = articles[count === 0 ? 0 : index % count];
+  const position = count === 0 ? 0 : index % count;
+  const article = articles[position];
   if (article === undefined) return null;
 
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const publisherName = article.attribution;
   const location = article.publisherCity;
-  const position = count === 0 ? 0 : index % count;
 
   const go = (next: number) => setIndex(((next % count) + count) % count);
 
@@ -60,24 +60,28 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
       }}
     >
       <div className="grid items-center gap-6 lg:grid-cols-[1.05fr_minmax(0,1fr)] lg:gap-8">
-        <Link
-          href={article.href}
-          aria-label={article.title}
-          className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
-        >
-          <Image
-            unoptimized
-            src={src}
-            alt=""
-            priority={position === 0}
-            className="aspect-[16/10] w-full object-cover"
-            width={article.imageWidth ?? 1200}
-            height={article.imageHeight ?? 750}
-            sizes="(max-width: 1024px) 100vw, 50vw"
-          />
+        <div className="relative min-w-0">
+          <Link
+            href={article.href}
+            aria-label={article.title}
+            aria-hidden="true"
+            tabIndex={-1}
+            className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
+          >
+            <Image
+              unoptimized
+              src={src}
+              alt=""
+              priority={position === 0}
+              className="aspect-[16/10] w-full object-cover"
+              width={article.imageWidth ?? 1200}
+              height={article.imageHeight ?? 750}
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+          </Link>
           <span className="absolute left-4 top-4 inline-flex max-w-[calc(100%-2rem)] items-center rounded-full bg-white/90 px-3 py-1 font-sans text-xs font-bold text-slate-800 shadow-sm backdrop-blur">
             <span className="min-w-0 truncate">
-              #{(article.categoryName ?? 'Sorotan').replace(/\s+/g, '')}
+              <span aria-hidden="true">#</span>{article.categoryName ?? 'Sorotan'}
             </span>
           </span>
           {location === null || location === '' ? null : (
@@ -86,15 +90,15 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
               {location}
             </span>
           )}
-        </Link>
+        </div>
 
         <div className="min-w-0 px-1 py-1 sm:px-2">
           <div className="flex items-center justify-between gap-3">
             {article.categoryName === null ? (
-              <span className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[var(--tpl-primary,#1f7cff)]">
+              <p className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[var(--tpl-primary,#1f7cff)]">
                 <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[var(--tpl-primary,#1f7cff)]" />
                 Sorotan
-              </span>
+              </p>
             ) : (
               <p className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[var(--tpl-primary,#1f7cff)]">
                 <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[var(--tpl-primary,#1f7cff)]" />
@@ -147,7 +151,9 @@ export function GlassyBlueHero({ articles }: { readonly articles: readonly Artic
               <GlassyBlueHeroActions slug={article.slug} title={article.title} href={article.href} />
               <Link
                 href={article.href}
-                aria-label={`Baca: ${article.title}`}
+                aria-label={`Baca selengkapnya: ${article.title}`}
+                aria-hidden="true"
+                tabIndex={-1}
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tpl-primary,#1f7cff)] text-white shadow-lg shadow-[#1f7cff]/30 transition-colors hover:bg-[var(--tpl-primary-dark,#155fd0)]"
               >
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />

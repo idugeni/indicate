@@ -54,28 +54,32 @@ export function WarmEditorialHero({ article }: { readonly article: ArticleListIt
         </div>
       </div>
 
-      <Link
-        href={article.href}
-        aria-label={article.title}
-        className="relative order-2 block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
-      >
-        <Image
-          unoptimized
-          src={src}
-          alt=""
-          priority
-          className="aspect-[16/10] w-full object-cover"
-          width={article.imageWidth ?? 1200}
-          height={article.imageHeight ?? 750}
-          sizes="(max-width: 1024px) 100vw, 50vw"
-        />
+      <div className="relative order-2 min-w-0">
+        <Link
+          href={article.href}
+          aria-label={article.title}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
+        >
+          <Image
+            unoptimized
+            src={src}
+            alt=""
+            priority
+            className="aspect-[16/10] w-full object-cover"
+            width={article.imageWidth ?? 1200}
+            height={article.imageHeight ?? 750}
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+        </Link>
         {location === null || location === '' ? null : (
           <span className="absolute right-4 top-4 inline-flex max-w-[80%] items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 font-sans text-xs font-semibold text-[var(--tpl-ink,#231208)] shadow-sm backdrop-blur">
             <MapPin className="h-3.5 w-3.5 flex-none text-[var(--tpl-primary,#b4532a)]" aria-hidden="true" />
             <span className="truncate">{location}</span>
           </span>
         )}
-      </Link>
+      </div>
     </section>
   );
 }

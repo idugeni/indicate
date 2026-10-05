@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 // Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
 import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
@@ -100,8 +101,20 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
               </span>
               Baca Selengkapnya
             </Link>
-            <span className="hidden font-sans text-xs tabular-nums text-[#eaf0fb]/70 sm:inline">
-              {formatDate(article.publishedAt, 'long')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
+            <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-sans text-xs tabular-nums text-[#eaf0fb]/70">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+                {formatDate(article.publishedAt, 'long')}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                {readingMinutes(article)} mnt baca
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+                {formatFullViews(article.viewCount)} pembaca
+              </span>
+              <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" iconClassName="h-3 w-3 opacity-70" />
             </span>
           </p>
           {count > 1 ? (
@@ -114,7 +127,7 @@ export function DarkNavyHero({ articles }: { readonly articles: readonly Article
                     type="button"
                     onClick={() => setIndex(position)}
                     aria-label={`Sorotan ${position + 1}: ${item.title}`}
-                    aria-current={active}
+                    aria-current={active ? 'true' : undefined}
                     className={`h-1.5 rounded-full transition-all duration-300 ${
                       active ? 'w-5 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'
                     }`}
