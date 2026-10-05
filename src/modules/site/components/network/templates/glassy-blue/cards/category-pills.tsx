@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import Link from 'next/link';
 import { Cpu, Globe, HeartHandshake, Landmark, LayoutGrid, Tag, TrendingUp, Trophy, type LucideIcon } from 'lucide-react';
 
@@ -29,6 +31,7 @@ export function GlassyBlueCategoryPills({
   readonly items: readonly CategoryNavItem[];
   readonly activePath?: string;
 }) {
+  const hintId = useId();
   const pill = (active: boolean): string =>
     `inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 font-sans text-[13px] transition-colors ${
       active
@@ -36,8 +39,11 @@ export function GlassyBlueCategoryPills({
         : 'bg-white font-semibold text-slate-700 ring-1 ring-slate-200/80 hover:text-[#1f7cff] hover:ring-[#1f7cff]/40'
     }`;
   return (
-    <nav aria-label="Kategori berita">
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+    <nav aria-label="Kategori berita" aria-describedby={hintId}>
+      <span id={hintId} className="sr-only">
+        Geser horizontal untuk melihat kategori lain
+      </span>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_88%,transparent)]">
         <Link href="/" aria-current={activePath === '/' ? 'page' : undefined} className={pill(activePath === '/')}>
           <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
           Semua

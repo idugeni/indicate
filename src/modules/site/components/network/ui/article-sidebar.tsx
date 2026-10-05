@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
@@ -8,7 +8,7 @@ import type { ContactChannel } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { ShareButtons, type ShareButtonsSkin } from '@/modules/site/components/network/cards/share-buttons';
 import type { SidebarChannel, SidebarTopic } from '@/modules/site/components/network/ui/article-sidebar-data';
-import { TemplateButton, TemplateInput } from '@/modules/site/components/network/ui/field';
+import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-form';
 import { articleImage, formatCompactViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 /**
@@ -44,11 +44,11 @@ export function ArticleSidebarBacaJuga({ articles }: { readonly articles: readon
   if (articles.length === 0) return null;
   return (
     <SidebarSection label="Baca juga" title="Baca Juga">
-      <ul className="m-0 list-none space-y-5 p-0">
+      <ul className="m-0 list-none divide-y divide-[var(--tpl-ring,#e2e8f0)] p-0">
         {articles.map((item) => {
           const src = articleImage(item);
           return (
-            <li key={item.id} className="m-0 flex gap-3.5 p-0">
+            <li key={item.id} className="m-0 flex gap-3.5 py-5 first:pt-0 last:pb-0">
               <Link href={item.href} aria-label={item.title} className="block flex-none overflow-hidden rounded-lg">
                 <Image
                   unoptimized={!isLocalImageSrc(src)}
@@ -72,8 +72,15 @@ export function ArticleSidebarBacaJuga({ articles }: { readonly articles: readon
                     {item.title}
                   </Link>
                 </h3>
-                <p className="m-0 mt-1.5 font-sans text-xs tabular-nums text-[var(--tpl-muted,#475569)]">
-                  {formatDate(item.publishedAt, 'short')} · {readingMinutes(item)} mnt baca
+                <p className="m-0 mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 font-sans text-xs tabular-nums text-[var(--tpl-muted,#475569)]">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {formatDate(item.publishedAt, 'short')}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {readingMinutes(item)} mnt baca
+                  </span>
                 </p>
               </div>
             </li>
@@ -109,8 +116,11 @@ export function ArticleSidebarTerpopuler({ articles }: { readonly articles: read
                   {item.title}
                 </Link>
               </h3>
-              <p className="m-0 mt-1 font-sans text-xs tabular-nums text-[var(--tpl-muted,#475569)]">
-                {formatCompactViews(item.viewCount)} pembaca
+              <p className="m-0 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 font-sans text-xs tabular-nums text-[var(--tpl-muted,#475569)]">
+                <span className="inline-flex items-center gap-1">
+                  <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+                  {formatCompactViews(item.viewCount)} pembaca
+                </span>
               </p>
             </div>
           </li>
@@ -165,21 +175,12 @@ export function ArticleSidebarNewsletter() {
       <p className="m-0 mt-1 font-sans text-[13px] leading-relaxed text-[var(--tpl-muted,#475569)]">
         Ringkasan berita dikirim ke email setiap pagi.
       </p>
-      <div className="mt-4 flex flex-col gap-2">
-        <label htmlFor="article-sidebar-newsletter-email" className="sr-only">
-          Alamat email
-        </label>
-        <TemplateInput
-          id="article-sidebar-newsletter-email"
-          type="email"
-          required
-          placeholder="Alamat email"
-          className="h-10 w-full rounded-xl px-3 font-sans text-sm"
-        />
-        <TemplateButton type="button" className="h-10 w-full rounded-xl px-4 font-sans text-sm">
-          Berlangganan
-        </TemplateButton>
-      </div>
+      <NewsletterForm
+        inputId="article-sidebar-newsletter-email"
+        formClassName="mt-4 flex flex-col gap-2"
+        inputClassName="h-10 w-full rounded-xl px-3 font-sans text-sm"
+        buttonClassName="h-10 w-full rounded-xl px-4 font-sans text-sm"
+      />
     </section>
   );
 }
@@ -275,6 +276,9 @@ export function ArticleSidebarIkutiKami({ channels }: { readonly channels: reado
 /**
  * Panel bagikan untuk rail artikel.
  *
+ * @remarks Disembunyikan di bawah `lg`: rail menumpuk di bawah konten pada
+ * ponsel sehingga panel ini menduplikasi baris bagikan pada kepala artikel.
+ *
  * @param skin - Warna netral tombol bagikan dari tema template.
  * @param article - Artikel yang dibagikan.
  * @param canonical - URL kanonis artikel.
@@ -290,8 +294,10 @@ export function ArticleSidebarShare({
   readonly canonical: string;
 }) {
   return (
-    <SidebarSection label="Bagikan artikel" title="Bagikan">
-      <ShareButtons skin={skin} article={article} canonical={canonical} />
-    </SidebarSection>
+    <div className="hidden lg:block">
+      <SidebarSection label="Bagikan artikel" title="Bagikan">
+        <ShareButtons skin={skin} article={article} canonical={canonical} />
+      </SidebarSection>
+    </div>
   );
 }

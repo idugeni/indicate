@@ -1,8 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { SectionHeading } from '@/modules/site/components/network/templates/glassy-blue/ui/section-heading';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/glassy-blue/theme';
@@ -35,7 +36,7 @@ export function GlassyBlueLatestNews({
 }) {
   if (articles.length === 0 && spotlight === null) return null;
   return (
-    <section aria-label={heading}>
+    <section>
       <div className="flex items-end justify-between gap-4">
         <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (
@@ -79,13 +80,23 @@ export function GlassyBlueLatestNews({
                           {article.categoryName}
                         </span>
                       )}
-                      <span className="tabular-nums text-slate-500">
-                        {formatDate(article.publishedAt, 'short')} · {readingMinutes(article)} menit baca · {formatFullViews(article.viewCount)} pembaca
+                      <span className="inline-flex items-center gap-1 tabular-nums text-slate-500">
+                        <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+                        {formatDate(article.publishedAt, 'short')}
                       </span>
+                      <span className="inline-flex items-center gap-1 tabular-nums text-slate-500">
+                        <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                        {readingMinutes(article)} menit baca
+                      </span>
+                      <span className="inline-flex items-center gap-1 tabular-nums text-slate-500">
+                        <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+                        {formatFullViews(article.viewCount)} pembaca
+                      </span>
+                      <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                     </span>
-                    <span className="line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900 group-hover:text-[#1f7cff]">
+                    <h3 className="line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900 group-hover:text-[#1f7cff]">
                       {article.title}
-                    </span>
+                    </h3>
                   </span>
                 </Link>
               </li>
@@ -101,7 +112,7 @@ export function GlassyBlueLatestNews({
               alt=""
               aria-hidden="true"
               fill
-              loading="lazy"
+              priority
               sizes="(max-width: 1024px) 100vw, 340px"
               className="object-cover"
             />
@@ -121,8 +132,20 @@ export function GlassyBlueLatestNews({
               <p className="m-0 line-clamp-3 font-sans text-sm leading-relaxed text-white/85">
                 {spotlight.description}
               </p>
-              <p className="m-0 font-sans text-xs tabular-nums text-white/75">
-                {formatDate(spotlight.publishedAt, 'long')} · {readingMinutes(spotlight)} menit baca · {formatFullViews(spotlight.viewCount)} pembaca
+              <p className="m-0 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-sans text-xs tabular-nums text-white/75">
+                <span className="inline-flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+                  {formatDate(spotlight.publishedAt, 'long')}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                  {readingMinutes(spotlight)} menit baca
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+                  {formatFullViews(spotlight.viewCount)} pembaca
+                </span>
+                <CommentCountSlot articleId={spotlight.id} href={spotlight.href} className="inline-flex items-center gap-1" iconClassName="h-3 w-3 opacity-70" />
               </p>
               <p className="m-0 mt-1">
                 <Link

@@ -1,8 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/dark-navy/theme';
 import { SectionHeading } from '@/modules/site/components/network/templates/dark-navy/ui/section-heading';
@@ -22,7 +23,7 @@ export function DarkNavyLatest({
 }) {
   if (articles.length === 0) return null;
   return (
-    <section aria-label={heading}>
+    <section>
       <div className="flex items-end justify-between gap-4">
         <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (
@@ -44,6 +45,8 @@ export function DarkNavyLatest({
               <Link
                 href={article.href}
                 aria-label={article.title}
+                aria-hidden="true"
+                tabIndex={-1}
                 className="block h-24 w-36 flex-none overflow-hidden rounded-xl shadow-sm sm:h-28 sm:w-48"
               >
                 <Image
@@ -65,9 +68,19 @@ export function DarkNavyLatest({
                       {article.categoryName}
                     </span>
                   )}
-                  <span className="tabular-nums text-[#5f6f8c]">
-                    {formatDate(article.publishedAt, 'short')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
+                  <span className="inline-flex items-center gap-1 tabular-nums text-[#8fa1bd]">
+                    <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {formatDate(article.publishedAt, 'short')}
                   </span>
+                  <span className="inline-flex items-center gap-1 tabular-nums text-[#8fa1bd]">
+                    <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {readingMinutes(article)} mnt baca
+                  </span>
+                  <span className="inline-flex items-center gap-1 tabular-nums text-[#8fa1bd]">
+                    <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {formatFullViews(article.viewCount)} pembaca
+                  </span>
+                  <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-[#8fa1bd]" iconClassName="h-3 w-3 opacity-70" />
                 </p>
                 <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-base font-bold leading-snug text-[#eaf0fb] sm:text-lg">
                   <Link href={article.href} className="hover:text-[#2f7bff]">

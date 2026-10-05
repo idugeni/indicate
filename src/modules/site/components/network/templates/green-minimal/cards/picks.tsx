@@ -20,7 +20,7 @@ export function GreenMinimalPicks({
 }) {
   if (articles.length === 0) return null;
   return (
-    <section aria-label={heading}>
+    <section>
       <div className="flex items-end justify-between gap-4">
         <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (

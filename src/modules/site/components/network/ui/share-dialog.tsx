@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Link2, Mail, Share2 } from 'lucide-react';
-import { FaFacebookF, FaTelegram, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
+import { Check, Link2, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { buildShareChannels, type ShareChannelKey } from '@/modules/site/components/network/cards/share-channels';
 import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
 import { cn } from '@/ui/cn';
 
@@ -32,7 +32,15 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
 
   const path = href ?? `/${slug}`;
   const url = typeof window === 'undefined' ? path : /^https?:\/\//iu.test(path) ? path : `${window.location.origin}${path}`;
-  const shareText = encodeURIComponent(`${title} ${url}`);
+
+  const channels = buildShareChannels(title, url);
+  const circleByKey: Record<ShareChannelKey, string> = {
+    whatsapp: 'bg-[#25D366] group-hover:bg-[#1DA851]',
+    x: 'bg-black ring-1 ring-white/30 group-hover:bg-[#333333]',
+    facebook: 'bg-[#1877F2] group-hover:bg-[#1466C3]',
+    telegram: 'bg-[#229ED9] group-hover:bg-[#1B8ABF]',
+    email: 'bg-[#64748B] group-hover:bg-[#475569]',
+  };
 
   const openShare = () => {
     setCopied(false);
@@ -48,39 +56,6 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
       toast.error('Gagal menyalin tautan');
     }
   };
-
-  const channels = [
-    {
-      label: 'WhatsApp',
-      href: `https://wa.me/?text=${shareText}`,
-      Icon: FaWhatsapp,
-      circle: 'bg-[#25D366] group-hover:bg-[#1DA851]',
-    },
-    {
-      label: 'X',
-      href: `https://x.com/intent/post?text=${shareText}`,
-      Icon: FaXTwitter,
-      circle: 'bg-black ring-1 ring-white/30 group-hover:bg-[#333333]',
-    },
-    {
-      label: 'Facebook',
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-      Icon: FaFacebookF,
-      circle: 'bg-[#1877F2] group-hover:bg-[#1466C3]',
-    },
-    {
-      label: 'Telegram',
-      href: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
-      Icon: FaTelegram,
-      circle: 'bg-[#229ED9] group-hover:bg-[#1B8ABF]',
-    },
-    {
-      label: 'Email',
-      href: `mailto:?subject=${encodeURIComponent(title)}&body=${shareText}`,
-      Icon: Mail,
-      circle: 'bg-[#64748B] group-hover:bg-[#475569]',
-    },
-  ] as const;
 
   return (
     <>
@@ -111,7 +86,7 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
             </DialogDescription>
           </div>
           <ul className="m-0 grid list-none grid-cols-5 gap-1 p-0 sm:gap-2">
-            {channels.map(({ label, href, Icon, circle }) => (
+            {channels.map(({ key, label, href, Icon }) => (
               <li key={label} className="m-0 min-w-0 p-0">
                 <a
                   href={href}
@@ -120,7 +95,7 @@ export function TemplateShareButton({ slug, title, href, className }: TemplateSh
                   aria-label={`Bagikan ke ${label}`}
                   className="group flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-3 font-sans text-[10px] font-semibold text-[var(--tpl-muted,#475569)] transition-colors hover:bg-[var(--tpl-primary-soft,#e8f0fe)] hover:text-[var(--tpl-primary,#1a5fd0)] sm:gap-1.5 sm:px-1 sm:text-[11px]"
                 >
-                  <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors ${circle}`}>
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white transition-colors ${circleByKey[key]}`}>
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
                   {label}

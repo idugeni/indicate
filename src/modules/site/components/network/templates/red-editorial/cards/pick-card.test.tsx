@@ -19,7 +19,7 @@ describe('RedEditorialPickCard', () => {
       title: 'Berita Kota',
       href: 'https://wonosobo.portal.example/berita-kota',
     });
-    render(<RedEditorialPickCard article={article} index={0} />);
+    render(<RedEditorialPickCard article={article} />);
     fireEvent.click(screen.getByRole('button', { name: 'Bagikan artikel' }));
     await screen.findByRole('dialog');
     expect(screen.getByRole('link', { name: 'Bagikan ke WhatsApp' }).getAttribute('href')).toContain(

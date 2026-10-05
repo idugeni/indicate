@@ -1,7 +1,15 @@
-import type { ArticleListItem } from '@/modules/delivery/models';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+
+import { makeNetworkArticle } from '@/modules/delivery/network-test-fixtures';
 import { ArticlePickCard, type PickCardSkin } from '@/modules/site/components/network/cards/article-pick-card';
 import { CLEAN_BLUE, badgeStyle } from '@/modules/site/components/network/templates/clean-blue/theme';
 import { ArticleMeta } from '@/modules/site/components/network/templates/clean-blue/ui/article-meta';
+
+afterEach(() => {
+  cleanup();
+});
 
 const skin: PickCardSkin = {
   cardClass: 'flex h-full flex-col overflow-hidden rounded-2xl border-0 bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60',
@@ -20,22 +28,26 @@ const skin: PickCardSkin = {
   Meta: ArticleMeta,
 };
 
-/**
- * Kartu pilihan Clean Blue.
- *
- * @param article - Artikel yang ditampilkan.
- * @param index - Posisi kartu untuk varian badge.
- * @param sizes - Atribut `sizes` gambar responsif.
- * @returns Kartu pilihan vertikal Clean Blue.
- */
-export function CleanBluePickCard({
-  article,
-  index,
-  sizes,
-}: {
-  readonly article: ArticleListItem;
-  readonly index: number;
-  readonly sizes?: string | undefined;
-}) {
-  return <ArticlePickCard article={article} index={index} skin={skin} sizes={sizes} />;
-}
+const artikel = makeNetworkArticle({
+  id: 'a-pick',
+  slug: 'berita-pilihan',
+  title: 'Judul pilihan',
+  attribution: 'Redaksi Mediaindomedia',
+  categoryName: 'Politik',
+  viewCount: 1200,
+});
+
+describe('ArticlePickCard', () => {
+  it('merender judul sebagai heading h3', () => {
+    render(<ArticlePickCard article={artikel} index={0} skin={skin} />);
+    const judul = screen.getByRole('heading', { level: 3 });
+    expect(judul.textContent).toContain('Judul pilihan');
+  });
+
+  it('panah dekoratif tidak masuk pohon aksesibilitas', () => {
+    render(<ArticlePickCard article={artikel} index={0} skin={skin} />);
+    const panah = document.querySelector('a[aria-hidden="true"]');
+    expect(panah?.getAttribute('tabindex')).toBe('-1');
+    expect(screen.queryByRole('link', { name: /^Baca:/ })).toBeNull();
+  });
+});

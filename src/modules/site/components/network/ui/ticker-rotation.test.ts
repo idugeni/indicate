@@ -136,4 +136,21 @@ describe('useTickerRotation', () => {
       vi.useRealTimers();
     }
   });
+
+  it('menjeda dan melanjutkan manual', () => {
+    expect(tickerPauseLabel('manual')).toBe('dijeda manual');
+    const { result } = renderHook(() => useTickerRotation(3));
+    expect(result.current.running).toBe(true);
+    act(() => {
+      result.current.toggleManual();
+    });
+    expect(result.current.manualPaused).toBe(true);
+    expect(result.current.reason).toBe('manual');
+    expect(result.current.running).toBe(false);
+    act(() => {
+      result.current.toggleManual();
+    });
+    expect(result.current.manualPaused).toBe(false);
+    expect(result.current.running).toBe(true);
+  });
 });

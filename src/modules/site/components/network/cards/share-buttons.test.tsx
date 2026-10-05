@@ -33,7 +33,7 @@ describe('ShareButtons', () => {
     expect(screen.getByRole('link', { name: 'Bagikan ke X' }).getAttribute('href')).toContain('x.com');
     expect(screen.getByRole('link', { name: 'Bagikan ke Facebook' }).getAttribute('href')).toContain('facebook.com');
     expect(screen.getByRole('link', { name: 'Bagikan ke Telegram' }).getAttribute('href')).toContain('t.me');
-    expect(screen.getByRole('link', { name: 'Bagikan via Email' }).getAttribute('href')).toContain('mailto:');
+    expect(screen.getByRole('link', { name: 'Bagikan ke Email' }).getAttribute('href')).toContain('mailto:');
   });
 
   it('menyalin tautan dan menampilkan status tersalin', async () => {

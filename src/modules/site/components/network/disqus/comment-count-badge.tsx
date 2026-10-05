@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MessageSquare } from 'lucide-react';
 
 import { disqusThreadIdentifier, resolveDisqusShortname } from '@/core/config/disqus-forum';
@@ -79,7 +79,9 @@ function ensureDisqusCountScript(shortname: string): void {
  * Live comment count for one article on one site.
  *
  * @remarks Renders its children until `count.js` replaces them, which is what
- * holds the meta row's width while the number is still in flight.
+ * holds the meta row's width while the number is still in flight. A zero count
+ * is normalized to an Indonesian label instead of a bare `0`, both for the
+ * placeholder and for whatever zero text `count.js` writes.
  */
 export function CommentCountBadge({
   siteId,
@@ -94,15 +96,27 @@ export function CommentCountBadge({
   readonly className?: string | undefined;
   readonly children?: React.ReactNode;
 }) {
+  const badgeRef = useRef<HTMLSpanElement | null>(null);
+
   useEffect(() => {
     const shortname = resolveDisqusShortname();
     if (shortname === undefined) return;
     ensureDisqusCountScript(shortname);
   }, [siteId, articleId, url]);
 
+  useEffect(() => {
+    const node = badgeRef.current;
+    if (node === null) return;
+    normalizeZeroCount(node);
+    const observer = new MutationObserver(() => normalizeZeroCount(node));
+    observer.observe(node, { childList: true, characterData: true, subtree: true });
+    return () => observer.disconnect();
+  }, [siteId, articleId, url]);
+
   const classes = className === undefined ? DISQUS_COUNT_CLASS : `${DISQUS_COUNT_CLASS} ${className}`;
   return (
     <span
+      ref={badgeRef}
       className={classes}
       data-disqus-identifier={disqusThreadIdentifier(siteId, articleId)}
       data-disqus-url={url}
@@ -110,6 +124,28 @@ export function CommentCountBadge({
       {children}
     </span>
   );
+}
+
+/** Indonesian label shown instead of a bare zero comment count. */
+const ZERO_COMMENT_LABEL = 'belum ada komentar';
+
+/**
+ * Replace a zero comment count with an Indonesian label.
+ *
+ * @param target - Badge element whose text Disqus may have rewritten.
+ * @returns Nothing; rewrites the badge text when it leads with zero.
+ * @remarks `count.js` writes its own zero text (`0 Comments`, `0 Komentar`)
+ * depending on forum language, and the placeholder itself is `0`: any text
+ * leading with zero becomes the label, anything else is left untouched.
+ * Comparing against the label first keeps the observer from looping on its
+ * own rewrite while still reacting when Disqus later arrives with a real count.
+ */
+function normalizeZeroCount(target: HTMLElement): void {
+  const text = (target.textContent ?? '').trim();
+  if (text === '' || text === ZERO_COMMENT_LABEL) return;
+  const leading = /^(\d+)/u.exec(text);
+  if (leading === null || Number(leading[1]) !== 0) return;
+  target.textContent = ZERO_COMMENT_LABEL;
 }
 
 /**

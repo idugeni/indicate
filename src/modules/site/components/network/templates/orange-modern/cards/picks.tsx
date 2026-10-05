@@ -22,7 +22,7 @@ export function OrangeModernPicks({
 }) {
   if (articles.length === 0) return null;
   return (
-    <section aria-label={heading}>
+    <section>
       <div className="flex items-end justify-between gap-4">
         <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (
@@ -38,7 +38,12 @@ export function OrangeModernPicks({
 
       <div className={`mt-5 grid items-stretch gap-5 sm:grid-cols-2 ${columns === 4 ? 'lg:grid-cols-4' : 'md:grid-cols-3'}`}>
         {articles.map((article, index) => (
-          <OrangeModernPickCard key={article.id} article={article} index={index} />
+          <OrangeModernPickCard
+            key={article.id}
+            article={article}
+            index={index}
+            sizes={columns === 4 ? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw' : undefined}
+          />
         ))}
       </div>
     </section>

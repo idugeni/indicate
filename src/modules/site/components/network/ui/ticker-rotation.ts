@@ -18,7 +18,7 @@ export const TICKER_MAX_ITEMS = 5;
  * @remarks Reduced motion never pauses: headlines keep rotating while
  * entry, progress, and pulse animations stay suppressed.
  */
-export type TickerPauseReason = 'single' | 'hover' | 'focus' | 'hidden';
+export type TickerPauseReason = 'focus' | 'hidden' | 'hover' | 'manual' | 'single';
 
 /**
  * Ticker rotation state for one headline list.
@@ -29,6 +29,8 @@ export interface TickerRotation {
   readonly running: boolean;
   readonly reason: TickerPauseReason | null;
   readonly reduceMotion: boolean;
+  readonly manualPaused: boolean;
+  readonly toggleManual: () => void;
   readonly go: (next: number) => void;
   readonly navigate: (event: React.MouseEvent<HTMLButtonElement>, next: number) => void;
   readonly interactionProps: {
@@ -68,6 +70,8 @@ export function tickerPauseLabel(reason: TickerPauseReason | null): string {
       return 'jeda saat fokus';
     case 'hidden':
       return 'tab tersembunyi';
+    case 'manual':
+      return 'dijeda manual';
     default:
       return 'berputar';
   }
@@ -96,6 +100,7 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
   const [cycle, setCycle] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [manual, setManual] = useState(false);
   const [touchX, setTouchX] = useState<number | null>(null);
   const touchEndAt = useRef(0);
   const reduceMotion = useSyncExternalStore(
@@ -108,13 +113,15 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
   const reason: TickerPauseReason | null =
     count < 2
       ? 'single'
-      : hovered
-        ? 'hover'
-        : focused
-          ? 'focus'
-          : tabHidden
-            ? 'hidden'
-            : null;
+      : manual
+        ? 'manual'
+        : hovered
+          ? 'hover'
+          : focused
+            ? 'focus'
+            : tabHidden
+              ? 'hidden'
+              : null;
   const running = reason === null;
 
   useEffect(() => {
@@ -143,6 +150,8 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
     running,
     reason,
     reduceMotion,
+    manualPaused: manual,
+    toggleManual: () => setManual((v) => !v),
     go,
     navigate,
     interactionProps: {

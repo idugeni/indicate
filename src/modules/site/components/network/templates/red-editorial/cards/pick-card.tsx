@@ -1,5 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { CalendarDays, Clock3, Eye } from 'lucide-react';
+
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
@@ -7,7 +9,7 @@ import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar
 import { TemplateShareButton } from '@/modules/site/components/network/ui/share-dialog';
 import { RED_EDITORIAL } from '@/modules/site/components/network/templates/red-editorial/theme';
 
-export function RedEditorialPickCard({ article, index }: { readonly article: ArticleListItem; readonly index: number }) {
+export function RedEditorialPickCard({ article }: { readonly article: ArticleListItem }) {
   const src = articleImage(article);
   const reading = readingMinutes(article);
   const publisherName = article.attribution;
@@ -18,7 +20,7 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
           unoptimized={!isLocalImageSrc(src)}
           src={src}
           alt={article.title}
-          loading={index < 2 ? 'eager' : 'lazy'}
+          loading="lazy"
           className="aspect-[16/10] w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
           width={article.imageWidth ?? 800}
           height={article.imageHeight ?? 500}
@@ -46,14 +48,20 @@ export function RedEditorialPickCard({ article, index }: { readonly article: Art
           </span>
         </p>
         <p className="m-0 mt-auto flex items-center justify-between gap-3 pt-4">
-          <span className="text-xs tabular-nums text-[#ac9393]">
-            <time dateTime={article.publishedAt}>{formatDate(article.publishedAt, 'short')}</time>
-            {' · '}
-            {reading} mnt baca
-            {' · '}
-            {formatFullViews(article.viewCount)} pembaca
-            {' · '}
-            <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" />
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs tabular-nums text-[#ac9393]">
+            <span className="inline-flex items-center gap-1">
+              <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+              {formatDate(article.publishedAt, 'short')}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+              {reading} mnt baca
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+              {formatFullViews(article.viewCount)} pembaca
+            </span>
+            <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" iconClassName="h-3 w-3 opacity-70" />
           </span>
           <TemplateShareButton
             slug={article.slug}

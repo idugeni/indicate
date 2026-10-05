@@ -55,7 +55,8 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
           <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} />
           <Link
             href={article.href}
-            aria-label={`Baca: ${article.title}`}
+            aria-hidden="true"
+            tabIndex={-1}
             className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#dbeafe] text-[#2563eb] transition-colors hover:bg-[#2563eb] hover:text-white"
           >
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

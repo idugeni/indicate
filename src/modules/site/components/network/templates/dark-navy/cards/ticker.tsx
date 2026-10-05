@@ -1,16 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { formatDate, tickerHeadline } from '@/modules/site/components/network/ui/format';
-import { TICKER_INTERVAL_MS, TICKER_MAX_ITEMS, tickerPauseLabel, useTickerRotation } from '@/modules/site/components/network/ui/ticker-rotation';
+import { TICKER_INTERVAL_MS, TICKER_MAX_ITEMS, useTickerRotation } from '@/modules/site/components/network/ui/ticker-rotation';
 
 export function DarkNavyTicker({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const items = articles.slice(0, TICKER_MAX_ITEMS);
   const rotation = useTickerRotation(items.length);
-  const { cycle, index, reason, reduceMotion, running } = rotation;
+  const { cycle, index, manualPaused, reduceMotion, running, toggleManual } = rotation;
 
   const article = items[index];
   if (article === undefined) return null;
@@ -22,9 +22,6 @@ export function DarkNavyTicker({ articles }: { readonly articles: readonly Artic
       data-ticker-index={index}
       data-ticker-state={running ? 'running' : 'paused'}
     >
-      <span role="status" className="sr-only">
-        {running ? 'Memutar headline terkini' : `Jeda: ${tickerPauseLabel(reason)}`}
-      </span>
       {items.length > 1 && running && !reduceMotion ? (
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-1 h-[2px] overflow-hidden rounded-full sm:inset-x-24">
           <span
@@ -56,14 +53,14 @@ export function DarkNavyTicker({ articles }: { readonly articles: readonly Artic
       </time>
       <div className="flex items-center justify-between gap-2 sm:contents">
         {items.length > 1 ? (
-          <span className="flex flex-none items-center gap-1.5" aria-label="Pilih headline">
+          <span role="group" className="flex flex-none items-center gap-1.5" aria-label="Pilih headline">
             {items.map((item, position) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={(event) => rotation.navigate(event, position)}
                 aria-label={`Headline ${position + 1}: ${tickerHeadline(item)}`}
-                aria-current={position === index}
+                aria-current={position === index ? 'true' : undefined}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   position === index ? 'w-5 bg-[var(--tpl-primary,#2f7bff)]' : 'w-1.5 bg-[var(--tpl-ring,#1b2c4f)] hover:bg-[var(--tpl-faint,#5f6f8c)]'
                 }`}
@@ -73,6 +70,18 @@ export function DarkNavyTicker({ articles }: { readonly articles: readonly Artic
         ) : null}
         {items.length > 1 ? (
           <span className="flex flex-none items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleManual}
+              aria-label={manualPaused ? 'Putar headline' : 'Jeda putar headline'}
+              className="flex h-7 w-7 items-center justify-center rounded-full ring-1 ring-[var(--tpl-ring,#1b2c4f)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)]"
+            >
+              {manualPaused ? (
+                <Play className="h-4 w-4 text-[var(--tpl-muted,#9aa9c4)]" aria-hidden="true" />
+              ) : (
+                <Pause className="h-4 w-4 text-[var(--tpl-muted,#9aa9c4)]" aria-hidden="true" />
+              )}
+            </button>
             <button
               type="button"
               onClick={(event) => rotation.navigate(event, index - 1)}

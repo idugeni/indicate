@@ -1,12 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, TrendingUp } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Eye, TrendingUp } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { RedEditorialPickCard } from '@/modules/site/components/network/templates/red-editorial/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/red-editorial/ui/section-heading';
-import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 const GRID_SIZE = 4;
 const POPULAR_SIZE = 5;
@@ -35,7 +35,7 @@ export function RedEditorialPicks({
     .sort((a, b) => b.viewCount - a.viewCount)
     .slice(0, POPULAR_SIZE);
   return (
-    <section aria-label={heading}>
+    <section>
       <div className="flex items-end justify-between gap-4 border-b border-[#ecd3d3] pb-3">
         <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (
@@ -51,8 +51,8 @@ export function RedEditorialPicks({
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="grid content-start gap-5 sm:grid-cols-2">
-          {grid.map((article, index) => (
-            <RedEditorialPickCard key={article.id} article={article} index={index} />
+          {grid.map((article) => (
+            <RedEditorialPickCard key={article.id} article={article} />
           ))}
         </div>
 
@@ -81,10 +81,20 @@ export function RedEditorialPicks({
                         >
                           {article.title}
                         </Link>
-                        <span className="mt-1 block text-[11px] tabular-nums text-[#ac9393]">
-                          {formatFullViews(article.viewCount)} pembaca · {readingMinutes(article)} mnt baca
-                          {' · '}
-                          <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" />
+                        <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] tabular-nums text-[#ac9393]">
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+                            {formatDate(article.publishedAt, 'short')}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+                            {formatFullViews(article.viewCount)} pembaca
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                            {readingMinutes(article)} mnt baca
+                          </span>
+                          <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1" iconClassName="h-3 w-3 opacity-70" />
                         </span>
                       </span>
                       <Image

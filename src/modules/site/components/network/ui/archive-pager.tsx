@@ -82,6 +82,10 @@ export function TemplateArchivePager({
     renderedPage.current = page;
     const section = sectionRef.current;
     if (section === null) return;
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      section.focus({ preventScroll: true });
+      return;
+    }
     section.focus();
     section.scrollIntoView?.({ block: 'start' });
   }, [page]);

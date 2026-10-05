@@ -1,8 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 
 import type { ArticleListItem } from '@/modules/delivery/models';
+import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { SectionHeading } from '@/modules/site/components/network/templates/green-minimal/ui/section-heading';
 
@@ -21,7 +22,7 @@ export function GreenMinimalLatest({
 }) {
   if (articles.length === 0) return null;
   return (
-    <section aria-label={heading}>
+    <section>
       <div className="flex items-end justify-between gap-4">
         <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (
@@ -42,6 +43,8 @@ export function GreenMinimalLatest({
               <Link
                 href={article.href}
                 aria-label={article.title}
+                aria-hidden="true"
+                tabIndex={-1}
                 className="block overflow-hidden rounded-xl shadow-sm"
               >
                 <Image
@@ -61,10 +64,19 @@ export function GreenMinimalLatest({
                   {article.categoryName === null ? null : (
                     <span className="text-[#1d7a38]">{article.categoryName}</span>
                   )}
-                  <span aria-hidden="true" className="text-slate-300">·</span>
-                  <span className="font-medium normal-case tracking-normal text-slate-500">
-                    {formatDate(article.publishedAt, 'short')} · {readingMinutes(article)} mnt baca · {formatFullViews(article.viewCount)} pembaca
+                  <span className="inline-flex items-center gap-1 font-medium normal-case tracking-normal text-slate-500">
+                    <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {formatDate(article.publishedAt, 'short')}
                   </span>
+                  <span className="inline-flex items-center gap-1 font-medium normal-case tracking-normal text-slate-500">
+                    <Clock3 className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {readingMinutes(article)} mnt baca
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-medium normal-case tracking-normal text-slate-500">
+                    <Eye className="h-3 w-3 opacity-70" aria-hidden="true" />
+                    {formatFullViews(article.viewCount)} pembaca
+                  </span>
+                  <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 font-medium normal-case tracking-normal text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                 </p>
                 <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-lg font-bold leading-snug text-[#10231a]">
                   <Link href={article.href} className="hover:text-[#1d7a38]">
@@ -75,13 +87,6 @@ export function GreenMinimalLatest({
                   {article.description}
                 </p>
               </div>
-              <Link
-                href={article.href}
-                aria-label={`Baca: ${article.title}`}
-                className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[#1d7a38]/10 text-[#1d7a38] transition-colors hover:bg-[#1d7a38] hover:text-white sm:flex"
-              >
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
             </li>
           );
         })}

@@ -18,11 +18,11 @@ const artikel = makeNetworkArticle({
   viewCount: 1234567,
 });
 
-/** Baris bawah card: ArticleMeta berdampingan tombol panah. */
+/** Baris bawah card: ArticleMeta berdampingan tombol panah dekoratif. */
 function barisMeta(): HTMLElement {
-  const panah = screen.getByRole('link', { name: /^Baca:/ });
-  const baris = panah.parentElement;
-  if (baris === null) throw new Error('baris meta tidak ditemukan');
+  const panah = document.querySelector('a[aria-hidden="true"]');
+  const baris = panah?.parentElement;
+  if (baris === null || baris === undefined) throw new Error('baris meta tidak ditemukan');
   return baris;
 }
 
@@ -31,6 +31,13 @@ describe('SoftBluePickCard pembungkusan', () => {
     render(<SoftBluePickCard article={artikel} index={0} />);
     const meta = barisMeta().firstElementChild;
     expect(meta?.getAttribute('class') ?? '').toMatch(/min-w-0/);
+  });
+
+  it('tombol panah dekoratif tidak masuk pohon aksesibilitas', () => {
+    render(<SoftBluePickCard article={artikel} index={0} />);
+    expect(screen.queryByRole('link', { name: /^Baca:/ })).toBeNull();
+    const panah = document.querySelector('a[aria-hidden="true"]');
+    expect(panah?.getAttribute('tabindex')).toBe('-1');
   });
 
   it('badge kategori punya batas lebar dan truncate, bukan w-fit', () => {
