@@ -10,6 +10,11 @@ import { resolveRequestId } from '@/core/observability/request-id';
 
 const BRAND_CACHE_CONTROL = 'public, max-age=86400, s-maxage=31536000, immutable';
 
+const CONTROL_PLANE_FALLBACK: Record<'logo' | 'favicon', string> = {
+  logo: '/brand/indicate-landscape.png',
+  favicon: '/apple-icon.png',
+};
+
 function notFound(): NextResponse {
   return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -19,7 +24,7 @@ function notFound(): NextResponse {
  *
  * @param request - Incoming request carrying the tenant hostname headers.
  * @param kind - Brand slot to serve.
- * @returns 200 bytes with year-long edge cache, or 404 for unknown hosts and sites without the asset.
+ * @returns 200 bytes with year-long edge cache, control-plane fallback redirect on control hosts, or 404 for unknown hosts and sites without the asset.
  */
 async function serveBrandAsset(request: Request, kind: 'logo' | 'favicon'): Promise<NextResponse> {
   const requestId = resolveRequestId(request);
@@ -27,6 +32,9 @@ async function serveBrandAsset(request: Request, kind: 'logo' | 'favicon'): Prom
   const classification = await composition.resolver.classify(
     request.headers.get('x-forwarded-host') ?? request.headers.get('host'),
   );
+  if (classification.kind === 'control') {
+    return NextResponse.redirect(new URL(CONTROL_PLANE_FALLBACK[kind], request.url), 308);
+  }
   if (classification.kind !== 'site') return notFound();
   const mediaId = await composition.repository.resolveBrandMediaId(classification.context, kind);
   if (mediaId === null) return notFound();
@@ -66,8 +74,8 @@ async function serveBrandAsset(request: Request, kind: 'logo' | 'favicon'): Prom
  * Serve the tenant favicon as stable immutable bytes under a same-host path.
  *
  * @param request - Incoming request carrying the tenant hostname headers.
- * @returns 200 PNG bytes with year-long edge cache, or 404 for unknown hosts and sites without a custom icon.
- * @remarks Replaces the signed `/api/network/media` redirect for crawler-facing `<link rel="icon">`: Googlebot-Image needs a stable crawlable URL outside `Disallow: /api/`. Regional sites inherit the apex icon through the shell, so no per-region upload exists. Non-site hosts 404: control-plane chrome keeps using `/favicon.ico` + `/apple-icon.png`.
+ * @returns 200 PNG bytes with year-long edge cache, control-plane fallback redirect on control hosts, or 404 for unknown hosts and sites without a custom icon.
+ * @remarks Replaces the signed `/api/network/media` redirect for crawler-facing `<link rel="icon">`: Googlebot-Image needs a stable crawlable URL outside `Disallow: /api/`. Regional sites inherit the apex icon through the shell, so no per-region upload exists. Control hosts redirect to `/apple-icon.png`; unknown hosts still 404.
  */
 export async function serveBrandIcon(request: Request): Promise<NextResponse> {
   return serveBrandAsset(request, 'favicon');
@@ -77,8 +85,8 @@ export async function serveBrandIcon(request: Request): Promise<NextResponse> {
  * Serve the tenant logo as stable immutable bytes under a same-host path.
  *
  * @param request - Incoming request carrying the tenant hostname headers.
- * @returns 200 bytes with year-long edge cache, or 404 for unknown hosts.
- * @remarks Removes one signed 307 hop from every page view (header and footer render the logo): browsers and scrapers fetch cacheable bytes instead of re-resolving a short-lived presigned URL.
+ * @returns 200 bytes with year-long edge cache, control-plane fallback redirect on control hosts, or 404 for unknown hosts.
+ * @remarks Removes one signed 307 hop from every page view (header and footer render the logo): browsers and scrapers fetch cacheable bytes instead of re-resolving a short-lived presigned URL. Control hosts redirect to `/brand/indicate-landscape.png` so dashboard consoles never log a brand 404.
  */
 export async function serveBrandLogo(request: Request): Promise<NextResponse> {
   return serveBrandAsset(request, 'logo');
