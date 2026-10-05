@@ -40,6 +40,10 @@
       "schedule": "15 3 * * *"
     },
     {
+      "path": "/api/internal/maintenance/gsc-sitemap-sync",
+      "schedule": "20 4 * * *"
+    },
+    {
       "path": "/api/health",
       "schedule": "47 4 * * *"
     }
