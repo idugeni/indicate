@@ -1891,6 +1891,13 @@
       "when": 1791349200000,
       "tag": "20261006040000_bridge_media_org_asset",
       "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1791352800000,
+      "tag": "20261006050000_bridge_media_lineage_scope",
+      "breakpoints": true
     }
   ]
 }
