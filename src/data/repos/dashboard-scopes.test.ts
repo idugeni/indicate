@@ -219,3 +219,33 @@ describe('scoped dashboard reads', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('analyticsSummary bounded transfers', () => {
+  it('agregasi dimensi di GROUP BY di SQL, bukan baris mentah ke JS', async () => {
+    const { repository, executedSql } = scopeHarness({ organizations: ORG, memberships: MEMBER }, async () => []);
+    const summary = await repository.analyticsSummary(ACTOR as never, 'analytics.read', {});
+    expect(summary.jobsBySiteRegionAndState).toEqual([]);
+    expect(summary.outcomesBySiteRegionAndState).toEqual([]);
+    const dimensionStatements = executedSql.filter(
+      (statement) => statement.includes('AS "regionId"') && statement.includes('AS state'),
+    );
+    expect(dimensionStatements).toHaveLength(2);
+    for (const statement of dimensionStatements) {
+      expect(statement).toMatch(/GROUP BY/i);
+      expect(statement).toMatch(/count\(\*\)::int AS count/i);
+    }
+  });
+
+  it('tidak ada query dimensi tanpa agregasi pada join job-target/article-sites', async () => {
+    const { repository, executedSql } = scopeHarness({ organizations: ORG, memberships: MEMBER }, async () => []);
+    await repository.analyticsSummary(ACTOR as never, 'analytics.read', {});
+    const rawJoins = executedSql.filter(
+      (statement) =>
+        (statement.includes('publishing_job_targets') || statement.includes('FROM article_sites s')) &&
+        statement.includes('JOIN') &&
+        !/GROUP BY/i.test(statement) &&
+        !/LIMIT/i.test(statement),
+    );
+    expect(rawJoins).toEqual([]);
+  });
+});

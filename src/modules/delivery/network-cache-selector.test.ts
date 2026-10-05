@@ -80,4 +80,15 @@ describe('resolveNetworkSite cache selectors', () => {
     await resolveNetworkSite({ search: 'berita' }, '/search');
     expect(cachePaths()).toEqual(['/search']);
   });
+
+  it('article request memakai tepat dua entri: detail + listing, tanpa resolve ketiga', async () => {
+    // Urutan panggilan persis halaman artikel: generateMetadata memakai selector
+    // artikel yang sama dengan render halaman (satu entri `use cache` di
+    // produksi), lalu render menambah SATU selector listing untuk related.
+    await resolveNetworkSite({ articleSlug: 'satu' }, '/satu');
+    await resolveNetworkSite({ articleSlug: 'satu' }, '/satu');
+    await resolveNetworkSite({}, '/');
+    expect(cachePaths()).toEqual(['/article/satu', '/article/satu', '/']);
+    expect(new Set(cachePaths())).toEqual(new Set(['/article/satu', '/']));
+  });
 });

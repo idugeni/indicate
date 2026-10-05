@@ -378,8 +378,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
             AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
           GROUP BY s.site_id, s.state`),
-        transaction.execute<{ siteId: string; regionId: string | null; state: string }>(sql`
-          SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", j.state AS state
+        transaction.execute<{ siteId: string; regionId: string | null; state: string; count: number }>(sql`
+          SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", j.state AS state,
+            count(*)::int AS count
           FROM publishing_jobs j
           JOIN publishing_job_targets t ON t.organization_id = ${orgId} AND t.job_id = j.id
           JOIN article_sites s ON s.organization_id = ${orgId} AND s.id = t.article_site_id
@@ -387,15 +388,18 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           JOIN sites st ON st.organization_id = ${orgId} AND st.id = s.site_id
           WHERE j.organization_id = ${orgId}
             AND (${from}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) >= ${from}::timestamptz)
-            AND (${to}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) <= ${to}::timestamptz)`),
-        transaction.execute<{ siteId: string; regionId: string | null; state: string }>(sql`
-          SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", s.state AS state
+            AND (${to}::timestamptz IS NULL OR COALESCE(j.finalized_at, j.updated_at) <= ${to}::timestamptz)
+          GROUP BY s.site_id, COALESCE(st.region_id, ar.region_id), j.state`),
+        transaction.execute<{ siteId: string; regionId: string | null; state: string; count: number }>(sql`
+          SELECT s.site_id AS "siteId", COALESCE(st.region_id, ar.region_id) AS "regionId", s.state AS state,
+            count(*)::int AS count
           FROM article_sites s
           JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
           JOIN sites st ON st.organization_id = ${orgId} AND st.id = s.site_id
           WHERE s.organization_id = ${orgId}
             AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
-            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)`),
+            AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)
+          GROUP BY s.site_id, COALESCE(st.region_id, ar.region_id), s.state`),
         transaction.execute<{ day: string; state: string; count: number }>(sql`
           SELECT (COALESCE(j.finalized_at, j.updated_at) AT TIME ZONE 'UTC')::date::text AS day,
             j.state AS state, count(*)::int AS count
@@ -509,12 +513,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       ]);
       const points = (rows: readonly { key: string | null; count: number }[]) =>
         [...rows].filter((row): row is { key: string; count: number } => row.key !== null).map(({ key, count }) => ({ key, count })).sort((a, b) => a.key.localeCompare(b.key));
-      const dimensionPoints = (rows: readonly { siteId: string; regionId: string | null; state: string }[]) => {
+      const dimensionPoints = (rows: readonly { siteId: string; regionId: string | null; state: string; count: number }[]) => {
         const counts = new Map<string, number>();
         for (const row of rows) {
           if (row.regionId === null) continue;
           const key = `${row.siteId}:${row.regionId}:${row.state}`;
-          counts.set(key, (counts.get(key) ?? 0) + 1);
+          counts.set(key, (counts.get(key) ?? 0) + row.count);
         }
         return [...counts].sort(([left], [right]) => left.localeCompare(right)).map(([key, count]) => ({ key, count }));
       };

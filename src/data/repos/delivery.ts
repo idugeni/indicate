@@ -383,6 +383,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           robots: Array.isArray(settings.seo.robots) ? settings.seo.robots.map(String) : [],
           commentsEnabled: settings.commentsEnabled,
           ads: {
+            // Authority order: legacy `seo.ads` bag underneath, `tenant_ad_settings`
+            // table on top. Nothing writes the bag; the dashboard writes the table.
             ...parseTenantAdOverrides(settings.seo),
             ...mapTenantAdRows(adSettingRows.map((row) => ({ slotId: row.slotId, enabled: row.enabled, creative: toCreativeFields(row) }))),
           },
@@ -754,14 +756,32 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .from(portalAssignments)
         .where(and(eq(portalAssignments.organizationId, context.organizationId), eq(portalAssignments.siteId, context.siteId), eq(portalAssignments.state, 'published'), isNotNull(portalAssignments.publishedAt)))
         .limit(100);
+      // One set-based reader call per owner org (not one per bridge row): the
+      // reader accepts an id array, so group first and match in bridge order to
+      // preserve the sequential first-match semantics without N round-trips.
+      const idsByOwner = new Map<string, string[]>();
       for (const row of bridge) {
+        const ids = idsByOwner.get(row.sourceOrganizationId);
+        if (ids === undefined) idsByOwner.set(row.sourceOrganizationId, [row.sourceArticleId]);
+        else ids.push(row.sourceArticleId);
+      }
+      const slugByOwnerArticle = new Map<string, { readonly articleId: string; readonly slug: string }>();
+      for (const [ownerOrg, ids] of idsByOwner) {
         const details = await transaction.execute<{ article_id: string; slug: string }>(sql`
           SELECT article_id, slug FROM indicate_private.fetch_assigned_articles(
-            ${row.sourceOrganizationId}::uuid, ${sqlStringArray([row.sourceArticleId])}::uuid[]
+            ${ownerOrg}::uuid, ${sqlStringArray([...new Set(ids)])}::uuid[]
           )
         `);
-        const match = [...details].find((detail) => detail.slug === slug);
-        if (match !== undefined) return match.article_id;
+        for (const detail of details) {
+          const key = `${ownerOrg}:${detail.article_id}`;
+          if (!slugByOwnerArticle.has(key)) slugByOwnerArticle.set(key, { articleId: detail.article_id, slug: detail.slug });
+        }
+      }
+      for (const row of bridge) {
+        const match = slugByOwnerArticle.get(`${row.sourceOrganizationId}:${row.sourceArticleId}`);
+        if (match !== undefined && match.slug === slug) {
+          return match.articleId;
+        }
       }
       return null;
     });

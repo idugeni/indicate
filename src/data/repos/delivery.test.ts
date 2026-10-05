@@ -137,11 +137,20 @@ function harness(handlers: {
       : [handlers.brand] as readonly (readonly unknown[])[]
   );
   let brandCursor = 0;
+  const executeStats = { assignedArticleReads: 0 };
   const transaction = new Proxy(
     {},
     {
       get(target, prop) {
-        if (prop === 'execute') return async () => handlers.bridgeDetails ?? [];
+        if (prop === 'execute')
+          return async (query?: unknown) => {
+            try {
+              if (JSON.stringify(query ?? null)?.includes('fetch_assigned_articles')) executeStats.assignedArticleReads += 1;
+            } catch {
+              /* unserializable driver payload: not a bridge reader call */
+            }
+            return handlers.bridgeDetails ?? [];
+          };
         if (prop === 'select')
           return (projection: Record<string, unknown>) => {
             const keys = Object.keys(projection ?? {});
@@ -172,7 +181,7 @@ function harness(handlers: {
   );
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
   const repository = new DrizzleDeliveryRepository(database as never, 'https://portal.example/brand/default.jpg', handlers.publicHost ?? null);
-  return { repository, selectLog, limitLog };
+  return { repository, selectLog, limitLog, executeStats };
 }
 
 describe('resolvePublisherAttribution', () => {
@@ -274,6 +283,33 @@ describe('readBridgeArticles', () => {
     const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
     await expect(repository.resolveArticleId({ ...CONTEXT }, 'berita-upt')).resolves.toBe('art-upt-1');
     await expect(repository.resolveArticleId({ ...CONTEXT }, 'tidak-ada')).resolves.toBeNull();
+  });
+
+  it('satu reader call untuk banyak baris bridge satu org', async () => {
+    const row = (id: string, articleId: string) => ({ ...bridgeAssignment, id, sourceArticleId: articleId });
+    const { repository, executeStats } = harness({
+      articles: [],
+      bridgeAssignments: [row('b1', 'art-1'), row('b2', 'art-2'), row('b3', 'art-3')],
+      bridgeDetails: [{ article_id: 'art-2', slug: 'target' }],
+    });
+    await expect(repository.resolveArticleId({ ...CONTEXT }, 'target')).resolves.toBe('art-2');
+    expect(executeStats.assignedArticleReads).toBe(1);
+  });
+
+  it('satu call per org pemilik dan menang sesuai urutan bridge', async () => {
+    const { repository, executeStats } = harness({
+      articles: [],
+      bridgeAssignments: [
+        { ...bridgeAssignment, id: 'b1', sourceOrganizationId: 'org-a', sourceArticleId: 'art-1' },
+        { ...bridgeAssignment, id: 'b2', sourceOrganizationId: 'org-b', sourceArticleId: 'art-2' },
+      ],
+      bridgeDetails: [
+        { article_id: 'art-1', slug: 'target' },
+        { article_id: 'art-2', slug: 'target' },
+      ],
+    });
+    await expect(repository.resolveArticleId({ ...CONTEXT }, 'target')).resolves.toBe('art-1');
+    expect(executeStats.assignedArticleReads).toBe(2);
   });
 
   it('memakai lead pemilik sebagai sampul saat cover kosong', async () => {

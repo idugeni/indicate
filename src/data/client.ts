@@ -3,6 +3,7 @@ import 'server-only';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
+import { recordOperation } from '@/core/observability/operation-metrics';
 import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import * as schema from '@/data/schema';
 
@@ -117,6 +118,7 @@ export function getSharedRuntimeDatabase(config: BootstrapConfig) {
  */
 export async function withQueryDeadline<T>(label: string, read: () => Promise<T>, deadlineMs = QUERY_DEADLINE_MS): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const started = Date.now();
   try {
     return await Promise.race([
       read(),
@@ -129,5 +131,6 @@ export async function withQueryDeadline<T>(label: string, read: () => Promise<T>
     ]);
   } finally {
     if (timer !== undefined) clearTimeout(timer);
+    recordOperation({ route: 'db', operation: `db:${label}`, provider: 'supabase-postgres', durationMs: Date.now() - started, dbQueries: 1 });
   }
 }

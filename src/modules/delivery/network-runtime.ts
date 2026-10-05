@@ -335,6 +335,21 @@ function robotsForDocument(robots: 'index, follow' | 'noindex, nofollow' | 'noin
  */
 export async function networkMetadata(path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string, robotsOverride?: RobotsDirective): Promise<Metadata> {
   const site = await resolveNetworkSite(query, path);
+  return buildNetworkMetadata(site, path, query, titleOverride, descriptionOverride, robotsOverride);
+}
+
+/**
+ * Build tenant metadata from an already-resolved site.
+ *
+ * @param site - Site yang sudah di-resolve caller; output identik networkMetadata.
+ * @returns Tenant metadata tanpa resolve ulang.
+ * @remarks Reuse ini menghilangkan satu resolveNetworkSite di generateMetadata statis.
+ */
+export async function networkMetadataForSite(site: NetworkSiteData, path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string, robotsOverride?: RobotsDirective): Promise<Metadata> {
+  return buildNetworkMetadata(site, path, query, titleOverride, descriptionOverride, robotsOverride);
+}
+
+async function buildNetworkMetadata(site: NetworkSiteData, path: string, query: NetworkContentQuery = {}, titleOverride?: string, descriptionOverride?: string, robotsOverride?: RobotsDirective): Promise<Metadata> {
   const candidate = query.articleSlug === undefined ? undefined : site.articles[0];
   const article = candidate !== undefined && isNetworkArticle(candidate) ? candidate : undefined;
 

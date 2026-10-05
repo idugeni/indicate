@@ -19,6 +19,7 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAiRepository } from '@/data/repos/ai';
 import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
 import { aiBreakerKey } from '@/modules/ai/ai-router';
+import { aiScopedGet } from '@/modules/ai/ai-redis-namespace';
 import { buildChainHealth, type AiChainHealthEntry } from '@/modules/ai/ai-chain-health';
 import { createResendEmailApiAdapter } from '@/integrations/email/resend-email-api';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -37,7 +38,7 @@ const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().mi
  * @returns Status code honoring 429 for rate-limited webhook traffic.
  */
 export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
-interface Context { readonly actor: AuthorizedTenantActorContext; readonly localUserId: string; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly accessKeys: DashboardAccessKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly redis: Redis; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
+interface Context { readonly actor: AuthorizedTenantActorContext; readonly localUserId: string; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly accessKeys: DashboardAccessKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly redis: Redis; readonly namespace: string; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
 type ContextResult = Context | PublicErrorEnvelope; const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
@@ -47,7 +48,7 @@ async function contextFor(organizationId: string, requestId: string): Promise<Co
   const repository = new DrizzleIntegrationsRepository(runtime.db);
   const accessKeys = new DashboardAccessKeyService(new DrizzleDashboardAccessKeyRepository(runtime.db), identifiers);
   const emailPort = config.email === null ? null : createResendEmailApiAdapter(config.email.apiKey, config.email.defaultFrom);
-  const shared = { repository, apiKeys: new ApiKeyService(repository, identifiers), accessKeys, ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), redis: new Redis({ url: config.redis.url, token: config.redis.token }), policy: { ...config.rateLimits.mutation, failureMode: 'closed' as const } };
+  const shared = { repository, apiKeys: new ApiKeyService(repository, identifiers), accessKeys, ai: new AiService(new DrizzleAiRepository(runtime.db)), customers: new CustomerService(repository, identifiers), emailTest: new EmailTestService(emailPort), emailStatus: config.email === null ? Object.freeze({ configured: false as const, defaultFrom: null, webhook: false as const }) : Object.freeze({ configured: true as const, defaultFrom: config.email.defaultFrom, webhook: config.email.webhookSecret !== null }), rateLimits: new RateLimitService(new UpstashRateLimitAdapter({ url: config.redis.url, token: config.redis.token, namespace: config.redis.namespace })), redis: new Redis({ url: config.redis.url, token: config.redis.token }), namespace: config.redis.namespace, policy: { ...config.rateLimits.mutation, failureMode: 'closed' as const } };
   const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
   if (user === null) return createNonDisclosingDenial(requestId);
   const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
@@ -64,13 +65,13 @@ function response(error: PublicErrorEnvelope) { const retry = error.error.fields
  * @returns Ordered chain health; empty when routing is unconfigured or Redis is down.
  */
 async function readChainHealth(
-  context: { readonly redis: Pick<Redis, 'get'> },
+  context: { readonly redis: Pick<Redis, 'get'>; readonly namespace: string | null },
   overview: { readonly policy: { readonly chainStrategy: 'fallback' | 'round_robin'; readonly costMode: 'throughput' | 'price'; readonly primaryProviderId: string | null; readonly fallbackProviderId: string | null; readonly defaultModel: string; readonly fallbackModel: string } | null; readonly credentials: readonly { readonly providerId: string; readonly status: string }[] },
 ): Promise<readonly AiChainHealthEntry[]> {
   const policy = overview.policy;
   if (policy === null) return [];
   try {
-    const { redis } = context;
+    const { redis, namespace } = context;
     const entries = [
       { providerId: policy.primaryProviderId, modelName: policy.defaultModel },
       ...(policy.fallbackProviderId === null ? [] : [{ providerId: policy.fallbackProviderId, modelName: policy.fallbackModel }]),
@@ -79,7 +80,8 @@ async function readChainHealth(
     await Promise.all(entries.map(async (entry) => {
       if (entry.providerId === null) return;
       try {
-        values.set(aiBreakerKey(entry.providerId, entry.modelName), await redis.get(aiBreakerKey(entry.providerId, entry.modelName)));
+        const legacy = aiBreakerKey(entry.providerId, entry.modelName);
+        values.set(legacy, await aiScopedGet((key) => redis.get(key), namespace, legacy));
       } catch {
         /* Fail open: one unreadable counter must not hide the chain. */
       }

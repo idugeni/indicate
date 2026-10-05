@@ -43,8 +43,10 @@ export interface PublicSiteSettings {
   /**
    * Validated per-slot ad overrides for this site.
    *
-   * @remarks Parsed from `site_settings.seo.ads` by the delivery read path;
-   * absent on fixtures that predate the ad system (treated as no overrides).
+   * @remarks Authoritative source is `tenant_ad_settings`; the legacy
+   * `site_settings.seo.ads` bag is merged underneath it for compatibility
+   * and loses every per-slot conflict. Absent on fixtures that predate the
+   * ad system (treated as no overrides).
    */
   readonly ads?: TenantAdOverrides | undefined;
   /**

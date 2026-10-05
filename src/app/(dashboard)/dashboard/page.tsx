@@ -26,17 +26,28 @@ import DashboardLoading from '@/app/(dashboard)/loading';
 /**
  * Render dashboard workspace shell.
  *
+ * @param props.searchParams - Query params; `view` decides snapshot need.
  * @remarks Prefetch the default snapshot for first-paint data; null falls back to live-fetch.
+ * Snapshot hanya berguna untuk view dashboard: view lain (termasuk self-fetching)
+ * langsung fetch via API/panel sehingga snapshot dilewati agar tidak bayar DB sia-sia.
  */
-export default function DashboardPage() {
+export default function DashboardPage({
+  searchParams,
+}: {
+  readonly searchParams?: Promise<{ readonly view?: string | readonly string[] | undefined }> | undefined;
+}) {
   return (
     <Suspense fallback={<DashboardLoading />}>
-      <DashboardBody />
+      <DashboardBody searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function DashboardBody() {
+async function DashboardBody({
+  searchParams,
+}: {
+  readonly searchParams?: Promise<{ readonly view?: string | readonly string[] | undefined }> | undefined;
+}) {
   await connection();
   const cookieStore = await cookies();
   const publicConfig = getPublicConfig(process.env);
@@ -54,7 +65,7 @@ async function DashboardBody() {
     }),
   });
   const identity = await auth.verifyCookieSession();
-  if (identity === null) return <AccessKeyDashboardBody cookieStore={cookieStore} />;
+  if (identity === null) return <AccessKeyDashboardBody cookieStore={cookieStore} searchParams={searchParams} />;
   const displayName = identity.displayName;
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
@@ -111,7 +122,10 @@ async function DashboardBody() {
   }
   const firstOrganization = organizations[0];
   const firstMembership = firstOrganization === undefined ? undefined : memberships.get(firstOrganization.id);
-  const initialDashboard = firstOrganization === undefined
+  const resolvedParams = searchParams === undefined ? undefined : await searchParams;
+  const rawView = Array.isArray(resolvedParams?.view) ? resolvedParams?.view[0] : resolvedParams?.view;
+  const needsSnapshot = rawView === undefined || rawView === 'dashboard';
+  const initialDashboard = !needsSnapshot || firstOrganization === undefined
     ? null
     : firstMembership === undefined
       ? await getDashboardSnapshot(firstOrganization.id, identity)
@@ -120,7 +134,7 @@ async function DashboardBody() {
   return <DashboardWorkspace displayName={displayName} avatarUrl={avatarRef} organizations={organizations} initialDashboard={initialDashboard} />;
 }
 
-async function AccessKeyDashboardBody({ cookieStore }: { readonly cookieStore: Awaited<ReturnType<typeof cookies>> }) {
+async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly cookieStore: Awaited<ReturnType<typeof cookies>>; readonly searchParams?: Promise<{ readonly view?: string | readonly string[] | undefined }> | undefined }) {
   const bearer = cookieStore.get(DASHBOARD_ACCESS_KEY_COOKIE)?.value ?? null;
   if (bearer === null) redirect('/sign-in?auth=required');
   const context = await getServerRuntimeContext();
@@ -145,10 +159,15 @@ async function AccessKeyDashboardBody({ cookieStore }: { readonly cookieStore: A
     avatarUrl: resolved.avatarUrl,
     email: null,
   };
-  const initialDashboard = await getDashboardSnapshot(bound.id, sessionIdentity, {
-    localUser: resolved.localUser,
-    membership: resolved.membership,
-  });
+  const resolvedParams = searchParams === undefined ? undefined : await searchParams;
+  const rawView = Array.isArray(resolvedParams?.view) ? resolvedParams?.view[0] : resolvedParams?.view;
+  const needsSnapshot = rawView === undefined || rawView === 'dashboard';
+  const initialDashboard = !needsSnapshot
+    ? null
+    : await getDashboardSnapshot(bound.id, sessionIdentity, {
+      localUser: resolved.localUser,
+      membership: resolved.membership,
+    });
   return (
     <DashboardWorkspace
       displayName={resolved.displayName}

@@ -4,6 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { revalidateTag, unstable_cache } from 'next/cache';
 
 import { getBootstrapConfig } from '@/core/config/bootstrap/bootstrap-config';
+import { recordOperation } from '@/core/observability/operation-metrics';
 import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
 import type { LocalUserIdentity, MembershipAuthorization } from '@/modules/auth/rbac';
 import { TenantBusinessService, type DashboardCacheInvalidator } from '@/modules/dashboard/tenant-business-service';
@@ -128,6 +129,15 @@ function isFullSnapshot(value: unknown, organizationId: string): value is Dashbo
 
 const PAGEVIEW_BUFFER_ARTICLE_LIMIT = 100;
 
+/** Serialized bytes of a projection; measured once per cache miss, never on hits. */
+function projectionBytes(value: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(value), 'utf8');
+  } catch {
+    return 0;
+  }
+}
+
 async function mergePageviewBuffer(organizationId: string, projection: AnalyticsProjection): Promise<AnalyticsProjection> {
   try {
     const rows = projection.viewsByArticle ?? [];
@@ -201,13 +211,19 @@ function loadDashboardProjection(input: ProjectionInput): Promise<DashboardProje
   const permissionKey = [...input.permissions].sort().join(',');
   const cached = unstable_cache(
     async (): Promise<DashboardProjection> => {
+      const started = Date.now();
       const store = resolveDashboardStore();
       const key = dashboardRedisKey(input);
       if (store !== null) {
         const hit = await store.readKey(key);
-        if (isDashboardProjection(hit)) return hit;
+        if (isDashboardProjection(hit)) {
+          recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'upstash-redis', tenantId: input.organizationId, durationMs: Date.now() - started, cacheHit: 1 });
+          return hit;
+        }
       }
       const value = await loadDashboardProjectionFromDatabase(input);
+      const durationMs = Date.now() - started;
+      recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value) });
       if (store !== null) await store.writeKey(key, value, DASHBOARD_REDIS_TTL_SECONDS);
       return value;
     },
@@ -246,13 +262,19 @@ function loadAnalyticsProjection(input: AnalyticsInput): Promise<AnalyticsProjec
   const permissionKey = [...input.permissions].sort().join(',');
   const cached = unstable_cache(
     async (): Promise<AnalyticsProjection> => {
+      const started = Date.now();
       const store = resolveDashboardStore();
       const key = analyticsRedisKey(input);
       if (store !== null) {
         const hit = await store.readKey(key);
-        if (isAnalyticsProjection(hit)) return hit;
+        if (isAnalyticsProjection(hit)) {
+          recordOperation({ route: 'dashboard', operation: 'cache.analytics', provider: 'upstash-redis', tenantId: input.organizationId, durationMs: Date.now() - started, cacheHit: 1 });
+          return hit;
+        }
       }
       const value = await loadAnalyticsProjectionFromDatabase(input);
+      const durationMs = Date.now() - started;
+      recordOperation({ route: 'dashboard', operation: 'cache.analytics', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value) });
       if (store !== null) await store.writeKey(key, value, ANALYTICS_REDIS_TTL_SECONDS);
       return value;
     },
