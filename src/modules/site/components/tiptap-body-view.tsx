@@ -265,7 +265,7 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
     if (resolved.length === 4) {
       const [hero, ...rest] = resolved as [ (typeof resolved)[number], ...(typeof resolved)[number][] ];
       return (
-        <div key={key} role="group" aria-label="Galeri 4 gambar" className="space-y-2">
+        <div key={key} role="group" aria-label="Galeri 4 gambar" className="flex flex-col gap-2">
           <EditorialImage
             src={hero.src}
             thumbSrc={hero.thumbSrc}

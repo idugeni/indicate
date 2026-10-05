@@ -155,7 +155,9 @@ describe('TipTapBodyView', () => {
       ],
     };
     const { container } = render(<TipTapBodyView doc={doc} paragraphClassName={PARAGRAPH} listClassName={LIST} />);
-    expect(screen.getByRole('group', { name: 'Galeri 4 gambar' })).toBeDefined();
+    const group = screen.getByRole('group', { name: 'Galeri 4 gambar' });
+    expect(group).toBeDefined();
+    expect(group.getAttribute('class')).toContain('gap-2');
     expect(container.querySelectorAll('img')).toHaveLength(4);
     expect(container.querySelector('.grid-cols-3')).not.toBe(null);
   });
