@@ -108,11 +108,11 @@ async function serviceDeps(organizationId?: string | undefined, context?: Server
       ? {}
       : { cacheTtlSeconds: resolved.config.cloudflare.aiGatewayCacheTtlSeconds }),
   });
-  const vercelBudget = createVercelGatewayBudgetGuard({ url: redis.url, token: redis.token });
+  const vercelBudget = createVercelGatewayBudgetGuard({ url: redis.url, token: redis.token, namespace: redis.namespace });
   const deps: AiServiceDeps = {
     db: runtime.db,
     budget: createAiBudgetGuard({ url: redis.url, token: redis.token, namespace: redis.namespace }),
-    rateLimit: { store: createAiModelRateLimitStore({ url: redis.url, token: redis.token }) },
+    rateLimit: { store: createAiModelRateLimitStore({ url: redis.url, token: redis.token, namespace: redis.namespace }) },
     cache: createAiSemanticCache(runtime.db, { organizationId: organizationId ?? null }),
     resolveAdapter: (providerId: string) => {
       const inner = providerId === 'gemini' && gateway !== null ? new GeminiAdapterWrapper(gateway) : getAiAdapter(providerId);

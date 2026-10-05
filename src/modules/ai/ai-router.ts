@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { asRecord } from '@/core/guards';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
 import type { AiRateLimitStore } from '@/modules/ai/ai-rate-limit';
+import { aiScopedKey } from '@/modules/ai/ai-redis-namespace';
 import type {
   AiAccessChannel,
   AiChainStrategy,
@@ -394,7 +395,7 @@ export function orderAiModelChain(
 export async function nextChainStartIndex(store: AiRateLimitStore | undefined): Promise<number> {
   if (store === undefined) return 0;
   try {
-    const cursor = await store.incrby(AI_CHAIN_CURSOR_KEY, 1);
+    const cursor = await store.incrby(aiScopedKey(store.namespace, AI_CHAIN_CURSOR_KEY), 1);
     return Number.isFinite(cursor) && cursor > 0 ? cursor - 1 : 0;
   } catch {
     return 0;
@@ -651,7 +652,7 @@ export async function isModelBreakerTripped(
 ): Promise<boolean> {
   if (store === undefined) return false;
   try {
-    const raw: unknown = await store.get(aiBreakerKey(providerId, modelName));
+    const raw: unknown = await store.get(aiScopedKey(store.namespace, aiBreakerKey(providerId, modelName)));
     if (raw === null || raw === undefined) return false;
     const { count, tripAt } = parseBreakerValue(raw);
     if (count < AI_BREAKER_TRIP_THRESHOLD) return false;
@@ -681,7 +682,7 @@ export async function recordModelInfraFailure(
 ): Promise<void> {
   if (store === undefined) return;
   try {
-    const key = aiBreakerKey(providerId, modelName);
+    const key = aiScopedKey(store.namespace, aiBreakerKey(providerId, modelName));
     const setter = (store as { readonly set?: unknown }).set;
     if (typeof setter === 'function') {
       let count = 0;
@@ -731,7 +732,7 @@ export async function recordModelSuccess(
 ): Promise<void> {
   if (store === undefined) return;
   try {
-    await store.expire(aiBreakerKey(providerId, modelName), 1);
+    await store.expire(aiScopedKey(store.namespace, aiBreakerKey(providerId, modelName)), 1);
   } catch {
     /* Breaker tidak boleh menggagalkan jawaban. */
   }

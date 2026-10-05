@@ -2,6 +2,8 @@ import 'server-only';
 
 import { Redis } from '@upstash/redis';
 
+import { aiScopedGet, aiScopedKey } from '@/modules/ai/ai-redis-namespace';
+
 /** OpenAI-compatible entry point for every Vercel AI Gateway model. */
 export const VERCEL_GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
 
@@ -49,17 +51,20 @@ function secondsUntilMonthEnd(now: Date): number {
  * @param store - Shared Upstash client; null means unconfigured and allows the request.
  * @param credentialId - Budget scope from `vercelGatewayBudgetScope` (one pool per org, shared by all models).
  * @param now - Clock reference; defaults to the current time in production.
+ * @param namespace - Derived Redis namespace; null reads the legacy global key.
  * @returns Verdict plus the remaining monthly token budget.
  * @remarks Fail-open: a Redis failure allows the request rather than blocking it.
+ * Legacy fallback keeps the monthly pool continuous across the namespacing rollout.
  */
 export async function checkVercelGatewayBudget(
   store: VercelGatewayBudgetStore | null,
   credentialId: string,
   now: Date = new Date(),
+  namespace: string | null | undefined = null,
 ): Promise<VercelGatewayBudgetVerdict> {
   if (store === null) return { allowed: true, remainingBudget: VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET };
   try {
-    const spent = Number((await store.get(monthKey(credentialId, now))) ?? 0);
+    const spent = Number((await aiScopedGet((key) => store.get(key), namespace, monthKey(credentialId, now))) ?? 0);
     if (spent >= VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET) {
       return { allowed: false, remainingBudget: Math.max(0, VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET - spent) };
     }
@@ -76,6 +81,7 @@ export async function checkVercelGatewayBudget(
  * @param credentialId - Budget scope from `vercelGatewayBudgetScope` (one pool per org, shared by all models).
  * @param tokensCount - Total tokens for this turn.
  * @param now - Clock reference; defaults to the current time in production.
+ * @param namespace - Derived Redis namespace; writes always go namespaced when set.
  * @remarks Fail-open: telemetry failure never fails the answer.
  */
 export async function recordVercelGatewayUsage(
@@ -83,10 +89,11 @@ export async function recordVercelGatewayUsage(
   credentialId: string,
   tokensCount: number,
   now: Date = new Date(),
+  namespace: string | null | undefined = null,
 ): Promise<void> {
   if (store === null) return;
   try {
-    const key = monthKey(credentialId, now);
+    const key = aiScopedKey(namespace, monthKey(credentialId, now));
     await store.incrby(key, Math.max(1, Math.floor(tokensCount || 1)));
     await store.expire(key, secondsUntilMonthEnd(now));
   } catch {
@@ -100,13 +107,14 @@ export async function recordVercelGatewayUsage(
  * @param config - Redis connection from the runtime config; no new environment variable.
  * @returns Check and record closures sharing one client.
  */
-export function createVercelGatewayBudgetGuard(config: { readonly url: string; readonly token: string }): {
+export function createVercelGatewayBudgetGuard(config: { readonly url: string; readonly token: string; readonly namespace?: string | null | undefined }): {
   check(credentialId: string, now?: Date): Promise<VercelGatewayBudgetVerdict>;
   record(credentialId: string, tokensCount: number, now?: Date): Promise<void>;
 } {
   const redis = new Redis({ url: config.url, token: config.token });
+  const namespace = config.namespace ?? null;
   return {
-    check: (credentialId: string, now?: Date) => checkVercelGatewayBudget(redis, credentialId, now),
-    record: (credentialId: string, tokensCount: number, now?: Date) => recordVercelGatewayUsage(redis, credentialId, tokensCount, now),
+    check: (credentialId: string, now?: Date) => checkVercelGatewayBudget(redis, credentialId, now, namespace),
+    record: (credentialId: string, tokensCount: number, now?: Date) => recordVercelGatewayUsage(redis, credentialId, tokensCount, now, namespace),
   };
 }

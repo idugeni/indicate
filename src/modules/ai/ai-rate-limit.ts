@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { Redis } from '@upstash/redis';
 
 import type { AiDb } from '@/modules/ai/ai-types';
+import { aiScopedGet, aiScopedKey } from '@/modules/ai/ai-redis-namespace';
 
 /** Sliding window for per-model RPM/TPM enforcement. */
 export const AI_RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -24,6 +25,8 @@ export interface AiRateLimitStore {
   readonly set?: ((key: string, value: string) => Promise<void>) | undefined;
   /** Optional Lua eval for atomic check-and-charge; absent stores use the legacy path. */
   readonly eval?: ((script: string, keys: readonly string[], args: ReadonlyArray<string | number>) => Promise<unknown>) | undefined;
+  /** Derived Redis namespace (`indicate:{env}:vN`); null/undefined keeps legacy global `ai:*` keys. */
+  readonly namespace?: string | null | undefined;
 }
 
 /**
@@ -170,8 +173,10 @@ export async function checkAiModelRateLimit(
   now: Date = new Date(),
 ): Promise<AiRateLimitCheck> {
   const window = aiRateLimitWindow(now);
-  const rpmKey = aiRpmKey(modelName, window);
-  const tpmKey = aiTpmKey(modelName, window);
+  const namespace = store.namespace ?? null;
+  const read = (key: string): Promise<unknown> => store.get(key);
+  const rpmKey = aiScopedKey(namespace, aiRpmKey(modelName, window));
+  const tpmKey = aiScopedKey(namespace, aiTpmKey(modelName, window));
   const charge = Math.max(1, Math.floor(estimatedTokens));
   if (store.eval !== undefined) {
     try {
@@ -187,11 +192,11 @@ export async function checkAiModelRateLimit(
   }
   try {
     if (limits.rpmLimit !== null) {
-      const current = toCounterOrZero(await store.get(rpmKey));
+      const current = toCounterOrZero(await aiScopedGet(read, namespace, aiRpmKey(modelName, window)));
       if (current >= limits.rpmLimit) return { allowed: false, reason: 'rpm_exceeded' };
     }
     if (limits.tpmLimit !== null) {
-      const current = toCounterOrZero(await store.get(tpmKey));
+      const current = toCounterOrZero(await aiScopedGet(read, namespace, aiTpmKey(modelName, window)));
       if (current + Math.max(1, Math.floor(estimatedTokens)) > limits.tpmLimit) {
         return { allowed: false, reason: 'tpm_exceeded' };
       }
@@ -218,9 +223,11 @@ export async function checkAiModelRateLimit(
  * @remarks Sourced from the assembled runtime configuration, never from
  * per-feature environment variables.
  */
-export function createAiModelRateLimitStore(config: { readonly url: string; readonly token: string }): AiRateLimitStore {
+export function createAiModelRateLimitStore(config: { readonly url: string; readonly token: string; readonly namespace?: string | null | undefined }): AiRateLimitStore {
   const redis = new Redis({ url: config.url, token: config.token });
+  const namespace = config.namespace ?? null;
   return {
+    namespace,
     async get(key: string): Promise<number | null> {
       // Upstash may return numeric strings; coerce with Number().
       const value = await redis.get<number | string>(key);
@@ -300,21 +307,23 @@ export async function checkOrganizationQuota(
   now: Date = new Date(),
 ): Promise<AiOrganizationQuotaCheck> {
   const day = now.toISOString().slice(0, 10);
-  const requestsKey = aiOrgQuotaRequestsKey(organizationId, day);
-  const tokensKey = aiOrgQuotaTokensKey(organizationId, day);
+  const namespace = store.namespace ?? null;
+  const read = (key: string): Promise<unknown> => store.get(key);
+  const requestsKey = aiScopedKey(namespace, aiOrgQuotaRequestsKey(organizationId, day));
+  const tokensKey = aiScopedKey(namespace, aiOrgQuotaTokensKey(organizationId, day));
   const charge = Math.max(1, Math.floor(estimatedTokens));
   try {
     let remainingRequests: number | undefined;
     let remainingTokens: number | undefined;
     if (limits.dailyRequestLimit !== null) {
-      const current = toCounterOrZero(await store.get(requestsKey));
+      const current = toCounterOrZero(await aiScopedGet(read, namespace, aiOrgQuotaRequestsKey(organizationId, day)));
       if (current >= limits.dailyRequestLimit) {
         return { allowed: false, reason: 'org_daily_requests_exceeded', remainingRequests: 0 };
       }
       remainingRequests = limits.dailyRequestLimit - current;
     }
     if (limits.dailyTokenLimit !== null) {
-      const current = toCounterOrZero(await store.get(tokensKey));
+      const current = toCounterOrZero(await aiScopedGet(read, namespace, aiOrgQuotaTokensKey(organizationId, day)));
       if (current + charge > limits.dailyTokenLimit) {
         return { allowed: false, reason: 'org_daily_tokens_exceeded', remainingTokens: Math.max(0, limits.dailyTokenLimit - current) };
       }
