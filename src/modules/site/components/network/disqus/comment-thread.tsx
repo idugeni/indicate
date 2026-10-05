@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { DiscussionEmbed } from 'disqus-react';
 
 import { disqusLanguage, disqusThreadIdentifier, resolveDisqusShortname } from '@/core/config/disqus-forum';
+import { CommentCountBadge } from '@/modules/site/components/network/disqus/comment-count-badge';
 
 declare global {
   interface Window {
@@ -125,12 +126,29 @@ export function CommentThread({
 
   return (
     <section ref={hostRef} className={className ?? THREAD_SECTION_CLASS} aria-labelledby={headingId}>
-      <h2 id={headingId} className="font-heading text-lg font-semibold">
+      <h2 id={headingId} className="flex flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold">
         {heading}
+        <CommentCountBadge
+          siteId={siteId}
+          articleId={articleId}
+          url={url}
+          className="font-sans text-sm font-normal tabular-nums opacity-70"
+        />
       </h2>
+      {/*
+       * Kartu terang: thread Disqus selalu terang (skema terang terdeteksi dari
+       * warna wadah), jadi kartu putih berradius menjaga kontras di semua
+       * template termasuk yang gelap. Warna eksplisit heksadesimal: Disqus
+       * mencicipi warna wadah untuk mewarnai thread-nya, tetapi parsernya
+       * hanya paham rgb/heks/nama dan melempar pada `lab()`/`oklch()` yang
+       * dihasilkan Tailwind v4 — thread macet dengan iframe kosong. Wadah ini
+       * hanya menaungi skrip Disqus; isi thread hidup di iframe terisolasi
+       * sehingga tampilan situs tidak berubah.
+       */}
+      <div style={{ color: '#334155' }} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
       {nearViewport ? (
         loadFailed ? (
-          <p className="mt-3 text-sm opacity-70">
+          <p className="m-0 text-sm opacity-70">
             Komentar tidak dapat dimuat. Periksa koneksi atau pemblokir iklan, lalu{' '}
             <button type="button" onClick={retry} className="underline">
               coba lagi
@@ -138,19 +156,12 @@ export function CommentThread({
             .
           </p>
         ) : (
-          // Warna eksplisit heksadesimal: Disqus mencicipi warna wadah untuk
-          // mewarnai thread-nya, tetapi parsernya hanya paham rgb/heks/nama dan
-          // melempar pada `lab()`/`oklch()` yang dihasilkan Tailwind v4 —
-          // thread macet dengan iframe kosong. Wadah ini hanya menaungi skrip
-          // Disqus; isi thread hidup di iframe terisolasi sehingga tampilan
-          // situs tidak berubah.
-          <div style={{ color: '#334155' }}>
-            <DiscussionEmbed key={`${shortname}:${retryCount}`} shortname={shortname} config={config} />
-          </div>
+          <DiscussionEmbed key={`${shortname}:${retryCount}`} shortname={shortname} config={config} />
         )
       ) : (
-        <p className="mt-3 text-sm opacity-70">Memuat komentar…</p>
+        <p className="m-0 text-sm opacity-70">Memuat komentar…</p>
       )}
+      </div>
     </section>
   );
 }
