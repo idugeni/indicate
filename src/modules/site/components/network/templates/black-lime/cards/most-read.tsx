@@ -10,7 +10,7 @@ export function BlackLimeQuotePanel({ siteName, quote }: { readonly siteName: st
   return (
     <aside
       aria-label="Perspektif redaksi"
-      className="relative flex min-h-80 flex-col justify-between overflow-hidden rounded-2xl bg-[#131711] p-7 shadow-sm ring-1 ring-[#242b1f]"
+      className="relative flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-[#131711] p-7 shadow-sm ring-1 ring-[#242b1f]"
     >
       <div
         aria-hidden="true"
@@ -40,7 +40,7 @@ export function BlackLimeMostRead({ articles }: { readonly articles: readonly Ar
   const items = articles.slice(0, 5);
   if (items.length === 0) return null;
   return (
-    <aside className="rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f] sm:p-6">
+    <aside className="min-w-0 rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f] sm:p-6">
       <h2 className="m-0 flex items-center gap-2 font-sans text-base font-extrabold tracking-tight text-slate-100">
         <TrendingUp className="h-4 w-4 text-[#c5f82a]" aria-hidden="true" />
         Paling Banyak Dibaca

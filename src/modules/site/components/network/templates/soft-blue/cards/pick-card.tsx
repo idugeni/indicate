@@ -15,7 +15,7 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
   const badge = badgeStyle(index);
   const publisherName = article.attribution;
   return (
-    <article className="flex h-full gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60">
+    <article className="flex h-full min-w-0 gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60">
       <Link
         href={article.href}
         aria-label={article.title}

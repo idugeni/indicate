@@ -14,7 +14,7 @@ export function RedEditorialPickCard({ article }: { readonly article: ArticleLis
   const reading = readingMinutes(article);
   const publisherName = article.attribution;
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#ecd3d3]/70">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#ecd3d3]/70">
       <div className="overflow-hidden">
         <Image
           unoptimized={!isLocalImageSrc(src)}

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/co
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { AuthorAvatar, type AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
+import { cn } from '@/ui/cn';
 
 /** Gaya badge kategori: pasangan warna teks dan latar. */
 export interface PickCardBadgeStyle {
@@ -72,7 +73,7 @@ export function ArticlePickCard({ article, index, skin, sizes = '(max-width: 768
   const publisherName = article.attribution;
   const Meta = skin.Meta;
   return (
-    <Card className={skin.cardClass}>
+    <Card className={cn('min-w-0', skin.cardClass)}>
       <div className={skin.imageWrapperClass}>
         <div className="overflow-hidden rounded-xl">
           <Image
