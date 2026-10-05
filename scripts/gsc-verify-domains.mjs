@@ -10,7 +10,10 @@
  *   3. The token is written as a TXT record through the Cloudflare API.
  *   4. `webResource.insert` re-checks DNS and grants ownership; the property
  *      flips from `siteUnverifiedUser` to `siteOwner`.
- *   5. `sitemaps.submit` registers `/sitemap.xml` and `/news-sitemap.xml`.
+ *   5. `sitemaps.submit` registers `/sitemap.xml` and `/news-sitemap.xml`
+ *      (news only when the live feed is non-empty; an empty news sitemap makes
+ *      Search Console report an error, so it is skipped here and removed by
+ *      `--prune-empty-news` when a feed runs dry).
  *
  * Google is the only writer of verification state, so every step is polled
  * rather than assumed. The script is idempotent: a host that already owns a
@@ -29,6 +32,8 @@
  *   npm run gsc:apply -- --apply --only=artikulasi.biz.id
  *   npm run gsc:apply -- --host=example.com --apply
  *   npm run gsc:apply -- --apply --skip-sitemaps
+ *   npm run gsc:apply -- --apply --prune-empty-news
+ *   npm run gsc:apply -- --apply --prune-empty-news --only=a.biz.id,b.web.id
  *
  * A property that is already `siteOwner` but has lost its TXT record is also
  * picked up: the record is reissued and rewritten, because Google re-checks DNS
@@ -40,6 +45,10 @@
  *   --only=a,b,c         Restrict to a comma-separated hostname allowlist.
  *   --host=<name>        Audit a hostname that is not a tenant apex, repeatable.
  *   --skip-sitemaps      Register properties but do not submit sitemaps.
+ *   --prune-empty-news   Unsubmit `/news-sitemap.xml` from verified hosts whose
+ *                        live feed is empty (or unreachable as 404). Runs instead
+ *                        of steps 1-3; needs `--apply` to delete, otherwise dry
+ *                        run. Combine with `--only=` to scope the sweep.
  *   --wait=<minutes>     How long to wait for Google to flip the property to
  *                        siteOwner (default 30).
  *   --dry-run-verify     Skip propagation and verification polling.
@@ -315,6 +324,66 @@ async function submitSitemap(auth, host, path) {
   return { ok: res.status === 204, status: res.status, error: res.status === 204 ? null : apiError(res) };
 }
 
+async function deleteSitemap(auth, host, path) {
+  const url = `https://${host}${path}`;
+  const res = await request(`${WEBMASTERS}/sites/${encodeURIComponent(`sc-domain:${host}`)}/sitemaps/${encodeURIComponent(url)}`, { method: 'DELETE', headers: auth, paceMs: 0, attempts: 3 });
+  return { ok: res.status === 204 || res.status === 404, status: res.status, error: res.status === 204 || res.status === 404 ? null : apiError(res) };
+}
+
+/**
+ * Check whether a tenant currently serves a non-empty Google News sitemap.
+ *
+ * @param {string} host - Apex hostname serving `/news-sitemap.xml`.
+ * @returns {Promise<boolean>} True when the feed answers 200 with entries.
+ */
+async function newsFeedHasUrls(host) {
+  try {
+    const res = await fetch(`https://${host}/news-sitemap.xml`, { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) return false;
+    return (await res.text()).includes('<url>');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Unsubmit empty news sitemaps from verified hosts.
+ *
+ * @param {object} auth - Authorization header map.
+ * @param {readonly string[]} hosts - Verified apex hostnames in scope.
+ */
+async function pruneEmptyNews(auth, hosts) {
+  console.log(`== prune empty news sitemaps (${hosts.length} verified in scope) ==`);
+  let deleted = 0;
+  let kept = 0;
+  let absent = 0;
+  for (const host of hosts) {
+    const current = await listSitemaps(auth, host);
+    const newsUrl = `https://${host}/news-sitemap.xml`;
+    if (current === null) {
+      console.log(`  list-failed   ${host}`);
+      continue;
+    }
+    if (!current.includes(newsUrl)) {
+      absent += 1;
+      continue;
+    }
+    if (await newsFeedHasUrls(host)) {
+      kept += 1;
+      continue;
+    }
+    if (!shouldApply) {
+      console.log(`  would-delete  ${newsUrl}`);
+      continue;
+    }
+    const result = await deleteSitemap(auth, host, '/news-sitemap.xml');
+    console.log(`  ${result.ok ? 'deleted      ' : `delete-failed(${result.status})`}  ${newsUrl}${result.error === null ? '' : `  ${result.error}`}`);
+    if (result.ok) deleted += 1;
+    await sleep(1200);
+  }
+  console.log(`deleted: ${deleted}, fresh feeds kept: ${kept}, not submitted: ${absent}`);
+}
+
 const auth = { authorization: `Bearer ${await googleAccessToken()}` };
 const cfHeaders = { authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` };
 const apexes = await readApexes();
@@ -358,6 +427,11 @@ console.log(`hosts in scope : ${targets.length}`);
 console.log(`complete       : ${untouched} (siteOwner and TXT present)`);
 console.log(`to provision   : ${work.length}  (${notOwner.length} unverified, ${missingTxt.length} without TXT)`);
 console.log(`  backfill only: ${backfillOnly.length} (already siteOwner, TXT missing)\n`);
+
+if (flags.get('prune-empty-news') === true) {
+  await pruneEmptyNews(auth, targets.filter((host) => (levels.get(host) ?? null) === 'siteOwner'));
+  process.exit(0);
+}
 
 const tokens = new Map(work.map((host) => [host, null]));
 const zoneMissing = [];
@@ -454,6 +528,10 @@ if (shouldApply && !dryRunVerify && work.length > 0) {
         const url = `https://${host}${path}`;
         if (current !== null && current.includes(url)) {
           console.log(`  present      ${url}`);
+          continue;
+        }
+        if (path === '/news-sitemap.xml' && !(await newsFeedHasUrls(host))) {
+          console.log(`  skipped-empty ${url}`);
           continue;
         }
         if (!shouldApply) {
