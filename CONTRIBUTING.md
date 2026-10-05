@@ -289,6 +289,13 @@ config, tests, and licence-file pushes at no build cost. It deliberately does
 not absorb `scripts/`, `src/data/migrations/`, or anything the production bundle
 reads, so widening the allowlist is a decision, not a default.
 
+Preview auto-deploy is off for every branch except `main` (`vercel.json`
+`git.deploymentEnabled`), so pushing to a feature branch or a dependabot branch
+costs no Vercel build. Work there freely, then squash-merge once into `main`:
+one merge, one production build. If an intermediate push must land directly on
+`main`, add `#VERCEL_SKIP` anywhere in the commit message to skip that
+deployment; the final commit without the tag triggers the single build.
+
 ### Review expectations
 
 - Every PR should have a Release Quality Gate
