@@ -19,6 +19,18 @@ describe('resolveDisqusShortname', () => {
     expect(resolveDisqusShortname({ NEXT_PUBLIC_DISQUS_SHORTNAME: '   ' })).toBeUndefined();
   });
 
+  it('membaca nilai bawaan proses tanpa argumen agar bisa ditanam bundler', () => {
+    const previous = process.env.NEXT_PUBLIC_DISQUS_SHORTNAME;
+    process.env.NEXT_PUBLIC_DISQUS_SHORTNAME = 'indicate-1';
+    try {
+      expect(resolveDisqusShortname()).toBe('indicate-1');
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_DISQUS_SHORTNAME;
+      else process.env.NEXT_PUBLIC_DISQUS_SHORTNAME = previous;
+    }
+    expect(resolveDisqusShortname()).toBeUndefined();
+  });
+
   // The shortname becomes the host of https://<shortname>.disqus.com/embed.js, so
   // anything that can redirect that script to another origin must never survive.
   it.each([

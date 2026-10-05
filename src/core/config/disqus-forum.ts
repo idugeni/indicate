@@ -11,17 +11,25 @@ import { DISQUS_SHORTNAME_PATTERN } from '@/core/security/disqus-contract';
 /**
  * Resolve the network Disqus forum shortname.
  *
- * @param environment - Process environment map; defaults to `process.env`.
+ * @param environment - Explicit environment map, used by tests and server
+ * callers that already hold one; when omitted the build-inlined public value
+ * is used.
  * @returns Trimmed shortname when it is a valid forum label; otherwise `undefined`.
  * @remarks Public by design, exactly like the Google verification token: it is
  * rendered into a `<script src>` on every reader page, so it is validated for
  * shape and never treated as a secret. An absent value disables comments on
  * every site regardless of its own switch.
+ * @remarks The value must be read through a literal `process.env.*` member
+ * expression so the bundler inlines it into client JavaScript. Reading it
+ * through this function's parameter instead leaves a runtime lookup that the
+ * browser cannot satisfy, so the thread renders on the server, vanishes during
+ * hydration, and no comment surface ever appears.
  */
 export function resolveDisqusShortname(
-  environment: Record<string, string | undefined> = process.env,
+  environment?: Record<string, string | undefined>,
 ): string | undefined {
-  const raw = environment.NEXT_PUBLIC_DISQUS_SHORTNAME?.trim() ?? '';
+  const builtIn = typeof process === 'undefined' ? undefined : process.env.NEXT_PUBLIC_DISQUS_SHORTNAME;
+  const raw = (environment?.NEXT_PUBLIC_DISQUS_SHORTNAME ?? builtIn ?? '').trim();
   return DISQUS_SHORTNAME_PATTERN.test(raw) ? raw : undefined;
 }
 
