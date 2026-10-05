@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 
 import { disqusThreadIdentifier, resolveDisqusShortname } from '@/core/config/disqus-forum';
@@ -149,6 +149,21 @@ function normalizeZeroCount(target: HTMLElement): void {
 }
 
 /**
+ * Whether badge text already holds a positive Disqus count.
+ *
+ * @remarks `count.js` writes locale-dependent text (`5 Comments`, `5 Komentar`);
+ * only a leading non-zero number counts as visible. Empty, `0`, and the
+ * Indonesian zero label stay hidden so fresh articles carry no count chip.
+ */
+function hasPositiveCount(target: HTMLElement | null): boolean {
+  if (target === null) return false;
+  const text = (target.textContent ?? '').trim();
+  if (text === '' || text === ZERO_COMMENT_LABEL) return false;
+  const leading = /^(\d+)/u.exec(text);
+  return leading !== null && Number(leading[1]) > 0;
+}
+
+/**
  * Comment count for a card that only knows its article, resolved against the site in context.
  *
  * @remarks The boundary is here on purpose. `ArticleMeta` is a server component
@@ -159,8 +174,9 @@ function normalizeZeroCount(target: HTMLElement): void {
  * The icon lives here rather than beside this call because whether a count
  * exists is decided inside the client: a server-side guard around the icon would
  * leave a bare glyph beside nothing on every card of a site that never enabled
- * comments. The placeholder child is what a fresh network shows on almost every
- * article, so the number arriving is not a visible change.
+ * comments. The slot stays hidden (still in the DOM for `count.js` to find)
+ * until Disqus reports a positive number, so `0` / `belum ada komentar` never
+ * flashes on fresh articles.
  */
 export function CommentCountSlot({
   articleId,
@@ -176,9 +192,21 @@ export function CommentCountSlot({
 }) {
   const scope = useCommentTargetScope();
   const url = scope === null ? null : resolveCommentTargetUrl(scope, href);
+  const wrapRef = useRef<HTMLSpanElement | null>(null);
+  const [hasCount, setHasCount] = useState(false);
+
+  useEffect(() => {
+    const node = wrapRef.current;
+    if (node === null) return;
+    setHasCount(hasPositiveCount(node));
+    const observer = new MutationObserver(() => setHasCount(hasPositiveCount(node)));
+    observer.observe(node, { childList: true, characterData: true, subtree: true });
+    return () => observer.disconnect();
+  }, [scope?.siteId, articleId, url]);
+
   if (scope === null || url === null) return null;
   return (
-    <span className={className}>
+    <span ref={wrapRef} className={className} style={{ display: hasCount ? '' : 'none' }}>
       {iconClassName === undefined ? null : <MessageSquare className={iconClassName} aria-hidden="true" />}
       <CommentCountBadge siteId={scope.siteId} articleId={articleId} url={url}>0</CommentCountBadge>
     </span>

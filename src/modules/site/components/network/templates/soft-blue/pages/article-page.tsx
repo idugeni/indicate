@@ -1,33 +1,29 @@
 import Image from 'next/image';
 // Unconditional: tenant images never use the Vercel optimizer (cost).
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, BadgeCheck, Building2, ChevronRight, Eye, Flag, MapPin, Newspaper } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Building2, Eye, Flag, MapPin, Newspaper } from 'lucide-react';
 
 import { buildSeoDocument, resolveArticleCanonical } from '@/modules/site/seo';
 import { resolveContactChannels, resolvePublisherChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
+import { ArticleHero } from '@/modules/site/components/network/ui/article-hero';
+import { RelatedArticles } from '@/modules/site/components/network/ui/related-articles';
 import { ArticleRichBodyView } from '@/modules/site/components/article-rich-body';
 import { ArticleGallery } from '@/modules/site/components/article-gallery';
 import { ArticleAudioPlayer, ArticleModeBadge, ArticleVideoPlayer, LiveblogTimeline, SponsoredDisclosure } from '@/modules/site/components/article-mode-blocks';
-import { youtubeThumbnailFallbackUrl } from '@/modules/site/article-type';
-import { EditorialImage } from '@/modules/site/components/editorial-image';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
-import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
-import { ArticleBylineMeta } from '@/modules/site/components/network/ui/article-byline-meta';
 import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 import { Container } from '@/modules/site/components/network/ui/container';
-import { ArticleActionStrip } from '@/modules/site/components/network/ui/article-action-strip';
 import { ArticlePrintFooter, ArticlePrintMasthead } from '@/modules/site/components/network/ui/article-print-sheet';
 import { ViewBeacon } from '@/modules/site/components/network/cards/view-beacon';
 import { AdSlot } from '@/modules/ads/ad-slot';
 import { CommentThread } from '@/modules/site/components/network/disqus/comment-thread';
 import type { ArticleListItem, NetworkArticle, NetworkSiteData } from '@/modules/delivery/models';
-import { SoftBluePicks } from '@/modules/site/components/network/templates/soft-blue/cards/picks';
-import { articleImage, authorDisplayName, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { articleImage, formatDate, formatFullViews, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { selectArticleSidebar } from '@/modules/site/components/network/ui/article-sidebar-data';
-import { ArticleSidebarBacaJuga, ArticleSidebarIkutiKami, ArticleSidebarKanal, ArticleSidebarNewsletter, ArticleSidebarTerbaru, ArticleSidebarTerpopuler, ArticleSidebarTopik } from '@/modules/site/components/network/ui/article-sidebar';
+import { ArticleRail } from '@/modules/site/components/network/ui/article-rail';
 
 export function SoftBlueArticle({
   site,
@@ -43,7 +39,6 @@ export function SoftBlueArticle({
   readonly older?: ArticleListItem | null;
 }) {
   const seo = buildSeoDocument(site, { path: `/${article.slug}`, article });
-  const featuredSrc = article.imageUrl ?? article.thumbnailUrl ?? '/assets/article-fallback.webp';
   const reading = readingMinutes(article);
   const bylineName = article.attribution;
   const canonical = resolveArticleCanonical(site, `/${article.slug}`, article);
@@ -67,69 +62,23 @@ export function SoftBlueArticle({
             dateLabel={formatDate(article.publishedAt, 'long')}
             canonical={canonical}
           />
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 font-sans text-xs text-slate-600">
-            <Link href="/" className="transition-colors hover:text-[#2563eb]">
-              Beranda
-            </Link>
-            <ChevronRight className="h-3 w-3" aria-hidden="true" />
-            {article.categorySlug ? (
-              <>
-                <Link href={`/categories/${article.categorySlug}`} className="transition-colors hover:text-[#2563eb]">
-                  {article.categoryName}
-                </Link>
-                <ChevronRight className="h-3 w-3" aria-hidden="true" />
-              </>
-            ) : null}
-            <span className="min-w-0 flex-1 truncate text-slate-900" aria-current="page">{article.title}</span>
-          </nav>
-
-          <header>
-          {article.categoryName === null ? null : (
-            <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold text-[#2563eb]">
-              <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2563eb]" />
-              {article.categoryName}
-            </p>
-          )}
-          <h1 className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-900 sm:text-4xl">
-            {article.title}
-          </h1>
-          <p className="m-0 mt-4 block w-full border-l-[3px] border-[#2563eb] pl-4 font-sans text-[19px] font-medium leading-[1.7] text-slate-700">
-            {article.description}
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:px-5">
-            <p className="m-0 flex min-w-0 items-center gap-3">
-              <AuthorAvatar skin={SOFT_BLUE.authorAvatar} name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
-              <span className="min-w-0">
-                <span className="block truncate font-sans text-sm font-bold text-slate-900">
-                  {bylineName}
-                </span>
-                <ArticleBylineMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={`/${article.slug}`} className="text-slate-600" />
-              </span>
-            </p>
-          </div>
-          <ArticleActionStrip skin={SOFT_BLUE.shareButtons} article={article} canonical={canonical} />
-          </header>
-
-          <aside aria-label="Catatan editorial" className="mt-6 border-l-[3px] border-[#2563eb] pl-4">
-            <p className="m-0 font-sans text-[13px] leading-relaxed text-slate-500">
-              Artikel ini merupakan konten yang dibuat oleh pengguna. Seluruh isi, informasi, dan opini yang terdapat di dalamnya menjadi tanggung jawab {authorDisplayName(article)} dan tidak mewakili pandangan resmi redaksi {site.settings.name}.
-            </p>
-          </aside>
-
-          <EditorialImage
-            src={featuredSrc}
-            thumbSrc={article.thumbnailUrl}
-            alt={article.title}
-            caption={article.title}
-            captionClassName="sr-only"
-            fallbackSrc={youtubeThumbnailFallbackUrl(article.type === 'video' ? article.videoUrl : null)}
-            width={article.imageWidth}
-            height={article.imageHeight}
-            focalX={article.imageFocalX}
-            focalY={article.imageFocalY}
-            eager
-            figureClassName="m-0 mt-6 overflow-hidden rounded-2xl shadow-sm"
+          <ArticleHero
+            variant="stacked"
+            article={article}
+            siteName={site.settings.name}
+            bylineName={bylineName}
+            reading={reading}
+            canonical={canonical}
+            skin={{
+              accent: SOFT_BLUE.primary,
+              tone: 'light',
+              card: SOFT_BLUE.card,
+              ring: SOFT_BLUE.ring,
+              ink: SOFT_BLUE.ink,
+              muted: SOFT_BLUE.muted,
+              authorAvatar: SOFT_BLUE.authorAvatar,
+              shareButtons: SOFT_BLUE.shareButtons,
+            }}
           />
           <AdSlot site={site} slot="in-content" />
           {article.type === 'standard' ? null : (
@@ -267,17 +216,7 @@ export function SoftBlueArticle({
           <ArticlePrintFooter siteName={site.settings.name} canonical={canonical} />
 
           </article>
-        <aside aria-label="Sidebar artikel" className="grid min-w-0 gap-6 print:hidden lg:sticky lg:top-20">
-          <ArticleSidebarBacaJuga articles={sidebar.bacaJuga} />
-          <AdSlot site={site} slot="sidebar-top" />
-          <ArticleSidebarTerpopuler articles={sidebar.terpopuler} />
-          <ArticleSidebarTerbaru articles={sidebar.terbaru} />
-          <ArticleSidebarTopik topics={sidebar.topics} />
-          <ArticleSidebarKanal channels={sidebar.channels} />
-          <ArticleSidebarNewsletter />
-          <ArticleSidebarIkutiKami channels={followChannels} />
-          <AdSlot site={site} slot="sidebar-bottom" />
-        </aside>
+        <ArticleRail variant="tabs" site={site} sidebar={sidebar} followChannels={followChannels} />
         </div>
 
           {site.settings.commentsEnabled ? (
@@ -292,11 +231,21 @@ export function SoftBlueArticle({
 
           {related.length > 0 ? (
             <div className="mt-10">
-              <SoftBluePicks
+              <RelatedArticles
+                variant="grid"
                 articles={related.slice(0, 3)}
+                pool={site.articles}
                 heading="Artikel terkait"
                 description="Bacaan lain untuk Anda"
-                linkHref={null}
+                skin={{
+                  accent: SOFT_BLUE.primary,
+                  tone: 'light',
+                  card: SOFT_BLUE.card,
+                  ring: SOFT_BLUE.ring,
+                  ink: SOFT_BLUE.ink,
+                  muted: SOFT_BLUE.muted,
+                  authorAvatar: SOFT_BLUE.authorAvatar,
+                }}
               />
             </div>
           ) : null}

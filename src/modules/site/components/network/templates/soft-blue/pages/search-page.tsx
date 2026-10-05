@@ -1,3 +1,4 @@
+import { AdSlot } from '@/modules/ads/ad-slot';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SoftBlueShell } from '@/modules/site/components/network/templates/soft-blue/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
@@ -18,6 +19,7 @@ export function SoftBlueSearch({ site, query }: SoftBlueSearchProps) {
       <Container className="space-y-6 py-6 md:py-8">
         <StatusLine count={site.articles.length} title="Pencarian" />
         <SoftBlueSearchForm query={query} />
+        {site.articles.length === 0 ? null : <AdSlot site={site} slot="in-feed" />}
         <SoftBlueSearchResults articles={site.articles} query={query} />
       </Container>
     </SoftBlueShell>

@@ -1,6 +1,7 @@
 import { buildSeoDocument } from '@/modules/site/seo';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { GreenMinimalShell } from '@/modules/site/components/network/templates/green-minimal/chrome/shell';
+import { GreenMinimalHero } from '@/modules/site/components/network/templates/green-minimal/cards/hero';
 import { GreenMinimalLatest } from '@/modules/site/components/network/templates/green-minimal/cards/latest';
 import { GreenMinimalArchivePager } from '@/modules/site/components/network/templates/green-minimal/cards/archive-pager';
 import { GreenMinimalNewsletter } from '@/modules/site/components/network/templates/green-minimal/cards/newsletter';
@@ -37,6 +38,7 @@ export function GreenMinimalListing({ site, title, description, path, indexable 
           <GreenMinimalEmpty title={title} />
         ) : (
           <>
+            <GreenMinimalHero articles={site.articles.slice(0, 1)} />
             <GreenMinimalLatest articles={latest} description={description ?? 'Liputan terbaru dari redaksi'} />
             <AdSlot site={site} slot="in-feed" />
             <GreenMinimalNewsletter />

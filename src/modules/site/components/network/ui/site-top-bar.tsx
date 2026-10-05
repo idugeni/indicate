@@ -3,12 +3,29 @@ import { resolveContactChannels } from '@/modules/site/company-contact';
 import { channelIcon } from '@/modules/site/components/network/channel-icons';
 
 /**
- * Light top bar: today's date plus tagline on the left, socials on the right.
+ * Strip utilitas di atas navbar: tanggal hari ini, tagline, dan kanal sosial.
  *
- * @param site - Tenant site data for the tagline and social channels.
- * @returns Server-only top bar above the main header.
+ * @param site - Data situs tenant aktif.
+ * @param surface - Warna latar strip dari tema template.
+ * @param ring - Warna garis bawah dari tema template.
+ * @param ink - Warna teks tanggal dari tema template.
+ * @param muted - Warna teks tagline dan ikon dari tema template.
+ * @param accent - Warna aksen hover dari tema template.
+ * @returns Strip server-only, tersembunyi di bawah `md`.
  */
-export function OrangeModernTopBar({ site }: { readonly site: NetworkSiteData }) {
+export function SiteTopBar({
+  site,
+  surface,
+  ring,
+  ink,
+  muted,
+}: {
+  readonly site: NetworkSiteData;
+  readonly surface: string;
+  readonly ring: string;
+  readonly ink: string;
+  readonly muted: string;
+}) {
   const today = new Intl.DateTimeFormat('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -18,18 +35,16 @@ export function OrangeModernTopBar({ site }: { readonly site: NetworkSiteData })
   }).format(new Date());
   const tagline = site.settings.tagline ?? site.settings.description;
   const socials = resolveContactChannels(site.settings.socialLinks).slice(0, 4);
-
   return (
-    <div className="hidden border-b border-slate-100 bg-[#fff9f4] md:block">
+    <div className="hidden md:block" style={{ backgroundColor: surface, borderBottom: `1px solid ${ring}` }}>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
-        <p className="m-0 flex min-w-0 items-center gap-2 font-sans text-xs text-slate-600">
-          <time dateTime={new Date().toISOString()} className="flex-none font-medium capitalize text-slate-700">
-            {today}
-          </time>
-          <span aria-hidden="true" className="h-0.5 w-6 flex-none rounded-full bg-[#ea580c]/40" />
-          <span className="truncate">{tagline}</span>
+        <p className="m-0 flex-none font-sans text-xs font-medium capitalize" style={{ color: ink }}>
+          <time dateTime={new Date().toISOString()}>{today}</time>
         </p>
-        <div className="flex flex-none items-center gap-4">
+        <div className="flex min-w-0 flex-none items-center gap-4">
+          <p className="m-0 hidden truncate font-sans text-xs lg:block" style={{ color: muted }}>
+            {tagline}
+          </p>
           {socials.length > 0 ? (
             <p className="m-0 flex items-center gap-1.5">
               {socials.map((channel) => {
@@ -41,7 +56,8 @@ export function OrangeModernTopBar({ site }: { readonly site: NetworkSiteData })
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`${site.settings.name} di ${channel.key}`}
-                    className="flex h-6 w-6 items-center justify-center rounded-full text-slate-500 transition-colors hover:text-[#ea580c]"
+                    className="flex h-6 w-6 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                    style={{ color: muted }}
                   >
                     <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   </a>

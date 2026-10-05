@@ -2,7 +2,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 
-import { CommentCountBadge } from '@/modules/site/components/network/disqus/comment-count-badge';
+import { CommentCountBadge, CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
+import { CommentTargetProvider } from '@/modules/site/components/network/disqus/comment-target';
+import type { NetworkSiteData } from '@/modules/delivery/models';
+
+const site = {
+  context: { siteId: 's1', normalizedHostname: 'portal.contoh' },
+  settings: { commentsEnabled: true },
+} as unknown as NetworkSiteData;
+
+function renderSlot(href = '/a') {
+  return render(
+    <CommentTargetProvider site={site}>
+      <CommentCountSlot articleId="a1" href={href} className="slot" />
+    </CommentTargetProvider>,
+  );
+}
 
 afterEach(() => {
   cleanup();
@@ -30,6 +45,42 @@ describe('CommentCountBadge', () => {
     });
     await vi.waitFor(() => {
       expect(screen.getByText('belum ada komentar')).toBeDefined();
+    });
+  });
+});
+
+describe('CommentCountSlot', () => {
+  it('tersembunyi saat hitungan masih nol agar listing bersih', () => {
+    const { container } = renderSlot();
+    const slot = container.querySelector('.slot') as HTMLElement | null;
+    if (slot === null) throw new Error('slot tidak dirender');
+    expect(slot.style.display).toBe('none');
+  });
+
+  it('tetap tersembunyi saat Disqus melaporkan nol', async () => {
+    const { container } = renderSlot();
+    const slot = container.querySelector('.slot') as HTMLElement | null;
+    const badge = container.querySelector('.disqus-comment-count');
+    if (slot === null || badge === null) throw new Error('slot tidak dirender');
+    act(() => {
+      badge.textContent = '0 Comments';
+    });
+    await vi.waitFor(() => {
+      expect(slot.style.display).toBe('none');
+    });
+  });
+
+  it('muncul saat Disqus melaporkan hitungan positif', async () => {
+    const { container } = renderSlot();
+    const slot = container.querySelector('.slot') as HTMLElement | null;
+    const badge = container.querySelector('.disqus-comment-count');
+    if (slot === null || badge === null) throw new Error('slot tidak dirender');
+    act(() => {
+      badge.textContent = '5 Comments';
+    });
+    await vi.waitFor(() => {
+      expect(slot.style.display).not.toBe('none');
+      expect(screen.getByText('5 Comments')).toBeDefined();
     });
   });
 });

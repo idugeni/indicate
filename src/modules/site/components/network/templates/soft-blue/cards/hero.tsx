@@ -1,70 +1,28 @@
-import Image from 'next/image';
-// Unconditional: tenant images never use the Vercel optimizer (cost).
-import Link from 'next/link';
-
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { ArticleMeta } from '@/modules/site/components/network/templates/soft-blue/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { HomeHero } from '@/modules/site/components/network/ui/home-hero';
 import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { SoftBlueHeroActions } from '@/modules/site/components/network/templates/soft-blue/cards/hero-actions';
 
-export function SoftBlueHero({ article }: { readonly article: ArticleListItem }) {
-  const src = articleImage(article);
-  const reading = readingMinutes(article);
-  const publisherName = article.attribution;
-
+/**
+ * Hero SoftBlue: varian split dari mode hero homepage bersama.
+ *
+ * @param articles - Cerita teratas halaman.
+ * @returns Hero sorotan utama milik template.
+ */
+export function SoftBlueHero({ articles }: { readonly articles: readonly ArticleListItem[] }) {
+  const [first] = articles;
   return (
-    <section aria-label="Sorotan utama" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
-      <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10">
-      <Link
-        href={article.href}
-        aria-label={article.title}
-        aria-hidden="true"
-        tabIndex={-1}
-        className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
-      >
-        <Image
-          unoptimized
-          src={src}
-          alt=""
-          priority
-          className="aspect-[16/10] w-full object-cover"
-          width={article.imageWidth ?? 1200}
-          height={article.imageHeight ?? 750}
-          sizes="(max-width: 1024px) 100vw, 50vw"
-        />
-      </Link>
-
-      <div className="min-w-0">
-        {article.categoryName === null ? null : (
-          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold text-[var(--tpl-primary,#2563eb)]">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#2563eb)]" />
-            {article.categoryName}
-          </p>
-        )}
-        <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
-          <Link href={article.href} className="hover:text-[var(--tpl-primary,#2563eb)]">
-            {article.title}
-          </Link>
-        </h1>
-        <p className="m-0 mt-4 font-sans text-[15px] leading-relaxed text-slate-600">
-          {article.description}
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <AuthorAvatar skin={SOFT_BLUE.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
-            <div className="grid min-w-0 gap-1">
-              <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
-                {publisherName}
-              </p>
-              <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} dateVariant="long" />
-            </div>
-          </div>
-          <SoftBlueHeroActions slug={article.slug} title={article.title} href={article.href} />
-        </div>
-      </div>
-      </div>
-    </section>
+    <HomeHero
+      variant="split"
+      articles={articles}
+      skin={{
+        accent: SOFT_BLUE.primary,
+        tone: 'light',
+        ink: SOFT_BLUE.ink,
+        muted: SOFT_BLUE.muted,
+        authorAvatar: SOFT_BLUE.authorAvatar,
+      }}
+      actions={first === undefined ? undefined : <SoftBlueHeroActions slug={first.slug} title={first.title} href={first.href} />}
+    />
   );
 }

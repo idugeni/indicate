@@ -1,3 +1,4 @@
+import { AdSlot } from '@/modules/ads/ad-slot';
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { OrangeModernShell } from '@/modules/site/components/network/templates/orange-modern/chrome/shell';
 import { Container } from '@/modules/site/components/network/ui/container';
@@ -18,6 +19,7 @@ export function OrangeModernSearch({ site, query }: OrangeModernSearchProps) {
       <Container className="space-y-6 py-6 md:py-8">
         <StatusLine count={site.articles.length} title="Pencarian" />
         <OrangeModernSearchForm query={query} />
+        {site.articles.length === 0 ? null : <AdSlot site={site} slot="in-feed" />}
         <OrangeModernSearchResults articles={site.articles} query={query} />
       </Container>
     </OrangeModernShell>

@@ -43,10 +43,10 @@ const THREAD_SECTION_CLASS = 'mt-10 border-t border-current/15 pt-8';
  * Whether this browser cannot report viewport intersection at all.
  *
  * @remarks Read once during the first render rather than inside the effect. The
- * server answers `false` and renders the placeholder, which is also what every
- * current browser answers on its first render, so hydration matches; a browser
- * old enough to lack the observer starts with the embed already wanted, because
- * there is no intersection callback that could ever ask for it.
+ * server answers `false` and renders the collapsed prompt, which is also what
+ * every current browser answers on its first render, so hydration matches.
+ * The thread still waits for an explicit click even when the observer is
+ * missing; the flag only skips waiting for the intersection callback.
  */
 function lacksIntersectionObserver(): boolean {
   return typeof window !== 'undefined' && typeof window.IntersectionObserver === 'undefined';
@@ -58,7 +58,9 @@ function lacksIntersectionObserver(): boolean {
  * @remarks Renders nothing at all when the platform has no forum configured, so
  * a deployment that never sets `NEXT_PUBLIC_DISQUS_SHORTNAME` carries no markup
  * for it. Whether a site shows a thread is the site setting's decision; this
- * component only resolves the forum and the thread identity.
+ * component only resolves the forum and the thread identity. The heavy
+ * third-party embed stays unmounted behind a `Tampilkan komentar` prompt until
+ * the reader asks for it, so the initial page carries no Disqus iframe cost.
  */
 export function CommentThread({
   siteId,
@@ -79,7 +81,9 @@ export function CommentThread({
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const headingId = useId();
+  const threadId = useId();
   const [nearViewport, setNearViewport] = useState(() => lacksIntersectionObserver());
+  const [expanded, setExpanded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -110,14 +114,19 @@ export function CommentThread({
   }, [siteId, articleId, url, title, locale]);
 
   useEffect(() => {
-    if (!nearViewport || shortname === undefined || loadFailed) return;
+    if (!expanded || !nearViewport || shortname === undefined || loadFailed) return;
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined' && window.DISQUS === undefined) setLoadFailed(true);
     }, LOAD_TIMEOUT_MS);
     return () => clearTimeout(timer);
-  }, [nearViewport, shortname, loadFailed, retryCount]);
+  }, [expanded, nearViewport, shortname, loadFailed, retryCount]);
 
   if (shortname === undefined) return null;
+
+  const expand = () => {
+    setExpanded(true);
+    setNearViewport(true);
+  };
 
   const retry = () => {
     setLoadFailed(false);
@@ -146,7 +155,20 @@ export function CommentThread({
        * sehingga tampilan situs tidak berubah.
        */}
       <div style={{ color: '#334155' }} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-      {nearViewport ? (
+      {!expanded ? (
+        <div>
+          <p className="m-0 text-sm opacity-70">Diskusi pembaca dimuat hanya bila diminta agar halaman tetap ringan.</p>
+          <button
+            type="button"
+            onClick={expand}
+            aria-expanded="false"
+            aria-controls={threadId}
+            className="mt-3 inline-flex items-center justify-center rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-900"
+          >
+            Tampilkan komentar
+          </button>
+        </div>
+      ) : nearViewport ? (
         loadFailed ? (
           <p className="m-0 text-sm opacity-70">
             Komentar tidak dapat dimuat. Periksa koneksi atau pemblokir iklan, lalu{' '}
@@ -156,7 +178,9 @@ export function CommentThread({
             .
           </p>
         ) : (
-          <DiscussionEmbed key={`${shortname}:${retryCount}`} shortname={shortname} config={config} />
+          <div id={threadId}>
+            <DiscussionEmbed key={`${shortname}:${retryCount}`} shortname={shortname} config={config} />
+          </div>
         )
       ) : (
         <p className="m-0 text-sm opacity-70">Memuat komentar…</p>

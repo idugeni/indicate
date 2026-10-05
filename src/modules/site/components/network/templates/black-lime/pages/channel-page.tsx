@@ -7,6 +7,8 @@ import { BlackLimeEmpty } from '@/modules/site/components/network/templates/blac
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { BlackLimePicks } from '@/modules/site/components/network/templates/black-lime/cards/picks';
 import { BlackLimeArchivePager } from '@/modules/site/components/network/templates/black-lime/cards/archive-pager';
+import { ChannelHeader } from '@/modules/site/components/network/ui/public-pages';
+import { BLACK_LIME } from '@/modules/site/components/network/templates/black-lime/theme';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface BlackLimeChannelProps {
@@ -31,20 +33,14 @@ export function BlackLimeChannel({ site, kicker, title, description, path = '/',
     <BlackLimeShell site={site} path={path}>
       <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
-        <div className="rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-6">
-          <p className="m-0 inline-block rounded-full bg-[#c5f82a]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#c5f82a]">
-            {kicker}
-          </p>
-          <h1 className="m-0 mt-3 font-sans text-2xl font-extrabold tracking-tight text-[#f2f5e9] sm:text-3xl">
-            {title}
-          </h1>
-          {description === undefined || description === '' ? null : (
-            <p className="m-0 mt-2 max-w-2xl font-sans text-sm leading-relaxed text-[#a3ad9a]">{description}</p>
-          )}
-          <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-[#646b5e]">
-            {site.articles.length} artikel · {site.context.normalizedHostname}
-          </p>
-        </div>
+        <ChannelHeader variant="minimal" site={site} kicker={kicker} title={title} description={description} skin={{
+          accent: BLACK_LIME.primary,
+          tone: 'dark',
+          card: BLACK_LIME.card,
+          ring: BLACK_LIME.ring,
+          ink: BLACK_LIME.ink,
+          muted: BLACK_LIME.muted,
+        }} />
         {site.articles.length === 0 ? (
           <BlackLimeEmpty title={title} />
         ) : (

@@ -3,12 +3,13 @@ import { AboutPage } from '@/modules/site/components/network/network-listing';
 import { NetworkAttribution } from '@/modules/site/components/network/ui/network-attribution';
 import { aboutDescription, aboutTitle, networkAttribution } from '@/modules/site/about-profile';
 import { getControlHosts } from '@/core/config/edge-hosts';
-import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { networkMetadataForSite, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await resolveNetworkSite({}, '/tentang');
   const siteName = site.settings.seoSiteName ?? site.settings.name;
-  return networkMetadata(
+  return networkMetadataForSite(
+    site,
     '/tentang',
     {},
     aboutTitle(siteName, site.regionName),

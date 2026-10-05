@@ -1,103 +1,47 @@
 'use client';
 
-import Link from 'next/link';
-import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { Menu, Search } from 'lucide-react';
+import type { ReactNode } from 'react';
 
-import { PurpleEditorialMobileSidebar } from '@/modules/site/components/network/templates/purple-editorial/chrome/mobile-sidebar';
-import { TemplateSearchPanel } from '@/modules/site/components/network/chrome/search-panel';
-import { TemplateTooltip } from '@/modules/site/components/network/ui/template-tooltip';
+import { SiteHeaderBar, type SiteHeaderBarLayout } from '@/modules/site/components/network/ui/site-header-bar';
+import type { SiteDrawerPlacement } from '@/modules/site/components/network/ui/site-mobile-sidebar';
 import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/purple-editorial/theme';
 
-const subscribeMounted = (): (() => void) => () => {};
-const getMountedSnapshot = (): boolean => true;
-const getMountedServerSnapshot = (): boolean => false;
-
 /**
- * Header bar orchestration: brand, desktop nav, icon-only search trigger, and sidebar.
+ * Bar header PurpleEditorial: orkestrasi pencarian dan drawer milik template.
  *
- * @param brand - Site brand element.
- * @param nav - Desktop navigation.
- * @param sidebar - Mobile navigation.
- * @returns Interactive template header bar.
+ * @param brand - Elemen brand situs.
+ * @param nav - Navigasi desktop.
+ * @param sidebar - Navigasi seluler untuk drawer.
+ * @param layout - Susunan baris header.
+ * @param quickNav - Baris kanal geser seluler untuk varian masthead.
+ * @param drawer - Posisi drawer seluler.
+ * @returns Bar header interaktif.
  */
 export function PurpleEditorialHeaderBar({
   brand,
   nav,
   sidebar,
+  layout = 'row',
+  quickNav,
+  drawer = 'right',
 }: {
   readonly brand: ReactNode;
   readonly nav: ReactNode;
   readonly sidebar: ReactNode;
+  readonly layout?: SiteHeaderBarLayout;
+  readonly quickNav?: ReactNode;
+  readonly drawer?: SiteDrawerPlacement;
 }) {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const mounted = useSyncExternalStore(subscribeMounted, getMountedSnapshot, getMountedServerSnapshot);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const searchButtonRef = useRef<HTMLButtonElement>(null);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const sidebarCloseRef = useRef<HTMLButtonElement>(null);
-
   return (
-    <>
-      <div className="mx-auto grid min-h-16 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 sm:gap-x-4 sm:px-6 lg:gap-x-6">
-        <div className="min-w-0 justify-self-start">{brand}</div>
-        {nav}
-        <div className="flex flex-none items-center gap-2 justify-self-end">
-          <Link
-            href="#newsletter"
-            className="hidden h-10 flex-none items-center rounded-full bg-[var(--tpl-primary,#7c3aed)] px-5 font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#5f21d6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#7c3aed)] lg:inline-flex"
-          >
-            Langganan
-          </Link>
-          <TemplateTooltip label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}>
-            <button
-              ref={searchButtonRef}
-              type="button"
-              onClick={() => setSearchOpen((value) => !value)}
-              aria-expanded={searchOpen}
-              aria-label={searchOpen ? 'Tutup pencarian' : 'Cari berita'}
-              className="hidden h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#7c3aed)] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#5f21d6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#7c3aed)] lg:flex"
-            >
-              <Search className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </TemplateTooltip>
-          <TemplateTooltip label="Buka menu">
-            <button
-              ref={menuButtonRef}
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              aria-expanded={sidebarOpen}
-              aria-label="Buka menu"
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#7c3aed)] text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#5f21d6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#7c3aed)] lg:hidden"
-            >
-              <Menu className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </TemplateTooltip>
-        </div>
-      </div>
-
-      {searchOpen ? (
-        <TemplateSearchPanel skin={PURPLE_EDITORIAL.searchPanel}
-          query={query}
-          onQueryChange={setQuery}
-          onClose={() => setSearchOpen(false)}
-          inputRef={inputRef}
-          onFocusReturn={() => searchButtonRef.current?.focus()}
-        />
-      ) : null}
-
-      {mounted ? (
-        <PurpleEditorialMobileSidebar
-          open={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          onFocusReturn={() => menuButtonRef.current?.focus()}
-          closeRef={sidebarCloseRef}
-        >
-          {sidebar}
-        </PurpleEditorialMobileSidebar>
-      ) : null}
-    </>
+    <SiteHeaderBar
+      brand={brand}
+      nav={nav}
+      sidebar={sidebar}
+      inputId="purple-editorial-sidebar-search"
+      searchSkin={PURPLE_EDITORIAL.searchPanel}
+      layout={layout}
+      quickNav={quickNav}
+      drawer={drawer}
+    />
   );
 }

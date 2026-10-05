@@ -1,57 +1,31 @@
-import Image from 'next/image';
-import Link from 'next/link';
-
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { PurpleEditorialHeaderBar } from '@/modules/site/components/network/templates/purple-editorial/chrome/header-bar';
-import { PurpleEditorialTopBar } from '@/modules/site/components/network/templates/purple-editorial/chrome/top-bar';
-import { PurpleEditorialDesktopNav, PurpleEditorialMobileNav } from '@/modules/site/components/network/templates/purple-editorial/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
+import { SiteHeader } from '@/modules/site/components/network/ui/site-header';
+import { PURPLE_EDITORIAL } from '@/modules/site/components/network/templates/purple-editorial/theme';
 
 /**
- * 3-column navbar: [brand as needed | flexible menu | actions as needed].
- * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
+ * Header PurpleEditorial: varian centered dari mode navbar bersama.
+ *
+ * @param site - Data situs tenant aktif.
+ * @param path - Path aktif untuk status navigasi.
+ * @returns Header server sesuai varian.
  */
 export async function PurpleEditorialHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site);
-  const showRegion =
-    site.regionName !== null &&
-    site.regionName !== undefined &&
-    site.regionName !== '' &&
-    !site.settings.name.toLowerCase().includes(site.regionName.toLowerCase());
-
   return (
-    <>
-      <PurpleEditorialTopBar site={site} />
-      <div className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <PurpleEditorialHeaderBar
-        brand={
-          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
-            <Image
-              unoptimized
-              src={site.settings.logoUrl}
-              alt={site.settings.name}
-              width={72}
-              height={72}
-              className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-slate-200"
-            />
-            <span className="grid min-w-0 leading-none">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
-                  {site.settings.name}
-                </strong>
-                {showRegion ? (
-                  <span className="flex-none rounded-md bg-[#7c3aed]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#7c3aed]">
-                    {site.regionName}
-                  </span>
-                ) : null}
-              </span>
-            </span>
-          </Link>
-        }
-        nav={<PurpleEditorialDesktopNav categories={nav} path={path} />}
-        sidebar={<PurpleEditorialMobileNav categories={nav} path={path} />}
-      />
-      </div>
-    </>
+    <SiteHeader
+      variant="centered"
+      drawer="grid"
+      site={site}
+      path={path}
+      skin={{
+        accent: PURPLE_EDITORIAL.primary,
+        tone: 'light',
+        card: PURPLE_EDITORIAL.card,
+        ring: PURPLE_EDITORIAL.ring,
+        ink: PURPLE_EDITORIAL.ink,
+        muted: PURPLE_EDITORIAL.muted,
+        searchPanel: PURPLE_EDITORIAL.searchPanel,
+      }}
+      templateId="purple-editorial"
+    />
   );
 }

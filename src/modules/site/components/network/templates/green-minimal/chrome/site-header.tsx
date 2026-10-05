@@ -1,57 +1,31 @@
-import Image from 'next/image';
-import Link from 'next/link';
-
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { GreenMinimalHeaderBar } from '@/modules/site/components/network/templates/green-minimal/chrome/header-bar';
-import { GreenMinimalTopBar } from '@/modules/site/components/network/templates/green-minimal/chrome/top-bar';
-import { GreenMinimalDesktopNav, GreenMinimalMobileNav } from '@/modules/site/components/network/templates/green-minimal/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
+import { SiteHeader } from '@/modules/site/components/network/ui/site-header';
+import { GREEN_MINIMAL } from '@/modules/site/components/network/templates/green-minimal/theme';
 
 /**
- * 3-column navbar: [brand as needed | flexible menu | actions as needed].
- * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
+ * Header GreenMinimal: varian underline dari mode navbar bersama.
+ *
+ * @param site - Data situs tenant aktif.
+ * @param path - Path aktif untuk status navigasi.
+ * @returns Header server sesuai varian.
  */
 export async function GreenMinimalHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site);
-  const showRegion =
-    site.regionName !== null &&
-    site.regionName !== undefined &&
-    site.regionName !== '' &&
-    !site.settings.name.toLowerCase().includes(site.regionName.toLowerCase());
-
   return (
-    <>
-      <GreenMinimalTopBar site={site} />
-      <div className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <GreenMinimalHeaderBar
-        brand={
-          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
-            <Image
-              unoptimized
-              src={site.settings.logoUrl}
-              alt={site.settings.name}
-              width={72}
-              height={72}
-              className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-slate-200"
-            />
-            <span className="grid min-w-0 leading-none">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
-                  {site.settings.name}
-                </strong>
-                {showRegion ? (
-                  <span className="flex-none rounded-md bg-[#1d7a38]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#1d7a38]">
-                    {site.regionName}
-                  </span>
-                ) : null}
-              </span>
-            </span>
-          </Link>
-        }
-        nav={<GreenMinimalDesktopNav categories={nav} path={path} />}
-        sidebar={<GreenMinimalMobileNav categories={nav} path={path} />}
-      />
-      </div>
-    </>
+    <SiteHeader
+      variant="underline"
+      drawer="bottom"
+      site={site}
+      path={path}
+      skin={{
+        accent: GREEN_MINIMAL.primary,
+        tone: 'light',
+        card: GREEN_MINIMAL.card,
+        ring: GREEN_MINIMAL.ring,
+        ink: GREEN_MINIMAL.ink,
+        muted: GREEN_MINIMAL.muted,
+        searchPanel: GREEN_MINIMAL.searchPanel,
+      }}
+      templateId="green-minimal"
+    />
   );
 }

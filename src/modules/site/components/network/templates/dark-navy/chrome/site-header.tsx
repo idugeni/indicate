@@ -1,53 +1,31 @@
-import Image from 'next/image';
-import Link from 'next/link';
-
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { DarkNavyHeaderBar } from '@/modules/site/components/network/templates/dark-navy/chrome/header-bar';
-import { DarkNavyDesktopNav, DarkNavyMobileNav } from '@/modules/site/components/network/templates/dark-navy/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
+import { SiteHeader } from '@/modules/site/components/network/ui/site-header';
+import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
 
 /**
- * 3-column navbar: [brand as needed | flexible menu | actions as needed].
- * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
+ * Header DarkNavy: varian floating dari mode navbar bersama.
+ *
+ * @param site - Data situs tenant aktif.
+ * @param path - Path aktif untuk status navigasi.
+ * @returns Header server sesuai varian.
  */
 export async function DarkNavyHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site);
-  const showRegion =
-    site.regionName !== null &&
-    site.regionName !== undefined &&
-    site.regionName !== '' &&
-    !site.settings.name.toLowerCase().includes(site.regionName.toLowerCase());
-
   return (
-    <header className="sticky top-0 z-40 border-b border-[#1b2c4f] bg-[#070f22]/95 backdrop-blur">
-      <DarkNavyHeaderBar
-        brand={
-          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
-            <Image
-              unoptimized
-              src={site.settings.logoUrl}
-              alt={site.settings.name}
-              width={72}
-              height={72}
-              className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-[#1b2c4f]"
-            />
-            <span className="grid min-w-0 leading-none">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-[#eaf0fb]">
-                  {site.settings.name}
-                </strong>
-                {showRegion ? (
-                  <span className="flex-none rounded-md bg-[#2f7bff]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#2f7bff]">
-                    {site.regionName}
-                  </span>
-                ) : null}
-              </span>
-            </span>
-          </Link>
-        }
-        nav={<DarkNavyDesktopNav categories={nav} path={path} />}
-        sidebar={<DarkNavyMobileNav categories={nav} path={path} />}
-      />
-    </header>
+    <SiteHeader
+      variant="floating"
+      drawer="full"
+      site={site}
+      path={path}
+      skin={{
+        accent: DARK_NAVY.primary,
+        tone: 'dark',
+        card: DARK_NAVY.card,
+        ring: DARK_NAVY.ring,
+        ink: DARK_NAVY.ink,
+        muted: DARK_NAVY.muted,
+        searchPanel: DARK_NAVY.searchPanel,
+      }}
+      templateId="dark-navy"
+    />
   );
 }

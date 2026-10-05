@@ -41,7 +41,7 @@ export function CleanBlueListing({ site, title, description, path, indexable }: 
         ) : (
           <>
             <div className="grid gap-8">
-              {hero ? <CleanBlueHero article={hero} /> : null}
+              <CleanBlueHero articles={hero ? [hero] : []} />
               <CleanBluePicks articles={rest.slice(0, 2)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             </div>
             <AdSlot site={site} slot="hero-ad" />

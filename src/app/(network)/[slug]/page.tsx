@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticlePage } from '@/modules/site/components/network/network-listing';
-import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { networkMetadataForSite, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { isNetworkArticle } from '@/modules/delivery/models';
 
 export const maxDuration = 25;
@@ -16,7 +16,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (slug.trim() === '') {
     notFound();
   }
-  return networkMetadata(`/${slug}`, { articleSlug: slug });
+  // Satu resolve per invocation; metadata dibangun dari site yang sama sehingga
+  // tidak ada resolve kedua di dalam builder (entri cache `use cache` sama
+  // dengan yang dipakai halaman artikel).
+  const site = await resolveNetworkSite({ articleSlug: slug }, `/${slug}`);
+  return networkMetadataForSite(site, `/${slug}`, { articleSlug: slug });
 }
 
 /**
@@ -32,10 +36,12 @@ export default async function DetailPage({ params }: Props) {
   const { slug } = await params;
   if (slug.trim() === '') notFound();
   const normalized = slug.trim().toLowerCase();
-  const site = await resolveNetworkSite({ articleSlug: normalized }, `/${slug}`);
+  const [site, neighborSite] = await Promise.all([
+    resolveNetworkSite({ articleSlug: normalized }, `/${slug}`),
+    resolveNetworkSite({}, '/'),
+  ]);
   const article = site.articles.find((item) => item.slug === normalized);
   if (article === undefined || !isNetworkArticle(article)) notFound();
-  const neighborSite = await resolveNetworkSite({}, '/');
   const rest = neighborSite.articles.filter((item) => item.id !== article.id);
   const mates = article.categorySlug === null
     ? []

@@ -45,9 +45,7 @@ export function OrangeModernListing({ site, title, description, path, indexable 
         ) : (
           <>
             <div className="grid gap-8">
-              {hero ? (
-                <OrangeModernHero article={hero} />
-              ) : null}
+              <OrangeModernHero articles={hero ? [hero] : []} />
               <OrangeModernPicks
                 articles={picks}
                 heading="Berita Pilihan"

@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import { LegalPage } from '@/modules/site/components/network/network-listing';
 import { TENANT_LEGAL_DOCS } from '@/modules/site/legal-documents';
 import { interpolateLegalText, resolveLegalSections } from '@/modules/site/legal-placeholders';
-import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { networkMetadataForSite, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await resolveNetworkSite({}, '/kebijakan-privasi');
   const vars = { domain: site.context.normalizedHostname, siteName: site.settings.seoSiteName ?? site.settings.name };
-  return networkMetadata('/kebijakan-privasi', {}, interpolateLegalText(TENANT_LEGAL_DOCS.privacy.title, vars));
+  return networkMetadataForSite(site, '/kebijakan-privasi', {}, interpolateLegalText(TENANT_LEGAL_DOCS.privacy.title, vars));
 }
 
 /** Dokumen legal tenant: copy master bersama, domain diinterpolasi per host. */

@@ -1,30 +1,25 @@
-import Link from 'next/link';
-
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { WarmEditorialShell } from '@/modules/site/components/network/templates/warm-editorial/chrome/shell';
+import { NotFoundSection } from '@/modules/site/components/network/ui/public-pages';
+import { WARM_EDITORIAL } from '@/modules/site/components/network/templates/warm-editorial/theme';
 
+/**
+ * Halaman 404 WarmEditorial: varian editorial dari mode halaman publik bersama.
+ *
+ * @param site - Data situs tenant aktif.
+ * @returns Halaman tidak ditemukan dalam shell template.
+ */
 export function WarmEditorialNotFound({ site }: { readonly site: NetworkSiteData }) {
   return (
     <WarmEditorialShell site={site} path="/404">
-      <div className="mx-auto w-full max-w-xl px-4 py-14 text-center md:py-20">
-        <p className="m-0 inline-block rounded-full bg-[#b4532a] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-white">
-          404
-        </p>
-        <h1 className="m-0 mt-4 font-sans text-3xl font-extrabold tracking-tight text-slate-900">
-          Halaman tidak ditemukan
-        </h1>
-        <p className="m-0 mx-auto mt-3 max-w-md font-sans text-sm leading-relaxed text-slate-600">
-          Konten yang Anda cari tidak tersedia di {site.settings.name} atau telah dipindahkan.
-        </p>
-        <p className="m-0 mt-6">
-          <Link
-            href="/"
-            className="inline-flex h-11 items-center rounded-full bg-[#b4532a] px-6 font-sans text-sm font-bold text-white transition-colors hover:bg-[#8a3c1d]"
-          >
-            Kembali ke beranda
-          </Link>
-        </p>
-      </div>
+      <NotFoundSection variant="editorial" site={site}       skin={{
+        accent: WARM_EDITORIAL.primary,
+        tone: 'light',
+        card: WARM_EDITORIAL.card,
+        ring: WARM_EDITORIAL.ring,
+        ink: WARM_EDITORIAL.ink,
+        muted: WARM_EDITORIAL.muted,
+      }} />
     </WarmEditorialShell>
   );
 }

@@ -1,167 +1,25 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-// Unconditional: tenant images never use the Vercel optimizer (cost).
-import Link from 'next/link';
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
-
 import type { ArticleListItem } from '@/modules/delivery/models';
-import { ArticleMeta } from '@/modules/site/components/network/templates/glassy-blue/ui/article-meta';
-import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { HomeHero } from '@/modules/site/components/network/ui/home-hero';
 import { GLASSY_BLUE } from '@/modules/site/components/network/templates/glassy-blue/theme';
-import { articleImage, readingMinutes } from '@/modules/site/components/network/ui/format';
-import { GlassyBlueHeroActions } from '@/modules/site/components/network/templates/glassy-blue/cards/hero-actions';
-
-const ROTATE_MS = 6000;
 
 /**
- * Sorotan utama dalam kartu kaca rounded-3xl gaya contoh Kabar.id.
+ * Hero GlassyBlue: varian overlay dari mode hero homepage bersama.
  *
- * @param articles - Artikel sorotan yang dirotasi (indikator + panah fungsional).
- * @returns Kartu hero kaca dengan badge, meta penulis, dan panah lingkaran.
+ * @param articles - Cerita teratas halaman.
+ * @returns Hero sorotan utama milik template.
  */
 export function GlassyBlueHero({ articles }: { readonly articles: readonly ArticleListItem[] }) {
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const count = articles.length;
-
-  useEffect(() => {
-    if (count < 2 || paused) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const id = window.setTimeout(() => setIndex((current) => (current + 1) % count), ROTATE_MS);
-    return () => window.clearTimeout(id);
-  }, [count, paused, index]);
-
-  const position = count === 0 ? 0 : index % count;
-  const article = articles[position];
-  if (article === undefined) return null;
-
-  const src = articleImage(article);
-  const reading = readingMinutes(article);
-  const publisherName = article.attribution;
-  const location = article.publisherCity;
-
-  const go = (next: number) => setIndex(((next % count) + count) % count);
-
   return (
-    <section
-      aria-label="Sorotan utama"
-      className="relative overflow-hidden rounded-3xl bg-white/70 p-4 shadow-xl shadow-[#1f7cff]/10 ring-1 ring-white backdrop-blur-xl sm:p-5"
-      onMouseEnter={() => {
-        if (window.matchMedia('(hover: hover)').matches) setPaused(true);
+    <HomeHero
+      variant="overlay"
+      articles={articles}
+      skin={{
+        accent: GLASSY_BLUE.primary,
+        tone: 'light',
+        ink: GLASSY_BLUE.ink,
+        muted: GLASSY_BLUE.muted,
+        authorAvatar: GLASSY_BLUE.authorAvatar,
       }}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={(event) => {
-        if (event.currentTarget.contains(event.target as Node | null)) setPaused(true);
-      }}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
-      }}
-    >
-      <div className="grid items-center gap-6 lg:grid-cols-[1.05fr_minmax(0,1fr)] lg:gap-8">
-        <div className="relative min-w-0">
-          <Link
-            href={article.href}
-            aria-label={article.title}
-            aria-hidden="true"
-            tabIndex={-1}
-            className="relative block overflow-hidden rounded-2xl shadow-sm transition-shadow duration-200 hover:shadow-md"
-          >
-            <Image
-              unoptimized
-              src={src}
-              alt=""
-              priority={position === 0}
-              className="aspect-[16/10] w-full object-cover"
-              width={article.imageWidth ?? 1200}
-              height={article.imageHeight ?? 750}
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-          </Link>
-          <span className="absolute left-4 top-4 inline-flex max-w-[calc(100%-2rem)] items-center rounded-full bg-white/90 px-3 py-1 font-sans text-xs font-bold text-slate-800 shadow-sm backdrop-blur">
-            <span className="min-w-0 truncate">
-              <span aria-hidden="true">#</span>{article.categoryName ?? 'Sorotan'}
-            </span>
-          </span>
-          {location === null || location === '' ? null : (
-            <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-slate-900/70 to-transparent px-4 pb-3.5 pt-10 font-sans text-xs font-medium text-white">
-              <MapPin className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
-              {location}
-            </span>
-          )}
-        </div>
-
-        <div className="min-w-0 px-1 py-1 sm:px-2">
-          <div className="flex items-center justify-between gap-3">
-            {article.categoryName === null ? (
-              <p className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[var(--tpl-primary,#1f7cff)]">
-                <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[var(--tpl-primary,#1f7cff)]" />
-                Sorotan
-              </p>
-            ) : (
-              <p className="m-0 flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-[var(--tpl-primary,#1f7cff)]">
-                <span aria-hidden="true" className="h-1 w-6 rounded-full bg-[var(--tpl-primary,#1f7cff)]" />
-                {article.categoryName}
-              </p>
-            )}
-            {count > 1 ? (
-              <div className="flex flex-none items-center gap-1.5" role="group" aria-label="Pilih sorotan">
-                <span className="mr-1 font-sans text-[11px] tabular-nums text-slate-400">
-                  {String(position + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => go(position - 1)}
-                  aria-label="Sorotan sebelumnya"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]"
-                >
-                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => go(position + 1)}
-                  aria-label="Sorotan berikutnya"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]"
-                >
-                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <h1 className="m-0 mt-3 line-clamp-2 font-sans text-3xl font-extrabold leading-[1.12] tracking-tight text-[var(--tpl-ink,#0e1b33)] sm:text-4xl">
-            <Link href={article.href} className="hover:text-[var(--tpl-primary,#1f7cff)]">
-              {article.title}
-            </Link>
-          </h1>
-          <p className="m-0 mt-3 line-clamp-3 font-sans text-[15px] leading-relaxed text-slate-600">
-            {article.description}
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <AuthorAvatar skin={GLASSY_BLUE.authorAvatar} name={publisherName} avatarUrl={article.publisherLogoUrl} size="md" />
-              <div className="grid min-w-0 gap-1">
-                <p className="m-0 truncate font-sans text-sm font-bold text-slate-900">
-                  {publisherName}
-                </p>
-                <ArticleMeta publishedAt={article.publishedAt} reading={reading} viewCount={article.viewCount} articleId={article.id} href={article.href} dateVariant="long" />
-              </div>
-            </div>
-            <div className="flex flex-none items-center gap-2">
-              <GlassyBlueHeroActions slug={article.slug} title={article.title} href={article.href} />
-              <Link
-                href={article.href}
-                aria-label={`Baca selengkapnya: ${article.title}`}
-                aria-hidden="true"
-                tabIndex={-1}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tpl-primary,#1f7cff)] text-white shadow-lg shadow-[#1f7cff]/30 transition-colors hover:bg-[var(--tpl-primary-dark,#155fd0)]"
-              >
-                <ArrowRight className="h-5 w-5" aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    />
   );
 }

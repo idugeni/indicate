@@ -1,57 +1,31 @@
-import Image from 'next/image';
-import Link from 'next/link';
-
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { OrangeModernHeaderBar } from '@/modules/site/components/network/templates/orange-modern/chrome/header-bar';
-import { OrangeModernTopBar } from '@/modules/site/components/network/templates/orange-modern/chrome/top-bar';
-import { OrangeModernDesktopNav, OrangeModernMobileNav } from '@/modules/site/components/network/templates/orange-modern/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
+import { SiteHeader } from '@/modules/site/components/network/ui/site-header';
+import { ORANGE_MODERN } from '@/modules/site/components/network/templates/orange-modern/theme';
 
 /**
- * 3-column navbar: [brand as needed | flexible menu | actions as needed].
- * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
+ * Header OrangeModern: varian double dari mode navbar bersama.
+ *
+ * @param site - Data situs tenant aktif.
+ * @param path - Path aktif untuk status navigasi.
+ * @returns Header server sesuai varian.
  */
 export async function OrangeModernHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site);
-  const showRegion =
-    site.regionName !== null &&
-    site.regionName !== undefined &&
-    site.regionName !== '' &&
-    !site.settings.name.toLowerCase().includes(site.regionName.toLowerCase());
-
   return (
-    <>
-      <OrangeModernTopBar site={site} />
-      <div className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <OrangeModernHeaderBar
-        brand={
-          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
-            <Image
-              unoptimized
-              src={site.settings.logoUrl}
-              alt={site.settings.name}
-              width={72}
-              height={72}
-              className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-slate-200"
-            />
-            <span className="grid min-w-0 leading-none">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
-                  {site.settings.name}
-                </strong>
-                {showRegion ? (
-                  <span className="flex-none rounded-md bg-[#ea580c]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#ea580c]">
-                    {site.regionName}
-                  </span>
-                ) : null}
-              </span>
-            </span>
-          </Link>
-        }
-        nav={<OrangeModernDesktopNav categories={nav} path={path} />}
-        sidebar={<OrangeModernMobileNav categories={nav} path={path} />}
-      />
-      </div>
-    </>
+    <SiteHeader
+      variant="double"
+      drawer="left"
+      site={site}
+      path={path}
+      skin={{
+        accent: ORANGE_MODERN.primary,
+        tone: 'light',
+        card: ORANGE_MODERN.card,
+        ring: ORANGE_MODERN.ring,
+        ink: ORANGE_MODERN.ink,
+        muted: ORANGE_MODERN.muted,
+        searchPanel: ORANGE_MODERN.searchPanel,
+      }}
+      templateId="orange-modern"
+    />
   );
 }

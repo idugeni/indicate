@@ -38,7 +38,7 @@ export function WarmEditorialListing({ site, title, description, path, indexable
           <WarmEditorialEmpty title={title} />
         ) : (
           <>
-            {hero ? <WarmEditorialHero article={hero} /> : null}
+            <WarmEditorialHero articles={hero ? [hero] : []} />
             <WarmEditorialLatest articles={latest} siteName={site.settings.name} quote={quote} description={description ?? 'Kabar terkini yang baru diterbitkan'} />
             <AdSlot site={site} slot="in-feed" />
             <WarmEditorialNewsletter />

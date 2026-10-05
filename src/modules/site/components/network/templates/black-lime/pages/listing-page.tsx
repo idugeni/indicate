@@ -30,16 +30,23 @@ export interface ListingProps {
 export function BlackLimeListing({ site, title, description, path, indexable }: ListingProps) {
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [hero, ...rest] = site.articles;
-  const picks = rest.slice(0, 4);
+  const mosaicExtra = rest.slice(0, 2);
+  const tail = rest.slice(2);
+  const picks = tail.slice(0, 4);
   // Partition the remaining articles instead of re-slicing the same list. Ranking
   // the whole tail by view count used to hand "Paling Banyak Dibaca" the four
   // articles "Berita Terbaru" already showed, because a young site has near-zero
   // counts everywhere and the sort preserves the incoming order. Each article now
   // appears in exactly one section.
-  const ranked = [...rest].sort((a, b) => b.viewCount - a.viewCount);
+  const ranked = [...tail].sort((a, b) => b.viewCount - a.viewCount);
   const picked = new Set(picks.map((article) => article.id));
   const mostRead = ranked.filter((article) => !picked.has(article.id)).slice(0, 5);
-  const shown = new Set([...picks, ...mostRead].map((article) => article.id));
+  const shown = new Set<string>([
+    ...(hero === undefined ? [] : [hero.id]),
+    ...mosaicExtra.map((article) => article.id),
+    ...picks.map((article) => article.id),
+    ...mostRead.map((article) => article.id),
+  ]);
   const archive = rest.filter((article) => !shown.has(article.id));
   const quote = site.settings.tagline ?? site.settings.description;
 
@@ -52,7 +59,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
           <BlackLimeEmpty title={title} />
         ) : (
           <>
-            {hero ? <BlackLimeHero article={hero} /> : null}
+            <BlackLimeHero articles={hero === undefined ? [] : [hero, ...mosaicExtra]} />
             <AdSlot site={site} slot="hero-ad" />
             <BlackLimePicks
               articles={picks}

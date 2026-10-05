@@ -47,7 +47,7 @@ export async function GlassyBlueListing({ site, title, description, path, indexa
           <GlassyBlueEmpty title={title} />
         ) : (
           <>
-            <GlassyBlueHero articles={site.articles.slice(0, 5)} />
+            <GlassyBlueHero articles={site.articles.slice(0, 1)} />
             <GlassyBlueCategoryPills items={nav} activePath={path ?? '/'} />
             <GlassyBluePicks
               articles={picks}

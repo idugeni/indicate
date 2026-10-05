@@ -28,8 +28,10 @@ export interface ListingProps {
 export function PurpleEditorialListing({ site, title, description, path, indexable }: ListingProps) {
   const seo = buildSeoDocument(site, { path: path ?? '/', indexable: indexable ?? true });
   const [hero, ...rest] = site.articles;
-  const picks = rest.slice(0, 3);
-  const archive = rest.slice(3);
+  const mosaicExtra = rest.slice(0, 2);
+  const tail = rest.slice(2);
+  const picks = tail.slice(0, 3);
+  const archive = tail.slice(3);
   const quote = site.settings.tagline ?? site.settings.description;
 
   return (
@@ -39,7 +41,7 @@ export function PurpleEditorialListing({ site, title, description, path, indexab
           <PurpleEditorialEmpty title={title} />
         ) : (
           <>
-            {hero ? <PurpleEditorialHero article={hero} /> : null}
+            <PurpleEditorialHero articles={hero === undefined ? [] : [hero, ...mosaicExtra]} />
             <AdSlot site={site} slot="hero-ad" />
             <PurpleEditorialQuotePanel siteName={site.settings.name} quote={quote} />
             <PurpleEditorialPicks articles={picks} description={description ?? 'Informasi terkurasi untuk Anda'} />

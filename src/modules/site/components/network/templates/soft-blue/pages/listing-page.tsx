@@ -41,7 +41,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
         ) : (
           <>
             <div className="grid items-start gap-8 lg:grid-cols-2">
-              {hero ? <SoftBlueHero article={hero} /> : null}
+              <SoftBlueHero articles={hero ? [hero] : []} />
               <SoftBluePicks articles={rest.slice(0, 4)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             </div>
             <AdSlot site={site} slot="hero-ad" />

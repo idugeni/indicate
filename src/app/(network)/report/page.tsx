@@ -20,8 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ReportPageRoute({ searchParams }: Props) {
   const resolved = await searchParams;
   const slug = normalizeArticleSlug(resolved.artikel);
-  const site = await resolveNetworkSite(slug === null ? {} : { articleSlug: slug }, '/report');
-  const { repository } = await deliveryComposition();
+  const [site, { repository }] = await Promise.all([
+    resolveNetworkSite(slug === null ? {} : { articleSlug: slug }, '/report'),
+    deliveryComposition(),
+  ]);
   const challengeSitekey = await repository.loadReportChallengeSitekey(site.context);
   return <ReportPage site={site} articleSlug={slug} challengeSitekey={challengeSitekey} />;
 }

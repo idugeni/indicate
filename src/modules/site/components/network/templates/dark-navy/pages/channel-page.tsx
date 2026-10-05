@@ -7,6 +7,8 @@ import { DarkNavyEmpty } from '@/modules/site/components/network/templates/dark-
 import { StatusLine } from '@/modules/site/components/network/ui/status-line';
 import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-navy/cards/picks';
 import { DarkNavyArchivePager } from '@/modules/site/components/network/templates/dark-navy/cards/archive-pager';
+import { ChannelHeader } from '@/modules/site/components/network/ui/public-pages';
+import { DARK_NAVY } from '@/modules/site/components/network/templates/dark-navy/theme';
 import { JsonLd } from '@/modules/site/components/network/seo/json-ld';
 
 export interface DarkNavyChannelProps {
@@ -31,20 +33,14 @@ export function DarkNavyChannel({ site, kicker, title, description, path = '/', 
     <DarkNavyShell site={site} path={path}>
       <Container className="space-y-8 py-6 md:py-8">
         <StatusLine count={site.articles.length} title={title} />
-        <div className="rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-6">
-          <p className="m-0 inline-block rounded-full bg-[#2f7bff]/10 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-[#2f7bff]">
-            {kicker}
-          </p>
-          <h1 className="m-0 mt-3 font-sans text-2xl font-extrabold tracking-tight text-[#eaf0fb] sm:text-3xl">
-            {title}
-          </h1>
-          {description === undefined || description === '' ? null : (
-            <p className="m-0 mt-2 max-w-2xl font-sans text-sm leading-relaxed text-[#9aa9c4]">{description}</p>
-          )}
-          <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-[#5f6f8c]">
-            {site.articles.length} artikel · {site.context.normalizedHostname}
-          </p>
-        </div>
+        <ChannelHeader variant="minimal" site={site} kicker={kicker} title={title} description={description} skin={{
+          accent: DARK_NAVY.primary,
+          tone: 'dark',
+          card: DARK_NAVY.card,
+          ring: DARK_NAVY.ring,
+          ink: DARK_NAVY.ink,
+          muted: DARK_NAVY.muted,
+        }} />
         {site.articles.length === 0 ? (
           <DarkNavyEmpty title={title} />
         ) : (

@@ -1,59 +1,31 @@
-import Image from 'next/image';
-import Link from 'next/link';
-
 import type { NetworkSiteData } from '@/modules/delivery/models';
-import { SoftBlueHeaderBar } from '@/modules/site/components/network/templates/soft-blue/chrome/header-bar';
-import { SoftBlueTopBar } from '@/modules/site/components/network/templates/soft-blue/chrome/top-bar';
-import { SoftBlueDesktopNav, SoftBlueMobileNav } from '@/modules/site/components/network/templates/soft-blue/chrome/site-nav-menu';
-import { getSiteCategoryNav } from '@/modules/site/components/network/server/site-nav';
+import { SiteHeader } from '@/modules/site/components/network/ui/site-header';
+import { SOFT_BLUE } from '@/modules/site/components/network/templates/soft-blue/theme';
 
 /**
- * 3-column navbar: [brand as needed | flexible menu | actions as needed].
- * Center: Home plus inline categories up to the limit, the rest under the "Lainnya" menu.
+ * Header SoftBlue: varian slim dari mode navbar bersama.
+ *
+ * @param site - Data situs tenant aktif.
+ * @param path - Path aktif untuk status navigasi.
+ * @returns Header server sesuai varian.
  */
 export async function SoftBlueHeader({ site, path = '/' }: { readonly site: NetworkSiteData; readonly path?: string }) {
-  const nav = await getSiteCategoryNav(site);
-  const showRegion =
-    site.regionName !== null &&
-    site.regionName !== undefined &&
-    site.regionName !== '' &&
-    !site.settings.name.toLowerCase().includes(site.regionName.toLowerCase());
-
   return (
-    <>
-      <SoftBlueTopBar site={site} />
-      <div className="sticky top-0 z-40 px-4 pt-3 sm:px-6">
-        <div className="mx-auto max-w-7xl rounded-2xl bg-white/95 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
-          <SoftBlueHeaderBar
-        brand={
-          <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
-            <Image
-              unoptimized
-              src={site.settings.logoUrl}
-              alt={site.settings.name}
-              width={72}
-              height={72}
-              className="h-9 w-9 flex-none rounded-xl object-cover ring-1 ring-slate-200"
-            />
-            <span className="grid min-w-0 leading-none">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <strong className="truncate font-sans text-lg font-extrabold tracking-tight text-slate-900">
-                  {site.settings.name}
-                </strong>
-                {showRegion ? (
-                  <span className="flex-none rounded-md bg-[#2563eb]/10 px-1.5 py-0.5 font-sans text-[11px] font-bold text-[#2563eb]">
-                    {site.regionName}
-                  </span>
-                ) : null}
-              </span>
-            </span>
-          </Link>
-        }
-        nav={<SoftBlueDesktopNav categories={nav} path={path} />}
-        sidebar={<SoftBlueMobileNav categories={nav} path={path} />}
-          />
-        </div>
-      </div>
-    </>
+    <SiteHeader
+      variant="slim"
+      drawer="right"
+      site={site}
+      path={path}
+      skin={{
+        accent: SOFT_BLUE.primary,
+        tone: 'light',
+        card: SOFT_BLUE.card,
+        ring: SOFT_BLUE.ring,
+        ink: SOFT_BLUE.ink,
+        muted: SOFT_BLUE.muted,
+        searchPanel: SOFT_BLUE.searchPanel,
+      }}
+      templateId="soft-blue"
+    />
   );
 }

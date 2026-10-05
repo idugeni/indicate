@@ -69,25 +69,30 @@ describe('CommentThread', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('menunda embed sampai section mendekati viewport', () => {
+  it('menyembunyikan embed di balik tombol sampai pembaca meminta', () => {
     render(<CommentThread {...PROPS} />);
-    expect(screen.getByText('Memuat komentar…')).toBeDefined();
+    expect(screen.getByRole('button', { name: /tampilkan komentar/i })).toBeDefined();
     expect(screen.queryByTestId('disqus-embed')).toBeNull();
+    expect(screen.queryByText('Memuat komentar…')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /tampilkan komentar/i }));
     intersect(0);
     expect(screen.getByTestId('disqus-embed').getAttribute('data-shortname')).toBe(SHORTNAME);
   });
 
-  it('langsung memuat embed saat browser tanpa IntersectionObserver', () => {
+  it('tetap meminta klik saat browser tanpa IntersectionObserver', () => {
     vi.unstubAllGlobals();
     delete (window as unknown as Record<string, unknown>).IntersectionObserver;
     render(<CommentThread {...PROPS} />);
-    expect(screen.queryByText('Memuat komentar…')).toBeNull();
+    expect(screen.getByRole('button', { name: /tampilkan komentar/i })).toBeDefined();
+    expect(screen.queryByTestId('disqus-embed')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /tampilkan komentar/i }));
     expect(screen.getByTestId('disqus-embed')).toBeDefined();
   });
 
   it('menampilkan fallback saat thread pihak ketiga tidak kunjung siap', () => {
     vi.useFakeTimers();
     render(<CommentThread {...PROPS} />);
+    fireEvent.click(screen.getByRole('button', { name: /tampilkan komentar/i }));
     intersect(0);
     expect(screen.getByTestId('disqus-embed')).toBeDefined();
     act(() => {
@@ -99,6 +104,7 @@ describe('CommentThread', () => {
   it('tetap memuat thread saat Disqus siap sebelum batas waktu', () => {
     vi.useFakeTimers();
     render(<CommentThread {...PROPS} />);
+    fireEvent.click(screen.getByRole('button', { name: /tampilkan komentar/i }));
     intersect(0);
     window.DISQUS = {};
     act(() => {
@@ -111,6 +117,7 @@ describe('CommentThread', () => {
   it('memasang ulang embed saat pembaca mencoba lagi', () => {
     vi.useFakeTimers();
     render(<CommentThread {...PROPS} />);
+    fireEvent.click(screen.getByRole('button', { name: /tampilkan komentar/i }));
     intersect(0);
     act(() => {
       vi.advanceTimersByTime(20000);
