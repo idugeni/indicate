@@ -15,8 +15,19 @@
       "command": "npx",
       "args": [
         "-y",
-        "chrome-devtools-mcp@latest"
-      ]
+        "chrome-devtools-mcp@1.10.1",
+        "--headless",
+        "--isolated",
+        "--no-performance-crux",
+        "--no-usage-statistics",
+        "--screenshotFormat=jpeg",
+        "--screenshotMaxWidth=1280"
+      ],
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=6144",
+        "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS": "1",
+        "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1"
+      }
     },
     "context7": {
       "command": "npx",

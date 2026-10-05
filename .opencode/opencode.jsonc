@@ -3,8 +3,29 @@
   "mcp": {
     "servers": {
       "chrome-devtools": {
+        // Diselaraskan dengan opencode.jsonc root (hemat memori, lihat
+        // komentar di sana). File ini duplikat: lokasi config proyek yang
+        // didukung adalah opencode.json(c) di root, bukan file ini — jangan
+        // fork pengaturannya, ubah di root saja.
         "type": "local",
-        "command": ["npx", "-y", "chrome-devtools-mcp@latest", "--autoConnect", "--channel=stable"]
+        "command": [
+          "cmd",
+          "/c",
+          "npx",
+          "-y",
+          "chrome-devtools-mcp@1.10.1",
+          "--headless",
+          "--isolated",
+          "--no-performance-crux",
+          "--no-usage-statistics",
+          "--screenshotFormat=jpeg",
+          "--screenshotMaxWidth=1280"
+        ],
+        "environment": {
+          "NODE_OPTIONS": "--max-old-space-size=6144",
+          "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS": "1",
+          "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1"
+        }
       }
     }
   }
