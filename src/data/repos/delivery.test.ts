@@ -241,6 +241,7 @@ describe('readBridgeArticles', () => {
     sourceOrganizationId: 'org-upt',
     sourceArticleId: 'art-upt-1',
     publishedAt: new Date('2026-10-04T11:00:00.000Z'),
+    originHost: 'portal.example',
   };
 
   it('menayangkan artikel pemilik di portal penyaji', async () => {
@@ -289,6 +290,19 @@ describe('readBridgeArticles', () => {
     const site = await repository.loadNetworkSite({ ...CONTEXT, siteId: 's-apex' }, {});
     expect(site?.articles).toHaveLength(1);
     expect(site?.articles[0]).toMatchObject({ id: 'art-upt-1', articleSiteId: 'bridge-apex' });
+  });
+
+  it('menautkan bridge apex ke url portal kota pemilik', async () => {
+    const cityRow = { ...bridgeAssignment, id: 'bridge-city', siteId: 's-city', originHost: 'wonosobo.portal.example' };
+    const { repository } = harness({ articles: [], bridgeAssignments: [cityRow], bridgeDetails: [bridgeDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT, siteId: 's-apex' }, {});
+    expect(site?.articles[0]).toMatchObject({ href: 'https://wonosobo.portal.example/berita-upt' });
+  });
+
+  it('memakai path relatif untuk bridge portal sendiri', async () => {
+    const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]).toMatchObject({ href: '/berita-upt' });
   });
 });
 

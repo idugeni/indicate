@@ -143,6 +143,7 @@ type BridgeDetail = {
 interface BridgePair {
   readonly bridgeId: string;
   readonly siteId: string;
+  readonly originHost: string;
   readonly publishedAt: Date | string;
   readonly detail: BridgeDetail;
 }
@@ -451,8 +452,10 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       sourceOrganizationId: portalAssignments.sourceOrganizationId,
       sourceArticleId: portalAssignments.sourceArticleId,
       publishedAt: portalAssignments.publishedAt,
+      originHost: sites.normalizedHostname,
     })
       .from(portalAssignments)
+      .innerJoin(sites, and(eq(sites.organizationId, portalAssignments.organizationId), eq(sites.id, portalAssignments.siteId)))
       .where(and(eq(portalAssignments.organizationId, context.organizationId), siteScope, eq(portalAssignments.state, 'published'), isNotNull(portalAssignments.publishedAt)))
       .orderBy(sql`${portalAssignments.publishedAt} DESC`)
       .limit(100);
@@ -485,7 +488,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           const needle = query.search.toLowerCase();
           if (!detail.title.toLowerCase().includes(needle) && !detail.body.toLowerCase().includes(needle)) continue;
         }
-        pairs.push({ bridgeId: row.id, siteId: row.siteId, publishedAt: row.publishedAt, detail });
+        pairs.push({ bridgeId: row.id, siteId: row.siteId, originHost: row.originHost, publishedAt: row.publishedAt, detail });
       }
     }
     return pairs.sort((left, right) => new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime());
@@ -567,7 +570,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           slug: detail.slug,
           title: detail.title,
           description,
-          href: `/${detail.slug}`,
+          href: originHref(pair.originHost, context, detail.slug),
           canonicalUrl: detail.canonical_url ?? null,
           robotsDirective: null,
           ...(isBridgeDetail
