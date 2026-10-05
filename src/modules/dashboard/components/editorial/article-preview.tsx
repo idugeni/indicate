@@ -41,6 +41,7 @@ function rewriteMediaSrc(doc: TipTapDoc, mapping: ReadonlyMap<string, string>): 
  * @param coverImageUrl - Draft cover image URL; omitted when null.
  * @param doc - Draft TipTap JSON; an empty state shows when absent.
  * @param command - Dashboard dispatcher for `media.read` preview URLs.
+ * @param ownerOrganizationId - Media-owning org for cross-org drafts; omitted for same-org drafts.
  * @returns Article-styled preview; durable media refs resolve quietly with fallback.
  */
 export function ArticlePreview({
@@ -49,12 +50,14 @@ export function ArticlePreview({
   coverImageUrl = null,
   doc,
   command,
+  ownerOrganizationId,
 }: {
   readonly title: string;
   readonly description: string;
   readonly coverImageUrl?: string | null;
   readonly doc: TipTapDoc | null;
   readonly command: CommandFn;
+  readonly ownerOrganizationId?: string | null | undefined;
 }) {
   const [resolved, setResolved] = useState<ReadonlyMap<string, string>>(() => new Map());
   const expiryRef = useRef<ReadonlyMap<string, number>>(new Map());
@@ -73,7 +76,12 @@ export function ArticlePreview({
       if (missing.length === 0) return;
       void (async () => {
         try {
-          const result = (await command('media.readMany', { mediaIds: missing })) as {
+          const result = (await command('media.readMany', {
+            mediaIds: missing,
+            ...(ownerOrganizationId === undefined || ownerOrganizationId === null
+              ? {}
+              : { ownerOrganizationId }),
+          })) as {
             readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown; readonly expiresAt?: unknown }[];
           } | null;
           if (!Array.isArray(result?.items) || cancelled) return;
@@ -96,7 +104,7 @@ export function ArticlePreview({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [doc, command, mediaIds, resolved]);
+  }, [doc, command, mediaIds, resolved, ownerOrganizationId]);
 
   if (doc === null) {
     return (

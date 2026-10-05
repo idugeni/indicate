@@ -122,7 +122,12 @@ export async function uploadEditorImage(
     compressedMediaType: prepared.mediaType,
   } as const;
   try {
-    const read = (await command('media.read', { mediaId })) as { readonly url?: string } | null;
+    const read = (await command('media.read', {
+      mediaId,
+      ...(options.ownerOrganizationId === undefined || options.ownerOrganizationId === null
+        ? {}
+        : { ownerOrganizationId: options.ownerOrganizationId }),
+    })) as { readonly url?: string } | null;
     if (typeof read?.url === 'string' && read.url !== '') return { ...stored, previewUrl: read.url };
   } catch {
     /* Fall through to the durable relative URL. */

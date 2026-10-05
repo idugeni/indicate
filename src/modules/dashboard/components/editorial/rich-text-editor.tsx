@@ -16,10 +16,11 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, Loader2, WandSparkles } from 'lucide-react';
+import { ChevronDown, Link2, Loader2, Upload, WandSparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import type { MediaOwner } from '@/modules/publishing/models';
 import { detectDriveEmbed, detectSocialEmbed, extractYouTubeId, isSafeLinkUrl, isSafeMediaSrc, isTipTapDoc, type TipTapDoc } from '@/modules/site/tiptap-document';
@@ -67,9 +68,6 @@ function fileStem(name: string): string {
  * @param polishBusy - AI polish in flight.
  * @param polishDisabled - Disable the polish button even when idle.
  * @param polishLabel - Button caption; defaults to `Poles isi`.
- * @param stickyToolbar - Pin the toolbar under the header on narrow screens.
- *   The host owns the swap: it passes true only after its own action bar
- *   released sticky, so the two bars never stack.
  * @param labelledBy - ID of the visible label describing this editor.
  * @param disabled - Disables toolbar and canvas during submission.
  * @returns Toolbar plus canvas styled with Shadcn and Tailwind tokens.
@@ -84,7 +82,6 @@ export function RichTextEditor({
   polishBusy = false,
   polishDisabled = false,
   polishLabel = 'Poles isi',
-  stickyToolbar = false,
   labelledBy,
   disabled = false,
 }: {
@@ -97,7 +94,6 @@ export function RichTextEditor({
   readonly polishBusy?: boolean;
   readonly polishDisabled?: boolean;
   readonly polishLabel?: string;
-  readonly stickyToolbar?: boolean;
   readonly labelledBy?: string;
   readonly disabled?: boolean;
 }) {
@@ -125,6 +121,7 @@ export function RichTextEditor({
    * toolbar tidak menumpuk dua formulir sekaligus di layar sempit.
    */
   const [openPanel, setOpenPanel] = useState<'link' | 'youtube' | 'social' | 'imageUrl' | null>(null);
+  const [imageMenuOpen, setImageMenuOpen] = useState(false);
   const togglePanel = (panel: 'link' | 'youtube' | 'social' | 'imageUrl') => {
     setOpenPanel((current) => (current === panel ? null : panel));
   };
@@ -305,7 +302,7 @@ export function RichTextEditor({
 
   return (
     <div className="overflow-hidden rounded border border-hairline-strong bg-bg transition-colors duration-180 focus-within:border-brass hover:border-hairline">
-      <div id={toolbarId} role="toolbar" aria-label="Format teks" className={`flex flex-wrap items-center gap-1.5 border-b border-hairline bg-bg-raised p-2 ${stickyToolbar ? 'max-sm:sticky max-sm:top-[60px] max-sm:z-20 max-sm:shadow-md' : ''}`}>
+      <div id={toolbarId} role="toolbar" aria-label="Format teks" className="flex flex-wrap items-center gap-1.5 border-b border-hairline bg-bg-raised p-2">
         {editor === null ? null : (
           <>
             <div role="group" aria-label="Gaya dasar" className="flex min-w-0 flex-wrap items-center gap-1">
@@ -326,17 +323,48 @@ export function RichTextEditor({
               setLinkDraft(typeof editor.getAttributes('link').href === 'string' ? (editor.getAttributes('link').href as string) : '');
               togglePanel('link');
             }, 'Sisip atau ubah tautan')}
-            <AppTooltip label="Unggah gambar ke R2" side="top">
-              <Button type="button" variant="outline" size="xs" aria-label="Unggah gambar" disabled={busy} onClick={() => fileRef.current?.click()}>
-                {uploading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
-                Gambar
-              </Button>
-            </AppTooltip>
-            <AppTooltip label="Sisipkan gambar dari URL luar" side="top">
-              <Button type="button" variant="outline" size="xs" aria-label="Sisipkan gambar dari URL" aria-expanded={openPanel === 'imageUrl'} disabled={busy} onClick={() => togglePanel('imageUrl')}>
-                URL
-              </Button>
-            </AppTooltip>
+            <Popover open={imageMenuOpen} onOpenChange={setImageMenuOpen}>
+              <AppTooltip label="Sisipkan gambar: unggah atau URL" side="top">
+                <PopoverTrigger
+                  render={
+                    <Button type="button" variant="outline" size="xs" aria-label="Sisipkan gambar" aria-expanded={imageMenuOpen} aria-haspopup="menu" disabled={busy}>
+                      {uploading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
+                      Gambar
+                    </Button>
+                  }
+                />
+              </AppTooltip>
+              <PopoverContent align="start" className="w-52 p-1">
+                <div role="menu" aria-label="Sumber gambar" className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => {
+                      setImageMenuOpen(false);
+                      fileRef.current?.click();
+                    }}
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-left font-sans text-xs text-paper transition-colors hover:bg-bg-raised-2 disabled:opacity-50"
+                  >
+                    <Upload className="h-3.5 w-3.5 text-paper-faint" aria-hidden="true" />
+                    Unggah dari perangkat
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => {
+                      setImageMenuOpen(false);
+                      setOpenPanel((current) => (current === 'imageUrl' ? null : 'imageUrl'));
+                    }}
+                    className="flex items-center gap-2 rounded px-2 py-1.5 text-left font-sans text-xs text-paper transition-colors hover:bg-bg-raised-2 disabled:opacity-50"
+                  >
+                    <Link2 className="h-3.5 w-3.5 text-paper-faint" aria-hidden="true" />
+                    Dari URL luar
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
             </div>
             <Separator orientation="vertical" className="h-5" />
             <AppTooltip label={advancedOpen ? 'Sembunyikan format lanjutan' : 'Tampilkan format lanjutan'} side="top">
@@ -345,17 +373,6 @@ export function RichTextEditor({
                 Advance
               </Button>
             </AppTooltip>
-            {onPolish === undefined ? null : (
-              <>
-                <Separator orientation="vertical" className="h-5" />
-                <AppTooltip label="Poles alur dan EYD isi dengan AI tanpa mengubah fakta" side="top">
-                  <Button type="button" variant="outline" size="xs" aria-label={polishLabel} disabled={busy || polishDisabled} onClick={onPolish}>
-                    {polishBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <WandSparkles className="h-3 w-3" aria-hidden="true" />}
-                    {polishLabel}
-                  </Button>
-                </AppTooltip>
-              </>
-            )}
           </>
         )}
       </div>
@@ -470,46 +487,50 @@ export function RichTextEditor({
       ) : null}
 
       {openPanel === 'imageUrl' ? (
-        <div className="grid min-w-0 gap-1.5 overflow-x-clip border-b border-hairline bg-bg-raised-2 p-2">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <label htmlFor={imageUrlInputId} className="font-mono text-[11px] text-paper-dim">
-              URL gambar
-            </label>
-            <label htmlFor={imageUrlAltInputId} className="font-mono text-[11px] text-paper-faint">
-              Alt (opsional)
-            </label>
+        <div className="grid min-w-0 gap-2 overflow-x-clip border-b border-hairline bg-bg-raised-2 p-2">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_7rem] gap-2 sm:grid-cols-[minmax(0,1fr)_8rem]">
+            <div className="min-w-0 space-y-1">
+              <label htmlFor={imageUrlInputId} className="font-mono text-[11px] text-paper-dim">
+                URL gambar
+              </label>
+              <Input
+                id={imageUrlInputId}
+                value={imageUrlDraft}
+                onChange={(event) => setImageUrlDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyImageUrl();
+                  }
+                }}
+                placeholder="https://…/gambar.webp"
+                disabled={busy}
+                className="h-7 min-w-0 w-full font-mono text-xs"
+              />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <label htmlFor={imageUrlAltInputId} className="font-mono text-[11px] text-paper-faint">
+                Alt (opsional)
+              </label>
+              <Input
+                id={imageUrlAltInputId}
+                value={imageUrlAlt}
+                onChange={(event) => setImageUrlAlt(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyImageUrl();
+                  }
+                }}
+                placeholder="Keterangan"
+                disabled={busy}
+                maxLength={300}
+                aria-label="Alt"
+                className="h-7 min-w-0 w-full font-mono text-xs"
+              />
+            </div>
           </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <Input
-              id={imageUrlInputId}
-              value={imageUrlDraft}
-              onChange={(event) => setImageUrlDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  applyImageUrl();
-                }
-              }}
-              placeholder="https://…/gambar.webp"
-              disabled={busy}
-              className="h-7 min-w-0 flex-1 font-mono text-xs"
-            />
-            <Input
-              id={imageUrlAltInputId}
-              value={imageUrlAlt}
-              onChange={(event) => setImageUrlAlt(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  applyImageUrl();
-                }
-              }}
-              placeholder="Keterangan"
-              disabled={busy}
-              maxLength={300}
-              aria-label="Alt"
-              className="h-7 w-28 min-w-0 font-mono text-xs sm:w-32"
-            />
+          <div className="flex justify-end">
             <Button type="button" variant="outline" size="xs" disabled={busy} onClick={applyImageUrl} className="flex-none">
               Sisipkan
             </Button>
@@ -576,7 +597,19 @@ export function RichTextEditor({
         </div>
       ) : null}
 
-      <EditorContent editor={editor} aria-describedby={status === null ? undefined : `${toolbarId}-status`} />
+      <div className="relative">
+        {onPolish === undefined ? null : (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-2">
+            <AppTooltip label="Poles alur dan EYD isi dengan AI tanpa mengubah fakta" side="left">
+              <Button type="button" variant="outline" size="xs" aria-label={polishLabel} disabled={busy || polishDisabled} onClick={onPolish} className="pointer-events-auto bg-bg/90 shadow-md backdrop-blur">
+                {polishBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <WandSparkles className="h-3 w-3" aria-hidden="true" />}
+                {polishLabel}
+              </Button>
+            </AppTooltip>
+          </div>
+        )}
+        <EditorContent editor={editor} aria-describedby={status === null ? undefined : `${toolbarId}-status`} />
+      </div>
       <p id={`${toolbarId}-status`} role="status" aria-live="polite" className="m-0 border-t border-hairline bg-bg-raised px-3 py-1.5 font-mono text-[11px] text-paper-faint">
         {status ?? 'Paragraf baru: Enter. Heading 2/3, daftar, kutipan, tautan aman, gambar R2, tabel, dan sematan YouTube.'}
       </p>

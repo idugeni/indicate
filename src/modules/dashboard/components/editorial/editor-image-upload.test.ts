@@ -36,6 +36,26 @@ describe('uploadEditorImage', () => {
     expect(command).toHaveBeenCalledWith('media.complete', expect.objectContaining({ widthPx: 1200, heightPx: 675 }));
   });
 
+  it('meneruskan organisasi pemilik ke reserve, complete, dan read pratinjau', async () => {
+    const command = vi.fn(async (action: string) => {
+      if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { 'Content-Type': 'image/webp' } }, thumb: null };
+      if (action === 'media.complete') return { id: '0199a2b3-4c5d-7e8f-9012-3456789abcde' };
+      if (action === 'media.read') return { url: 'https://r2.example/preview' };
+      throw new Error(`unexpected ${action}`);
+    });
+    const fetchFn = vi.fn(async () => ({ ok: true }) as Response);
+    const file = new File(['gambar'], 'pasar.jpg', { type: 'image/jpeg' });
+    const result = await uploadEditorImage(file, { kind: 'organization' }, command, {
+      ownerOrganizationId: 'org-asing',
+      prepare: mockPrepare as never,
+      fetchFn: fetchFn as never,
+    });
+    expect(result.previewUrl).toBe('https://r2.example/preview');
+    expect(command).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ ownerOrganizationId: 'org-asing' }));
+    expect(command).toHaveBeenCalledWith('media.complete', expect.objectContaining({ ownerOrganizationId: 'org-asing' }));
+    expect(command).toHaveBeenCalledWith('media.read', { mediaId: '0199a2b3-4c5d-7e8f-9012-3456789abcde', ownerOrganizationId: 'org-asing' });
+  });
+
   it('gagal jelas saat reservasi tidak lengkap', async () => {
     const command = vi.fn(async () => null);
     const file = new File(['gambar'], 'pasar.jpg', { type: 'image/jpeg' });

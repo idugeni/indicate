@@ -39,7 +39,7 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
     refineTitles, refineDescription, aiAction, aiReady, titleVariants, generatingTitles,
     bodyJsonProblem, setMode, mode, bodyText, transcribeFileInline, polished, polishRounds,
     setPolished, applyPolishedBody, bodyJsonDraft, richResetKey, handleRichChange, command,
-    foreignOwnerOrg, polishBodyInline, editorPinned, editorSentinelRef, isSubmitting,
+    foreignOwnerOrg, polishBodyInline, isSubmitting,
     willPublish, viewsInput, setViewsInput, bumpViews, editorStats, statItems, featuredId,
     featuredPreviewUrl, coverUrl, articleType, setArticleType, videoUrl, setVideoUrl,
     audioUrl, setAudioUrl, durationInput, setDurationInput, isSponsored, setIsSponsored,
@@ -320,7 +320,6 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
               ) : null}
               {mode === 'tulis' ? (
                 <>
-                <div ref={editorSentinelRef} aria-hidden="true" className="h-px" />
                 <RichTextEditor
                   key={richResetKey}
                   initialDoc={bodyJsonDraft}
@@ -331,7 +330,6 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
                   polishBusy={aiAction === 'polish'}
                   polishDisabled={!aiReady || bodyText.trim() === ''}
                   polishLabel={polishRounds === 0 ? 'Poles isi' : 'Poles ulang'}
-                  stickyToolbar={editorPinned}
                   labelledBy={`${bodyInputId}-label`}
                   disabled={isSubmitting}
                 />
@@ -343,6 +341,7 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
                   coverImageUrl={featuredPreviewUrl ?? (coverUrl.trim() === '' ? null : coverUrl.trim())}
                   doc={bodyJsonDraft}
                   command={command ?? (async () => null)}
+                  ownerOrganizationId={foreignOwnerOrg}
                 />
               ) : (
                 <div className="space-y-1.5">

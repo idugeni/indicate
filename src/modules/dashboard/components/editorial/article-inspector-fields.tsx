@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { DateTimeField } from '@/modules/dashboard/components/shared/date-time-field';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { CategoryCombobox } from '@/modules/dashboard/components/shared/category-combobox';
 import { SearchCombobox } from '@/modules/dashboard/components/shared/search-combobox';
@@ -74,6 +75,9 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
     bodyText, isSubmitting, source, setSource, canonicalUrl, setCanonicalUrl, tags, setTags,
     setFeaturedId, setFeaturedOrgId, setFeaturedName, setFeaturedPreviewUrl, setFeaturedVersion,
     setFeaturedFocal,
+    status, publishOnSaveId, publishOnSave, setPublishOnSave, targetSiteIds, targetLabel,
+    willPublish, editorStats, rawScheduleInput, setRawScheduleInput, rawPublishDateInput,
+    setRawPublishDateInput,
     publisherId, authorId, regionOptions, cityOptions, publisherOptions, allCategories,
     defaultCategoryName, authorOptions, effectiveCategoryIds, selectedPublisher,
     foreignOwnerOrg, selectedAuthor, tagSuggestions, libraryFiltered, libraryVisible,
@@ -85,6 +89,71 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
         <div className="grid content-start gap-6 lg:sticky lg:top-[72px]">
           <SectionCard icon={SlidersHorizontal} title="Inspektor artikel" eyebrow="Periksa">
             <div className="space-y-5">
+              <section aria-label="Publikasi" className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brass" />
+                  <p className="m-0 font-mono text-[11px] font-medium uppercase tracking-wider text-paper">Publikasi</p>
+                </div>
+                {status === 'scheduled' ? (
+                  <div className="space-y-1.5">
+                    <Label className="font-mono text-xs text-paper-dim">Jadwal terbit</Label>
+                    <DateTimeField
+                      value={rawScheduleInput}
+                      onChange={setRawScheduleInput}
+                      disabled={isSubmitting}
+                      ariaLabel="Jadwal terbit"
+                      mode="future"
+                    />
+                  </div>
+                ) : null}
+                {status === 'active' ? (
+                  <div className="space-y-1.5">
+                    <Label className="font-mono text-xs text-paper-dim">Tanggal terbit</Label>
+                    <DateTimeField
+                      value={rawPublishDateInput}
+                      onChange={setRawPublishDateInput}
+                      disabled={isSubmitting}
+                      ariaLabel="Tanggal terbit"
+                      mode="past"
+                    />
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-2 rounded border border-hairline bg-bg p-2.5">
+                  <span className="flex items-center gap-2">
+                    <Checkbox
+                      id={publishOnSaveId}
+                      checked={publishOnSave}
+                      onCheckedChange={(checked) => setPublishOnSave(checked === true)}
+                      disabled={isSubmitting}
+                      className="border-hairline-strong data-checked:border-brass data-checked:bg-brass data-checked:text-bg"
+                    />
+                    <Label htmlFor={publishOnSaveId} className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                      Tayang otomatis
+                    </Label>
+                  </span>
+                  {willPublish ? (
+                    <span className="text-right font-mono text-[11px] tabular-nums text-paper-faint">
+                      {targetSiteIds.length.toLocaleString('id-ID')} {targetLabel}
+                    </span>
+                  ) : null}
+                </div>
+                {status !== 'scheduled' && status !== 'active' ? (
+                  <AppTooltip label={`Judul ${titleText.length}/60 · Deskripsi ${descriptionText.length}/160`}>
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        aria-hidden="true"
+                        className={`h-2 w-2 rounded-full ${titleText.length === 0 ? 'bg-hairline-strong' : titleText.length <= 60 ? 'bg-signal' : titleText.length <= 100 ? 'bg-brass' : 'bg-error'}`}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className={`h-2 w-2 rounded-full ${descriptionText.length === 0 ? 'bg-hairline-strong' : descriptionText.length < 120 ? 'bg-brass' : descriptionText.length <= 160 ? 'bg-signal' : 'bg-error'}`}
+                      />
+                      <span className="font-mono text-[11px] tabular-nums text-paper-faint">{editorStats.words} kata</span>
+                    </span>
+                  </AppTooltip>
+                ) : null}
+              </section>
+              <Separator />
               <section aria-label="Optimasi hasil cari" className="space-y-2.5">
                 <div className="flex items-center gap-2">
                   <span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brass" />

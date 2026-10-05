@@ -67,6 +67,12 @@ describe('Pratinjau artikel', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith('media.readMany', { mediaIds: [MEDIA_ID] }));
   });
 
+  it('meneruskan organisasi pemilik ke pembacaan media lintas organisasi', async () => {
+    const command = vi.fn(async () => ({ items: [{ mediaId: MEDIA_ID, url: 'https://r2.contoh.id/pratinjau.png', expiresAt: '2026-10-02T00:10:00.000Z' }] }));
+    render(<ArticlePreview title="Kabar" description="" doc={docWithImage(MEDIA_ID)} command={command} ownerOrganizationId="org-asing" />);
+    await waitFor(() => expect(command).toHaveBeenCalledWith('media.readMany', { mediaIds: [MEDIA_ID], ownerOrganizationId: 'org-asing' }));
+  });
+
   it('menggabungkan banyak media dalam satu panggilan dan memakai cache segar', async () => {
     const fresh = new Date(Date.now() + 10 * 60_000).toISOString();
     const command = vi.fn(async () => ({

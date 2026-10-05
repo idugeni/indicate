@@ -15,7 +15,7 @@ describe('RichTextEditor', () => {
     expect(screen.getByRole('toolbar', { name: 'Format teks' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Tebal' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'H2' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Unggah gambar' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Sisipkan gambar' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Advance' })).toBeDefined();
     expect(screen.getByRole('status')).toBeDefined();
   });
@@ -41,11 +41,12 @@ describe('RichTextEditor', () => {
     expect(screen.queryByLabelText('Keterangan gambar')).toBeNull();
   });
 
-  it('membuka panel URL gambar dari toolbar', async () => {
+  it('membuka panel URL gambar dari menu sisip gambar', async () => {
     const user = userEvent.setup();
     render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
     expect(screen.queryByLabelText('URL gambar')).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Sisipkan gambar dari URL' }));
+    await user.click(screen.getByRole('button', { name: 'Sisipkan gambar' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Dari URL luar' }));
     expect(screen.getByLabelText('URL gambar')).toBeDefined();
     expect(screen.getByLabelText(/Alt/)).toBeDefined();
   });
@@ -53,7 +54,8 @@ describe('RichTextEditor', () => {
   it('menolak URL gambar yang tidak aman', async () => {
     const user = userEvent.setup();
     render(<RichTextEditor onDocChange={() => {}} command={async () => null} labelledBy="body-label" />);
-    await user.click(screen.getByRole('button', { name: 'Sisipkan gambar dari URL' }));
+    await user.click(screen.getByRole('button', { name: 'Sisipkan gambar' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Dari URL luar' }));
     await user.type(screen.getByLabelText('URL gambar'), 'notaurl');
     await user.click(screen.getByRole('button', { name: 'Sisipkan' }));
     expect(screen.getByRole('status').textContent ?? '').toContain('tidak valid');

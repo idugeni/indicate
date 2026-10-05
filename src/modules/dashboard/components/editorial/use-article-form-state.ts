@@ -112,41 +112,6 @@ export function useArticleFormState({
   /** Admin tanpa kunci wilayah boleh menerbitkan nasional ke semua apex. */
   const isUnrestricted = model !== null && model.regionScope === null;
   const nationalActive = isUnrestricted && isNational;
-  /**
-   * True saat editor teks sudah masuk area baca di layar sempit: bar aksi
-   * atas melepas sticky-nya dan gantian toolbar editor yang menempel, agar
-   * perkakas tulis selalu dalam jangkauan tanpa scroll ke atas.
-   */
-  const [editorPinned, setEditorPinned] = useState(false);
-  const editorSentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function' || typeof IntersectionObserver === 'undefined') return;
-    const query = window.matchMedia('(max-width: 639px)');
-    const sentinel = editorSentinelRef.current;
-    if (sentinel === null) return;
-    let observer: IntersectionObserver | null = null;
-    const setup = () => {
-      observer?.disconnect();
-      observer = null;
-      if (!query.matches) {
-        setEditorPinned(false);
-        return;
-      }
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry !== undefined) setEditorPinned(!entry.isIntersecting);
-        },
-        { rootMargin: '-72px 0px 0px 0px', threshold: 0 },
-      );
-      observer.observe(sentinel);
-    };
-    setup();
-    query.addEventListener('change', setup);
-    return () => {
-      observer?.disconnect();
-      query.removeEventListener('change', setup);
-    };
-  }, []);
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
   const [featuredVersion, setFeaturedVersion] = useState<number | null>(null);
   const [featuredAlt, setFeaturedAlt] = useState('');
@@ -1140,7 +1105,7 @@ export function useArticleFormState({
     featuredId, setFeaturedId, setFeaturedOrgId, setFeaturedName, setFeaturedPreviewUrl,
     setFeaturedVersion, setFeaturedFocal, featuredName, featuredPreviewUrl, featuredStatus,
     provinceId, setProvinceId, cityId, setCityId, isNational, setIsNational,
-    isUnrestricted, nationalActive, editorPinned, editorSentinelRef,
+    isUnrestricted, nationalActive,
     uploadingFeatured, featuredAlt, setFeaturedAlt, featuredCaption, setFeaturedCaption, featuredFocal,
     coverBlobRef, coverRemoteRef, libraryOpen, libraryItems, libraryLoading, libraryError,
     libraryQuery, setLibraryQuery, libraryShown, setLibraryShown, libraryPreviews,
