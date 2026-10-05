@@ -1,6 +1,6 @@
 import type { ObjectStoragePort } from '@/integrations/storage/ports';
 import type { PublicationTargetPublisherPort } from '@/modules/publishing/ports';
-import type { PublicationTerminalNotifier, PublicationSharePrewarmPort, PublicationIndexNowPort } from '@/modules/publishing/ports';
+import type { PublicationTerminalNotifier, PublicationSharePrewarmPort, PublicationIndexNowPort, PublicationPingPort } from '@/modules/publishing/ports';
 import type { RedisCoordinationPort, QueueClaim } from '@/integrations/redis/ports';
 import { PublishingConflictError, type PublishingRepository, type TargetTransitionInput } from '@/modules/publishing/ports';
 import { retryDelaySeconds, type RetryPolicy } from '@/modules/publishing/publication-policy';
@@ -31,6 +31,7 @@ export class PublicationWorker {
     private readonly notifier: PublicationTerminalNotifier | null = null,
     private readonly prewarmer: PublicationSharePrewarmPort | null = null,
     private readonly indexNow: PublicationIndexNowPort | null = null,
+    private readonly pinger: PublicationPingPort | null = null,
   ) {}
 
   private async commitTransition(claim: WorkerClaim, input: TargetTransitionInput): Promise<PublicationStatusProjection> {
@@ -124,6 +125,9 @@ export class PublicationWorker {
       try {
         await this.indexNow?.submit([...warmedUrls]);
       } catch { /* best-effort: sitemap still converges */ }
+      try {
+        await this.pinger?.ping([...warmedUrls]);
+      } catch { /* best-effort: aggregators still poll feeds */ }
     }
     return { claimed, processed, reconciled: 0, cleaned: 0, failed: 0 };
   }

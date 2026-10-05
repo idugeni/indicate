@@ -7,6 +7,7 @@ import { PublicationService } from '@/modules/publishing/publication-service';
 import { PublicationWorker } from '@/modules/publishing/publication-worker';
 import { HttpSharePrewarm } from '@/modules/publishing/share-prewarm';
 import { HttpIndexNowSubmitter } from '@/integrations/indexnow/indexnow-submitter';
+import { HttpPingomaticPinger } from '@/integrations/ping/pingomatic-pinger';
 import { ApiKeyService } from '@/modules/integrations/api-key-service';
 import { CustomerService } from '@/modules/integrations/customer-service';
 import { RateLimitService } from '@/modules/integrations/rate-limit-service';
@@ -110,6 +111,7 @@ export function createPublicationWorkerComposition(config: RuntimeConfig, bootst
         undefined,
         new HttpSharePrewarm(),
         config.seo.indexnowKey === null ? null : new HttpIndexNowSubmitter(config.seo.indexnowKey),
+        new HttpPingomaticPinger(),
       );
     },
   };

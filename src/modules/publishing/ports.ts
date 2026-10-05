@@ -271,6 +271,17 @@ export interface PublicationIndexNowPort {
   submit(urls: readonly string[]): Promise<void>;
 }
 
+/**
+ * Nudges feed aggregators about freshly published hosts.
+ *
+ * @remarks Implementations never throw and bound every fetch with a timeout:
+ * ping delivery is opportunistic telemetry-grade work that must never
+ * delay or fail the worker. Aggregators keep polling feeds regardless.
+ */
+export interface PublicationPingPort {
+  ping(urls: readonly string[]): Promise<void>;
+}
+
 export class PublishingAccessDeniedError extends Error {
   constructor() { super('Publishing tenant resource unavailable'); }
 }
