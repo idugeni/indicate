@@ -31,4 +31,21 @@ describe('AD_SLOTS', () => {
     expect(AD_SLOTS['mobile-banner'].visibilityClass).toContain('md:hidden');
     expect(AD_SLOTS['mobile-banner'].devices).toEqual(['mobile']);
   });
+
+  it('mencadangkan rasio billboard desktop untuk top-banner', () => {
+    const top = AD_SLOTS['top-banner'];
+    expect(top.sizes).toContainEqual({ width: 970, height: 250 });
+    expect(top.sizes).toContainEqual({ width: 728, height: 90 });
+    expect(top.sizes).toContainEqual({ width: 320, height: 100 });
+    expect(top.reserveClass).toContain('aspect-[320/100]');
+    expect(top.reserveClass).toContain('md:aspect-[728/90]');
+    expect(top.reserveClass).toContain('lg:aspect-[970/250]');
+  });
+
+  it('menjaga sidebar-bottom khusus unit tinggi', () => {
+    const bottom = AD_SLOTS['sidebar-bottom'];
+    expect(bottom.sizes).toContainEqual({ width: 300, height: 600 });
+    expect(bottom.sizes).not.toContainEqual({ width: 300, height: 250 });
+    expect(bottom.reserveClass).toContain('aspect-[300/600]');
+  });
 });

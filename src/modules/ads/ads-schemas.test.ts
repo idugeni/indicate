@@ -53,6 +53,15 @@ describe('adsPlacementSchema', () => {
     expect(adsPlacementSchema.safeParse(base).success).toBe(true);
     expect(adsPlacementSchema.safeParse({ ...base, templateId: 'template-asing' }).success).toBe(false);
   });
+
+  it('menolak penargetan perangkat: render server tidak punya sinyal viewport tepercaya', () => {
+    const base = { campaignId: '11111111-1111-4111-8111-111111111111', creativeId: '22222222-2222-4222-8222-222222222222', slotId: 'in-content', siteId: null, templateId: null, priority: 5, startsAt: null, endsAt: null };
+    expect(adsPlacementSchema.safeParse({ ...base, device: null }).success).toBe(true);
+    for (const device of ['desktop', 'tablet', 'mobile']) {
+      const parsed = adsPlacementSchema.safeParse({ ...base, device });
+      expect(parsed.success).toBe(false);
+    }
+  });
 });
 
 describe('adsPlacementUpdateSchema', () => {

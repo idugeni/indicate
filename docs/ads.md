@@ -16,7 +16,7 @@ Template  →  TEMPLATE_AD_MAP  →  AdSlot  →  resolveAdSlot  →  AdContaine
 | Lapisan | Berkas | Tanggung jawab |
 |---|---|---|
 | Definisi slot | `src/modules/ads/slots.ts` | 14 id semantik + ukuran, rasio cadangan, format, perangkat |
-| Peta template | `src/modules/ads/placement-map.ts` | Zona per template, tanpa `if template ===` |
+| Peta template | `src/modules/ads/placement-map.ts` | Zona per template (`header/top/listing/article/channel/search/anchor/footer`), tanpa `if template ===` |
 | Kreatif | `src/modules/ads/creatives.ts` | Union `image` / `html` / `provider` + validasi |
 | Konfigurasi | `src/modules/ads/config.ts` | Urutan prioritas + override tenant + guard template |
 | Rendering | `src/modules/ads/ad-slot.tsx` | `AdSlot`, `AdHeaderTop`, `AdShellTop`, `AdShellBottom` |
@@ -36,28 +36,35 @@ Slot bersifat semantik (posisi), bukan milik template: `header-top`,
 Setiap slot membawa metadata: `sizes`, `allowedFormats`,
 `devices`, `maxWidthPx`, `reserveClass` (aspect-ratio per breakpoint untuk
 mencegah CLS), dan `visibilityClass` (`hidden lg:block` untuk sidebar,
-`md:hidden` untuk spanduk seluler).
+`md:hidden` untuk spanduk seluler). `top-banner` memetakan
+Mobile 320×100 → Tablet 728×90 → Desktop 970×250, dengan rasio cadangan
+yang sama persis di tiap breakpoint. `sidebar-bottom` khusus unit tinggi
+(300×600, 160×600); slot persegi memakai `sidebar-top`. `mobile-banner`
+hanya dirender `MobileAnchorSlot` di cangkang — tidak pernah di alir halaman.
 
 ## Peta 10 template
 
-| Template | header | top | listing | article | channel | footer |
-|---|---|---|---|---|---|---|
-| clean-blue | – | leaderboard | hero-ad, in-feed, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
-| black-lime | – | top-banner | hero-ad, in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
-| dark-navy | – | below-navigation | hero-ad, sidebar-top, sidebar-bottom, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
-| glassy-blue | header-top | – | in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
-| green-minimal | – | leaderboard | in-feed, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
-| orange-modern | – | top-banner | hero-ad, in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
-| purple-editorial | – | below-navigation | hero-ad, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
-| red-editorial | header-top | – | in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
-| soft-blue | – | leaderboard | hero-ad, in-feed, mobile-banner | ※, mobile-banner | content-middle, mobile-banner | footer-banner |
-| warm-editorial | – | below-navigation | in-feed, mobile-banner | ※, mobile-banner | in-feed, mobile-banner | footer-banner |
+| Template | header | top | listing | article | channel | search | anchor | footer |
+|---|---|---|---|---|---|---|---|---|
+| clean-blue | – | leaderboard | hero-ad, in-feed | ※ | content-middle | in-feed | mobile-banner | footer-banner |
+| black-lime | – | top-banner | hero-ad, in-feed | ※ | in-feed | in-feed | mobile-banner | footer-banner |
+| dark-navy | – | below-navigation | hero-ad, sidebar-top, sidebar-bottom | ※ | content-middle | in-feed | mobile-banner | footer-banner |
+| glassy-blue | header-top | – | in-feed | ※ | in-feed | in-feed | mobile-banner | footer-banner |
+| green-minimal | – | leaderboard | in-feed | ※ | content-middle | in-feed | mobile-banner | footer-banner |
+| orange-modern | – | top-banner | hero-ad, in-feed | ※ | in-feed | in-feed | mobile-banner | footer-banner |
+| purple-editorial | – | below-navigation | hero-ad | ※ | content-middle | in-feed | mobile-banner | footer-banner |
+| red-editorial | header-top | – | in-feed | ※ | in-feed | in-feed | mobile-banner | footer-banner |
+| soft-blue | – | leaderboard | hero-ad, in-feed | ※ | content-middle | in-feed | mobile-banner | footer-banner |
+| warm-editorial | – | below-navigation | in-feed | ※ | in-feed | in-feed | mobile-banner | footer-banner |
 
 ※ = `in-content, content-middle, content-bottom, sidebar-top, sidebar-bottom`
 — zona artikel identik di semua template by design (dijaga `ad-matrix.test.tsx`).
 
 Slot di luar peta template tidak pernah dirender (`mapped: false` → `enabled: false`
-di `resolveAdSlot`, diferifikasi `ad-matrix.test.tsx`).
+di `resolveAdSlot`, diferifikasi `ad-matrix.test.tsx`). `mobile-banner`
+sengaja tidak ada di zona alir mana pun: cangkang adalah satu-satunya
+perender lewat `MobileAnchorSlot`, sehingga setiap halaman ponsel memuat
+tepat satu unit (dijaga `page-ad-single.test.tsx`).
 `sidebar-middle` terdaftar dan didukung renderer, tetapi belum dipetakan
 di template mana pun — cadangan untuk rel masa depan; `sidebar-top` dan
 `sidebar-bottom` ada di artikel semua template dan di listing dark-navy.
@@ -65,9 +72,11 @@ di template mana pun — cadangan untuk rel masa depan; `sidebar-top` dan
 ## Konfigurasi tenant
 
 Prioritas: Global Default → Template Default → Tenant Override → Campaign
-Override. Tenant override tinggal di `site_settings.seo.ads` (baris
-tenant-isolasi yang sama dengan pengaturan situs, tercakup tag cache
-`site:`/`org:` yang sudah ada), contoh:
+Override. Sumber otoritatif adalah tabel `tenant_ad_settings` (ditulis
+dasbor admin per situs per slot). Tas JSON lama `site_settings.seo.ads`
+hanya kompatibilitas baca: tidak pernah ditulis kode aplikasi dan kalah di
+setiap penggabungan per slot (`readSettings` di `src/data/repos/delivery.ts`).
+Contoh override tenant:
 
 ```json
 {
@@ -84,15 +93,22 @@ tenant-isolasi yang sama dengan pengaturan situs, tercakup tag cache
 ```
 
 Nilai rusak diabaikan parser (`parseTenantAdOverrides`), tidak pernah
-merusak halaman. Jalur naik kelas saat dasbor admin tiba adalah tabel
-`tenant_ad_settings` khusus; hanya parser yang berubah.
+merusak halaman. Penulisan selalu ke tabel `tenant_ad_settings` via dasbor
+admin (`POST /api/dashboard/ads`); tas JSON tidak lagi ditulis dan hanya
+dibaca sampai baris warisan terakhir termigrasi.
 
 ## Perilaku responsif
 
 - Wadah selalu `min-w-0`, lebar fluida, `max-width` sebagai batas atas —
   tanpa lebar piksel tetap, tanpa `overflow-hidden` sebagai penutup masalah.
 - Rasio cadangan per breakpoint (`aspect-[320/100] md:aspect-[728/90]`)
-  menahan ruang sebelum kreatif tiba.
+  menahan ruang sebelum kreatif tiba. `top-banner` memakai tiga anak tangga
+  penuh (`320/100 → 728/90 → 970/250`) agar billboard desktop tidak
+  menggeser layout saat kreatif HTML/penyedia tiba tanpa dimensi.
+- Setiap halaman pencarian memuat satu `in-feed` antara formulir dan hasil
+  (hanya saat ada hasil), memakai arsitektur slot yang sama.
+- Setiap slot terisi menampilkan label `Iklan` kecil yang terlihat di atas
+  kreatif — dirender server bersama slot sehingga tidak menambah layout shift.
 - Slot sidebar hilang di bawah `lg` (rel runtuh menjadi inline),
   `mobile-banner` hilang di `md` ke atas.
 - Slot di atas header (`header-top`) menggulir pergi; satu-satunya elemen
@@ -213,8 +229,12 @@ sajian. Gate memakai `site.manage` yang sama seperti action lain.
 - Race insert switch situs (duplikat PK) dipetakan ke konflik 409, bukan 500.
 - Kreatif gambar berdimensi memakai rasio aspeknya sendiri sehingga ruang
   cadangan sama persis dengan hasil render (nol CLS).
-- Penempatan ber-scope perangkat dilewati di render server (tanpa sinyal
-  perangkat tepercaya) dan prioritas tertinggi menang deterministik per slot.
+- Penargetan perangkat dihentikan: baris penempatan ber-scope perangkat
+  dilewati di render server (tanpa sinyal perangkat tepercaya), skema API
+  menolak penempatan ber-scope perangkat baru, dan dasbor tidak lagi
+  menawarkan pilihannya — gunakan slot khusus perangkat
+  (`mobile-banner`, `sidebar-*`). Kolom `device` dipertahankan baca-saja
+  untuk baris warisan.
 
 ## Batasan tahap ini
 
@@ -229,9 +249,11 @@ sajian. Gate memakai `site.manage` yang sama seperti action lain.
 ## Verifikasi
 
 - `npm run typecheck`, `npm run lint` (`--max-warnings=0`), dan seluruh
-  suite vitest hijau, termasuk 48 uji di `src/modules/ads` dan uji wiring
+  suite vitest hijau, termasuk 152 uji di `src/modules/ads` dan uji wiring
   `tenant_ad_settings` di `src/data/repos/delivery.test.ts`.
 - Cakupan uji: katalog slot, validasi kreatif, peta 10 template,
   prioritas konfigurasi, pemetaan baris DB, render null saat dinonaktifkan/tak dipetakan/
   template asing, unit AdSense (`ins.adsbygoogle` + loader klien),
-  tanpa lebar tetap.
+  tanpa lebar tetap, label iklan terlihat, penolakan penargetan perangkat,
+  satu spanduk ponsel per halaman (`page-ad-single.test.tsx`), dan
+  `in-feed` pencarian di semua template.

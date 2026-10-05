@@ -78,7 +78,10 @@ export interface PlacementRow {
  * @param templateId - Active template; template-scoped rows for other templates are skipped.
  * @returns Campaign overrides. Device-scoped rows are skipped: the server
  * render has no trustworthy device signal, so serving them would risk a
- * desktop-sized creative on a phone viewport.
+ * desktop-sized creative on a phone viewport. Device targeting is
+ * deprecated — `adsPlacementSchema` rejects new device-scoped placements
+ * and the dashboard no longer offers the option; the column stays
+ * read-only for legacy rows, which remain inert here.
  */
 export function mapPlacementRows(
   rows: readonly PlacementRow[],

@@ -8,10 +8,12 @@ import { isAdCreative, type AdCreative } from '@/modules/ads/creatives';
  * Per-slot tenant override: disabling a slot or pinning a creative.
  *
  * @remarks
- * Carried inside `site_settings.seo.ads` (one tenant-isolated row per site,
- * already covered by the `site:`/`org:` cache tags), so no migration or new
- * table is needed for this stage. The graduation path is a dedicated
- * `tenant_ad_settings` table; only `parseTenantAdOverrides` changes then.
+ * Authoritative source is the `tenant_ad_settings` table (one row per
+ * site per slot, written by the dashboard). The legacy
+ * `site_settings.seo.ads` JSON bag is compatibility read-only: it is never
+ * written by application code and loses every per-slot merge against a
+ * table row. Only `parseTenantAdOverrides` reads it, and only until the
+ * last legacy row is migrated.
  */
 export interface AdSlotOverride {
   readonly enabled?: boolean | undefined;
@@ -97,6 +99,8 @@ export function isSlotMapped(templateId: TemplateId, slot: AdSlotId): boolean {
     zones.listing.includes(slot) ||
     zones.article.includes(slot) ||
     zones.channel.includes(slot) ||
+    zones.search.includes(slot) ||
+    zones.anchor.includes(slot) ||
     zones.footer.includes(slot)
   );
 }

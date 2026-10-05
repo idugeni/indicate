@@ -6,7 +6,6 @@ import { TEMPLATE_IDS } from '@/modules/site/components/network/templates/listin
 const uuid = z.uuid();
 const slotId = z.enum(AD_SLOT_IDS);
 const templateId = z.enum(TEMPLATE_IDS);
-const device = z.enum(['desktop', 'tablet', 'mobile']);
 const isoDateTime = z.iso.datetime({ offset: true }).nullable();
 const version = z.number().int().min(1);
 
@@ -155,7 +154,7 @@ export const adsPlacementSchema = z.object({
   slotId,
   siteId: uuid.nullable(),
   templateId: templateId.nullable(),
-  device: device.nullable(),
+  device: z.null({ error: 'Penargetan perangkat dihentikan: render server tidak memiliki sinyal perangkat tepercaya. Gunakan slot khusus perangkat (mobile-banner, sidebar-*).' }),
   priority: z.number().int().min(0).max(1000),
   startsAt: isoDateTime,
   endsAt: isoDateTime,

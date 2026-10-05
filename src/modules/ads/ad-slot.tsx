@@ -17,7 +17,7 @@ interface AdSlotProps {
 
 function AdLabel() {
   return (
-    <p className="sr-only">
+    <p className="m-0 text-center font-sans text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">
       Iklan
     </p>
   );

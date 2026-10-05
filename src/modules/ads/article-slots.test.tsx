@@ -78,7 +78,7 @@ const ARTICLE_COMPONENTS: Record<TemplateId, ComponentType<ArticleProps>> = {
   'warm-editorial': WarmEditorialArticle,
 };
 
-const ARTICLE_SLOTS: readonly AdSlotId[] = ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'];
+const ARTICLE_SLOTS: readonly AdSlotId[] = ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'];
 
 function siteFor(templateId: TemplateId, article: ArticleListItem): NetworkSiteData {
   const site = makeNetworkSite([article]);

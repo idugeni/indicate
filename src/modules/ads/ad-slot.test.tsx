@@ -69,6 +69,19 @@ describe('AdSlot', () => {
     expect(html).toContain('aspect-[');
   });
 
+  it('menampilkan label iklan yang terlihat (bukan hanya screen-reader)', () => {
+    const html = renderToStaticMarkup(
+      <AdSlot
+        site={siteFor('clean-blue', {
+          leaderboard: { enabled: true, creative: { kind: 'image', imageUrl: 'https://cdn.example/a.png' } },
+        })}
+        slot="leaderboard"
+      />,
+    );
+    expect(html).toContain('Iklan');
+    expect(html).not.toContain('sr-only');
+  });
+
   it('merender kreatif gambar dengan tautan bersponsor dan lazy loading', () => {
     const html = renderToStaticMarkup(
       <AdSlot

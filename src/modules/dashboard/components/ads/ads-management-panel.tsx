@@ -1204,7 +1204,6 @@ function PlacementSection({ overview, busy, onCreate, onUpdate, onDelete }: {
   const [slotId, setSlotId] = useState('leaderboard');
   const [siteId, setSiteId] = useState('');
   const [templateId, setTemplateId] = useState('');
-  const [device, setDevice] = useState('');
   const [priority, setPriority] = useState('0');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
@@ -1238,7 +1237,7 @@ function PlacementSection({ overview, busy, onCreate, onUpdate, onDelete }: {
             campaignId, creativeId, slotId,
             siteId: siteId === '' ? null : siteId,
             templateId: templateId === '' ? null : templateId,
-            device: device === '' ? null : device,
+            device: null,
             priority: Number(priority), startsAt: toIsoOrNull(startsAt), endsAt: toIsoOrNull(endsAt),
           }).then((ok) => { if (ok) { setPriority('0'); setStartsAt(''); setEndsAt(''); } });
         }}
@@ -1276,11 +1275,11 @@ function PlacementSection({ overview, busy, onCreate, onUpdate, onDelete }: {
           </DashboardSelect>
         </span>
         <span className="grid gap-1.5">
-          <Label htmlFor="ads-pla-dev">Perangkat (kosong = semua)</Label>
-          <DashboardSelect id="ads-pla-dev" value={device} disabled={busy} onValueChange={(next) => setDevice(next ?? '')} placeholder="Semua perangkat" ariaLabel="Perangkat penempatan">
-            <DashboardSelectItem value="">Semua perangkat</DashboardSelectItem>
-            {['desktop', 'tablet', 'mobile'].map((value) => <DashboardSelectItem key={value} value={value}>{value}</DashboardSelectItem>)}
-          </DashboardSelect>
+          <Label>Perangkat</Label>
+          <p className="m-0 font-sans text-xs leading-relaxed text-paper-dim">
+            Semua perangkat. Penargetan perangkat dihentikan karena render server tidak memiliki sinyal viewport
+            tepercaya — gunakan slot khusus perangkat (`mobile-banner`, `sidebar-*`).
+          </p>
         </span>
         <span className="grid gap-1.5">
           <Label htmlFor="ads-pla-priority">Prioritas</Label>
@@ -1346,7 +1345,7 @@ function PlacementSection({ overview, busy, onCreate, onUpdate, onDelete }: {
                   <TableCell className="font-mono text-xs text-paper">{placement.slotId}</TableCell>
                   <TableCell className="font-sans text-[13px] text-paper">{`${campaignName(placement.campaignId)} · ${creativeName(placement.creativeId)}`}</TableCell>
                   <TableCell className="font-sans text-[11px] text-paper-dim">
-                    {`${siteName(placement.siteId)} · ${placement.templateId ?? 'semua template'} · ${placement.device ?? 'semua perangkat'}`}
+                    {`${siteName(placement.siteId)} · ${placement.templateId ?? 'semua template'} · ${placement.device === null ? 'semua perangkat' : `warisan ${placement.device} (tidak ditayangkan)`}`}
                   </TableCell>
                   <TableCell>
                     <Checkbox

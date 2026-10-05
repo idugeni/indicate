@@ -9,8 +9,9 @@ import type { AdSlotId } from '@/modules/ads/slots';
  * The registry replaces template conditionals: a template declares which
  * semantic slots it exposes per zone, and `AdSlot` renders nothing for slots
  * outside the active template's set. Zones mirror the shell anatomy
- * (`header` above the sticky header, `top` below it, `footer` above the
- * footer) plus the three page kinds that carry inline placements.
+ * (`header` above the sticky header, `top` below it, `anchor` for the
+ * phone-only sticky bar, `footer` above the footer) plus the four page kinds
+ * that carry inline placements (`listing`, `article`, `channel`, `search`).
  */
 export interface TemplateAdZones {
   readonly header: readonly AdSlotId[];
@@ -18,6 +19,8 @@ export interface TemplateAdZones {
   readonly listing: readonly AdSlotId[];
   readonly article: readonly AdSlotId[];
   readonly channel: readonly AdSlotId[];
+  readonly search: readonly AdSlotId[];
+  readonly anchor: readonly AdSlotId[];
   readonly footer: readonly AdSlotId[];
 }
 
@@ -29,8 +32,11 @@ export interface TemplateAdZones {
  * The `article` zone is identical across templates by design: article pages
  * are structural clones, so ad topology is not template character — palette
  * and spacing are. The `mobile-banner` anchor lives in every shell
- * (site-wide, ponsel saja) so it is mapped in `listing`, `article`, and
- * `channel` everywhere. `sidebar-bottom` ships only where a rail column
+ * (site-wide, ponsel saja) so it is mapped ONLY in `anchor`, which
+ * `MobileAnchorSlot` alone consumes: page components must never render
+ * `mobile-banner` in-flow, keeping every mobile page at exactly one anchor
+ * unit. `search` carries one `in-feed` unit between the search form and the
+ * results on every template. `sidebar-bottom` ships only where a rail column
  * exists (`article` semua template, `listing` dark-navy). Per-template
  * character lives in `header`, `top`, `listing`, `channel`, and `footer`.
  * Keep `article` uniform; gate page-level experiments behind a new slot id
@@ -40,81 +46,101 @@ export const TEMPLATE_AD_MAP: Record<TemplateId, TemplateAdZones> = {
   'clean-blue': {
     header: [],
     top: ['leaderboard'],
-    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['content-middle', 'mobile-banner'],
+    listing: ['hero-ad', 'in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'black-lime': {
     header: [],
     top: ['top-banner'],
-    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['in-feed', 'mobile-banner'],
+    listing: ['hero-ad', 'in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'dark-navy': {
     header: [],
     top: ['below-navigation'],
-    listing: ['hero-ad', 'sidebar-top', 'sidebar-bottom', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['content-middle', 'mobile-banner'],
+    listing: ['hero-ad', 'sidebar-top', 'sidebar-bottom'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'glassy-blue': {
     header: ['header-top'],
     top: [],
-    listing: ['in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['in-feed', 'mobile-banner'],
+    listing: ['in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'green-minimal': {
     header: [],
     top: ['leaderboard'],
-    listing: ['in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['content-middle', 'mobile-banner'],
+    listing: ['in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'orange-modern': {
     header: [],
     top: ['top-banner'],
-    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['in-feed', 'mobile-banner'],
+    listing: ['hero-ad', 'in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'purple-editorial': {
     header: [],
     top: ['below-navigation'],
-    listing: ['hero-ad', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['content-middle', 'mobile-banner'],
+    listing: ['hero-ad'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'red-editorial': {
     header: ['header-top'],
     top: [],
-    listing: ['in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['in-feed', 'mobile-banner'],
+    listing: ['in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'soft-blue': {
     header: [],
     top: ['leaderboard'],
-    listing: ['hero-ad', 'in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['content-middle', 'mobile-banner'],
+    listing: ['hero-ad', 'in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['content-middle'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
   'warm-editorial': {
     header: [],
     top: ['below-navigation'],
-    listing: ['in-feed', 'mobile-banner'],
-    article: ['in-content', 'content-middle', 'content-bottom', 'mobile-banner', 'sidebar-top', 'sidebar-bottom'],
-    channel: ['in-feed', 'mobile-banner'],
+    listing: ['in-feed'],
+    article: ['in-content', 'content-middle', 'content-bottom', 'sidebar-top', 'sidebar-bottom'],
+    channel: ['in-feed'],
+    search: ['in-feed'],
+    anchor: ['mobile-banner'],
     footer: ['footer-banner'],
   },
 };

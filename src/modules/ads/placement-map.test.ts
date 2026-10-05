@@ -12,18 +12,29 @@ describe('TEMPLATE_AD_MAP', () => {
   it('hanya memetakan slot yang terdaftar di katalog', () => {
     for (const templateId of TEMPLATE_IDS) {
       const zones = TEMPLATE_AD_MAP[templateId];
-      const mapped = [...zones.header, ...zones.top, ...zones.listing, ...zones.article, ...zones.channel, ...zones.footer];
+      const mapped = [...zones.header, ...zones.top, ...zones.listing, ...zones.article, ...zones.channel, ...zones.search, ...zones.anchor, ...zones.footer];
       for (const slot of mapped) {
         expect(AD_SLOT_IDS).toContain(slot);
       }
     }
   });
 
-  it('memberi setiap template slot atas dan slot bawah', () => {
+  it('memberi setiap template slot atas, slot pencarian, dan slot bawah', () => {
     for (const templateId of TEMPLATE_IDS) {
       const zones = TEMPLATE_AD_MAP[templateId];
       expect(zones.header.length + zones.top.length).toBeGreaterThan(0);
+      expect(zones.search).toContain('in-feed');
+      expect(zones.anchor).toEqual(['mobile-banner']);
       expect(zones.footer.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('tidak memetakan spanduk ponsel di zona alir (jangkar adalah satu-satunya perender)', () => {
+    for (const templateId of TEMPLATE_IDS) {
+      const zones = TEMPLATE_AD_MAP[templateId];
+      for (const inFlow of [...zones.listing, ...zones.article, ...zones.channel, ...zones.search]) {
+        expect(inFlow).not.toBe('mobile-banner');
+      }
     }
   });
 
