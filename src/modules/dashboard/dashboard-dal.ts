@@ -223,7 +223,7 @@ function loadDashboardProjection(input: ProjectionInput): Promise<DashboardProje
       }
       const value = await loadDashboardProjectionFromDatabase(input);
       const durationMs = Date.now() - started;
-      recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value) });
+      recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value), bytesKind: 'projection' });
       if (store !== null) await store.writeKey(key, value, DASHBOARD_REDIS_TTL_SECONDS);
       return value;
     },
@@ -274,7 +274,7 @@ function loadAnalyticsProjection(input: AnalyticsInput): Promise<AnalyticsProjec
       }
       const value = await loadAnalyticsProjectionFromDatabase(input);
       const durationMs = Date.now() - started;
-      recordOperation({ route: 'dashboard', operation: 'cache.analytics', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value) });
+      recordOperation({ route: 'dashboard', operation: 'cache.analytics', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value), bytesKind: 'projection' });
       if (store !== null) await store.writeKey(key, value, ANALYTICS_REDIS_TTL_SECONDS);
       return value;
     },

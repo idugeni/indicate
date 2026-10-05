@@ -84,6 +84,15 @@ describe('InvalidationDispatcher', () => {
     expect(cloudflare.purgeHostname).not.toHaveBeenCalled();
   });
 
+  it('kegagalan purge memancarkan sinyal terstruktur tanpa menggagalkan task', async () => {
+    logMock.mockReset();
+    const { dispatcher } = harness({ purgeFails: true });
+    await dispatcher.dispatch(new Date(), 10);
+    const warn = logMock.mock.calls.find(([level, fields]) => level === 'warn' && (fields as { event: string }).event === 'delivery.invalidation.purge_failed');
+    expect(warn).toBeDefined();
+    expect(warn?.[1]).toMatchObject({ context: { requested: 3 } });
+  });
+
   it('mencatat tahap yang gagal pada sanitized_failure', async () => {
     const { dispatcher, failures } = harness({ revalidateFails: true });
     const summary = await dispatcher.dispatch(new Date(), 10);

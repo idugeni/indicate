@@ -30,9 +30,18 @@ export interface OperationSample {
   readonly cacheHit?: number | undefined;
   /** Cache misses credited to the operation. */
   readonly cacheMiss?: number | undefined;
-  /** Payload bytes transferred (request, response, or blob). */
+  /** Payload bytes transferred (request, response, or blob).
+   *
+   * @remarks Layer-tagged by `bytesKind`: `wire` = Redis REST bytes on the
+   * wire, `projection` = serialized cache payload measured at the DAL.
+   * Never sum one logical payload across layers (`redis.set` wire bytes and
+   * the `cache.dashboard` projection bytes describe the same object at two
+   * layers); compare within one `operation` instead.
+   */
   readonly payloadBytes?: number | undefined;
-  /** HTTP status when the operation is a request. */
+  /** Which layer `payloadBytes` was measured at; omitted when not a byte-bearing sample. */
+  readonly bytesKind?: 'wire' | 'projection' | undefined;
+  /** Outcome code: HTTP status for requests; 200 ok / 500 error for background operations. */
   readonly status?: number | undefined;
 }
 
@@ -52,6 +61,7 @@ interface OperationAggregate {
   tenantCounts: Map<string, number>;
   tenantOverflow: number;
   statuses: Map<number, number>;
+  bytesKinds: Set<string>;
 }
 
 /** Operations aggregated before one rollup line is emitted. */
@@ -104,6 +114,7 @@ export function recordOperation(sample: OperationSample): void {
         tenantCounts: new Map<string, number>(),
         tenantOverflow: 0,
         statuses: new Map<number, number>(),
+        bytesKinds: new Set<string>(),
       };
       aggregates.set(key, aggregate);
     }
@@ -120,6 +131,7 @@ export function recordOperation(sample: OperationSample): void {
     const payloadBytes = toFiniteNumber(sample.payloadBytes);
     aggregate.totalPayloadBytes += payloadBytes;
     if (payloadBytes > aggregate.maxPayloadBytes) aggregate.maxPayloadBytes = payloadBytes;
+    if (sample.bytesKind !== undefined) aggregate.bytesKinds.add(sample.bytesKind);
     if (sample.tenantId !== undefined && sample.tenantId !== '') {
       if (aggregate.tenantCounts.has(sample.tenantId)) {
         aggregate.tenantCounts.set(sample.tenantId, (aggregate.tenantCounts.get(sample.tenantId) ?? 0) + 1);
@@ -189,6 +201,7 @@ export function flushOperationMetrics(now: number = Date.now()): void {
         cacheMisses: aggregate.cacheMisses,
         totalPayloadBytes: aggregate.totalPayloadBytes,
         maxPayloadBytes: aggregate.maxPayloadBytes,
+        ...(aggregate.bytesKinds.size === 0 ? {} : { bytesKinds: [...aggregate.bytesKinds].sort() }),
         tenantCount: aggregate.tenants.size,
         tenantOverflow: aggregate.tenantOverflow,
         ...(topTenant === null ? {} : { topTenant, topTenantCount }),

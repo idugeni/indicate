@@ -8,6 +8,7 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { ContentAdminAccessDeniedError, DrizzleContentAdminRepository } from '@/data/repos/content/admin';
+import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 
@@ -61,8 +62,8 @@ const commandSchema = z.discriminatedUnion('action', [
   }),
 ]);
 
-async function handleGET() {
-  const requestId = crypto.randomUUID();
+async function handleGET(request: Request) {
+  const requestId = resolveRequestId(request);
   const cookieStore = await cookies();
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
@@ -128,4 +129,5 @@ async function handlePOST(request: Request) {
   }
 }
 
-export { handleGET as GET, handlePOST as POST };
+export const GET = withApiAccess('GET /api/dashboard/content', handleGET);
+export const POST = withApiAccess('POST /api/dashboard/content', handlePOST);

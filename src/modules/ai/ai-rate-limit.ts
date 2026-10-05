@@ -5,6 +5,28 @@ import { Redis } from '@upstash/redis';
 
 import type { AiDb } from '@/modules/ai/ai-types';
 import { aiScopedGet, aiScopedKey } from '@/modules/ai/ai-redis-namespace';
+import { recordOperation } from '@/core/observability/operation-metrics';
+
+/** Record one AI Redis gate evaluation; never throws. Counts only, no keys or values. */
+export function recordAiGate(
+  operation: 'ai.rate-limit' | 'ai.quota' | 'ai.breaker' | 'ai.gateway' | 'ai.budget' | 'ai.cursor',
+  started: number,
+  commands: number,
+  status: number,
+  tenantId?: string | undefined,
+): void {
+  const durationMs = Date.now() - started;
+  recordOperation({
+    route: 'ai',
+    operation,
+    provider: 'upstash-redis',
+    ...(tenantId === undefined ? {} : { tenantId }),
+    durationMs,
+    redisCommands: commands,
+    redisMs: durationMs,
+    status,
+  });
+}
 
 /** Sliding window for per-model RPM/TPM enforcement. */
 export const AI_RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -174,7 +196,12 @@ export async function checkAiModelRateLimit(
 ): Promise<AiRateLimitCheck> {
   const window = aiRateLimitWindow(now);
   const namespace = store.namespace ?? null;
-  const read = (key: string): Promise<unknown> => store.get(key);
+  const started = Date.now();
+  let commands = 0;
+  const read = async (key: string): Promise<unknown> => {
+    commands += 1;
+    return store.get(key);
+  };
   const rpmKey = aiScopedKey(namespace, aiRpmKey(modelName, window));
   const tpmKey = aiScopedKey(namespace, aiTpmKey(modelName, window));
   const charge = Math.max(1, Math.floor(estimatedTokens));
@@ -185,32 +212,42 @@ export async function checkAiModelRateLimit(
         [rpmKey, tpmKey],
         [limits.rpmLimit ?? -1, limits.tpmLimit ?? -1, charge, AI_RATE_LIMIT_WINDOW_SECONDS],
       );
+      recordAiGate('ai.rate-limit', started, 1, 200);
       return readRateLimitVerdict(verdict);
     } catch {
+      recordAiGate('ai.rate-limit', started, 1, 500);
       return { allowed: true };
     }
   }
   try {
     if (limits.rpmLimit !== null) {
       const current = toCounterOrZero(await aiScopedGet(read, namespace, aiRpmKey(modelName, window)));
-      if (current >= limits.rpmLimit) return { allowed: false, reason: 'rpm_exceeded' };
+      if (current >= limits.rpmLimit) {
+        recordAiGate('ai.rate-limit', started, commands, 200);
+        return { allowed: false, reason: 'rpm_exceeded' };
+      }
     }
     if (limits.tpmLimit !== null) {
       const current = toCounterOrZero(await aiScopedGet(read, namespace, aiTpmKey(modelName, window)));
       if (current + Math.max(1, Math.floor(estimatedTokens)) > limits.tpmLimit) {
+        recordAiGate('ai.rate-limit', started, commands, 200);
         return { allowed: false, reason: 'tpm_exceeded' };
       }
     }
     if (limits.rpmLimit !== null) {
       await store.incrby(rpmKey, 1);
       await store.expire(rpmKey, AI_RATE_LIMIT_WINDOW_SECONDS);
+      commands += 2;
     }
     if (limits.tpmLimit !== null) {
       await store.incrby(tpmKey, Math.max(1, Math.floor(estimatedTokens)));
       await store.expire(tpmKey, AI_RATE_LIMIT_WINDOW_SECONDS);
+      commands += 2;
     }
+    recordAiGate('ai.rate-limit', started, commands, 200);
     return { allowed: true };
   } catch {
+    recordAiGate('ai.rate-limit', started, commands, 500);
     return { allowed: true };
   }
 }
@@ -308,7 +345,12 @@ export async function checkOrganizationQuota(
 ): Promise<AiOrganizationQuotaCheck> {
   const day = now.toISOString().slice(0, 10);
   const namespace = store.namespace ?? null;
-  const read = (key: string): Promise<unknown> => store.get(key);
+  const started = Date.now();
+  let commands = 0;
+  const read = async (key: string): Promise<unknown> => {
+    commands += 1;
+    return store.get(key);
+  };
   const requestsKey = aiScopedKey(namespace, aiOrgQuotaRequestsKey(organizationId, day));
   const tokensKey = aiScopedKey(namespace, aiOrgQuotaTokensKey(organizationId, day));
   const charge = Math.max(1, Math.floor(estimatedTokens));
@@ -318,6 +360,7 @@ export async function checkOrganizationQuota(
     if (limits.dailyRequestLimit !== null) {
       const current = toCounterOrZero(await aiScopedGet(read, namespace, aiOrgQuotaRequestsKey(organizationId, day)));
       if (current >= limits.dailyRequestLimit) {
+        recordAiGate('ai.quota', started, commands, 200, organizationId);
         return { allowed: false, reason: 'org_daily_requests_exceeded', remainingRequests: 0 };
       }
       remainingRequests = limits.dailyRequestLimit - current;
@@ -325,6 +368,7 @@ export async function checkOrganizationQuota(
     if (limits.dailyTokenLimit !== null) {
       const current = toCounterOrZero(await aiScopedGet(read, namespace, aiOrgQuotaTokensKey(organizationId, day)));
       if (current + charge > limits.dailyTokenLimit) {
+        recordAiGate('ai.quota', started, commands, 200, organizationId);
         return { allowed: false, reason: 'org_daily_tokens_exceeded', remainingTokens: Math.max(0, limits.dailyTokenLimit - current) };
       }
       remainingTokens = limits.dailyTokenLimit - current;
@@ -332,13 +376,17 @@ export async function checkOrganizationQuota(
     if (limits.dailyRequestLimit !== null) {
       await store.incrby(requestsKey, 1);
       await store.expire(requestsKey, AI_ORG_QUOTA_TTL_SECONDS);
+      commands += 2;
     }
     if (limits.dailyTokenLimit !== null) {
       await store.incrby(tokensKey, charge);
       await store.expire(tokensKey, AI_ORG_QUOTA_TTL_SECONDS);
+      commands += 2;
     }
+    recordAiGate('ai.quota', started, commands, 200, organizationId);
     return { allowed: true, remainingRequests, remainingTokens };
   } catch {
+    recordAiGate('ai.quota', started, commands, 500, organizationId);
     return { allowed: true };
   }
 }

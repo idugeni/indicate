@@ -67,7 +67,7 @@ describe('recordOperation aggregation', () => {
     const allowed = new Set([
       'route', 'operation', 'provider', 'count', 'avgDurationMs', 'maxDurationMs', 'dbQueries', 'dbMs',
       'redisCommands', 'redisMs', 'cacheHits', 'cacheMisses', 'totalPayloadBytes', 'maxPayloadBytes',
-      'tenantCount', 'tenantOverflow', 'topTenant', 'topTenantCount', 'statuses',
+      'bytesKinds', 'tenantCount', 'tenantOverflow', 'topTenant', 'topTenantCount', 'statuses',
     ]);
     for (const entry of operations) {
       for (const key of Object.keys(entry)) expect(allowed.has(key)).toBe(true);
@@ -81,5 +81,34 @@ describe('recordOperation aggregation', () => {
     recordOperation({ route: 'r', operation: 'o', provider: 'p', durationMs: 1 });
     flushOperationMetrics(1_061_000);
     expect(logEvent).toHaveBeenCalledOnce();
+  });
+
+  it('menandai lapisan byte agar wire dan proyeksi tidak dijumlah silang', () => {
+    recordOperation({ route: 'cache', operation: 'redis.set', provider: 'upstash-redis', durationMs: 5, payloadBytes: 100, bytesKind: 'wire' });
+    recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'supabase-postgres', durationMs: 50, payloadBytes: 100, bytesKind: 'projection' });
+    flushOperationMetrics(1_060_000);
+    const { operations } = rollupContext();
+    expect(operations.find((entry) => entry.operation === 'redis.set')).toMatchObject({ bytesKinds: ['wire'] });
+    expect(operations.find((entry) => entry.operation === 'cache.dashboard')).toMatchObject({ bytesKinds: ['projection'] });
+  });
+
+  it('menjumlah hit/miss per kunci, bukan satu bendera per batch', () => {
+    recordOperation({ route: 'cache', operation: 'redis.mget', provider: 'upstash-redis', durationMs: 3, cacheHit: 7, cacheMiss: 3 });
+    flushOperationMetrics(1_060_000);
+    const { operations } = rollupContext();
+    expect(operations.find((entry) => entry.operation === 'redis.mget')).toMatchObject({ cacheHits: 7, cacheMisses: 3 });
+  });
+
+  it('membatasi operasi dan tenant agar memori rollup terbatas', () => {
+    for (let index = 0; index < 60; index += 1) {
+      recordOperation({ route: 'r', operation: `op-${index}`, provider: 'p', durationMs: 1 });
+    }
+    for (let index = 0; index < 210; index += 1) {
+      recordOperation({ route: 'r', operation: 'capped', provider: 'p', durationMs: 1, tenantId: `org-${index}` });
+    }
+    flushOperationMetrics(1_060_000);
+    const { operations } = rollupContext();
+    expect(operations.length).toBeLessThanOrEqual(50);
+    expect(operations.find((entry) => entry.operation === 'capped')).toMatchObject({ tenantCount: 200, tenantOverflow: 10 });
   });
 });

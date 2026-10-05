@@ -146,7 +146,8 @@ export class InvalidationDispatcher {
     if (budgeted.length > 0) {
       try {
         await this.cloudflare.purgeExactUrls(budgeted);
-      } catch {
+      } catch (error) {
+        logEvent('warn', { event: 'delivery.invalidation.purge_failed', context: { requested: budgeted.length, error: error instanceof Error ? error.message : 'unknown' } });
         /* left to expire via the edge TTL; the tasks are already completed above */
       }
     }

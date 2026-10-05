@@ -19,6 +19,14 @@ export interface RedisCoordinationPort extends HealthCheckPort {
    * after it is read, which the next poll covers.
    */
   hasPendingWork(): Promise<boolean>;
+  /**
+   * Read due/leased set sizes without claiming.
+   *
+   * @returns Cardinality of both sets for backlog-aware start signals.
+   * @remarks Optional so test stubs need no update; implementers must not
+   * double-bill callers that already called `hasPendingWork` on the tick.
+   */
+  peekDepth?(): Promise<{ readonly due: number; readonly leased: number }>;
   claimDue(now: Date, limit: number, leaseSeconds: number): Promise<readonly QueueClaim[]>;
   acknowledge(claim: QueueClaim): Promise<void>;
   mirrorState(organizationId: string, logicalId: string, state: string, ttlSeconds: number): Promise<void>;

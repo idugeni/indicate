@@ -4,6 +4,8 @@ import { sql } from 'drizzle-orm';
 
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
+import { logEvent } from '@/core/observability/logger';
+import { recordOperation } from '@/core/observability/operation-metrics';
 import { PAGEVIEW_KEY_TTL_SECONDS, parsePageviewKey } from '@/modules/site/pageview-contract';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
@@ -27,14 +29,27 @@ export function authorized(request: Request, secret: string): boolean {
 }
 
 function auditFlushIssue(requestId: string, event: string, fields: Readonly<Record<string, unknown>>): void {
-  console.error(JSON.stringify({
-    ts: new Date().toISOString(),
-    level: 'warn',
-    service: 'indicate-web',
-    event,
-    requestId,
-    ...fields,
-  }));
+  logEvent('warn', { event, requestId, context: fields });
+}
+
+/** Record one flush-phase sample; never throws. Counts only, no keys. */
+function recordFlushPhase(
+  operation: 'flush.scan' | 'flush.pop' | 'flush.commit' | 'flush.restore',
+  provider: 'upstash-redis' | 'supabase-postgres',
+  started: number,
+  sample: { readonly commands?: number | undefined; readonly status?: number | undefined; readonly tenantId?: string | undefined },
+): void {
+  const durationMs = Date.now() - started;
+  const isDb = provider === 'supabase-postgres';
+  recordOperation({
+    route: 'flush',
+    operation,
+    provider,
+    ...(sample.tenantId === undefined ? {} : { tenantId: sample.tenantId }),
+    durationMs,
+    ...(isDb ? { dbQueries: sample.commands ?? 0, dbMs: durationMs } : { redisCommands: sample.commands ?? 0, redisMs: durationMs }),
+    ...(sample.status === undefined ? {} : { status: sample.status }),
+  });
 }
 
 interface FlushEntry {
@@ -114,6 +129,7 @@ async function handleGET(request: Request) {
     return new NextResponse('Not Found', { status: 404, headers: { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
   }
   const noStore = { 'Cache-Control': 'private, no-store' };
+  logEvent('info', { event: 'view-flush.run.started', requestId });
   {
     const redis = new Redis({ url: context.config.redis.url, token: context.config.redis.token });
     const prefix = `pv:${context.bootstrap.environment}:`;
@@ -121,13 +137,16 @@ async function handleGET(request: Request) {
     let invalid = 0;
     let cursor = 0;
     let pages = 0;
+    let evalPages = 0;
     let truncated = false;
+    const scanStarted = Date.now();
     do {
       const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: SCAN_BATCH_SIZE });
       cursor = Number(next);
       pages += 1;
       if (keys.length > 0) {
         const popped = (await redis.eval(POP_PAGE_SCRIPT, keys, [])) as string[];
+        evalPages += 1;
         const outcome = collectPoppedDeltas(popped);
         for (const [key, entry] of outcome.deltas) {
           const existing = deltas.get(key);
@@ -146,7 +165,12 @@ async function handleGET(request: Request) {
         break;
       }
     } while (cursor !== 0);
-    if (deltas.size === 0 && invalid === 0) return NextResponse.json({ requestId, keys: 0, applied: 0, skipped: 0, orphans: 0, invalid: 0, truncated }, { headers: noStore });
+    recordFlushPhase('flush.scan', 'upstash-redis', scanStarted, { commands: pages + evalPages, status: 200 });
+    recordFlushPhase('flush.pop', 'upstash-redis', scanStarted, { commands: evalPages, status: 200 });
+    if (deltas.size === 0 && invalid === 0) {
+      logEvent('info', { event: 'view-flush.run.completed', requestId, context: { keys: 0, applied: 0, skipped: 0, orphans: 0, invalid: 0, truncated, organizations: 0 } });
+      return NextResponse.json({ requestId, keys: 0, applied: 0, skipped: 0, orphans: 0, invalid: 0, truncated }, { headers: noStore });
+    }
     const runtime = getSharedRuntimeDatabase(context.bootstrap);
     const byOrg = new Map<string, { key: string; entry: FlushEntry & { count: number } }[]>();
     for (const [key, entry] of deltas) {
@@ -160,6 +184,8 @@ async function handleGET(request: Request) {
     const appliedKeys: string[] = [];
     const orphanKeys: string[] = [];
     for (const [organizationId, rows] of byOrg) {
+      const commitStarted = Date.now();
+      let commitQueries = 0;
       try {
         await runtime.db.transaction(async (transaction) => {
           await transaction.execute(sql`RESET app.organization_id`);
@@ -168,6 +194,7 @@ async function handleGET(request: Request) {
           await transaction.execute(sql`RESET app.request_id`);
           await transaction.execute(sql`SELECT indicate_private.set_tenant_context(${organizationId}::uuid, ${'system:view-flush'}, ${requestId})`);
           await transaction.execute(sql`SELECT indicate_private.set_region_context(NULL::uuid)`);
+          commitQueries += 6;
           const pending = new Map<string, { key: string; entry: FlushEntry & { count: number } }>(
             rows.map(({ key, entry }) => [entry.articleSiteId, { key, entry }] as const),
           );
@@ -182,6 +209,7 @@ async function handleGET(request: Request) {
               FROM (VALUES ${values}) AS v(id, site_id, count)
               WHERE s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
               RETURNING s.id`);
+            commitQueries += 1;
             const appliedIds = new Set(updated.map((row) => row.id));
             const appliedEntries = chunk.filter(({ entry }) => appliedIds.has(entry.articleSiteId));
             if (appliedEntries.length > 0) {
@@ -194,6 +222,7 @@ async function handleGET(request: Request) {
                 VALUES ${dayValues}
                 ON CONFLICT (organization_id, article_site_id, day)
                 DO UPDATE SET views = d.views + EXCLUDED.views`);
+              commitQueries += 1;
             }
             for (const row of updated) {
               const hit = pending.get(row.id);
@@ -213,6 +242,7 @@ async function handleGET(request: Request) {
               LEFT JOIN article_sites AS s
                 ON s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
               WHERE s.id IS NULL`);
+            commitQueries += 1;
             for (const row of missing) {
               const hit = pending.get(row.id);
               if (hit !== undefined) {
@@ -222,8 +252,11 @@ async function handleGET(request: Request) {
             }
           }
         });
+        recordFlushPhase('flush.commit', 'supabase-postgres', commitStarted, { commands: commitQueries, status: 200, tenantId: organizationId });
       } catch (error) {
+        recordFlushPhase('flush.commit', 'supabase-postgres', commitStarted, { commands: commitQueries, status: 500, tenantId: organizationId });
         skipped += rows.length;
+        const restoreStarted = Date.now();
         try {
           const pipeline = redis.pipeline();
           for (const { key, entry } of rows) {
@@ -231,12 +264,15 @@ async function handleGET(request: Request) {
             pipeline.expire(key, PAGEVIEW_KEY_TTL_SECONDS);
           }
           await pipeline.exec();
+          recordFlushPhase('flush.restore', 'upstash-redis', restoreStarted, { commands: rows.length * 2, status: 200, tenantId: organizationId });
         } catch {
+          recordFlushPhase('flush.restore', 'upstash-redis', restoreStarted, { commands: rows.length * 2, status: 500, tenantId: organizationId });
           auditFlushIssue(requestId, 'view-flush.org.restore-failed', { organizationId, rows: rows.length });
         }
         auditFlushIssue(requestId, 'view-flush.org.skipped', { organizationId, rows: rows.length, error: error instanceof Error ? error.message : 'unknown' });
       }
     }
+    logEvent('info', { event: 'view-flush.run.completed', requestId, context: { keys: deltas.size + invalid, applied, skipped, orphans, invalid, truncated, organizations: byOrg.size } });
     return NextResponse.json({ requestId, keys: deltas.size + invalid, applied, skipped, orphans, invalid, truncated }, { headers: noStore });
   }
 }

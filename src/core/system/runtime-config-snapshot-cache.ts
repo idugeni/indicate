@@ -86,6 +86,7 @@ export class RuntimeConfigSnapshotCache {
           return this.adopt(environment, active.entry.snapshot);
         }
       } catch {
+        logEvent('debug', { event: 'runtime-config.snapshot.inventory-fallback', context: { environment } });
         /* inventory unavailable: fall through to the shared/full read below */
       }
     }
@@ -99,8 +100,10 @@ export class RuntimeConfigSnapshotCache {
             void this.#store.touch(environment, configurationVersion, this.#storeTtlSeconds).catch(() => undefined);
             return this.adopt(environment, sharedParsed.snapshot);
           }
+          logEvent('debug', { event: 'runtime-config.snapshot.shared-rejected', context: { environment, configurationVersion } });
         }
       } catch {
+        logEvent('debug', { event: 'runtime-config.snapshot.shared-fallback', context: { environment } });
         /* fall through to full read */
       }
     }

@@ -3,6 +3,7 @@ import 'server-only';
 import { Redis } from '@upstash/redis';
 
 import { aiScopedGet, aiScopedKey } from '@/modules/ai/ai-redis-namespace';
+import { recordAiGate } from '@/modules/ai/ai-rate-limit';
 
 /** OpenAI-compatible entry point for every Vercel AI Gateway model. */
 export const VERCEL_GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
@@ -63,13 +64,21 @@ export async function checkVercelGatewayBudget(
   namespace: string | null | undefined = null,
 ): Promise<VercelGatewayBudgetVerdict> {
   if (store === null) return { allowed: true, remainingBudget: VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET };
+  const started = Date.now();
+  let commands = 0;
+  const read = async (key: string): Promise<unknown> => {
+    commands += 1;
+    return store.get(key);
+  };
   try {
-    const spent = Number((await aiScopedGet((key) => store.get(key), namespace, monthKey(credentialId, now))) ?? 0);
+    const spent = Number((await aiScopedGet(read, namespace, monthKey(credentialId, now))) ?? 0);
+    recordAiGate('ai.gateway', started, commands, 200);
     if (spent >= VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET) {
       return { allowed: false, remainingBudget: Math.max(0, VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET - spent) };
     }
     return { allowed: true, remainingBudget: VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET - spent };
   } catch {
+    recordAiGate('ai.gateway', started, commands, 500);
     return { allowed: true, remainingBudget: VERCEL_GATEWAY_MONTHLY_TOKEN_BUDGET };
   }
 }
@@ -92,11 +101,14 @@ export async function recordVercelGatewayUsage(
   namespace: string | null | undefined = null,
 ): Promise<void> {
   if (store === null) return;
+  const started = Date.now();
   try {
     const key = aiScopedKey(namespace, monthKey(credentialId, now));
     await store.incrby(key, Math.max(1, Math.floor(tokensCount || 1)));
     await store.expire(key, secondsUntilMonthEnd(now));
+    recordAiGate('ai.gateway', started, 2, 200);
   } catch {
+    recordAiGate('ai.gateway', started, 0, 500);
     /* telemetry failure does not fail the answer */
   }
 }

@@ -21,6 +21,12 @@ vi.mock('@/core/observability/logger', () => ({
   logEvent,
 }));
 
+const recordOperation = vi.fn();
+
+vi.mock('@/core/observability/operation-metrics', () => ({
+  recordOperation,
+}));
+
 const { SNAPSHOT_WIRE_WARN_BYTES, UpstashSnapshotStore, snapshotWireSizeOf } = await import(
   '@/integrations/redis/upstash-snapshot-store'
 );
@@ -117,6 +123,28 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
   it('read mengembalikan null saat redis gagal', async () => {
     get.mockRejectedValueOnce(new Error('redis_unavailable'));
     expect(await store().read('test', 7)).toBeNull();
+  });
+
+  it('kegagalan baca/tulis/hapus tercatat 500 tanpa mengubah fail-open', async () => {
+    recordOperation.mockReset();
+    get.mockRejectedValueOnce(new Error('redis down'));
+    await expect(store().readKey('k')).resolves.toBeNull();
+    set.mockRejectedValueOnce(new Error('redis down'));
+    await expect(store().writeKey('k', { a: 1 }, 60)).resolves.toBeUndefined();
+    del.mockRejectedValueOnce(new Error('redis down'));
+    await expect(store().deleteKey('k')).resolves.toBeUndefined();
+    const samples = recordOperation.mock.calls.map((call) => call[0] as Record<string, unknown>);
+    expect(samples).toHaveLength(3);
+    for (const sample of samples) expect(sample.status).toBe(500);
+    expect(samples.map((sample) => sample.operation)).toEqual(['redis.get', 'redis.set', 'redis.del']);
+  });
+
+  it('mget menghitung hit/miss per kunci, bukan satu bendera', async () => {
+    recordOperation.mockReset();
+    mget.mockResolvedValueOnce(['{"a":1}', null, '{"b":2}']);
+    await store().readMany(['k1', 'k2', 'k3']);
+    const sample = recordOperation.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(sample).toMatchObject({ operation: 'redis.mget', cacheHit: 2, cacheMiss: 1 });
   });
 });
 

@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createPublicationWorkerComposition } from '@/modules/integrations';
 import { createPublicError } from '@/core/errors';
+import { logEvent } from '@/core/observability/logger';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import type { WorkerRunSummary } from '@/modules/publishing/publication-worker';
@@ -47,23 +48,31 @@ async function handleGET(request: Request) {
     if (mode === 'work' && !(await composition.queue.hasPendingWork()) && !isReconcileDue(new Date())) return NextResponse.json(IDLE_SUMMARY, { status: 200 });
     if (mode === 'reconcile') {
       const summary = await composition.worker().reconcile();
+      logEvent('info', { event: 'publishing.run.completed', requestId, context: { runId: `vercel-${requestId}`, mode, ...summary } });
       return NextResponse.json(summary, { status: 200 });
     }
     const started = Date.now();
     const pending = await composition.queue.hasPendingWork();
+    const depth = typeof composition.queue.peekDepth === 'function'
+      ? await composition.queue.peekDepth().catch(() => null)
+      : null;
+    logEvent('info', { event: 'publishing.run.started', requestId, context: { runId: `vercel-${requestId}`, mode, pending, ...(depth === null ? {} : { due: depth.due, leased: depth.leased }) } });
     const work = pending ? await composition.worker().run(`vercel-${requestId}`) : IDLE_SUMMARY;
     const reconcileBudgetMs = config.publishing.functionDeadlineSeconds * 1_000 - RECONCILE_BUDGET_BUFFER_MS;
     const reconcile = isReconcileDue(new Date()) && Date.now() - started < reconcileBudgetMs
       ? await composition.worker().reconcile()
       : IDLE_SUMMARY;
-    return NextResponse.json({
+    const summary = {
       claimed: work.claimed,
       processed: work.processed,
       reconciled: reconcile.reconciled,
       cleaned: reconcile.cleaned,
       failed: work.failed + reconcile.failed,
-    } satisfies WorkerRunSummary, { status: 200 });
+    } satisfies WorkerRunSummary;
+    logEvent('info', { event: 'publishing.run.completed', requestId, context: { runId: `vercel-${requestId}`, mode, ...summary } });
+    return NextResponse.json(summary, { status: 200 });
   } catch {
+    logEvent('error', { event: 'publishing.run.failed', requestId, context: { runId: `vercel-${requestId}` } });
     return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'Background processing is temporarily unavailable.', requestId), { status: 503 });
   }
 }

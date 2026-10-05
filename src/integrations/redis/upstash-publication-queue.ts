@@ -2,6 +2,7 @@ import 'server-only';
 
 import { Redis } from '@upstash/redis';
 
+import { recordOperation } from '@/core/observability/operation-metrics';
 import type { QueueClaim, RedisCoordinationPort } from '@/integrations/redis/ports';
 
 const CLAIM_SCRIPT = `
@@ -38,6 +39,12 @@ export interface UpstashPublicationQueueConfig {
   readonly resourceId: string;
 }
 
+/** Record one queue Redis call; never throws. No keys or payloads leave this module. */
+function recordQueueCall(operation: 'queue.depth' | 'queue.claim' | 'queue.enqueue' | 'queue.ack' | 'queue.mirror', started: number, commands: number, status: number): void {
+  const durationMs = Date.now() - started;
+  recordOperation({ route: 'queue', operation, provider: 'upstash-redis', durationMs, redisCommands: commands, redisMs: durationMs, status });
+}
+
 export class UpstashPublicationQueueAdapter implements RedisCoordinationPort {
   readonly resourceCount = 1 as const;
   readonly namespace: string;
@@ -63,33 +70,87 @@ export class UpstashPublicationQueueAdapter implements RedisCoordinationPort {
 
   async schedule(logicalId: string, dueAt: Date): Promise<void> {
     if (logicalId.length > 200) throw new Error('Logical queue identifier exceeds limit.');
-    await this.redis.zadd(this.dueKey, { score: dueAt.getTime(), member: logicalId });
+    const started = Date.now();
+    try {
+      await this.redis.zadd(this.dueKey, { score: dueAt.getTime(), member: logicalId });
+      recordQueueCall('queue.enqueue', started, 1, 200);
+    } catch (error) {
+      recordQueueCall('queue.enqueue', started, 1, 500);
+      throw error;
+    }
   }
 
   async hasPendingWork(): Promise<boolean> {
-    const [due, leased] = await Promise.all([this.redis.zcard(this.dueKey), this.redis.zcard(this.leasedKey)]);
-    return due > 0 || leased > 0;
+    const started = Date.now();
+    try {
+      const [due, leased] = await Promise.all([this.redis.zcard(this.dueKey), this.redis.zcard(this.leasedKey)]);
+      recordQueueCall('queue.depth', started, 2, 200);
+      return due > 0 || leased > 0;
+    } catch (error) {
+      recordQueueCall('queue.depth', started, 2, 500);
+      throw error;
+    }
+  }
+
+  /**
+   * Read due/leased set sizes without claiming.
+   *
+   * @returns Cardinality of both sets for backlog-aware start signals.
+   * @remarks Same two ZCARDs as `hasPendingWork`; callers must not call both
+   * on one tick — prefer this when the counts themselves are needed.
+   */
+  async peekDepth(): Promise<{ readonly due: number; readonly leased: number }> {
+    const started = Date.now();
+    try {
+      const [due, leased] = await Promise.all([this.redis.zcard(this.dueKey), this.redis.zcard(this.leasedKey)]);
+      recordQueueCall('queue.depth', started, 2, 200);
+      return { due, leased };
+    } catch (error) {
+      recordQueueCall('queue.depth', started, 2, 500);
+      throw error;
+    }
   }
 
   async claimDue(now: Date, limit: number, leaseSeconds: number): Promise<readonly QueueClaim[]> {
     const boundedLimit = Math.max(1, Math.min(100, limit));
     const leaseExpiresAt = new Date(now.getTime() + Math.max(1, Math.min(300, leaseSeconds)) * 1_000);
     const prefix = crypto.randomUUID();
-    const values = await this.redis.eval(CLAIM_SCRIPT, [this.dueKey, this.leasedKey], [now.getTime(), boundedLimit, leaseExpiresAt.getTime(), prefix]) as string[];
-    const claims: QueueClaim[] = [];
-    for (let index = 0; index < values.length; index += 2) {
-      const logicalId = values[index]; const claimToken = values[index + 1];
-      if (logicalId !== undefined && claimToken !== undefined) claims.push(Object.freeze({ logicalId, claimToken, leaseExpiresAt }));
+    const started = Date.now();
+    try {
+      const values = await this.redis.eval(CLAIM_SCRIPT, [this.dueKey, this.leasedKey], [now.getTime(), boundedLimit, leaseExpiresAt.getTime(), prefix]) as string[];
+      const claims: QueueClaim[] = [];
+      for (let index = 0; index < values.length; index += 2) {
+        const logicalId = values[index]; const claimToken = values[index + 1];
+        if (logicalId !== undefined && claimToken !== undefined) claims.push(Object.freeze({ logicalId, claimToken, leaseExpiresAt }));
+      }
+      recordQueueCall('queue.claim', started, 1, 200);
+      return Object.freeze(claims);
+    } catch (error) {
+      recordQueueCall('queue.claim', started, 1, 500);
+      throw error;
     }
-    return Object.freeze(claims);
   }
 
   async acknowledge(claim: QueueClaim): Promise<void> {
-    await this.redis.zrem(this.leasedKey, claim.claimToken);
+    const started = Date.now();
+    try {
+      await this.redis.zrem(this.leasedKey, claim.claimToken);
+      recordQueueCall('queue.ack', started, 1, 200);
+    } catch (error) {
+      recordQueueCall('queue.ack', started, 1, 500);
+      throw error;
+    }
   }
 
   async mirrorState(organizationId: string, logicalId: string, state: string, ttlSeconds: number): Promise<void> {
-    const key = `${this.namespace}:job:${organizationId}:${logicalId}`;
-    await this.redis.set(key, state, { ex: Math.max(60, Math.min(86_400, ttlSeconds)) });
+    const started = Date.now();
+    try {
+      const key = `${this.namespace}:job:${organizationId}:${logicalId}`;
+      await this.redis.set(key, state, { ex: Math.max(60, Math.min(86_400, ttlSeconds)) });
+      recordQueueCall('queue.mirror', started, 1, 200);
+    } catch (error) {
+      recordQueueCall('queue.mirror', started, 1, 500);
+      throw error;
+    }
   }
 }

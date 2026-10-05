@@ -48,7 +48,13 @@ function wireBytesOf(raw: unknown): number {
 }
 
 /** Record one Redis call into the operation rollup; never throws. */
-function recordRedisCall(operation: string, started: number, commands: number, bytes: number, hit: boolean): void {
+function recordRedisCall(
+  operation: string,
+  started: number,
+  commands: number,
+  bytes: number,
+  outcome: { readonly hits?: number | undefined; readonly misses?: number | undefined; readonly status?: number | undefined } = {},
+): void {
   const durationMs = Date.now() - started;
   recordOperation({
     route: 'cache',
@@ -57,8 +63,10 @@ function recordRedisCall(operation: string, started: number, commands: number, b
     durationMs,
     redisCommands: commands,
     redisMs: durationMs,
-    payloadBytes: bytes,
-    ...(hit ? { cacheHit: 1 } : { cacheMiss: 1 }),
+    ...(bytes > 0 ? { payloadBytes: bytes, bytesKind: 'wire' as const } : {}),
+    ...(outcome.hits === undefined || outcome.hits <= 0 ? {} : { cacheHit: outcome.hits }),
+    ...(outcome.misses === undefined || outcome.misses <= 0 ? {} : { cacheMiss: outcome.misses }),
+    ...(outcome.status === undefined ? {} : { status: outcome.status }),
   });
 }
 
@@ -127,36 +135,39 @@ export class UpstashSnapshotStore {
   }
 
   async read(environment: string, revision: number): Promise<unknown | null> {
+    const started = Date.now();
     try {
-      const started = Date.now();
       const raw = await this.redis.get(`${this.namespace}:snapshot:${environment}:v${revision}`);
       const value = decodeSnapshot(raw);
-      recordRedisCall('redis.get', started, 1, wireBytesOf(raw), value !== null);
+      recordRedisCall('redis.get', started, 1, wireBytesOf(raw), value !== null ? { hits: 1 } : { misses: 1 });
       return value;
     } catch {
+      recordRedisCall('redis.get', started, 1, 0, { misses: 1, status: 500 });
       return null;
     }
   }
 
   async write(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void> {
+    const started = Date.now();
     try {
       const encoded = encodeSnapshot(model);
-      const started = Date.now();
       const key = `snapshot:${environment}:v${revision}`;
       if (snapshotWireSizeOf(encoded) > SNAPSHOT_WIRE_WARN_BYTES) warnOversize('snapshot', key, snapshotWireSizeOf(encoded));
       await this.redis.set(`${this.namespace}:${key}`, encoded, { ex: ttlSeconds });
-      recordRedisCall('redis.set', started, 1, snapshotWireSizeOf(encoded), true);
+      recordRedisCall('redis.set', started, 1, snapshotWireSizeOf(encoded), { status: 200 });
     } catch {
+      recordRedisCall('redis.set', started, 1, 0, { status: 500 });
       /* best-effort: write failure does not fail the refresh */
     }
   }
 
   async touch(environment: string, revision: number, ttlSeconds: number): Promise<void> {
+    const started = Date.now();
     try {
-      const started = Date.now();
       await this.redis.expire(`${this.namespace}:snapshot:${environment}:v${revision}`, ttlSeconds);
-      recordRedisCall('redis.expire', started, 1, 0, true);
+      recordRedisCall('redis.expire', started, 1, 0, { status: 200 });
     } catch {
+      recordRedisCall('redis.expire', started, 1, 0, { status: 500 });
       /* best-effort: an unextended key simply expires on schedule */
     }
   }
@@ -170,13 +181,14 @@ export class UpstashSnapshotStore {
    * threshold-compressed snapshots share one read path.
    */
   async readKey(key: string): Promise<unknown | null> {
+    const started = Date.now();
     try {
-      const started = Date.now();
       const raw = await this.redis.get(`${this.namespace}:${key}`);
       const value = decodeSnapshot(raw);
-      recordRedisCall('redis.get', started, 1, wireBytesOf(raw), value !== null);
+      recordRedisCall('redis.get', started, 1, wireBytesOf(raw), value !== null ? { hits: 1 } : { misses: 1 });
       return value;
     } catch {
+      recordRedisCall('redis.get', started, 1, 0, { misses: 1, status: 500 });
       return null;
     }
   }
@@ -189,13 +201,15 @@ export class UpstashSnapshotStore {
    */
   async readMany(keys: readonly string[]): Promise<readonly (unknown | null)[]> {
     if (keys.length === 0) return [];
+    const started = Date.now();
     try {
-      const started = Date.now();
       const raws = await this.redis.mget(...keys.map((key) => `${this.namespace}:${key}`));
       const values = raws.map((raw) => decodeSnapshot(raw));
-      recordRedisCall('redis.mget', started, 1, raws.reduce<number>((total, raw) => total + wireBytesOf(raw), 0), values.some((value) => value !== null));
+      const hits = values.filter((value) => value !== null).length;
+      recordRedisCall('redis.mget', started, 1, raws.reduce<number>((total, raw) => total + wireBytesOf(raw), 0), { hits, misses: values.length - hits });
       return values;
     } catch {
+      recordRedisCall('redis.mget', started, 1, 0, { misses: keys.length, status: 500 });
       return keys.map(() => null);
     }
   }
@@ -210,13 +224,14 @@ export class UpstashSnapshotStore {
    * compressed; anything smaller stays plain JSON.
    */
   async writeKey(key: string, model: unknown, ttlSeconds: number): Promise<void> {
+    const started = Date.now();
     try {
       const encoded = maybeCompress(JSON.stringify(model));
-      const started = Date.now();
       if (snapshotWireSizeOf(encoded) > SNAPSHOT_WIRE_WARN_BYTES) warnOversize('cache-aside', key, snapshotWireSizeOf(encoded));
       await this.redis.set(`${this.namespace}:${key}`, encoded, { ex: ttlSeconds });
-      recordRedisCall('redis.set', started, 1, snapshotWireSizeOf(encoded), true);
+      recordRedisCall('redis.set', started, 1, snapshotWireSizeOf(encoded), { status: 200 });
     } catch {
+      recordRedisCall('redis.set', started, 1, 0, { status: 500 });
       /* best-effort: write failure does not fail the refresh */
     }
   }
@@ -227,9 +242,12 @@ export class UpstashSnapshotStore {
    * @param key - Key suffix appended to the store namespace.
    */
   async deleteKey(key: string): Promise<void> {
+    const started = Date.now();
     try {
       await this.redis.del(`${this.namespace}:${key}`);
+      recordRedisCall('redis.del', started, 1, 0, { status: 200 });
     } catch {
+      recordRedisCall('redis.del', started, 1, 0, { status: 500 });
       /* best-effort: delete failure does not fail the mutation */
     }
   }

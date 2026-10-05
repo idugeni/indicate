@@ -509,13 +509,13 @@ describe('satu pintu login untuk semua aksi admin dashboard', () => {
     );
     expect(saved.status).toBe(200);
     keyScenario(true);
-    const listed = await contentGET();
+    const listed = await contentGET(new Request('https://dashboard.test/api/dashboard/content'));
     expect(listed.status).toBe(200);
   });
 
   it('content menolak tanpa kredensial', async () => {
     keyScenario(false);
-    const response = await contentGET();
+    const response = await contentGET(new Request('https://dashboard.test/api/dashboard/content'));
     expect(response.status).toBe(404);
   });
 

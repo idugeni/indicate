@@ -2,6 +2,8 @@ import 'server-only';
 
 import { Redis } from '@upstash/redis';
 
+import { recordAiGate } from '@/modules/ai/ai-rate-limit';
+
 /** Longest accepted user prompt; longer input is rejected before reaching any provider. */
 export const MAX_USER_PROMPT_LENGTH = 1500;
 
@@ -184,6 +186,7 @@ export function createAiBudgetGuard(config: AiBudgetConfig): AiBudgetGuard {
 
   return {
     async checkAiBudgetSafeguard(): Promise<AiBudgetStatus> {
+      const started = Date.now();
       try {
         const now = new Date();
         const day = now.toISOString().slice(0, 10);
@@ -192,6 +195,7 @@ export function createAiBudgetGuard(config: AiBudgetConfig): AiBudgetGuard {
           redis.get<number>(tokensKey(day)),
           redis.get<number>(requestsKey(hour)),
         ]);
+        recordAiGate('ai.budget', started, 2, 200);
         const tokensToday = Number(tokens ?? 0);
         const requestsHour = Number(requests ?? 0);
         if (tokensToday >= DAILY_AI_TOKEN_BUDGET || requestsHour >= HOURLY_AI_REQUEST_LIMIT) {
@@ -199,10 +203,12 @@ export function createAiBudgetGuard(config: AiBudgetConfig): AiBudgetGuard {
         }
         return { allowed: true, remainingBudget: DAILY_AI_TOKEN_BUDGET - tokensToday };
       } catch {
+        recordAiGate('ai.budget', started, 0, 500);
         return { allowed: true, remainingBudget: DAILY_AI_TOKEN_BUDGET };
       }
     },
     async recordAiTokenUsage(tokens: number): Promise<void> {
+      const started = Date.now();
       try {
         const now = new Date();
         const day = now.toISOString().slice(0, 10);
@@ -212,7 +218,9 @@ export function createAiBudgetGuard(config: AiBudgetConfig): AiBudgetGuard {
         await redis.expire(tokensKey(day), 48 * 3600);
         await redis.incr(requestsKey(hour));
         await redis.expire(requestsKey(hour), 2 * 3600);
+        recordAiGate('ai.budget', started, 4, 200);
       } catch {
+        recordAiGate('ai.budget', started, 0, 500);
         /* Telemetry must never fail an answer. */
       }
     },

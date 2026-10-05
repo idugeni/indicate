@@ -135,6 +135,49 @@ describe('RuntimeConfigSnapshotCache baca penuh', () => {
   });
 });
 
+describe('RuntimeConfigSnapshotCache sinyal fallback', () => {
+  it('mencatat debug terstruktur saat lapisan inventory/shared gagal namun tetap fail-open', async () => {
+    const previous = process.env.OBSERVABILITY_DEBUG;
+    process.env.OBSERVABILITY_DEBUG = '1';
+    const lines: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      lines.push(args.map((arg) => String(arg)).join(' '));
+    };
+    try {
+      const repository: RuntimeConfigReadRepository = {
+        readComplete: async () => validModel(),
+        readInventoryVersion: async () => ({ configurationVersion: 7 }),
+      };
+      const store: SnapshotSharedStore = {
+        read: async () => {
+          throw new Error('redis down');
+        },
+        write: async () => {},
+        touch: async () => {},
+      };
+      const clock = new FixedMonotonicClock();
+      const cache = new RuntimeConfigSnapshotCache({ repository, clock, snapshotStore: store });
+      const entry = await cache.get('test');
+      expect(entry.source).toBe('postgres');
+      const debugEvents = lines
+        .map((line) => {
+          try {
+            return (JSON.parse(line) as { event?: unknown }).event;
+          } catch {
+            return null;
+          }
+        })
+        .filter((event) => typeof event === 'string' && event.startsWith('runtime-config.snapshot.'));
+      expect(debugEvents).toContain('runtime-config.snapshot.shared-fallback');
+    } finally {
+      console.log = originalLog;
+      if (previous === undefined) delete process.env.OBSERVABILITY_DEBUG;
+      else process.env.OBSERVABILITY_DEBUG = previous;
+    }
+  });
+});
+
 describe('RuntimeConfigSnapshotCache invalidateFromSource', () => {
   it('menjatuhkan entri saat revisi sumber sudah lebih baru', async () => {
     const readComplete = vi.fn(async () => validModel());

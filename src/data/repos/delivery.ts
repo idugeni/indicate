@@ -2,6 +2,7 @@ import { aliasedTable, and, desc, eq, gt, inArray, isNotNull, notInArray, or, sq
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
+import { recordOperation } from '@/core/observability/operation-metrics';
 import type { ActivationAttempt, ArticleListItem, FeedArticle, InvalidationPlan, InvalidationTask, NetworkContentQuery, NetworkSiteData, ResolvedSiteContext } from '@/modules/delivery/models';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 import { articleBodyText } from '@/modules/site/article-markup';
@@ -225,6 +226,28 @@ function galleryScope(articleId: string, referencedIds: readonly string[]) {
 }
 
 /**
+ * Record one delivery read; never throws. Tenant-scoped; hostnames and slugs
+ * stay out of the rollup (cardinality), only the organization id travels.
+ */
+function recordDeliveryRead(
+  operation: 'delivery.tenant-resolve' | 'delivery.discover' | 'delivery.bridge',
+  started: number,
+  dbQueries: number,
+  organizationId: string | null,
+): void {
+  const durationMs = Date.now() - started;
+  recordOperation({
+    route: 'delivery',
+    operation,
+    provider: 'supabase-postgres',
+    ...(organizationId === null ? {} : { tenantId: organizationId }),
+    durationMs,
+    dbQueries,
+    dbMs: durationMs,
+  });
+}
+
+/**
  * Serve delivery reads and activation writes.
  *
  * @remarks Full syndication: one canonical article airs on any portal granted an assignment, even across regions. The article region is the origin/attribution channel, not a visibility key.
@@ -251,13 +274,16 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    * @remarks Fail closed fast: rows without a valid routing/content version are treated as unknown hosts (404) instead of exploding as UNDEFINED_VALUE deep inside query building (500 + wasted CPU).
    */
   async findActiveSitesByExactHostname(hostname: string): Promise<readonly ResolvedSiteContext[]> {
+    const started = Date.now();
     const rows = await this.database.execute<{
       hostname: string; organization_id: string; domain_id: string; site_id: string;
       region_id: string | null; routing_version: number; content_version: number;
     }>(sql`SELECT * FROM indicate_private.discover_release_active_hosts(ARRAY[${hostname}])`);
-    return [...rows]
+    const resolved = [...rows]
       .filter((row) => Number.isFinite(row.routing_version) && Number.isFinite(row.content_version))
       .map((row) => ({ normalizedHostname: row.hostname, organizationId: row.organization_id, domainId: row.domain_id, siteId: row.site_id, regionId: row.region_id, routingVersion: row.routing_version, contentVersion: row.content_version }));
+    recordDeliveryRead('delivery.tenant-resolve', started, 1, resolved[0]?.organizationId ?? null);
+    return resolved;
   }
 
   async findPendingActivation(hostname: string, attemptId: string): Promise<boolean> {
@@ -473,6 +499,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       byOwner.set(row.sourceOrganizationId, group);
     }
     const pairs: BridgePair[] = [];
+    const bridgeStarted = Date.now();
     for (const [ownerOrg, group] of byOwner) {
       const details = await transaction.execute<BridgeDetail>(sql`
         SELECT * FROM indicate_private.fetch_assigned_article_details(
@@ -493,6 +520,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         pairs.push({ bridgeId: row.id, siteId: row.siteId, originHost: row.originHost, publishedAt: row.publishedAt, detail });
       }
     }
+    // One assignments select plus one set-based reader call per owner org.
+    recordDeliveryRead('delivery.bridge', bridgeStarted, 1 + byOwner.size, context.organizationId);
     return pairs.sort((left, right) => new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime());
   }
 
@@ -741,6 +770,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
   }
 
   async resolveArticleId(context: ResolvedSiteContext, slug: string): Promise<string | null> {
+    const started = Date.now();
     return this.database.transaction(async (transaction) => {
       await this.publicTenant(transaction, context);
       const rows = await transaction.select({ id: articles.id })
@@ -748,7 +778,10 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .where(and(eq(articleSites.organizationId, context.organizationId), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt), eq(articles.slug, slug)))
         .limit(1);
-      if (rows[0] !== undefined) return rows[0].id;
+      if (rows[0] !== undefined) {
+        recordDeliveryRead('delivery.discover', started, 2, context.organizationId);
+        return rows[0].id;
+      }
       const bridge = await transaction.select({
         sourceOrganizationId: portalAssignments.sourceOrganizationId,
         sourceArticleId: portalAssignments.sourceArticleId,
@@ -780,9 +813,13 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       for (const row of bridge) {
         const match = slugByOwnerArticle.get(`${row.sourceOrganizationId}:${row.sourceArticleId}`);
         if (match !== undefined && match.slug === slug) {
+          // Tenant context + local select + bridge select + one set-based
+          // reader call per owner org; batching unchanged (P1).
+          recordDeliveryRead('delivery.discover', started, 3 + idsByOwner.size, context.organizationId);
           return match.articleId;
         }
       }
+      recordDeliveryRead('delivery.discover', started, 3 + idsByOwner.size, context.organizationId);
       return null;
     });
   }

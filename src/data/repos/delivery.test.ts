@@ -1,8 +1,14 @@
-import { describe, expect, it, expectTypeOf } from 'vitest';
+import { beforeEach, describe, expect, it, expectTypeOf, vi } from 'vitest';
 
 import { DrizzleDeliveryRepository, dedupeBridgeAssignmentRows, resolvePublisherAttribution } from '@/data/repos/delivery';
 import { isNetworkArticle } from '@/modules/delivery/models';
 import type { ArticleListItem, NetworkArticle } from '@/modules/delivery/models';
+
+const recordOperation = vi.hoisted(() => vi.fn());
+
+vi.mock('@/core/observability/operation-metrics', () => ({
+  recordOperation,
+}));
 
 const CONTEXT = {
   normalizedHostname: 'portal.example',
@@ -347,6 +353,52 @@ describe('readBridgeArticles', () => {
     const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
     expect(site?.articles[0]).toMatchObject({ href: '/berita-upt' });
+  });
+
+  describe('instrumentasi delivery', () => {
+    beforeEach(() => {
+      recordOperation.mockReset();
+    });
+
+    function samples() {
+      return recordOperation.mock.calls.map((call) => call[0] as Record<string, unknown>);
+    }
+
+    it('resolusi tenant mencatat satu query tanpa hostname mentah', async () => {
+      const rows = [{
+        hostname: 'portal.example', organization_id: 'o1', domain_id: 'd1', site_id: 's1',
+        region_id: null, routing_version: 1, content_version: 1,
+      }];
+      const repository = new DrizzleDeliveryRepository({ execute: async () => rows } as never, 'https://portal.example/brand/default.jpg', null);
+      await expect(repository.findActiveSitesByExactHostname('portal.example')).resolves.toHaveLength(1);
+      expect(samples()).toHaveLength(1);
+      expect(samples()[0]).toMatchObject({ route: 'delivery', operation: 'delivery.tenant-resolve', provider: 'supabase-postgres', dbQueries: 1, tenantId: 'o1' });
+      expect(JSON.stringify(samples())).not.toContain('portal.example');
+    });
+
+    it('discover lokal mencatat dua query ber-tenant', async () => {
+      const selectImpl = (projection: Record<string, unknown>) =>
+        chainable(Object.keys(projection ?? {}).join(',') === 'id' ? [{ id: 'a1' }] : []);
+      const transaction = new Proxy({}, { get: (_target, prop) => (prop === 'execute' ? async () => [] : prop === 'select' ? selectImpl : () => transaction) });
+      const repository = new DrizzleDeliveryRepository({ transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) } as never, 'https://portal.example/brand/default.jpg', null);
+      await expect(repository.resolveArticleId({ ...CONTEXT }, 'berita-utama')).resolves.toBe('a1');
+      expect(samples()).toHaveLength(1);
+      expect(samples()[0]).toMatchObject({ route: 'delivery', operation: 'delivery.discover', dbQueries: 2, tenantId: 'o1' });
+    });
+
+    it('discover bridge menghitung select plus satu call per org', async () => {
+      const { repository } = harness({
+        articles: [],
+        bridgeAssignments: [
+          { ...bridgeAssignment, id: 'b1', sourceOrganizationId: 'org-a', sourceArticleId: 'art-1' },
+          { ...bridgeAssignment, id: 'b2', sourceOrganizationId: 'org-b', sourceArticleId: 'art-2' },
+        ],
+        bridgeDetails: [{ article_id: 'art-2', slug: 'target' }],
+      });
+      await expect(repository.resolveArticleId({ ...CONTEXT }, 'target')).resolves.toBe('art-2');
+      expect(samples()).toHaveLength(1);
+      expect(samples()[0]).toMatchObject({ operation: 'delivery.discover', dbQueries: 5, tenantId: 'o1' });
+    });
   });
 });
 

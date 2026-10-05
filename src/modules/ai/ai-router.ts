@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm';
 import { asRecord } from '@/core/guards';
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
 import type { AiRateLimitStore } from '@/modules/ai/ai-rate-limit';
+import { recordAiGate } from '@/modules/ai/ai-rate-limit';
 import { aiScopedKey } from '@/modules/ai/ai-redis-namespace';
 import type {
   AiAccessChannel,
@@ -394,10 +395,13 @@ export function orderAiModelChain(
  */
 export async function nextChainStartIndex(store: AiRateLimitStore | undefined): Promise<number> {
   if (store === undefined) return 0;
+  const started = Date.now();
   try {
     const cursor = await store.incrby(aiScopedKey(store.namespace, AI_CHAIN_CURSOR_KEY), 1);
+    recordAiGate('ai.cursor', started, 1, 200);
     return Number.isFinite(cursor) && cursor > 0 ? cursor - 1 : 0;
   } catch {
+    recordAiGate('ai.cursor', started, 1, 500);
     return 0;
   }
 }
@@ -651,14 +655,17 @@ export async function isModelBreakerTripped(
   nowMs: number = Date.now(),
 ): Promise<boolean> {
   if (store === undefined) return false;
+  const started = Date.now();
   try {
     const raw: unknown = await store.get(aiScopedKey(store.namespace, aiBreakerKey(providerId, modelName)));
+    recordAiGate('ai.breaker', started, 1, 200);
     if (raw === null || raw === undefined) return false;
     const { count, tripAt } = parseBreakerValue(raw);
     if (count < AI_BREAKER_TRIP_THRESHOLD) return false;
     if (tripAt !== null && nowMs - tripAt > AI_BREAKER_WINDOW_SECONDS * 1000) return false;
     return true;
   } catch {
+    recordAiGate('ai.breaker', started, 1, 500);
     return false;
   }
 }
@@ -681,6 +688,8 @@ export async function recordModelInfraFailure(
   nowMs: number = Date.now(),
 ): Promise<void> {
   if (store === undefined) return;
+  const started = Date.now();
+  let commands = 0;
   try {
     const key = aiScopedKey(store.namespace, aiBreakerKey(providerId, modelName));
     const setter = (store as { readonly set?: unknown }).set;
@@ -688,16 +697,22 @@ export async function recordModelInfraFailure(
       let count = 0;
       try {
         const raw: unknown = await store.get(key);
+        commands += 1;
         count = parseBreakerValue(raw).count;
       } catch {
         count = 0;
       }
       await (setter as (key: string, value: string) => Promise<void>).call(store, key, `${count + 1}:${nowMs}`);
+      commands += 1;
     } else {
       await store.incrby(key, 1);
+      commands += 1;
     }
     await store.expire(key, AI_BREAKER_WINDOW_SECONDS);
+    commands += 1;
+    recordAiGate('ai.breaker', started, commands, 200);
   } catch {
+    recordAiGate('ai.breaker', started, commands, 500);
     /* Breaker tidak boleh menggagalkan jawaban. */
   }
 }
@@ -731,9 +746,12 @@ export async function recordModelSuccess(
   modelName: string,
 ): Promise<void> {
   if (store === undefined) return;
+  const started = Date.now();
   try {
     await store.expire(aiScopedKey(store.namespace, aiBreakerKey(providerId, modelName)), 1);
+    recordAiGate('ai.breaker', started, 1, 200);
   } catch {
+    recordAiGate('ai.breaker', started, 1, 500);
     /* Breaker tidak boleh menggagalkan jawaban. */
   }
 }
