@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (269 migrations):
+-- Reviewed sources, in journal order (270 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -283,6 +283,7 @@
 --   267  20261006010000_invalidation_intent_status  ledger sha256:6de44bcab973e4f2803632109bb1523feb65f48d96fa98916990cbfd319500ee
 --   268  20261006020000_role_permission_guard_single  ledger sha256:5d307c499c4aee2f7fb061cf369b037dce64d09f94e425f84c8e5078514d6a9e
 --   269  20261006030000_bridge_media_visibility  ledger sha256:581544e4cc9576c6d4f774361ee6b50908405cc2584bf6cc5db2fe5ba34407f9
+--   270  20261006040000_bridge_media_org_asset  ledger sha256:b919b2a62c772d89184d453638e9b1593cbe7cb65c4a24462315aa9c498d94fd
 
 BEGIN;
 
@@ -21716,4 +21717,68 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (268, 'bridge_media_visibility', 'sha256:655ff02e7f787e86a57a393aa19c9dd0af99943ddda6ecc1049025e13bce86f5');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('581544e4cc9576c6d4f774361ee6b50908405cc2584bf6cc5db2fe5ba34407f9', 1791345600000);
+
+-- ----------------------------------------------------------------------
+-- 20261006040000_bridge_media_org_asset
+-- ----------------------------------------------------------------------
+-- Izinkan aset organisasi yang dirujuk dalam otorisasi media bridge.
+--
+-- `authorize_bridge_media` (v268) hanya meloloskan purpose
+-- `article-inline`/`article-cover`, sehingga logo penerbit
+-- (`organization-asset`, dirujuk via `publishers.contacts.logoUrl`)
+-- tetap 404 di portal penyaji. Semantik se-org (`authorizeSameOrgMedia`)
+-- tidak memfilter purpose untuk rujukan logo penerbit, jadi paritasnya
+-- adalah meloloskan ketiga purpose selama ada rujukan konten tayang.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.authorize_bridge_media(
+  p_organization_id uuid,
+  p_site_id uuid,
+  p_media_id uuid
+)
+RETURNS SETOF public.media
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT m.* FROM public.media AS m
+  WHERE m.id = p_media_id
+    AND m.state = 'active'
+    AND m.media_type LIKE 'image/%'
+    AND m.purpose IN ('article-inline', 'article-cover', 'organization-asset')
+    AND EXISTS (
+      SELECT 1 FROM public.portal_assignments AS pa
+      WHERE pa.organization_id = p_organization_id
+        AND pa.site_id = p_site_id
+        AND pa.state = 'published'
+        AND pa.published_at IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM public.articles AS a
+          LEFT JOIN public.publishers AS p
+            ON p.organization_id = a.organization_id AND p.id = a.publisher_id AND p.status = 'active'
+          LEFT JOIN public.authors AS au
+            ON au.organization_id = a.organization_id AND au.id = a.author_id AND au.status = 'active'
+          WHERE a.organization_id = pa.source_organization_id
+            AND a.id = pa.source_article_id
+            AND a.status = 'active'
+            AND a.published_at IS NOT NULL
+            AND (
+              a.lead_media_id = m.id
+              OR a.cover_image_url LIKE '%/' || m.id::text || '%'
+              OR a.body LIKE '%/api/network/media/' || m.id::text || '%'
+              OR a.body LIKE '%media:' || m.id::text || '%'
+              OR a.body_json::text LIKE '%/api/network/media/' || m.id::text || '%'
+              OR a.body_json::text LIKE '%media:' || m.id::text || '%'
+              OR p.contacts->>'logoUrl' LIKE '%/' || m.id::text || '%'
+              OR au.avatar_url LIKE '%/' || m.id::text || '%'
+            )
+        )
+    )
+$$;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (269, 'bridge_media_org_asset', 'sha256:ae0e7723249e04a5eef3b300bd6213b319fd996dbeaa37a6e625d6537ac1eef9');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b919b2a62c772d89184d453638e9b1593cbe7cb65c4a24462315aa9c498d94fd', 1791349200000);
 COMMIT;
