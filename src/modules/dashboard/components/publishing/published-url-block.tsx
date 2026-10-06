@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Check,
@@ -23,6 +23,13 @@ export interface FormatPublishedUrlBlockParams {
   readonly urls: readonly string[];
   readonly includeTitle?: boolean;
 }
+
+/** Jeda sebelum cek otomatis pertama: beri cache sepanas mungkin dulu. */
+const AUTO_CHECK_DELAY_MS = 2000;
+/** Jeda antar cek ulang otomatis saat pratinjau belum siap. */
+const AUTO_RECHECK_INTERVAL_MS = 30_000;
+/** Batas cek ulang otomatis (~4 menit) sebelum menyerah ke cek manual. */
+const AUTO_RECHECK_MAX = 8;
 
 /**
  * Format teks blok siaran URL publikasi.
@@ -64,10 +71,67 @@ export function PublishedUrlBlock({
   const [filterTerm, setFilterTerm] = useState('');
   const [readiness, setReadiness] = useState<'idle' | 'checking' | 'ready' | 'not-ready' | 'error'>('idle');
   const [readinessReason, setReadinessReason] = useState<string | null>(null);
+  const [autoChecks, setAutoChecks] = useState(0);
+  const [checkedUrl, setCheckedUrl] = useState<string | null>(null);
+  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listId = useId();
   const primaryUrl = urls[0] ?? null;
-  const shareBlocked = readiness === 'checking' || readiness === 'not-ready';
+  const readinessActive = organizationId !== undefined && primaryUrl !== null;
+  const shareBlocked = readinessActive && readiness !== 'ready' && readiness !== 'error';
+
+  const runReadinessCheck = useCallback(async (): Promise<boolean> => {
+    if (primaryUrl === null || organizationId === undefined) return false;
+    setReadiness('checking');
+    setReadinessReason(null);
+    try {
+      const response = await fetch(
+        `/api/dashboard/share-readiness?organizationId=${encodeURIComponent(organizationId)}&url=${encodeURIComponent(primaryUrl)}`,
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = (await response.json()) as { ready?: boolean; reason?: string };
+      if (payload.ready === true) {
+        setReadiness('ready');
+        setReadinessReason(null);
+        return true;
+      }
+      setReadiness('not-ready');
+      setReadinessReason(typeof payload.reason === 'string' ? payload.reason : 'unknown');
+      return false;
+    } catch {
+      setReadiness('error');
+      setReadinessReason(null);
+      return false;
+    }
+  }, [primaryUrl, organizationId]);
+
+  useEffect(() => {
+    if (primaryUrl === null || organizationId === undefined) return;
+    let cancelled = false;
+    let attempts = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      attempts += 1;
+      setAutoChecks(attempts);
+      const ok = await runReadinessCheck();
+      if (cancelled || ok) return;
+      if (attempts < AUTO_RECHECK_MAX) {
+        autoTimer.current = setTimeout(() => void tick(), AUTO_RECHECK_INTERVAL_MS);
+      }
+    };
+    autoTimer.current = setTimeout(() => void tick(), AUTO_CHECK_DELAY_MS);
+    return () => {
+      cancelled = true;
+      if (autoTimer.current !== null) clearTimeout(autoTimer.current);
+    };
+  }, [runReadinessCheck, primaryUrl, organizationId]);
+
+  if (checkedUrl !== primaryUrl) {
+    setCheckedUrl(primaryUrl);
+    setReadiness('idle');
+    setReadinessReason(null);
+    setAutoChecks(0);
+  }
 
   const filteredUrls = useMemo(() => {
     const cleanFilter = filterTerm.trim().toLowerCase();
@@ -77,7 +141,14 @@ export function PublishedUrlBlock({
 
   if (urls.length === 0) return null;
 
+  const warnIfNotReady = () => {
+    if (readinessActive && readiness !== 'ready') {
+      toast.warning('JANGAN bagikan dulu — pratinjau gambar belum siap. Tunggu status Siap dibagikan.');
+    }
+  };
+
   const handleCopyAll = async () => {
+    warnIfNotReady();
     try {
       const text = formatPublishedUrlBlock({ title, urls, includeTitle });
       await navigator.clipboard.writeText(text);
@@ -94,6 +165,7 @@ export function PublishedUrlBlock({
   };
 
   const handleCopySingle = async (url: string, index: number) => {
+    warnIfNotReady();
     try {
       await navigator.clipboard.writeText(url);
       setCopiedIndex(index);
@@ -106,35 +178,12 @@ export function PublishedUrlBlock({
 
   const handleShareWhatsApp = () => {
     if (shareBlocked) {
-      toast.error('Pratinjau belum siap. Cek kesiapan dulu sebelum kirim ke WhatsApp.');
+      toast.error('JANGAN bagikan dulu — pratinjau gambar belum siap. Tunggu status Siap dibagikan.');
       return;
     }
     const text = formatPublishedUrlBlock({ title, urls, includeTitle: true });
     const encoded = encodeURIComponent(text);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleCheckReadiness = async () => {
-    if (primaryUrl === null || organizationId === undefined || readiness === 'checking') return;
-    setReadiness('checking');
-    setReadinessReason(null);
-    try {
-      const response = await fetch(
-        `/api/dashboard/share-readiness?organizationId=${encodeURIComponent(organizationId)}&url=${encodeURIComponent(primaryUrl)}`,
-      );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = (await response.json()) as { ready?: boolean; reason?: string };
-      if (payload.ready === true) {
-        setReadiness('ready');
-        setReadinessReason(null);
-      } else {
-        setReadiness('not-ready');
-        setReadinessReason(typeof payload.reason === 'string' ? payload.reason : 'unknown');
-      }
-    } catch {
-      setReadiness('error');
-      setReadinessReason(null);
-    }
   };
 
   return (
@@ -178,7 +227,7 @@ export function PublishedUrlBlock({
             <span>{isOpen ? 'Tutup Detail' : 'Buka Detail'}</span>
           </Button>
 
-          <AppTooltip label={shareBlocked ? 'Pratinjau belum siap, cek dulu' : 'Kirim teks siaran ke WhatsApp'}>
+          <AppTooltip label={shareBlocked ? 'JANGAN bagikan dulu — pratinjau belum siap' : 'Kirim teks siaran ke WhatsApp'}>
             <span className="inline-flex">
               <Button
                 type="button"
@@ -202,11 +251,11 @@ export function PublishedUrlBlock({
                 type="button"
                 variant="ghost"
                 size="xs"
-                onClick={() => void handleCheckReadiness()}
+                onClick={() => void runReadinessCheck()}
                 disabled={readiness === 'checking'}
                 className="h-7 gap-1 font-mono text-xs text-paper-dim hover:text-paper disabled:opacity-50"
               >
-                <span>{readiness === 'checking' ? 'Memeriksa…' : readiness === 'ready' ? 'Siap dibagikan' : readiness === 'not-ready' ? 'Belum siap, cek lagi' : readiness === 'error' ? 'Gagal dicek' : 'Cek kesiapan'}</span>
+                <span>{readiness === 'checking' ? `Memeriksa…${autoChecks > 0 ? ` (${autoChecks}/${AUTO_RECHECK_MAX})` : ''}` : readiness === 'ready' ? 'Siap dibagikan' : readiness === 'not-ready' ? 'Belum siap, cek lagi' : readiness === 'error' ? 'Gagal dicek' : 'Cek kesiapan'}</span>
               </Button>
             </AppTooltip>
           )}
@@ -230,16 +279,21 @@ export function PublishedUrlBlock({
       {readiness === 'ready' && (
         <p className="m-0 font-mono text-[11px] text-emerald-400">Pratinjau gambar siap. Aman dibagikan ke WhatsApp.</p>
       )}
+      {readiness === 'checking' && readinessActive && (
+        <p className="m-0 font-mono text-[11px] text-amber-400">
+          JANGAN bagikan dulu — pemeriksaan pratinjau otomatis berjalan{autoChecks > 0 ? ` (${autoChecks}/${AUTO_RECHECK_MAX})` : ''}.
+        </p>
+      )}
       {readiness === 'not-ready' && (
         <p className="m-0 font-mono text-[11px] text-amber-400">
-          Pratinjau belum siap ({readinessReason ?? 'unknown'}). Tunggu 1-2 menit lalu cek lagi sebelum share.
+          JANGAN bagikan dulu — pratinjau gambar belum siap ({readinessReason ?? 'unknown'}). WhatsApp meng-cache scrape pertama, jadi share prematur merusak pratinjau permanen. {autoChecks >= AUTO_RECHECK_MAX ? 'Pengecekan otomatis berhenti; cek manual atau tunggu lalu cek lagi.' : 'Pengecekan otomatis berjalan…'}
         </p>
       )}
       {readiness === 'error' && (
         <p className="m-0 font-mono text-[11px] text-paper-dim">Pemeriksaan gagal. Boleh share, tapi pratinjau berisiko kosong.</p>
       )}
       {readiness === 'idle' && organizationId !== undefined && (
-        <p className="m-0 font-mono text-[11px] text-paper-dim">WhatsApp meng-cache pratinjau per URL. Cek kesiapan sebelum share pertama.</p>
+        <p className="m-0 font-mono text-[11px] text-amber-400">JANGAN bagikan dulu — pemeriksaan pratinjau otomatis segera berjalan. WhatsApp meng-cache pratinjau per URL.</p>
       )}
 
       {isOpen && (

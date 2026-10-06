@@ -93,7 +93,7 @@ describe('PublishedUrlBlock', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ ready: false, reason: 'social_tags_incomplete' }) }) as unknown as Response));
     render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} organizationId="org-1" />);
     fireEvent.click(screen.getByRole('button', { name: /cek kesiapan/i }));
-    await waitFor(() => expect(screen.getByText(/pratinjau belum siap/i)).toBeDefined());
+    await waitFor(() => expect(screen.getByText(/jangan bagikan dulu/i)).toBeDefined());
     expect(screen.getByRole('button', { name: /kirim ke whatsapp/i }).hasAttribute('disabled')).toBe(true);
   });
 });
