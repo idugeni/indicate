@@ -8,7 +8,7 @@ function escapeXml(value: string): string {
  * @param image - Source PNG bytes.
  * @param label - Invoice number burned into a bottom band.
  * @returns Watermarked PNG bytes.
- * @throws When the source image cannot be decoded.
+ * @throws {Error} When the source image cannot be decoded.
  * @example
  * ```ts
  * const marked = await watermarkStamp(raw, 'IND-0AD4A-2609-0047-Q2M9');

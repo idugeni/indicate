@@ -342,6 +342,12 @@ export async function networkMetadata(path: string, query: NetworkContentQuery =
  * Build tenant metadata from an already-resolved site.
  *
  * @param site - Site yang sudah di-resolve caller; output identik networkMetadata.
+ * @param path - Tenant path the document represents.
+ * @param query - Content selector; decides which surface branch is built.
+ * @param titleOverride - Title for pages that do not derive one from the site.
+ * @param descriptionOverride - Description for pages that do not derive one from the site.
+ * @param robotsOverride - Directive for utility surfaces such as `/report`, which have
+ *   no standalone content to index; defaults to the document's own directive.
  * @returns Tenant metadata tanpa resolve ulang.
  * @remarks Reuse ini menghilangkan satu resolveNetworkSite di generateMetadata statis.
  */

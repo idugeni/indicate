@@ -7,24 +7,7 @@ import { exportDailyAudit, WormExportDateError } from '@/modules/audit/audit-wor
 import { withApiAccess } from '@/core/observability/api-access';
 import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
-
-/**
- * Compare the presented Authorization header against the cron secret.
- *
- * @param request - Incoming maintenance request.
- * @param secret - Expected cron secret from runtime config.
- * @returns True only on an exact Bearer match.
- */
-export function authorized(request: Request, secret: string): boolean {
-  const presented = request.headers.get('authorization');
-  const expected = `Bearer ${secret}`;
-  if (presented === null || presented.length !== expected.length) return false;
-  let mismatch = 0;
-  for (let index = 0; index < presented.length; index += 1) {
-    mismatch |= presented.charCodeAt(index) ^ expected.charCodeAt(index);
-  }
-  return mismatch === 0;
-}
+import { authorized } from '@/app/api/internal/auth';
 
 /**
  * Ekspor satu hari jejak audit ke bucket WORM.

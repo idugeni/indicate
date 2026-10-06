@@ -9,24 +9,7 @@ import { recordOperation } from '@/core/observability/operation-metrics';
 import { PAGEVIEW_KEY_TTL_SECONDS, parsePageviewKey } from '@/modules/site/pageview-contract';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
-
-/**
- * Compare the presented Authorization header against the cron secret.
- *
- * @param request - Incoming maintenance request.
- * @param secret - Expected cron secret from runtime config.
- * @returns True only on an exact Bearer match.
- */
-export function authorized(request: Request, secret: string): boolean {
-  const presented = request.headers.get('authorization');
-  const expected = `Bearer ${secret}`;
-  if (presented === null || presented.length !== expected.length) return false;
-  let mismatch = 0;
-  for (let index = 0; index < presented.length; index += 1) {
-    mismatch |= presented.charCodeAt(index) ^ expected.charCodeAt(index);
-  }
-  return mismatch === 0;
-}
+import { authorized } from '@/app/api/internal/auth';
 
 function auditFlushIssue(requestId: string, event: string, fields: Readonly<Record<string, unknown>>): void {
   logEvent('warn', { event, requestId, context: fields });

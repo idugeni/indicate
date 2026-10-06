@@ -1,24 +1,10 @@
-import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { deliveryOperationsComposition } from '@/modules/delivery';
 import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
-
-/**
- * Compare the presented Authorization header against the cron secret.
- *
- * @param request - Incoming reconcile request.
- * @param secret - Expected cron secret from runtime config.
- * @returns True only on an exact Bearer match (timing-safe).
- */
-export function authorized(request: Request, secret: string): boolean {
-  const presented = request.headers.get('authorization');
-  const expected = `Bearer ${secret}`;
-  if (presented === null || presented.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(presented), Buffer.from(expected));
-}
+import { authorized } from '@/app/api/internal/auth';
 
 async function runReconcile(request: Request) {
   const requestId = resolveRequestId(request);
@@ -43,19 +29,15 @@ async function runReconcile(request: Request) {
   return NextResponse.json({ activation, invalidation }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
-async function handlePOST(request: Request) {
-  return runReconcile(request);
-}
-
 async function handleGET(request: Request) {
   return runReconcile(request);
 }
 
-export const POST = withApiAccess('POST /api/internal/delivery/reconcile', handlePOST);
 /**
  * Run delivery reconciliation.
  *
- * @remarks Vercel Cron only sends GET (with an automatic Authorization Bearer CRON_SECRET header when the CRON_SECRET env is available); POST is kept for external triggers.
+ * @remarks Cron-only surface: Vercel Cron sends GET with an automatic
+ * Authorization Bearer CRON_SECRET header when the CRON_SECRET env is available.
  */
 export const GET = withApiAccess('GET /api/internal/delivery/reconcile', handleGET);
 

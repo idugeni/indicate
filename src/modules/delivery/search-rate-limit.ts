@@ -16,9 +16,11 @@ export type SearchThrottle =
  * Enforce the per-host search rate limit before any search query runs.
  *
  * @param limiter - Rate-limit service (Upstash-backed in production, fake in tests).
- * @param hostname - Classified tenant hostname scoping the limit key.
- * @param policy - Public-read policy from runtime config.
- * @param requestId - Request id carried into denial envelopes.
+ * @param params - Classified tenant hostname scoping the limit key, public-read
+ * policy from runtime config, and request id carried into denial envelopes.
+ * @param params.hostname - Classified tenant hostname scoping the limit key.
+ * @param params.policy - Public-read policy from runtime config.
+ * @param params.requestId - Request id carried into denial envelopes.
  * @returns Allowed, or throttled with retry delay; non-limit failures fail open.
  * @remarks Fail-open on Redis outage follows the low-risk public-read fallback: search stays available and crawlers only lose throttling until Redis recovers. Callers must invoke this before `resolveNetworkSite`, never after.
  */

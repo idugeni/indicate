@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
 
-const ARTICLE_CORPUS_PATHS = ['/', '/llms.txt', '/news-sitemap.xml', '/rss.xml', '/sitemap.xml', '/tenant-home', '/tentang'];
+const ARTICLE_CORPUS_PATHS = ['/', '/indeks', '/llms.txt', '/news-sitemap.xml', '/rss.xml', '/sitemap.xml', '/tenant-home', '/tentang'];
 const SITE_ONLY_PATHS = ['/apple-touch-icon.png', '/icon.png', '/kebijakan-privasi', '/kontak', '/logo.png', '/manifest.webmanifest', '/report', '/robots.txt', '/search', '/syarat-ketentuan'];
 
 function pathsFor(reason: string, articleSlugs: readonly string[] = [], categorySlugs: readonly string[] = []): readonly string[] {
@@ -56,7 +56,7 @@ describe('completeInvalidationValues', () => {
 
   it('menyamakan|url persis dengan lintasan yang dipilih', () => {
     const narrow = completeInvalidationValues({ organizationId: 'org-1', siteId: 'site-1', currentHostname: 'tenant.example', reason: 'publication.published', articleSlugs: ['berita-utama'] });
-    expect(narrow.urls).toEqual(['https://tenant.example/', 'https://tenant.example/berita-utama', 'https://tenant.example/llms.txt', 'https://tenant.example/news-sitemap.xml', 'https://tenant.example/rss.xml', 'https://tenant.example/sitemap.xml', 'https://tenant.example/tenant-home', 'https://tenant.example/tentang']);
+    expect(narrow.urls).toEqual(['https://tenant.example/', 'https://tenant.example/berita-utama', 'https://tenant.example/indeks', 'https://tenant.example/llms.txt', 'https://tenant.example/news-sitemap.xml', 'https://tenant.example/rss.xml', 'https://tenant.example/sitemap.xml', 'https://tenant.example/tenant-home', 'https://tenant.example/tentang']);
   });
 
   it('mempertahankan url media di luar path yang disempitkan', () => {
@@ -74,7 +74,7 @@ describe('completeInvalidationValues', () => {
     expect(values.urls).toContain('https://kota.apex.example/berita-utama');
     expect(values.urls).toContain('https://jawa-tengah.apex.example/berita-utama');
     expect(values.urls).toContain('https://apex.example/berita-utama');
-    expect(values.urls).toHaveLength(24);
+    expect(values.urls).toHaveLength(27);
   });
 
   it('membatasi url ke host leluhur, bukan ke seluruh subdomain domain', () => {
@@ -83,6 +83,6 @@ describe('completeInvalidationValues', () => {
       relatedHostnames: ['apex.example'], reason: 'publication.published', articleSlugs: ['berita-utama'],
     });
     expect(values.urls.every((url) => url.endsWith('.example/berita-utama') || url.includes('apex.example'))).toBe(true);
-    expect(values.urls).toHaveLength(8);
+    expect(values.urls).toHaveLength(9);
   });
 });

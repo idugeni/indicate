@@ -144,6 +144,7 @@ export interface OpenAiCompatibleRouting {
  *
  * @param routing - Static per-adapter routing preferences.
  * @param responseFormat - Structured-output format of this request, if any.
+ * @param costMode - Cost preference; `price` pins the provider sort to cheapest.
  * @returns Provider object, or undefined when nothing is configured.
  * @remarks `require_parameters` defaults on for structured requests so JSON
  * traffic only reaches endpoints that support it; explicit false opts out.

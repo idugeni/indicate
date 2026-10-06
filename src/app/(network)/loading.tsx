@@ -1,31 +1,12 @@
-import { cookies } from 'next/headers';
-
-import { overlayForTemplate } from '@/modules/site/components/template-memory';
-
 /**
- * Overlay pemuatan segmen tenant.
+ * Nonaktifkan fallback pemuatan segmen tenant.
  *
- * @returns Overlay opak penuh yang menutup cangkang gelap root.
- * @remarks Tanpa berkas ini segmen `(network)` mewarisi `src/app/loading.tsx`
- * milik domain utama sehingga spinner gelap bocor ke 10 template tenant.
- * Mengembalikan `null` juga bocor: saat halaman async menunggu
- * `resolveNetworkSite`, lubang suspense menampilkan `body bg-bg #0e1320`
- * milik `src/app/layout.tsx`. Warna overlay mengikuti cookie
- * `indicate-template` (ditulis `TemplateMemory` per host) agar portal gelap
- * tidak kena kilat terang; kunjungan pertama atau cookie asing jatuh ke
- * netral terang `#f5f8fd` (median 8 template terang, sama dengan
- * `(network)/error.tsx`).
+ * @returns Null agar pindah antar-halaman tenant tidak menampilkan apa pun:
+ * konten lama langsung diganti konten baru saat siap, tanpa overlay, tanpa
+ * spinner, tanpa kerangka. Kanvas body selama jeda dipegang skrip cat
+ * `__indicateCanvas` di `src/app/layout.tsx` (warna cookie per host) +
+ * `body:has([data-template])` di `globals.css`.
  */
-export default async function PublicLoading() {
-  const cookieStore = await cookies();
-  const backgroundColor = overlayForTemplate(cookieStore.get('indicate-template')?.value ?? null);
-  return (
-    <div
-      aria-busy="true"
-      role="status"
-      aria-label="Memuat"
-      style={{ backgroundColor }}
-      className="fixed inset-0 z-[100] [color-scheme:light]"
-    />
-  );
+export default function PublicLoading() {
+  return null;
 }

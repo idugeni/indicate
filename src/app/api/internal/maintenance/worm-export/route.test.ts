@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { authorized } from '@/app/api/internal/maintenance/worm-export/route';
+import { authorized } from '@/app/api/internal/auth';
 
 function requestWith(auth: string | null): Request {
   const headers = new Headers();

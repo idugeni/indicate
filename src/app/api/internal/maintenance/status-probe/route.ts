@@ -11,7 +11,7 @@ import { DrizzleStatusRepository } from '@/data/repos/status';
 import { aiCredentials } from '@/data/schema/ai';
 import { publishingJobs } from '@/data/schema/operations';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
-import { authorized } from '@/app/api/internal/maintenance/view-flush/route';
+import { authorized } from '@/app/api/internal/auth';
 import {
   STATUS_COMPONENTS,
   evaluateIncidents,
@@ -198,3 +198,5 @@ async function handleGET(request: Request) {
  * 404 agar endpoint tak terpetakan.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/status-probe', handleGET);
+
+export const maxDuration = 120;

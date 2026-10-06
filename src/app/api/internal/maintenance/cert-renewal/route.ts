@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
+import { logEvent } from '@/core/observability/logger';
 import { deliveryOperationsComposition } from '@/modules/delivery/delivery-operations-composition';
 import { CertificateRenewalService } from '@/modules/delivery/certificate-renewal-service';
 import { VercelExactDomainAdapter } from '@/integrations/vercel/exact-domain-adapter';
 import { CloudflareAuthorityAdapter } from '@/integrations/cloudflare/cloudflare-authority';
-import { authorized } from '@/app/api/internal/maintenance/view-flush/route';
+import { authorized } from '@/app/api/internal/auth';
 
 async function handleGET(request: Request) {
   const requestId = resolveRequestId(request);
@@ -24,14 +25,11 @@ async function handleGET(request: Request) {
   const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit') ?? '3'), 10));
   const outcomes = await service.renewDue(limit);
   const renewed = outcomes.filter((outcome) => outcome.renewed).length;
-  console.error(JSON.stringify({
-    ts: new Date().toISOString(),
-    level: renewed === outcomes.length ? 'info' : 'warn',
-    service: 'indicate-web',
+  logEvent(renewed === outcomes.length ? 'info' : 'warn', {
     event: 'cert-renewal.run',
     requestId,
     context: { outcomes },
-  }));
+  });
   return NextResponse.json({ requestId, renewed, total: outcomes.length, outcomes }, { headers: noStore });
 }
 

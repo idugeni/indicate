@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { isReconcileDue, matchesSecret } from '@/app/api/internal/publishing/route';
+import { isReconcileDue } from '@/app/api/internal/publishing/route';
+import { matchesSecret } from '@/app/api/internal/auth';
 
 describe('matchesSecret', () => {
   it('menerima bearer yang persis sama', () => {

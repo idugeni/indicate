@@ -35,7 +35,8 @@ export function reportOutcomeStatus(code: string): number {
 /**
  * Map a challenge denial to its public error and status.
  *
- * @param denial.outcome - Whether Cloudflare refused the token or could not be reached.
+ * @param outcome - Whether Cloudflare refused the token or could not be reached.
+ * @param requestId - Request id carried into the public error envelope.
  * @returns Public error envelope plus status: 403 for a refused token, 503 for a verification outage.
  * @remarks Keeping a Cloudflare-side fault off the 403 path matters: a reader told their submission
  * was refused for bot reasons during an outage stops reporting, and the broken channel stays invisible

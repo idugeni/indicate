@@ -4,10 +4,17 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { readPublicNetworkSites } from '@/data/repos/content/queries';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { withApiAccess } from '@/core/observability/api-access';
-import { authorized } from '@/app/api/internal/maintenance/view-flush/route';
+import { authorized } from '@/app/api/internal/auth';
 
 const WEBMASTERS = 'https://www.googleapis.com/webmasters/v3';
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+/** Default apex budget per run; covers the live fleet with headroom. */
+const GSC_SYNC_DEFAULT_LIMIT = 200;
+/** Hard ceiling so one tick cannot fan out without bound. */
+const GSC_SYNC_MAX_LIMIT = 500;
+/** Parallel hosts; sequential per host, bounded across hosts. */
+const GSC_SYNC_CONCURRENCY = 5;
 
 export type SitemapSyncAction = 'submit' | 'delete' | 'none';
 
@@ -101,18 +108,25 @@ async function handleGET(request: Request) {
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const sites = await readPublicNetworkSites(runtime.db);
   const apexes = sites.filter((site) => site.siteLevel === 'apex').map((site) => site.hostname);
+  const rawLimit = Number(new URL(request.url).searchParams.get('limit') ?? String(GSC_SYNC_DEFAULT_LIMIT));
+  const limit = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(Math.floor(rawLimit), GSC_SYNC_MAX_LIMIT))
+    : GSC_SYNC_DEFAULT_LIMIT;
+  const targets = apexes.slice(0, limit);
+  const truncated = apexes.length > targets.length;
 
   let submitted = 0;
   let deleted = 0;
   const failed: string[] = [];
-  for (const host of apexes) {
+  async function syncOne(host: string): Promise<void> {
+    if (token === null) return;
     const current = await listSubmitted(token, host);
     if (current === null) {
       failed.push(host);
-      continue;
+      return;
     }
-    const targets = [`https://${host}/sitemap.xml`, `https://${host}/news-sitemap.xml`];
-    for (const url of targets) {
+    const urls = [`https://${host}/sitemap.xml`, `https://${host}/news-sitemap.xml`];
+    for (const url of urls) {
       const action = planSitemapSync(current.includes(url), await feedHasUrls(url));
       if (action === 'none') continue;
       const ok = await mutateSubmission(token, host, url, action === 'submit' ? 'PUT' : 'DELETE');
@@ -124,8 +138,19 @@ async function handleGET(request: Request) {
       }
     }
   }
+  const queue = [...targets];
+  async function worker(): Promise<void> {
+    while (queue.length > 0) {
+      const host = queue.shift();
+      if (host === undefined) return;
+      await syncOne(host);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(GSC_SYNC_CONCURRENCY, queue.length) }, () => worker()),
+  );
   return NextResponse.json(
-    { ok: failed.length === 0, checked: apexes.length, submitted, deleted, failed },
+    { ok: failed.length === 0, checked: targets.length, total: apexes.length, truncated, submitted, deleted, failed },
     { status: failed.length === 0 ? 200 : 207, headers: noStore },
   );
 }
@@ -136,5 +161,9 @@ async function handleGET(request: Request) {
  * @remarks Submit sitemap yang live tapi belum terdaftar, unsubmit news
  * sitemap yang kosong agar Search Console tidak melaporkan error. Tanpa
  * kredensial Google API menjawab 503 agar cron tahu dependensi belum siap.
+ * `?limit=` membatasi apex per run (default 200, maks 500); host diproses
+ * paralel terbatas (5) agar satu tick tidak menyerbu API sekaligus.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/gsc-sitemap-sync', handleGET);
+
+export const maxDuration = 300;

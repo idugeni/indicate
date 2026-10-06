@@ -8,27 +8,13 @@ import { reconcileMediaObjectKeys } from '@/modules/publishing/media-reconciliat
 import { withApiAccess } from '@/core/observability/api-access';
 import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
+import { authorized } from '@/app/api/internal/auth';
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
 const NOT_FOUND_HEADERS = { 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex, nofollow' } as const;
 
-/**
- * Compare the presented Authorization header against the cron secret.
- *
- * @param request - Incoming maintenance request.
- * @param secret - Expected cron secret from runtime config.
- * @returns True only on an exact Bearer match.
- */
-function authorized(request: Request, secret: string): boolean {
-  const presented = request.headers.get('authorization');
-  const expected = `Bearer ${secret}`;
-  if (presented === null || presented.length !== expected.length) return false;
-  let mismatch = 0;
-  for (let index = 0; index < presented.length; index += 1) {
-    mismatch |= presented.charCodeAt(index) ^ expected.charCodeAt(index);
-  }
-  return mismatch === 0;
-}
+/** Hard ceiling on tracked rows per run; above it the run refuses instead of half-checking. */
+const MEDIA_RECONCILE_MAX_TRACKED_ROWS = 50_000;
 
 /**
  * Bandingkan kunci objek di bucket R2 dengan baris `media`.
@@ -55,7 +41,19 @@ async function handleGET(request: Request) {
     secretAccessKey: context.config.r2.secretAccessKey,
   });
   try {
-    const report = await reconcileMediaObjectKeys(storage, () => repository.listMediaObjectKeys());
+    const rows = await repository.listMediaObjectKeys();
+    if (rows.length > MEDIA_RECONCILE_MAX_TRACKED_ROWS) {
+      logEvent('error', {
+        event: 'media.key_reconciliation_refused',
+        requestId,
+        context: { trackedRows: rows.length, ceiling: MEDIA_RECONCILE_MAX_TRACKED_ROWS },
+      });
+      return NextResponse.json(
+        { error: 'too many tracked keys for one run', trackedRows: rows.length, ceiling: MEDIA_RECONCILE_MAX_TRACKED_ROWS },
+        { status: 503, headers: NO_STORE },
+      );
+    }
+    const report = await reconcileMediaObjectKeys(storage, () => Promise.resolve(rows));
     const byKind: Record<string, { readonly rows: number; readonly bytes: number }> = {};
     for (const entry of report.drift) {
       const current = byKind[entry.kind] ?? { rows: 0, bytes: 0 };

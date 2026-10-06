@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { authorized, collectPoppedDeltas, VIEW_FLUSH_MAX_SCAN_PAGES } from '@/app/api/internal/maintenance/view-flush/route';
+import { authorized } from '@/app/api/internal/auth';
+import { collectPoppedDeltas, VIEW_FLUSH_MAX_SCAN_PAGES } from '@/app/api/internal/maintenance/view-flush/route';
 
 function requestWith(auth: string | null): Request {
   const headers = new Headers();

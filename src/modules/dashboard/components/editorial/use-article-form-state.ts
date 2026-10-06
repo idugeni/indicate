@@ -891,6 +891,8 @@ export function useArticleFormState({
    * @param articleId - Id of the article the create call just persisted.
    * @param scheduled - True when the article carries a future publish time.
    * @param scheduledAt - ISO publish time for a scheduled article.
+   * @param backdateIso - ISO publish time applied when the article is immediate.
+   * @param initialViews - Seeded view count fanned out per portal batch; null skips seeding.
    * @returns Nothing; the toast carries the outcome.
    *
    * @remarks `siteIds` is capped per command, so a network with more apex

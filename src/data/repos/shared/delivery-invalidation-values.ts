@@ -1,6 +1,6 @@
-const SITE_PATHS = ['/', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report', '/icon.png', '/apple-touch-icon.png', '/logo.png', '/manifest.webmanifest'] as const;
+const SITE_PATHS = ['/', '/indeks', '/kebijakan-privasi', '/syarat-ketentuan', '/tentang', '/kontak', '/search', '/robots.txt', '/sitemap.xml', '/rss.xml', '/llms.txt', '/news-sitemap.xml', '/tenant-home', '/report', '/icon.png', '/apple-touch-icon.png', '/logo.png', '/manifest.webmanifest'] as const;
 
-const ARTICLE_PATHS = ['/', '/tentang', '/llms.txt', '/news-sitemap.xml', '/rss.xml', '/sitemap.xml', '/tenant-home'] as const;
+const ARTICLE_PATHS = ['/', '/indeks', '/tentang', '/llms.txt', '/news-sitemap.xml', '/rss.xml', '/sitemap.xml', '/tenant-home'] as const;
 
 /**
  * Reasons that change only the article corpus of a site.
@@ -29,7 +29,8 @@ const ARTICLE_CORPUS_REASONS = new Set([
  * @param reason - Comma-separated invalidation reason, possibly empty.
  * @returns `ARTICLE_PATHS` when every segment is an article-corpus reason, otherwise `SITE_PATHS`.
  * @remarks Measured against the tenant surfaces: `/` and `/tenant-home` render
- * `ListingPage`; `/tentang` renders `site.articles.length` twice in all ten
+ * `ListingPage`; `/indeks` renders the A–Z channel index from the article
+ * corpus; `/tentang` renders `site.articles.length` twice in all ten
  * templates; `/llms.txt` renders the latest thirty articles and derives channel
  * names from them; the three feed routes list articles. The routes left out of
  * `ARTICLE_PATHS` read no article data — the legal documents interpolate only

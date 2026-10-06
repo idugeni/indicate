@@ -7,7 +7,7 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { aiCredentials, aiModels, aiProviders, aiRoutingPolicies } from '@/data/schema/ai';
 import { runtimeConfigAuditLogs } from '@/data/schema/runtime-config';
-import { authorized } from '@/app/api/internal/maintenance/view-flush/route';
+import { authorized } from '@/app/api/internal/auth';
 import { diffCatalogModels, findDanglingPolicyModels, normalizeListingId, type SweepPolicyReference } from '@/modules/ai/ai-model-sweep';
 import { OPENROUTER_BASE_URL } from '@/integrations/ai/gateway/openrouter/openrouter-gateway';
 import { VERCEL_GATEWAY_BASE_URL } from '@/integrations/ai/gateway/vercel/vercel-gateway';
@@ -81,7 +81,7 @@ async function handleGET(request: Request) {
         const key = await decryptFirst('gemini');
         if (key === null) return null;
         return listingIds(
-          await fetchJson(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`, {}),
+          await fetchJson('https://generativelanguage.googleapis.com/v1beta/models', { 'x-goog-api-key': key }),
         );
       }
       if (providerId === 'vercel-gateway') {
@@ -175,3 +175,5 @@ async function handleGET(request: Request) {
  * dinonaktifkan operator tetap mati karena tidak ada reaktivasi otomatis.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/ai-model-sweep', handleGET);
+
+export const maxDuration = 300;

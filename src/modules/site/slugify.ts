@@ -9,7 +9,7 @@ const LATIN_FOLD: Readonly<Record<string, string>> = {
  * @remarks Decomposing with NFKD and dropping combining marks turns accented Latin
  * into its base letter, so `Hôtel` becomes `hotel` and `Curaçao` becomes `curacao`.
  * The few Latin letters that carry no decomposition, Polish l-stroke and Vietnamese
- * d-stroke among them, are folded from {@link LATIN_FOLD} first. Underscore survives
+ * d-stroke among them, are folded from `LATIN_FOLD` first. Underscore survives
  * because slugs persisted before this module existed were written with a `\w` class
  * that includes it, and rewriting them would break live URLs.
  *

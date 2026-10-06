@@ -12,7 +12,7 @@
  * @example
  * ```ts
  * const system = getPromptTemplate('seo-bundle');
- * const calon = getPromptTemplate('seo-bundle', 'v2');
+ * const stabil = getPromptTemplate('seo-bundle', 'v1');
  * ```
  */
 export type PromptTask = 'seo-bundle' | 'polish' | 'caption';
