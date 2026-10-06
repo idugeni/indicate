@@ -52,6 +52,7 @@ describe('R2ObjectStorageAdapter dual bucket', () => {
     const real = new S3Client({
       region: 'auto',
       endpoint: 'https://acct-1.r2.cloudflarestorage.com',
+      forcePathStyle: true,
       credentials: { accessKeyId: 'key-id', secretAccessKey: 'secret-key' },
     });
     const adapter = new R2ObjectStorageAdapter(BASE, real);
@@ -62,6 +63,7 @@ describe('R2ObjectStorageAdapter dual bucket', () => {
       900,
     );
     expect(authorization.url).toContain('indicate-media-public');
+    expect(authorization.url).toContain('acct-1.r2.cloudflarestorage.com/indicate-media-public/');
     expect(authorization.requiredHeaders['cache-control']).toContain('max-age=31536000');
   });
 
@@ -69,6 +71,7 @@ describe('R2ObjectStorageAdapter dual bucket', () => {
     const real = new S3Client({
       region: 'auto',
       endpoint: 'https://acct-1.r2.cloudflarestorage.com',
+      forcePathStyle: true,
       credentials: { accessKeyId: 'key-id', secretAccessKey: 'secret-key' },
     });
     const adapter = new R2ObjectStorageAdapter(BASE, real);
@@ -79,6 +82,7 @@ describe('R2ObjectStorageAdapter dual bucket', () => {
       900,
     );
     expect(authorization.url).toContain('indicate-media-private');
+    expect(authorization.url).toContain('acct-1.r2.cloudflarestorage.com/indicate-media-private/');
     expect(authorization.requiredHeaders).not.toHaveProperty('cache-control');
   });
 });
