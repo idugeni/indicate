@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (276 migrations):
+-- Reviewed sources, in journal order (277 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -290,6 +290,7 @@
 --   274  20261006080000_cross_org_tags_gin_dedup  ledger sha256:b79c9d6179b868aa6001a3e4c79a44d58ba6dbf50d9134d7dcbb5aaa80abf10e
 --   275  20261006090000_cross_org_bridge_urls  ledger sha256:2b926d198c1067803ab6bc114225844bc888abf034586afa5869289537cc8749
 --   276  20261006100000_own_bridge_reads  ledger sha256:7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea
+--   277  20261006110000_articles_tags_gin_single  ledger sha256:ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6
 
 BEGIN;
 
@@ -22998,4 +22999,22 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (275, 'own_bridge_reads', 'sha256:2ae7ed596ef17683659955fe4c14ea1ca10d131bb7b77ebf1b897913415d80c9');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea', 1791370800000);
+
+-- ----------------------------------------------------------------------
+-- 20261006110000_articles_tags_gin_single
+-- ----------------------------------------------------------------------
+-- Jaga satu index GIN tunggal di articles.tags.
+--
+-- `20261006090000_cross_org_bridge_urls.sql` membuat ulang
+-- `articles_cross_org_tags_gin` yang sudah dibuang
+-- `20261006080000_cross_org_tags_gin_dedup.sql` (advisor `duplicate_index`).
+-- Idempoten: aman bila duplikatnya belum pernah dibuat ulang.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+DROP INDEX IF EXISTS public.articles_cross_org_tags_gin;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (276, 'articles_tags_gin_single', 'sha256:0558eee2d6ca0947d63127d2ee45260599e0fe811d12930dd79f2d9ae0ef4716');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6', 1791374400000);
 COMMIT;
