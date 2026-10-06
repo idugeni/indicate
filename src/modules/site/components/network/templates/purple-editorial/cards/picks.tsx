@@ -34,7 +34,7 @@ export function PurpleEditorialPicks({
         ) : null}
       </div>
 
-      <div className="mt-5 grid items-stretch gap-5 md:grid-cols-3">
+      <div className="mt-5 grid items-stretch gap-5 sm:grid-cols-2 md:grid-cols-3">
         {articles.map((article, index) => (
           <PurpleEditorialPickCard key={article.id} article={article} index={index} />
         ))}

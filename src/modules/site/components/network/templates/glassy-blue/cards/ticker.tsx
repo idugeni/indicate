@@ -46,7 +46,7 @@ export function GlassyBlueTicker({ articles }: { readonly articles: readonly Art
           {tickerHeadline(article)}
         </Link>
       </p>
-      <time dateTime={article.updatedAt} className="hidden flex-none font-sans text-xs tabular-nums text-slate-600 sm:block">
+      <time dateTime={article.updatedAt} className="flex-none font-sans text-xs tabular-nums text-slate-600 sm:block">
         {article.updatedAt !== article.publishedAt
           ? `Diperbarui ${formatDate(article.updatedAt, 'short')}`
           : formatDate(article.publishedAt, 'short')}

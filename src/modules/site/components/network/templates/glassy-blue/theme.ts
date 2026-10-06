@@ -27,7 +27,7 @@ export const GLASSY_BLUE = {
     primary: '#1f7cff',
   },
   shareButtons: {
-    muted: '#475569',
+    muted: '#51617a',
     ring: '#e2e8f0',
     xText: '#000000',
   },

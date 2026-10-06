@@ -27,7 +27,7 @@ export const ORANGE_MODERN = {
     primary: '#ea580c',
   },
   shareButtons: {
-    muted: '#475569',
+    muted: '#71564a',
     ring: '#e2e8f0',
     xText: '#000000',
   },

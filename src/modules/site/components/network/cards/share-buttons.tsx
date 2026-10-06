@@ -10,7 +10,7 @@ import { TemplateTooltip } from '@/modules/site/components/network/ui/template-t
 
 /**
  * Row of share buttons: filled WhatsApp primary, brand-tinted X/Facebook/
- * Telegram outlines that fill on hover, neutral email, plus copy link
+ * Telegram that fill on hover, neutral email, plus copy link
  * (clipboard + toast).
  */
 export interface ShareButtonsSkin {
@@ -21,22 +21,32 @@ export interface ShareButtonsSkin {
 
 /**
  * Row of share buttons: filled WhatsApp primary, brand-tinted X/Facebook/
- * Telegram outlines that fill on hover, neutral email, plus copy link
+ * Telegram that fill on hover, neutral email, plus copy link
  * (clipboard + toast).
  *
- * @param skin - Neutral text, ring, and X glyph colours from the template theme.
+ * @param skin - Neutral text and X glyph colours from the template theme.
  * @param article - Article being shared.
  * @param canonical - Canonical URL of the article.
+ * @param light - True saat tampil di atas foto gelap; hover memakai putih.
+ * @param tone - Skema template; hover X dibalik saat gelap agar kontras.
  * @returns Share channel row.
- * @remarks Skin colours ride inline styles, not interpolated Tailwind
- * arbitrary values (`ring-[${...}]`): Tailwind only generates class names
- * it can read literally, so an interpolated one silently renders nothing
- * and the ring falls back to `currentColor` — the white circles on dark
- * heroes. Static brand colours stay as literal classes.
  */
-export function ShareButtons({ skin, article, canonical }: { readonly skin: ShareButtonsSkin; readonly article: ArticleListItem; readonly canonical: string }) {
+export function ShareButtons({
+  skin,
+  article,
+  canonical,
+  light = false,
+  tone = 'light',
+}: {
+  readonly skin: ShareButtonsSkin;
+  readonly article: ArticleListItem;
+  readonly canonical: string;
+  readonly light?: boolean;
+  readonly tone?: 'light' | 'dark';
+}) {
   const channels = buildShareChannels(article.title, canonical);
-  const ringStyle = { '--tw-ring-color': skin.ring } as CSSProperties;
+  const onDark = light || tone === 'dark';
+  const softBase = light ? 'bg-white/10' : 'bg-[var(--tpl-primary-soft,#e8f0fe)]';
 
   const copy = async () => {
     try {
@@ -48,22 +58,22 @@ export function ShareButtons({ skin, article, canonical }: { readonly skin: Shar
   };
 
   const round =
-    'flex h-9 w-9 items-center justify-center rounded-full ring-1 transition-colors hover:text-[var(--tpl-primary)]';
-  const channel =
-    'flex h-9 w-9 items-center justify-center rounded-full ring-1 transition-colors hover:text-white hover:ring-transparent';
+    `flex h-9 w-9 items-center justify-center rounded-full transition-colors ${softBase} ${light ? 'hover:text-white' : 'hover:text-[var(--tpl-primary)]'}`;
+  const channelBase =
+    `flex h-9 w-9 items-center justify-center rounded-full transition-colors ${softBase}`;
   const classByKey: Record<ShareChannelKey, string> = {
     whatsapp: 'flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tpl-primary)] text-[var(--tpl-on-primary,#ffffff)] transition-colors hover:bg-[var(--tpl-primary-dark)]',
-    x: `${channel} hover:bg-black`,
-    facebook: `${channel} text-[#1877F2] hover:bg-[#1877F2]`,
-    telegram: `${channel} text-[#229ED9] hover:bg-[#229ED9]`,
+    x: onDark ? `${channelBase} hover:bg-white hover:text-black` : `${channelBase} hover:bg-black hover:text-white`,
+    facebook: `${channelBase} text-[#1877F2] hover:bg-[#1877F2] hover:text-white`,
+    telegram: `${channelBase} text-[#229ED9] hover:bg-[#229ED9] hover:text-white`,
     email: round,
   };
   const styleByKey: Record<ShareChannelKey, CSSProperties> = {
     whatsapp: {},
-    x: { ...ringStyle, color: skin.xText },
-    facebook: ringStyle,
-    telegram: ringStyle,
-    email: { ...ringStyle, color: skin.muted },
+    x: { color: skin.xText },
+    facebook: {},
+    telegram: {},
+    email: { color: skin.muted },
   };
 
   return (

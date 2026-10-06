@@ -39,7 +39,7 @@ export function GreenMinimalLatest({
         {articles.map((article) => {
           const src = articleImage(article);
           return (
-            <li key={article.id} className="m-0 grid gap-4 p-0 py-5 sm:grid-cols-[220px_minmax(0,1fr)_auto] sm:items-center">
+            <li key={article.id} className="m-0 grid gap-4 p-0 py-5 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-center">
               <Link
                 href={article.href}
                 aria-label={article.title}

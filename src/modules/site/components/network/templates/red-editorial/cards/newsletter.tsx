@@ -6,7 +6,7 @@ export function RedEditorialNewsletter() {
     <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#5f0f0f] via-[#7f1d1d] to-[#991b1b] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
       <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 right-40 h-56 w-56 rounded-full bg-white/5" />
-      <div className="relative grid items-center gap-6 lg:grid-cols-2">
+      <div className="relative grid items-center gap-6 md:grid-cols-2 lg:grid-cols-2">
         <div className="flex items-start gap-4">
           <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] text-white shadow-md ring-1 ring-white/25">
             <Mail className="h-5 w-5" />

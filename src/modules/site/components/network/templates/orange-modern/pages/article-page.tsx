@@ -53,7 +53,7 @@ export function OrangeModernArticle({
         articleSiteId={article.articleSiteId}
       />
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-12">
-        <div className="grid items-start gap-8 print:block lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid items-start gap-8 print:block md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_320px]">
         <article className="min-w-0">
           <ArticlePrintMasthead
             siteName={site.settings.name}

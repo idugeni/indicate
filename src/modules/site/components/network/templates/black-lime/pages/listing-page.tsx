@@ -68,7 +68,7 @@ export function BlackLimeListing({ site, title, description, path, indexable }: 
               linkHref={null}
               description={description ?? 'Kabar terkini untuk Anda'}
             />
-            <div className="grid items-start gap-5 lg:grid-cols-2">
+            <div className="grid items-start gap-5 md:grid-cols-2 lg:grid-cols-2">
               <BlackLimeQuotePanel siteName={site.settings.name} quote={quote} />
               <BlackLimeMostRead articles={mostRead} />
             </div>

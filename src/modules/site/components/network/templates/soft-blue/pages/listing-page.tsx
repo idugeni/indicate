@@ -40,7 +40,7 @@ export function SoftBlueListing({ site, title, description, path, indexable }: L
           <SoftBlueEmpty title={title} />
         ) : (
           <>
-            <div className="grid items-start gap-8 lg:grid-cols-2">
+            <div className="grid items-start gap-8 md:grid-cols-2 lg:grid-cols-2">
               <SoftBlueHero articles={hero ? [hero] : []} />
               <SoftBluePicks articles={rest.slice(0, 4)} description={description ?? 'Informasi terkurasi untuk Anda'} />
             </div>

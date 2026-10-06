@@ -53,7 +53,7 @@ export function DarkNavyListing({ site, title, description, path, indexable }: L
           <>
             <DarkNavyHero articles={site.articles.slice(0, 5)} />
             <AdSlot site={site} slot="hero-ad" />
-            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_340px]">
               <DarkNavyLatest
                 articles={latest}
                 description={description ?? 'Informasi terkini dari berbagai daerah dan dunia.'}

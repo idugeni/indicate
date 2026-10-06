@@ -20,7 +20,7 @@ export function WarmEditorialArchivePager({
       label={heading}
       header={<SectionHeading description={description}>{heading}</SectionHeading>}
       renderCard={(article, index) => <WarmEditorialPickCard key={article.id} article={article} index={index} />}
-      gridClassName="md:grid-cols-3"
+      gridClassName="sm:grid-cols-2 md:grid-cols-3"
       pageSize={12}
     />
   );

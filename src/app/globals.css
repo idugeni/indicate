@@ -289,6 +289,43 @@
     background-color: #b88d3a;
   }
 
+  /* Dark-dominant templates follow their own gutter instead of the light
+     paper: the viewport scrollbar keys off the root, so the per-template
+     `color-scheme` below never reached it. Track matches each template's
+     page background; thumb stays legible on both, brass on hover. */
+  html:has([data-template='dark-navy']) {
+    scrollbar-color: #3a4560 #070f22;
+    color-scheme: dark;
+  }
+  html:has([data-template='black-lime']) {
+    scrollbar-color: #3a4560 #0a0c07;
+    color-scheme: dark;
+  }
+  html:has([data-template='dark-navy'])::-webkit-scrollbar-track,
+  html:has([data-template='dark-navy'])::-webkit-scrollbar-corner,
+  [data-template='dark-navy'] ::-webkit-scrollbar-track,
+  [data-template='dark-navy'] ::-webkit-scrollbar-corner {
+    background: #070f22;
+  }
+  html:has([data-template='black-lime'])::-webkit-scrollbar-track,
+  html:has([data-template='black-lime'])::-webkit-scrollbar-corner,
+  [data-template='black-lime'] ::-webkit-scrollbar-track,
+  [data-template='black-lime'] ::-webkit-scrollbar-corner {
+    background: #0a0c07;
+  }
+  html:has([data-template='dark-navy'])::-webkit-scrollbar-thumb,
+  [data-template='dark-navy'] ::-webkit-scrollbar-thumb,
+  html:has([data-template='black-lime'])::-webkit-scrollbar-thumb,
+  [data-template='black-lime'] ::-webkit-scrollbar-thumb {
+    background-color: #3a4560;
+  }
+  html:has([data-template='dark-navy'])::-webkit-scrollbar-thumb:hover,
+  [data-template='dark-navy'] ::-webkit-scrollbar-thumb:hover,
+  html:has([data-template='black-lime'])::-webkit-scrollbar-thumb:hover,
+  [data-template='black-lime'] ::-webkit-scrollbar-thumb:hover {
+    background-color: #b88d3a;
+  }
+
   /* Phantom horizontal bar guard: Chromium can paint one with zero scrollable
      overflow (desktop-site emulation, upstream bug). WebKit/Blink only —
      Firefox has no axis-split scrollbar styling, so it is unchanged there.

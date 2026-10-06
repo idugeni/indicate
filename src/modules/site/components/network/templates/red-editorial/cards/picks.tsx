@@ -49,7 +49,7 @@ export function RedEditorialPicks({
         ) : null}
       </div>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="grid content-start gap-5 sm:grid-cols-2">
           {grid.map((article) => (
             <RedEditorialPickCard key={article.id} article={article} />

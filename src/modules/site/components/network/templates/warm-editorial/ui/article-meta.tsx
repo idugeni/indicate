@@ -33,7 +33,7 @@ export function ArticleMeta({
   const item = 'inline-flex items-center gap-1.5';
   const icon = 'h-3.5 w-3.5 text-slate-600';
   return (
-    <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-sans text-xs tabular-nums text-slate-600">
+    <span className="flex min-w-0 flex-wrap items-center gap-x-3.5 gap-y-1 font-sans text-xs tabular-nums text-slate-600">
       <span className={item}>
         <CalendarDays className={icon} aria-hidden="true" />
         {formatDate(publishedAt, dateVariant)}

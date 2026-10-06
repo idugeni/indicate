@@ -28,9 +28,10 @@ function printFileName(title: string): string {
  * event when the dialog is cancelled. Renders nothing printable itself.
  *
  * @param title - Article title used for the suggested PDF filename.
- * @returns Outline pill that opens the print dialog.
+ * @param light - True saat tampil di atas foto gelap; teks memakai putih translusen.
+ * @returns Soft-filled pill that opens the print dialog.
  */
-export function ArticlePrintButton({ title }: { readonly title: string }) {
+export function ArticlePrintButton({ title, light = false }: { readonly title: string; readonly light?: boolean }) {
   useEffect(() => {
     const previous = document.title;
     const suggest = () => {
@@ -64,7 +65,7 @@ export function ArticlePrintButton({ title }: { readonly title: string }) {
       onClick={handlePrint}
       aria-label={`Cetak artikel: ${title}`}
       data-print-button="true"
-      className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-full text-[var(--tpl-muted,#64748b)] ring-1 ring-[var(--tpl-ring,#e2e8f0)] transition-colors hover:text-[var(--tpl-primary,#1a5fd0)] sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 print:hidden"
+      className={`inline-flex h-9 w-9 flex-none items-center justify-center rounded-full transition-colors sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 print:hidden ${light ? 'bg-white/10 text-white/80 hover:text-white' : 'bg-[var(--tpl-primary-soft,#e8f0fe)] text-[var(--tpl-muted,#64748b)] hover:text-[var(--tpl-primary,#1a5fd0)]'}`}
     >
       <Printer className="h-4 w-4" aria-hidden="true" />
       <span className="hidden font-sans text-xs font-bold sm:inline">Cetak / PDF</span>

@@ -14,7 +14,7 @@ export function SectionHeading({
 }) {
   return (
     <div>
-      <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[var(--tpl-ink,#eaf0fb)]">
+      <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[var(--tpl-ink,#eaf0fb)] sm:text-2xl">
         <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#2f7bff)]" />
         {children}
       </h2>

@@ -152,11 +152,14 @@ function BylineCard({
   readonly skin: ArticleHeroSkin;
   readonly light?: boolean;
 }) {
+  const actionSkin = light
+    ? { muted: 'rgba(255,255,255,0.75)', ring: 'rgba(255,255,255,0.35)', xText: '#ffffff' }
+    : skin.shareButtons;
   return (
     <>
       <div
         className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl p-4 shadow-sm sm:px-5"
-        style={{ backgroundColor: light ? 'rgba(255,255,255,0.12)' : skin.card, border: `1px solid ${skin.ring}` }}
+        style={{ backgroundColor: light ? 'rgba(255,255,255,0.12)' : skin.card }}
       >
         <p className="m-0 flex min-w-0 items-center gap-3">
           <AuthorAvatar skin={skin.authorAvatar} name={bylineName} avatarUrl={article.publisherLogoUrl} size="md" />
@@ -178,7 +181,7 @@ function BylineCard({
           </span>
         </p>
       </div>
-      <ArticleActionStrip skin={skin.shareButtons} article={article} canonical={canonical} />
+      <ArticleActionStrip skin={actionSkin} article={article} canonical={canonical} light={light} tone={skin.tone} />
     </>
   );
 }
@@ -269,7 +272,7 @@ function BreakoutHero(props: Omit<ArticleHeroProps, 'variant'>) {
       </div>
       <div
         className="relative z-10 -mt-16 rounded-2xl p-6 shadow-sm sm:p-8"
-        style={{ backgroundColor: skin.card, border: `1px solid ${skin.ring}` }}
+        style={{ backgroundColor: skin.card }}
       >
         <header>
           <TitleBlock article={article} skin={skin} />

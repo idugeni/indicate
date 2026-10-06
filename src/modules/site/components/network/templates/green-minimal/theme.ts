@@ -27,7 +27,7 @@ export const GREEN_MINIMAL = {
     primary: '#1d7a38',
   },
   shareButtons: {
-    muted: '#475569',
+    muted: '#4d6356',
     ring: '#e2e8f0',
     xText: '#000000',
   },

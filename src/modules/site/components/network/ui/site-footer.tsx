@@ -276,38 +276,52 @@ function BottomBar({
   readonly palette: Palette;
   readonly centered?: boolean;
 }) {
+  const rowOneClass = centered
+    ? 'flex flex-col items-center gap-2.5 text-center'
+    : 'flex flex-col items-center gap-2.5 text-center sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:text-left md:gap-6 lg:gap-8';
+  const legalListClass = centered
+    ? 'm-0 flex list-none flex-wrap items-center justify-center gap-x-4 gap-y-1.5 p-0 md:gap-x-5'
+    : 'm-0 flex list-none flex-wrap items-center justify-center gap-x-4 gap-y-1.5 p-0 sm:justify-end md:gap-x-5';
+  const operatorWrapClass = centered
+    ? 'mt-4 flex flex-col items-center gap-1.5 border-t pt-3.5 text-center md:mt-5 md:pt-4'
+    : 'mt-4 flex flex-col items-center gap-1.5 border-t pt-3.5 text-center sm:mt-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:text-left md:mt-4 md:gap-4 md:pt-4';
   return (
     <div style={{ borderTop: `1px solid ${palette.ring}` }}>
       <div
-        className={`mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 py-4 text-center font-sans text-xs sm:px-6 ${centered ? '' : 'sm:flex-row sm:items-center sm:justify-between sm:text-left'}`}
+        className="mx-auto max-w-7xl px-4 py-5 font-sans sm:px-6 md:py-6 lg:px-8"
         style={{ color: palette.muted }}
       >
-        <p className="m-0">
-          © {year} {site.settings.name}. Semua hak dilindungi undang-undang.
-        </p>
-        {centered ? (
-          <>
-            <p className="m-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <div className={rowOneClass}>
+          <p className={`m-0 text-xs leading-relaxed md:text-[13px] ${centered ? '' : 'sm:text-left'}`}>
+            © {year} {site.settings.name}. Semua hak dilindungi undang-undang.
+          </p>
+          <nav aria-label="Tautan legal">
+            <ul className={legalListClass}>
               {LEGAL_LINKS.map((item) => (
-                <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-70">
-                  {item.label}
-                </Link>
+                <li key={item.href} className="m-0 p-0">
+                  <Link
+                    href={item.href}
+                    className="rounded-sm text-xs underline-offset-4 transition-opacity hover:opacity-70 hover:underline focus-visible:underline focus-visible:outline-2 focus-visible:outline-offset-2 md:text-[13px]"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
               ))}
-            </p>
-            <p className="m-0 font-semibold tracking-wide opacity-80">{COMPANY_NAME}</p>
-          </>
-        ) : (
-          <div className="grid w-full grid-cols-2 items-start gap-x-3 sm:contents">
-            <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 sm:justify-center">
-              {LEGAL_LINKS.map((item) => (
-                <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-70">
-                  {item.label}
-                </Link>
-              ))}
-            </p>
-            <p className="m-0 text-right font-semibold tracking-wide opacity-80">{COMPANY_NAME}</p>
-          </div>
-        )}
+            </ul>
+          </nav>
+        </div>
+        <div className={operatorWrapClass} style={{ borderTopColor: palette.ring }}>
+          <p className="m-0 text-[11px] leading-relaxed md:text-xs">
+            Dikelola oleh{' '}
+            <span className="font-semibold tracking-wide" style={{ color: palette.ink }}>
+              {COMPANY_NAME}
+            </span>
+          </p>
+          <p className="m-0 inline-flex items-center gap-1.5 text-[11px] leading-relaxed md:text-xs">
+            <BadgeCheck className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+            Bagian dari jaringan media Indicate
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -335,7 +349,7 @@ function ClassicFooter({
   const palette = paletteFor(skin, false);
   return (
     <footer style={{ backgroundColor: palette.surface, borderTop: `1px solid ${palette.ring}` }}>
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-8 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-8 px-4 py-12 sm:px-6 md:grid-cols-2 md:py-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] lg:px-8">
         <div className="min-w-0">
           <BrandRow site={site} tagline={tagline} palette={palette} />
           <p className="m-0 mt-4 max-w-xs font-sans text-sm leading-relaxed" style={{ color: palette.muted }}>
@@ -389,10 +403,10 @@ function WordmarkFooter({
   const palette = paletteFor(skin, true);
   return (
     <footer style={{ backgroundColor: palette.surface, borderTop: `1px solid ${palette.ring}` }}>
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 md:py-14 lg:px-8">
+        <div className="grid items-end gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
           <div className="min-w-0">
-            <p className="m-0 font-sans text-4xl font-black tracking-tight text-white sm:text-6xl">{site.settings.name}</p>
+            <p className="m-0 font-sans text-4xl font-black tracking-tight text-white sm:text-5xl md:text-6xl">{site.settings.name}</p>
             <p className="m-0 mt-3 max-w-md font-sans text-sm leading-relaxed" style={{ color: palette.muted }}>
               {tagline}
             </p>
@@ -458,9 +472,9 @@ function NewsletterFooter({
   const palette = paletteFor(skin, false);
   return (
     <footer style={{ backgroundColor: palette.surface, borderTop: `1px solid ${palette.ring}` }}>
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 md:py-14 lg:px-8">
         <div
-          className="grid items-center gap-6 rounded-2xl p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]"
+          className="grid items-center gap-6 rounded-2xl p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]"
           style={{ backgroundColor: `${skin.accent}12`, outline: `1px solid ${skin.accent}30` }}
         >
           <div className="min-w-0">
@@ -534,16 +548,16 @@ function MinimalFooter({
   const palette = paletteFor(skin, false);
   return (
     <footer style={{ backgroundColor: palette.surface, borderTop: `1px solid ${palette.ring}` }}>
-      <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6">
-        <p className="m-0 font-sans text-2xl font-black tracking-tight" style={{ color: palette.ink }}>
+      <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 md:py-16 lg:px-8">
+        <p className="m-0 font-sans text-2xl font-black tracking-tight sm:text-3xl md:text-4xl" style={{ color: palette.ink }}>
           {site.settings.name}
         </p>
-        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed" style={{ color: palette.muted }}>
+        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed md:text-base" style={{ color: palette.muted }}>
           {tagline}
         </p>
         <SocialRow site={site} socials={socials} palette={palette} centered />
         <div className="m-0 mt-4 flex justify-center">{preferredSource}</div>
-        <nav aria-label="Navigasi footer" className="m-0 mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2">
+        <nav aria-label="Navigasi footer" className="m-0 mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 md:gap-x-6">
           {links.map((item) => (
             <Link
               key={`${item.href}:${item.label}`}
@@ -581,7 +595,7 @@ function PremiumFooter({
   const palette = paletteFor(skin, true);
   return (
     <footer style={{ backgroundColor: palette.surface, borderTop: `1px solid ${palette.ring}` }}>
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-8 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-8 px-4 py-12 sm:px-6 md:grid-cols-2 md:py-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] lg:px-8">
         <div className="min-w-0">
           <BrandRow site={site} tagline={tagline} palette={palette} />
           <p className="m-0 mt-4 max-w-xs font-sans text-sm leading-relaxed" style={{ color: palette.muted }}>
@@ -641,7 +655,7 @@ function MegaFooter({
         );
   return (
     <footer style={{ backgroundColor: palette.surface, borderTop: `1px solid ${palette.ring}` }}>
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 md:py-14 lg:px-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <BrandRow site={site} tagline={tagline} palette={palette} />
@@ -654,7 +668,7 @@ function MegaFooter({
             <MobileAccordion label="Lainnya" links={[...PERUSAHAAN_LINKS, ...BANTUAN_LINKS]} palette={palette} />
           </div>
         </div>
-        <div className="mt-8 hidden gap-8 md:grid md:grid-cols-4 lg:grid-cols-5" style={{ borderTop: `1px solid ${palette.ring}`, paddingTop: '2rem' }}>
+        <div className="mt-8 hidden gap-8 md:grid md:grid-cols-3 lg:grid-cols-5" style={{ borderTop: `1px solid ${palette.ring}`, paddingTop: '2rem' }}>
           {chunks.map((chunk, column) => (
             <nav key={column} aria-label={column === 0 ? 'Semua kanal' : `Kanal lanjutan ${column + 1}`}>
               {column === 0 ? (

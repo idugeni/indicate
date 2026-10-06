@@ -34,7 +34,7 @@ export function SoftBluePicks({
         ) : null}
       </div>
 
-      <div className="mt-5 grid items-stretch gap-5 sm:grid-cols-2">
+      <div className="mt-5 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {articles.map((article, index) => (
           <SoftBluePickCard key={article.id} article={article} index={index} />
         ))}

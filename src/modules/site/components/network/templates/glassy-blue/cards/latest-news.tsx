@@ -50,7 +50,7 @@ export function GlassyBlueLatestNews({
         ) : null}
       </div>
 
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mt-5 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_340px]">
         <ul className="m-0 list-none space-y-3 p-0">
           {articles.map((article, index) => {
             const src = articleImage(article);
@@ -61,7 +61,7 @@ export function GlassyBlueLatestNews({
                   href={article.href}
                   className="group flex gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 transition-shadow duration-200 hover:shadow-md hover:shadow-[var(--tpl-primary,#1f7cff)]/10"
                 >
-                  <span className="relative block h-20 w-28 flex-none overflow-hidden rounded-xl">
+                  <span className="relative block h-20 w-28 flex-none overflow-hidden rounded-xl sm:h-24 sm:w-36">
                     <Image
                       unoptimized={!isLocalImageSrc(src)}
                       src={src}
@@ -94,7 +94,7 @@ export function GlassyBlueLatestNews({
                       </span>
                       <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                     </span>
-                    <h3 className="line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900 group-hover:text-[var(--tpl-primary,#1f7cff)]">
+                    <h3 className="line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900 group-hover:text-[var(--tpl-primary,#1f7cff)] sm:text-base">
                       {article.title}
                     </h3>
                   </span>

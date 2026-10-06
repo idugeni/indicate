@@ -27,7 +27,7 @@ export const SOFT_BLUE = {
     primary: '#2563eb',
   },
   shareButtons: {
-    muted: '#475569',
+    muted: '#51617a',
     ring: '#e2e8f0',
     xText: '#000000',
   },

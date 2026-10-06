@@ -36,7 +36,7 @@ export function BlackLimePicks({
         ) : null}
       </div>
 
-      <div className={`mt-5 grid items-stretch gap-5 sm:grid-cols-2 ${columns === 4 ? 'lg:grid-cols-4' : 'md:grid-cols-3'}`}>
+      <div className={`mt-5 grid items-stretch gap-5 sm:grid-cols-2 ${columns === 4 ? 'md:grid-cols-3 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
         {articles.map((article, index) => (
           <BlackLimePickCard
             key={article.id}

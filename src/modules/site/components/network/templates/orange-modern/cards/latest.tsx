@@ -76,7 +76,7 @@ export function OrangeModernLatest({
           </Link>
         ) : null}
       </div>
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-5 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_320px]">
         <ul className="m-0 list-none divide-y divide-slate-200/70 p-0">
           {articles.map((article, index) => {
             const src = articleImage(article);
@@ -88,7 +88,7 @@ export function OrangeModernLatest({
                   aria-label={article.title}
                   aria-hidden="true"
                   tabIndex={-1}
-                  className="block h-20 w-28 flex-none overflow-hidden rounded-xl shadow-sm"
+                  className="block h-20 w-28 flex-none overflow-hidden rounded-xl shadow-sm sm:h-24 sm:w-36"
                 >
                   <Image
                     unoptimized={!isLocalImageSrc(src)}
@@ -98,7 +98,7 @@ export function OrangeModernLatest({
                     className="h-full w-full object-cover"
                     width={224}
                     height={160}
-                    sizes="112px"
+                    sizes="(max-width: 640px) 112px, 144px"
                   />
                 </Link>
                 <div className="min-w-0 flex-1">
@@ -123,7 +123,7 @@ export function OrangeModernLatest({
                     </span>
                     <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                   </p>
-                  <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900">
+                  <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900 sm:text-base">
                     <Link href={article.href} className="hover:text-[var(--tpl-primary,#ea580c)]">
                       {article.title}
                     </Link>

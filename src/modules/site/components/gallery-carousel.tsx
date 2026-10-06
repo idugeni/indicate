@@ -43,12 +43,12 @@ export function GalleryCarousel({ items }: { readonly items: readonly CarouselGa
         alt={active.alt}
         caption={active.caption}
         captionClassName="px-6 py-3 font-sans text-xs leading-relaxed"
-        width={800}
-        height={600}
-        className="gallery-fade aspect-[4/3] w-full object-cover"
+        width={1280}
+        height={720}
+        className="gallery-fade aspect-video w-full object-cover"
         figureClassName="m-0 overflow-hidden rounded-xl"
       />
-      <div className="pointer-events-none absolute inset-x-2 top-0 flex aspect-[4/3] items-center justify-between">
+      <div className="pointer-events-none absolute inset-x-2 top-0 flex aspect-video items-center justify-between">
         {position > 0 ? (
           <button
             type="button"

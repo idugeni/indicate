@@ -8,21 +8,27 @@ import { ArticlePrintButton } from '@/modules/site/components/network/ui/article
  * @param skin - Warna netral tombol bagikan dari tema template.
  * @param article - Artikel yang dibagikan.
  * @param canonical - URL kanonis artikel.
- * @returns Baris aksi ber-hairline di bawah kartu byline.
+ * @param light - True saat tampil di atas foto gelap; ikon memakai putih.
+ * @param tone - Skema template untuk kontras hover.
+ * @returns Baris aksi tanpa garis di bawah kartu byline.
  */
 export function ArticleActionStrip({
   skin,
   article,
   canonical,
+  light = false,
+  tone = 'light',
 }: {
   readonly skin: ShareButtonsSkin;
   readonly article: ArticleListItem;
   readonly canonical: string;
+  readonly light?: boolean;
+  readonly tone?: 'light' | 'dark';
 }) {
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-y border-[var(--tpl-ring,#e2e8f0)] py-3 print:hidden">
-      <ShareButtons skin={skin} article={article} canonical={canonical} />
-      <ArticlePrintButton title={article.title} />
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 py-1 print:hidden">
+      <ShareButtons skin={skin} article={article} canonical={canonical} light={light} tone={tone} />
+      <ArticlePrintButton title={article.title} light={light} />
     </div>
   );
 }

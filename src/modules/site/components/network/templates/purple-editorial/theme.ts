@@ -27,7 +27,7 @@ export const PURPLE_EDITORIAL = {
     primary: '#7c3aed',
   },
   shareButtons: {
-    muted: '#475569',
+    muted: '#5f5884',
     ring: '#e2e8f0',
     xText: '#000000',
   },

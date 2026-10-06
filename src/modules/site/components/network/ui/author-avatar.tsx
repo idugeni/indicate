@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import type { CSSProperties } from 'react';
 
 /**
  * Avatar penulis: foto bila ada, inisial bila kosong.
@@ -7,10 +6,7 @@ import type { CSSProperties } from 'react';
  * @param name - Nama penulis.
  * @param avatarUrl - URL avatar atau null.
  * @param size - Ukuran tampilan.
- * @returns Avatar bulat penulis.
- * @remarks Warna skin menempel lewat inline style: nilai Tailwind
- * interpolasi (`ring-[${...}]`) tidak pernah di-generate sehingga ring
- * jatuh ke `currentColor`.
+ * @returns Avatar bulat penulis tanpa ring.
  */
 export interface AuthorAvatarSkin {
   readonly ring: string;
@@ -40,8 +36,7 @@ export function AuthorAvatar({
         loading="lazy"
         width={side}
         height={side}
-        className={`${dimension} flex-none rounded-full object-cover ring-1`}
-        style={{ '--tw-ring-color': skin.ring } as CSSProperties}
+        className={`${dimension} flex-none rounded-full object-cover`}
       />
     );
   }

@@ -27,7 +27,7 @@ export const WARM_EDITORIAL = {
     primary: '#b4532a',
   },
   shareButtons: {
-    muted: '#475569',
+    muted: '#6f5a4c',
     ring: '#e2e8f0',
     xText: '#000000',
   },

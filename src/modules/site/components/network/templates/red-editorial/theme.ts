@@ -29,7 +29,7 @@ export const RED_EDITORIAL = {
     primary: '#b91c1c',
   },
   shareButtons: {
-    muted: '#475569',
+    muted: '#705050',
     ring: '#e2e8f0',
     xText: '#000000',
   },

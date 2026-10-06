@@ -66,7 +66,7 @@ export function WarmEditorialLatest({
           </Link>
         ) : null}
       </div>
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-5 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_320px]">
         <ul className="m-0 list-none divide-y divide-slate-200/70 p-0">
           {articles.map((article, index) => {
             const src = articleImage(article);

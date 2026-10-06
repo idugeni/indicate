@@ -1,6 +1,7 @@
 import type { Viewport } from 'next';
 import type { ReactNode } from 'react';
 
+import { TemplateMemory } from '@/modules/site/components/template-memory';
 import { LOCKED_ZOOM_VIEWPORT } from '@/ui/locked-viewport';
 
 /** Light tenant: browser chrome stays light on all portal pages. */
@@ -18,5 +19,10 @@ export default function NetworkLayout({
   // Tetap sinkron: layout async yang suspend menampilkan loading milik segmen
   // induk (spinner root) karena (network)/loading hanya menutupi children.
   // Guard host sudah di tiap halaman via resolveNetworkSite.
-  return <>{children}</>;
+  return (
+    <>
+      <TemplateMemory />
+      {children}
+    </>
+  );
 }
