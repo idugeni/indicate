@@ -112,7 +112,7 @@ export function SoftBlueArticle({
                 <Link
                   key={tag}
                   href={`/tags/${encodeURIComponent(tag)}`}
-                  className="rounded-full bg-white px-3 py-1.5 font-sans text-xs font-medium text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#2563eb]"
+                  className="rounded-full bg-white px-3 py-1.5 font-sans text-xs font-medium text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#2563eb)]"
                 >
                   #{tag}
                 </Link>
@@ -135,7 +135,7 @@ export function SoftBlueArticle({
               ) : (
                 <span
                   aria-hidden="true"
-                  className="flex h-14 w-14 flex-none items-center justify-center rounded-xl bg-[#2563eb]/10 font-sans text-xl font-bold text-[#2563eb]"
+                  className="flex h-14 w-14 flex-none items-center justify-center rounded-xl bg-[var(--tpl-primary,#2563eb)]/10 font-sans text-xl font-bold text-[var(--tpl-primary,#2563eb)]"
                 >
                   {article.attribution.trim().slice(0, 1).toUpperCase()}
                 </span>
@@ -144,7 +144,7 @@ export function SoftBlueArticle({
                 <p className="m-0 flex min-w-0 items-center gap-1.5 truncate font-sans text-base font-bold text-slate-900">
                   <span className="truncate">{article.attribution}</span>
                   {article.publisherVerified ? (
-                    <BadgeCheck className="h-4 w-4 flex-none text-[#2563eb]" aria-label="Penerbit terverifikasi" />
+                    <BadgeCheck className="h-4 w-4 flex-none text-[var(--tpl-primary,#2563eb)]" aria-label="Penerbit terverifikasi" />
                   ) : null}
                 </p>
                 <p className="m-0 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 font-sans text-xs text-slate-600">
@@ -183,7 +183,7 @@ export function SoftBlueArticle({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`${article.attribution} di ${channel.label}`}
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[#2563eb]"
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 ring-1 ring-slate-200 transition-colors hover:text-[var(--tpl-primary,#2563eb)]"
                       >
                         <Icon className="h-4 w-4" aria-hidden="true" />
                       </a>
@@ -256,7 +256,7 @@ export function SoftBlueArticle({
                 {newer !== null ? (
                   <Link
                     href={newer.href}
-                    className="group relative block min-h-48 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#2563eb]/50 sm:min-h-56"
+                    className="group relative block min-h-48 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[var(--tpl-primary,#2563eb)]/50 sm:min-h-56"
                   >
                     <Image
                       unoptimized
@@ -266,9 +266,9 @@ export function SoftBlueArticle({
                       loading="lazy"
                       fill
                       sizes="(max-width: 640px) 100vw, 50vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] group-hover:saturate-[1.05] motion-reduce:transition-none"
                     />
-                    <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+                    <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none" />
                     <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
                       <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                       Lebih baru
@@ -285,7 +285,7 @@ export function SoftBlueArticle({
                 {older !== null ? (
                   <Link
                     href={older.href}
-                    className="group relative block min-h-48 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[#2563eb]/50 sm:min-h-56"
+                    className="group relative block min-h-48 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60 transition-all hover:shadow-md hover:ring-[var(--tpl-primary,#2563eb)]/50 sm:min-h-56"
                   >
                     <Image
                       unoptimized
@@ -295,9 +295,9 @@ export function SoftBlueArticle({
                       loading="lazy"
                       fill
                       sizes="(max-width: 640px) 100vw, 50vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] group-hover:saturate-[1.05] motion-reduce:transition-none"
                     />
-                    <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+                    <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none" />
                     <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
                       Lebih lama
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -313,8 +313,8 @@ export function SoftBlueArticle({
             </nav>
           ) : null}
 
-          <aside aria-label="Laporkan konten" className="mt-8 flex flex-col gap-4 rounded-2xl bg-[#2563eb]/5 p-4 ring-1 ring-[#2563eb]/15 sm:flex-row sm:items-center sm:p-5">
-            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[#2563eb]/10 text-[#2563eb]">
+          <aside aria-label="Laporkan konten" className="mt-8 flex flex-col gap-4 rounded-2xl bg-[var(--tpl-primary,#2563eb)]/5 p-4 ring-1 ring-[var(--tpl-primary,#2563eb)]/15 sm:flex-row sm:items-center sm:p-5">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-[var(--tpl-primary,#2563eb)]/10 text-[var(--tpl-primary,#2563eb)]">
               <Flag className="h-4 w-4" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
@@ -325,7 +325,7 @@ export function SoftBlueArticle({
             </span>
             <Link
               href={`/report?artikel=${encodeURIComponent(article.slug)}`}
-              className="inline-flex flex-none items-center justify-center rounded-xl px-4 py-2.5 font-sans text-sm font-bold text-[#2563eb] ring-1 ring-[#2563eb]/30 transition-colors hover:bg-[#2563eb] hover:text-white"
+              className="inline-flex flex-none items-center justify-center rounded-xl px-4 py-2.5 font-sans text-sm font-bold text-[var(--tpl-primary,#2563eb)] ring-1 ring-[var(--tpl-primary,#2563eb)]/30 transition-colors hover:bg-[var(--tpl-primary,#2563eb)] hover:text-white"
             >
               Laporkan konten
             </Link>

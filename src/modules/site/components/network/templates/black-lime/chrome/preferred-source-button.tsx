@@ -21,12 +21,12 @@ export function BlackLimePreferredSourceButton({ site }: { readonly site: Networ
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Tambahkan ${site.settings.name} sebagai Sumber Pilihan di Google`}
-      className="inline-flex max-w-full items-center gap-3 rounded-full py-1.5 pr-1.5 pl-4 ring-1 ring-[#242b1f] transition-colors hover:ring-[#c5f82a]/50"
+      className="inline-flex max-w-full items-center gap-3 rounded-full py-1.5 pr-1.5 pl-4 ring-1 ring-[var(--tpl-ring,#242b1f)] transition-colors hover:ring-[var(--tpl-primary,#c5f82a)]/50"
     >
       <span className="min-w-0 flex-1 truncate font-sans text-sm font-semibold text-slate-100">
         Tambahkan ke Sumber Pilihan
       </span>
-      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[#c5f82a] text-[#0a0c07] shadow-[0_0_24px_rgba(197,248,42,0.55)] transition-shadow hover:shadow-[0_0_32px_rgba(197,248,42,0.75)]">
+      <span className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#c5f82a)] text-[var(--tpl-on-primary,#0a0c07)] shadow-[0_0_24px_rgba(197,248,42,0.55)] transition-shadow hover:shadow-[0_0_32px_rgba(197,248,42,0.75)]">
         <BookmarkPlus className="h-5 w-5" aria-hidden="true" />
       </span>
     </a>

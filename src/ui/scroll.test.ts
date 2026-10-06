@@ -58,6 +58,24 @@ describe('scrollToTop', () => {
     expect(document.documentElement.style.scrollBehavior).toBe('smooth');
   });
 
+  it('melompat instan tanpa animasi saat gerakan dikurangi', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(window, 'scrollY', { value: 600, configurable: true });
+    scrollToTop();
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenLastCalledWith(0, 0);
+    Object.defineProperty(window, 'matchMedia', {
+      value: () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+      configurable: true,
+      writable: true,
+    });
+  });
+
   it('membatalkan animasi saat ada input wheel', () => {
     Object.defineProperty(window, 'scrollY', { value: 600, configurable: true });
     scrollToTop();

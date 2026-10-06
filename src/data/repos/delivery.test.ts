@@ -276,6 +276,12 @@ describe('readBridgeArticles', () => {
     });
   });
 
+  it('membawa tayangan bridge apa adanya alih-alih nol', async () => {
+    const { repository } = harness({ articles: [], bridgeAssignments: [{ ...bridgeAssignment, viewCount: 2500 }], bridgeDetails: [bridgeDetail] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]).toMatchObject({ articleSiteId: 'bridge-1', viewCount: 2500 });
+  });
+
   it('membawa isi penuh untuk halaman detail bridge', async () => {
     const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [bridgeDetail] });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-upt' });

@@ -29,14 +29,14 @@ export function DarkNavyLatest({
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#2f7bff] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[var(--tpl-primary,#2f7bff)] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         ) : null}
       </div>
-      <ul className="m-0 mt-2 list-none divide-y divide-[#1b2c4f] p-0">
+      <ul className="m-0 mt-2 list-none divide-y divide-[var(--tpl-ring,#1b2c4f)] p-0">
         {articles.map((article, index) => {
           const src = articleImage(article);
           const badge = badgeStyle(index);
@@ -62,7 +62,7 @@ export function DarkNavyLatest({
               </Link>
               <div className="min-w-0 flex-1">
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px]">
-                  <span className="max-w-[16rem] truncate font-bold text-[#eaf0fb]/80">{article.attribution}</span>
+                  <span className="max-w-[16rem] truncate font-bold text-[var(--tpl-ink,#eaf0fb)]/80">{article.attribution}</span>
                   {article.categoryName === null ? null : (
                     <span className="inline-block rounded-md px-2 py-0.5 font-bold" style={badge}>
                       {article.categoryName}
@@ -82,8 +82,8 @@ export function DarkNavyLatest({
                   </span>
                   <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-[#8fa1bd]" iconClassName="h-3 w-3 opacity-70" />
                 </p>
-                <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-base font-bold leading-snug text-[#eaf0fb] sm:text-lg">
-                  <Link href={article.href} className="hover:text-[#2f7bff]">
+                <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-base font-bold leading-snug text-[var(--tpl-ink,#eaf0fb)] sm:text-lg">
+                  <Link href={article.href} className="hover:text-[var(--tpl-primary,#2f7bff)]">
                     {article.title}
                   </Link>
                 </h3>

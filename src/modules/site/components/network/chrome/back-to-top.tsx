@@ -27,7 +27,7 @@ export function TemplateBackToTop() {
       type="button"
       onClick={scrollToTop}
       aria-label="Kembali ke atas"
-      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--tpl-primary)] text-[var(--tpl-on-primary)] shadow-lg transition-colors hover:bg-[var(--tpl-primary-dark)]"
+      className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--tpl-primary)] text-[var(--tpl-on-primary)] shadow-lg transition-colors [transform:translateZ(0)] hover:bg-[var(--tpl-primary-dark)]"
     >
       <ArrowUp className="h-5 w-5" aria-hidden="true" />
     </button>

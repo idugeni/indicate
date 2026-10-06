@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
@@ -32,6 +33,7 @@ export interface PublishedArticleUrls {
   readonly slug: string;
   readonly publishedAt: string | null;
   readonly urls: readonly string[];
+  readonly orgName?: string | undefined;
 }
 
 interface ArticleInput {
@@ -39,6 +41,10 @@ interface ArticleInput {
   readonly title: string;
   readonly slug: string;
   readonly publishedAt?: string | null;
+  readonly publishedUrls?: readonly string[] | undefined;
+  readonly publishedAtMax?: string | null | undefined;
+  readonly orgName?: string | undefined;
+  readonly orgSlug?: string | undefined;
 }
 
 interface SiteInput {
@@ -112,13 +118,16 @@ function formatPublishedAt(value: string | null): string {
   return moment === null ? 'Jadwal belum tercatat' : `Tayang ${moment}`;
 }
 
-export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles, organizationId }: {
+export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles, organizationId, crossOrg, onCrossOrgChange, isSuperAdmin }: {
   readonly data: unknown;
   readonly onFilterApply?: ((query: string) => void) | undefined;
   readonly articlesNextCursor?: string | null | undefined;
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
   readonly organizationId?: string | undefined;
+  readonly crossOrg?: boolean | undefined;
+  readonly onCrossOrgChange?: ((next: boolean) => void) | undefined;
+  readonly isSuperAdmin?: boolean | undefined;
 }) {
   const searchInputId = useId();
   const sortSelectId = useId();
@@ -136,14 +145,34 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
     readonly articlesNextCursor?: string | null;
   };
 
-  const published = useMemo(
-    () =>
-      collectPublishedUrls({
-        articles: model.articles ?? [],
-        sites: model.sites ?? [],
-        articleSites: model.articleSites ?? [],
-      }),
-    [model.articles, model.sites, model.articleSites],
+  const crossOrgActive = crossOrg === true;
+  const published = useMemo(() => {
+    const rows = model.articles ?? [];
+    if (crossOrgActive && rows.some((article) => Array.isArray(article.publishedUrls))) {
+      return rows
+        .filter((article) => Array.isArray(article.publishedUrls) && (article.publishedUrls as readonly string[]).length > 0)
+        .map((article) => ({
+          articleId: article.id,
+          title: article.title,
+          slug: article.slug,
+          publishedAt: article.publishedAtMax ?? article.publishedAt ?? null,
+          urls: [...new Set(article.publishedUrls as readonly string[])].sort((left, right) => left.localeCompare(right)),
+          ...(typeof article.orgName === 'string' && article.orgName !== '' ? { orgName: article.orgName } : {}),
+        }))
+        .sort((left, right) => {
+          if (left.publishedAt === right.publishedAt) return left.title.localeCompare(right.title, 'id-ID');
+          if (left.publishedAt === null) return 1;
+          if (right.publishedAt === null) return -1;
+          return right.publishedAt.localeCompare(left.publishedAt);
+        });
+    }
+    return collectPublishedUrls({
+      articles: rows,
+      sites: model.sites ?? [],
+      articleSites: model.articleSites ?? [],
+    });
+  },
+    [model.articles, model.sites, model.articleSites, crossOrgActive],
   );
 
   /**
@@ -250,6 +279,19 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
         eyebrow="Monitoring Sindikasi Publikasi"
       >
         <div className="flex flex-col gap-4">
+          {isSuperAdmin === true && onCrossOrgChange !== undefined ? (
+            <label className="flex cursor-pointer flex-wrap items-center gap-2 rounded-lg border border-hairline bg-bg px-3 py-2">
+              <Checkbox
+                checked={crossOrgActive}
+                onCheckedChange={(checked) => onCrossOrgChange(checked === true)}
+                aria-label="Tampilkan artikel tayang semua organisasi"
+              />
+              <span className="font-sans text-xs font-medium text-paper">Semua organisasi</span>
+              <span className="font-mono text-[11px] text-paper-faint">
+                {crossOrgActive ? 'Mode steward: tautan tayang seluruh jaringan.' : 'Lihat hasil tayang seluruh jaringan dalam satu daftar.'}
+              </span>
+            </label>
+          ) : null}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-md border border-hairline bg-bg p-3">
               <div className="flex items-center gap-2 text-paper-dim">
@@ -408,6 +450,11 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
                       >
                         {entry.urls.length} Portal Aktif
                       </Badge>
+                      {typeof entry.orgName === 'string' && entry.orgName !== '' ? (
+                        <Badge variant="outline" className="max-w-48 truncate font-sans text-[10px] text-paper-dim">
+                          {entry.orgName}
+                        </Badge>
+                      ) : null}
                     </div>
 
                     {primaryUrl && (

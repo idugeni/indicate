@@ -35,8 +35,8 @@ export function GlassyBlueCategoryPills({
   const pill = (active: boolean): string =>
     `inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 font-sans text-[13px] transition-colors ${
       active
-        ? 'bg-[#1f7cff] font-bold text-white shadow-md shadow-[#1f7cff]/30'
-        : 'bg-white font-semibold text-slate-700 ring-1 ring-slate-200/80 hover:text-[#1f7cff] hover:ring-[#1f7cff]/40'
+        ? 'bg-[var(--tpl-primary,#1f7cff)] font-bold text-white shadow-md shadow-[var(--tpl-primary,#1f7cff)]/30'
+        : 'bg-white font-semibold text-slate-700 ring-1 ring-slate-200/80 hover:text-[var(--tpl-primary,#1f7cff)] hover:ring-[var(--tpl-primary,#1f7cff)]/40'
     }`;
   return (
     <nav aria-label="Kategori berita" aria-describedby={hintId}>
@@ -58,7 +58,7 @@ export function GlassyBlueCategoryPills({
               aria-current={active ? 'page' : undefined}
               className={pill(active)}
             >
-              <Icon className="h-3.5 w-3.5 text-[#1f7cff]" aria-hidden="true" />
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
               {item.label}
             </Link>
           );
@@ -67,7 +67,7 @@ export function GlassyBlueCategoryPills({
           <Link
             href="/search"
             aria-label="Telusuri semua kategori"
-            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200/80 transition-colors hover:text-[#1f7cff]"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200/80 transition-colors hover:text-[var(--tpl-primary,#1f7cff)]"
           >
             <LayoutGrid className="h-4 w-4" aria-hidden="true" />
           </Link>

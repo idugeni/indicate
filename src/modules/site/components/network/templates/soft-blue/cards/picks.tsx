@@ -26,7 +26,7 @@ export function SoftBluePicks({
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#2563eb] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[var(--tpl-primary,#2563eb)] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

@@ -1898,6 +1898,27 @@
       "when": 1791352800000,
       "tag": "20261006050000_bridge_media_lineage_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1791356400000,
+      "tag": "20261006060000_cross_org_articles",
+      "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1791360000000,
+      "tag": "20261006070000_portal_assignments_view_count",
+      "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1791363600000,
+      "tag": "20261006080000_cross_org_tags_gin_dedup",
+      "breakpoints": true
     }
   ]
 }

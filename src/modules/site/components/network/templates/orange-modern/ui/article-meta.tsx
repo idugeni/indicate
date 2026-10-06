@@ -31,7 +31,7 @@ export function ArticleMeta({
   readonly dateVariant?: DateVariant;
 }) {
   const item = 'inline-flex items-center gap-1.5';
-  const icon = 'h-3.5 w-3.5 text-slate-400';
+  const icon = 'h-3.5 w-3.5 text-slate-600';
   return (
     <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1 font-sans text-xs tabular-nums text-slate-600">
       <span className={item}>

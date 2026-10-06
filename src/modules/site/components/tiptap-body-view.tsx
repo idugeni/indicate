@@ -254,6 +254,9 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
           thumbSrc={entry.thumbSrc}
           alt={entry.alt}
           caption={entry.caption}
+          captionClassName="px-6 py-3 font-sans text-xs leading-relaxed"
+          width={800}
+          height={600}
           className="aspect-[4/3] w-full object-cover"
           figureClassName="m-0 overflow-hidden rounded-xl"
         />
@@ -271,6 +274,7 @@ function renderNode(node: TipTapNode, key: string, context: RenderContext): Reac
             thumbSrc={hero.thumbSrc}
             alt={hero.alt}
             caption={hero.caption}
+            captionClassName="px-6 py-3 font-sans text-xs leading-relaxed"
             className="aspect-video w-full object-cover"
             figureClassName="m-0 overflow-hidden rounded-xl"
           />

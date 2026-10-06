@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { AuthorAvatar, type AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
-import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes, readableTextOnAccent } from '@/modules/site/components/network/ui/format';
 import { HomeHeroCarousel } from '@/modules/site/components/network/ui/home-hero-carousel';
 
 /** Varian hero homepage yang disepakati dari 5 mockup. */
@@ -95,8 +95,8 @@ function CategoryBadge({ article, skin }: { readonly article: ArticleListItem; r
   return (
     <p className="m-0">
       <span
-        className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold text-white shadow-md"
-        style={{ backgroundColor: skin.accent }}
+        className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold shadow-md"
+        style={{ backgroundColor: skin.accent, color: readableTextOnAccent(skin.accent) }}
       >
         {article.categoryName}
       </span>
@@ -247,10 +247,10 @@ function MosaicHero({
           alt=""
           aria-hidden="true"
           priority
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] group-hover:saturate-[1.05] motion-reduce:transition-none"
           sizes="(max-width: 1024px) 100vw, 50vw"
         />
-        <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent" />
+        <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none" />
         <span className="absolute inset-x-0 bottom-0 block p-5 sm:p-6">
           <CategoryBadge article={feature} skin={skin} />
           <span className="mt-2 line-clamp-3 block font-sans text-xl font-extrabold leading-tight text-white sm:text-2xl">
@@ -292,7 +292,7 @@ function MosaicHero({
                     {article.title}
                   </Link>
                   <span className="mt-1.5 block">
-                    <HeroMeta article={article} />
+                    <HeroMeta article={article} light={skin.tone === 'dark'} />
                   </span>
                 </span>
               </article>

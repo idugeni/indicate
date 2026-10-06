@@ -7,9 +7,9 @@ import { DarkNavyPicks } from '@/modules/site/components/network/templates/dark-
 
 export function DarkNavySearchForm({ query }: { readonly query: string }) {
   return (
-    <section aria-label="Pencarian berita" className="rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-6">
-      <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[#eaf0fb]">
-        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2f7bff]" />
+    <section aria-label="Pencarian berita" className="rounded-2xl bg-[var(--tpl-card,#0e1a33)] p-5 shadow-sm ring-1 ring-[var(--tpl-ring,#1b2c4f)]/60 sm:p-6">
+      <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[var(--tpl-ink,#eaf0fb)]">
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#2f7bff)]" />
         {query === '' ? 'Pencarian Berita' : `Hasil untuk “${query}”`}
       </h1>
       <Form className="mt-4" action="/search" role="search">
@@ -44,11 +44,11 @@ export function DarkNavySearchForm({ query }: { readonly query: string }) {
 export function DarkNavySearchResults({ articles, query }: { readonly articles: readonly ArticleListItem[]; readonly query: string }) {
   if (articles.length === 0) {
     return (
-      <div role="status" className="rounded-2xl border border-dashed border-[#1b2c4f] bg-[#0e1a33] p-8 text-center sm:p-12">
-        <h2 className="m-0 font-sans text-xl font-bold text-[#eaf0fb]">
+      <div role="status" className="rounded-2xl border border-dashed border-[var(--tpl-ring,#1b2c4f)] bg-[var(--tpl-card,#0e1a33)] p-8 text-center sm:p-12">
+        <h2 className="m-0 font-sans text-xl font-bold text-[var(--tpl-ink,#eaf0fb)]">
           Tidak ada hasil
         </h2>
-        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-[#9aa9c4]">
+        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-[var(--tpl-muted,#9aa9c4)]">
           {query === ''
             ? 'Ketik kata kunci pada kolom di atas untuk mencari berita.'
             : `Tidak ada berita yang cocok dengan “${query}”. Coba kata kunci lain.`}

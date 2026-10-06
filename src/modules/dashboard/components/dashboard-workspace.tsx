@@ -34,6 +34,7 @@ import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { useDashboardPage, useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { viewLabel } from '@/modules/dashboard/components/view-registry';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   DashboardNavList,
   DashboardSidebar,
@@ -153,6 +154,7 @@ export function DashboardWorkspace({
   const [busy, setBusy] = useState(false);
   const [currentPage, setCurrentPage] = useDashboardPage();
   const [navOpen, setNavOpen] = useState(false);
+  const [crossOrg, setCrossOrg] = useState(false);
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
@@ -175,7 +177,9 @@ export function DashboardWorkspace({
   }, [organizationId]);
 
   const scopeKey = `${organizationId}|${view}|${filterQuery}|${pendingOrgId ?? ''}`;
-  const data = payload !== null && payload.key === scopeKey ? payload.body : null;
+  const crossOrgScope = crossOrg && (view === 'articles' || view === 'published') ? '&scope=all' : '';
+  const scopedKey = `${scopeKey}|${crossOrgScope}`;
+  const data = payload !== null && payload.key === scopedKey ? payload.body : null;
 
   const activeOrganization = useMemo(
     () => organizations.find((org) => org.id === organizationId),
@@ -210,7 +214,9 @@ export function DashboardWorkspace({
       setError(null);
 
       const endpoint = resolveApiEndpoint(targetView);
-      const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}`;
+      const scopeSuffix = crossOrg && (targetView === 'articles' || targetView === 'published') ? '&scope=all' : '';
+      const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}${scopeSuffix}`;
+      const key = `${targetOrg}|${targetView}|${query}||${scopeSuffix}`;
 
       try {
         const pendingBody = fetch(url, signal ? { signal } : undefined);
@@ -230,9 +236,9 @@ export function DashboardWorkspace({
             : (apiError.error?.message ?? 'Server gagal memproses. Coba lagi.'));
         } else if (targetView === 'dashboard') {
           if (activeOrgRef.current !== targetOrg) return;
-          setPayload({ key: `${targetOrg}|${targetView}|${query}|`, body: withAnalytics(body, analytics) });
+          setPayload({ key, body: withAnalytics(body, analytics) });
         } else {
-          setPayload({ key: `${targetOrg}|${targetView}|${query}|`, body });
+          setPayload({ key, body });
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -245,7 +251,7 @@ export function DashboardWorkspace({
         }
       }
     },
-    [fetchAnalytics]
+    [fetchAnalytics, crossOrg]
   );
 
   useEffect(() => {
@@ -259,7 +265,7 @@ export function DashboardWorkspace({
       snapshotConsumedRef.current = true;
       const snapshot = initialDashboard.data;
       const snapshotOrg = initialDashboard.organizationId;
-      const snapshotKey = `${snapshotOrg}|dashboard||`;
+      const snapshotKey = `${snapshotOrg}|dashboard|||`;
       void Promise.resolve().then(() => setPayload({ key: snapshotKey, body: snapshot }));
       if (hasEmbeddedAnalytics(snapshot)) return;
       void fetchAnalytics(snapshotOrg).then((analytics) => {
@@ -295,6 +301,7 @@ export function DashboardWorkspace({
       setOrganizationId(nextOrgId);
       setGeneration((prev) => prev + 1);
       setCurrentPage(1);
+      setCrossOrg(false);
       toast.success(`Organisasi aktif beralih ke: ${target?.name ?? nextOrgId}`);
     },
     [organizations, setCurrentPage]
@@ -368,16 +375,25 @@ export function DashboardWorkspace({
 
   const dismissError = useCallback(() => setError(null), []);
 
+  const handleCrossOrgChange = useCallback((next: boolean) => {
+    setCrossOrg(next);
+    setCurrentPage(1);
+  }, [setCurrentPage]);
+
+  const isSuperAdmin = activePermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
+
   const selectView = useCallback((next: View) => {
     setView(next);
     setCurrentPage(1);
     setFilterQuery('');
+    setCrossOrg(false);
   }, [setView, setCurrentPage]);
 
   const selectMobileNavView = useCallback((next: View) => {
     setView(next);
     setCurrentPage(1);
     setFilterQuery('');
+    setCrossOrg(false);
     setNavOpen(false);
   }, [setView, setCurrentPage]);
 
@@ -398,7 +414,8 @@ export function DashboardWorkspace({
     const targetOrg = organizationId;
     const targetView = view;
     const query = filterQuery;
-    const key = `${targetOrg}|${targetView}|${query}|`;
+    const scopeSuffix = crossOrg && (targetView === 'articles' || targetView === 'published') ? '&scope=all' : '';
+    const key = `${targetOrg}|${targetView}|${query}||${scopeSuffix}`;
     const current = payload !== null && payload.key === key ? payload.body as {
       readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number;
       readonly articleSites?: readonly unknown[];
@@ -409,7 +426,7 @@ export function DashboardWorkspace({
     setBusy(true);
     try {
       const endpoint = resolveApiEndpoint(targetView);
-      const response = await fetch(`/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}&limit=50&cursor=${encodeURIComponent(cursor)}`);
+      const response = await fetch(`/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}&limit=50&cursor=${encodeURIComponent(cursor)}${scopeSuffix}`);
       const body = (await response.json()) as { readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number; readonly articleSites?: readonly unknown[] };
       if (!response.ok || activeOrgRef.current !== targetOrg) return null;
       let merged: { readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null = null;
@@ -430,7 +447,7 @@ export function DashboardWorkspace({
       articlesMoreInflightRef.current = false;
       if (activeOrgRef.current === targetOrg) setBusy(false);
     }
-  }, [organizationId, view, filterQuery, payload]);
+  }, [organizationId, view, filterQuery, payload, crossOrg]);
 
   const articlesMore = (() => {
     if ((view !== 'articles' && view !== 'published') || data === null || typeof data !== 'object') {
@@ -454,7 +471,7 @@ export function DashboardWorkspace({
     const targetOrg = organizationId;
     const targetView = view;
     const query = filterQuery;
-    const key = `${targetOrg}|${targetView}|${query}|`;
+    const key = `${targetOrg}|${targetView}|${query}||`;
     const current = payload !== null && payload.key === key ? payload.body as {
       readonly auditLogs?: readonly unknown[]; readonly auditNextCursor?: string | null;
     } : null;
@@ -649,6 +666,9 @@ export function DashboardWorkspace({
           articlesNextCursor={articlesMore.cursor}
           articlesTotal={articlesMore.total}
           onLoadMoreArticles={view === 'articles' || view === 'published' ? fetchMoreArticles : undefined}
+          crossOrg={crossOrg}
+          onCrossOrgChange={handleCrossOrgChange}
+          isSuperAdmin={isSuperAdmin}
         />
         <DashboardFooter />
         </div>

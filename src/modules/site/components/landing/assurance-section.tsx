@@ -46,7 +46,7 @@ export function AssuranceSection({ channels }: { readonly channels: readonly Fea
             className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold underline decoration-[#b88d3a] decoration-2 underline-offset-8 transition-colors hover:text-[#8a5f1c]"
           >
             Rincian lengkap di halaman harga
-            <ArrowRight className="h-4 w-4 transition-transform duration-180 group-hover:translate-x-1" aria-hidden="true" />
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
         <div className="lg:col-span-5">
@@ -62,14 +62,14 @@ export function AssuranceSection({ channels }: { readonly channels: readonly Fea
             <div className="mt-6 grid gap-2">
               <Link
                 href="/contact"
-                className="group inline-flex items-center justify-center gap-2 rounded bg-[#1a2430] px-6 py-3 text-sm font-semibold text-white transition-all duration-180 hover:-translate-y-0.5 hover:bg-[#2b3a4b] active:translate-y-0 active:bg-[#141d27]"
+                className="group inline-flex items-center justify-center gap-2 rounded bg-[#1a2430] px-6 py-3 text-sm font-semibold text-white transition-colors duration-180 hover:bg-[#2b3a4b] active:bg-[#141d27]"
               >
                 Hubungi kami
-                <ArrowRight className="h-4 w-4 transition-transform duration-180 group-hover:translate-x-0.5" aria-hidden="true" />
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               <Link
                 href="/pricing"
-                className="inline-flex items-center justify-center rounded border border-[#cfc9b8] bg-white/60 px-6 py-3 text-sm font-semibold backdrop-blur transition-all duration-180 hover:-translate-y-0.5 hover:border-[#1a2430]/40 hover:bg-white active:translate-y-0"
+                className="inline-flex items-center justify-center rounded border border-[#cfc9b8] bg-white/60 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors duration-180 hover:border-[#1a2430]/40 hover:bg-white"
               >
                 Lihat halaman harga
               </Link>
@@ -85,7 +85,7 @@ export function AssuranceSection({ channels }: { readonly channels: readonly Fea
                     <span className="text-sm font-semibold tracking-tight">{channel.title}</span>
                     <ArrowUpRight
                       aria-hidden="true"
-                      className="h-4 w-4 flex-none text-[#5f6b7a] transition-all duration-180 group-hover:translate-x-0.5 group-hover:text-[#8a5f1c]"
+                      className="h-4 w-4 flex-none text-[#5f6b7a] transition-colors duration-180 group-hover:text-[#8a5f1c]"
                     />
                   </a>
                 </li>

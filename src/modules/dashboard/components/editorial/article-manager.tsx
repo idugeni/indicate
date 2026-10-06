@@ -30,6 +30,7 @@ import {
 import type { DashboardCommand } from '@/modules/dashboard/command';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Separator } from '@/components/ui/separator';
 import { AppTooltip } from '@/ui/app-tooltip';
@@ -67,6 +68,11 @@ interface ArchiveArticle {
   readonly scheduledAt?: string | null;
   readonly type?: string | undefined;
   readonly isSponsored?: boolean | undefined;
+  readonly organizationId?: string | undefined;
+  readonly orgSlug?: string | undefined;
+  readonly orgName?: string | undefined;
+  readonly categoryNames?: readonly string[] | undefined;
+  readonly portalHostnames?: readonly string[] | undefined;
 }
 
 /**
@@ -216,6 +222,9 @@ export function ArticleManager({
   articlesNextCursor,
   articlesTotal,
   onLoadMoreArticles,
+  crossOrg,
+  onCrossOrgChange,
+  isSuperAdmin,
 }: {
   readonly data: unknown;
   readonly command?: DashboardCommand | undefined;
@@ -223,6 +232,9 @@ export function ArticleManager({
   readonly articlesNextCursor?: string | null | undefined;
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
+  readonly crossOrg?: boolean | undefined;
+  readonly onCrossOrgChange?: ((next: boolean) => void) | undefined;
+  readonly isSuperAdmin?: boolean | undefined;
 }) {
   const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
@@ -271,7 +283,9 @@ export function ArticleManager({
   /**
    * Push the manager filters to the server (debounced): the list, totals,
    * and tag options below are all computed from the same predicates, so the
-   * client never pages over a partial window it filtered itself.
+   * client never pages over a partial window it filtered itself. Cross-org
+   * steward mode only sends org-agnostic predicates; category and portal
+   * filters stay single-org only and the server rejects them with 400 there.
    */
   useEffect(() => {
     if (onFilterApply === undefined) return;
@@ -280,13 +294,13 @@ export function ArticleManager({
       `status=${encodeURIComponent(status === '' ? 'active' : status)}`,
       `sort=${encodeURIComponent(sort)}`,
       ...(needle === '' ? [] : [`search=${encodeURIComponent(needle)}`]),
-      ...(category === '' ? [] : [`categoryId=${encodeURIComponent(category)}`]),
+      ...(crossOrg === true ? [] : [...(category === '' ? [] : [`categoryId=${encodeURIComponent(category)}`])]),
       ...(tag === '' ? [] : [`tag=${encodeURIComponent(tag)}`]),
-      ...(site === '' ? [] : [`siteHostname=${encodeURIComponent(site)}`]),
+      ...(crossOrg === true ? [] : [...(site === '' ? [] : [`siteHostname=${encodeURIComponent(site)}`])]),
     ];
     const timer = window.setTimeout(() => onFilterApply(`&${parts.join('&')}`), 350);
     return () => window.clearTimeout(timer);
-  }, [search, category, tag, site, status, sort, onFilterApply]);
+  }, [search, category, tag, site, status, sort, onFilterApply, crossOrg]);
 
   const categoryNames = useMemo(
     () => new Map(categories.map((item) => [item.id, item.name] as const)),
@@ -341,7 +355,7 @@ export function ArticleManager({
     const needle = search.trim().toLowerCase();
     return articles.filter((article) => {
       if (needle !== '' && !`${article.title}${article.slug}`.toLowerCase().includes(needle)) return false;
-      if (category !== '') {
+      if (crossOrg !== true && category !== '') {
         const ids =
           article.categoryId === undefined || article.categoryId === null
             ? article.categoryIds
@@ -350,13 +364,13 @@ export function ArticleManager({
       }
       if (tag !== '' && !article.tags.includes(tag)) return false;
       if (status !== '' && article.status !== status) return false;
-      if (site !== '') {
+      if (crossOrg !== true && site !== '') {
         const hostnames = sitesByArticle.get(article.id) ?? [];
         if (!hostnames.includes(site)) return false;
       }
       return true;
     });
-  }, [articles, search, category, tag, status, site, sitesByArticle]);
+  }, [articles, search, category, tag, status, site, sitesByArticle, crossOrg]);
 
   const serverTotal = model?.total ?? articlesTotal;
   const totalCount = serverTotal ?? filtered.length;
@@ -412,9 +426,12 @@ export function ArticleManager({
     if (command === undefined || busyId !== null) return;
     const action = article.status === 'archived' ? 'article.restore' : 'article.archive';
     const restoring = article.status === 'archived';
+    const ownerPayload = crossOrg === true && typeof article.organizationId === 'string' && article.organizationId !== ''
+      ? { ownerOrganizationId: article.organizationId }
+      : {};
     setBusyId(article.id);
     try {
-      await command(action, { id: article.id, expectedVersion: article.version }, { refresh: true });
+      await command(action, { id: article.id, expectedVersion: article.version, ...ownerPayload }, { refresh: true });
       toast.success(restoring ? 'Artikel dipulihkan.' : 'Artikel diarsipkan.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Perubahan status artikel gagal.');
@@ -426,9 +443,12 @@ export function ArticleManager({
   const confirmDelete = async (): Promise<void> => {
     if (command === undefined || deleting === null || busyId !== null) return;
     const target = deleting;
+    const ownerPayload = crossOrg === true && typeof target.organizationId === 'string' && target.organizationId !== ''
+      ? { ownerOrganizationId: target.organizationId }
+      : {};
     setBusyId(target.id);
     try {
-      const result = await command('article.delete', { id: target.id, expectedVersion: target.version }, { refresh: true });
+      const result = await command('article.delete', { id: target.id, expectedVersion: target.version, ...ownerPayload }, { refresh: true });
       if (result !== null) {
         setDeleting(null);
         toast.success('Artikel dihapus beserta salinannya di seluruh portal.');
@@ -440,10 +460,27 @@ export function ArticleManager({
     }
   };
 
+  const crossOrgActive = crossOrg === true;
+
   return (
-    <SectionCard icon={Newspaper} title={`Kelola artikel (${totalCount})`} eyebrow="Lintas portal">
+    <SectionCard icon={Newspaper} title={crossOrgActive ? `Kelola artikel semua organisasi (${totalCount})` : `Kelola artikel (${totalCount})`} eyebrow="Lintas portal">
       <div className="space-y-4">
         <ForOrgInbox command={command} />
+        {isSuperAdmin === true && onCrossOrgChange !== undefined ? (
+          <label className="flex cursor-pointer flex-wrap items-center gap-2 rounded-lg border border-hairline bg-bg px-3 py-2">
+            <Checkbox
+              checked={crossOrgActive}
+              onCheckedChange={(checked) => onCrossOrgChange(checked === true)}
+              aria-label="Tampilkan artikel semua organisasi"
+            />
+            <span className="font-sans text-xs font-medium text-paper">Semua organisasi</span>
+            <span className="font-mono text-[11px] text-paper-faint">
+              {crossOrgActive
+                ? 'Mode steward: arsipkan, pulihkan, dan hapus lintas-org. Ubah detail tetap via organisasi pemilik.'
+                : 'Lihat artikel seluruh jaringan dalam satu daftar.'}
+            </span>
+          </label>
+        ) : null}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1 space-y-1.5">
             <div className="flex items-center justify-between">
@@ -507,7 +544,8 @@ export function ArticleManager({
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
+        <div className={crossOrgActive ? 'grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3' : 'grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5'}>
+          {crossOrgActive ? null : (
           <div className="space-y-1">
             <Label htmlFor={categoryId} className="text-xs font-medium text-paper-dim">
               Kategori
@@ -523,6 +561,7 @@ export function ArticleManager({
               options={categories.map((item) => ({ value: item.id, label: item.name }))}
             />
           </div>
+          )}
 
           <div className="space-y-1">
             <Label htmlFor={tagId} className="text-xs font-medium text-paper-dim">
@@ -540,6 +579,7 @@ export function ArticleManager({
             />
           </div>
 
+          {crossOrgActive ? null : (
           <div className="space-y-1">
             <Label htmlFor={siteId} className="text-xs font-medium text-paper-dim">
               Portal
@@ -560,6 +600,7 @@ export function ArticleManager({
                 : `${portalOptions.length.toLocaleString('id-ID')} portal yang memuat artikel.`}
             </p>
           </div>
+          )}
 
           <div className="space-y-1">
             <Label htmlFor={statusId} className="text-xs font-medium text-paper-dim">
@@ -615,19 +656,24 @@ export function ArticleManager({
 
           <ul aria-label="Kelola artikel lintas portal" className="m-0 list-none space-y-2.5 p-0 pt-2 lg:space-y-0">
             {visible.map((article, index) => {
-              const portalNames = sitesByArticle.get(article.id) ?? [];
+              const portalNames = crossOrgActive && Array.isArray(article.portalHostnames)
+                ? [...article.portalHostnames].sort()
+                : (sitesByArticle.get(article.id) ?? []);
               const effectiveCategoryIds =
                 article.categoryId === undefined || article.categoryId === null
                   ? article.categoryIds
                   : [...new Set([...article.categoryIds, article.categoryId])];
-              const categoryLabels = effectiveCategoryIds
-                .map((id) => categoryNames.get(id))
-                .filter((name): name is string => name !== undefined);
+              const crossCategoryNames = Array.isArray(article.categoryNames) ? article.categoryNames : null;
+              const categoryLabels = crossCategoryNames
+                ?? effectiveCategoryIds
+                  .map((id) => categoryNames.get(id))
+                  .filter((name): name is string => name !== undefined);
               const rowNumber = (safePage - 1) * PAGE_SIZE + index + 1;
               const isArchived = article.status === 'archived';
               const rowActionLabel = isArchived ? 'Pulihkan' : 'Arsipkan';
               const RowActionIcon = isArchived ? ArchiveRestore : Archive;
               const actionsDisabled = command === undefined || busyId !== null;
+              const editDisabled = actionsDisabled || crossOrgActive;
               const rowBusy = busyId === article.id;
               const statusTone = STATUS_BADGE_TONE[resolveStatus(article.status).tone];
               const visibleTags = article.tags.slice(0, 2);
@@ -651,6 +697,11 @@ export function ArticleManager({
                           {STATUS_LABELS[article.status] ?? article.status}
                         </Badge>
                         <ModeBadge type={article.type} />
+                        {crossOrgActive && typeof article.orgName === 'string' && article.orgName !== '' ? (
+                          <Badge variant="outline" className="max-w-40 truncate font-sans text-[10px] text-paper-dim">
+                            {article.orgName}
+                          </Badge>
+                        ) : null}
                       </div>
                       <PortalList hostnames={portalNames} />
                     </div>
@@ -690,9 +741,9 @@ export function ArticleManager({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          disabled={actionsDisabled}
+                          disabled={editDisabled}
                           onClick={() => setEditingId((prev) => (prev === article.id ? null : article.id))}
-                          aria-label={`Ubah artikel ${article.title}`}
+                          aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                         >
                           <Pencil className="size-3.5" />
                         </Button>
@@ -763,6 +814,11 @@ export function ArticleManager({
                           {STATUS_LABELS[article.status] ?? article.status}
                         </Badge>
                         <ModeBadge type={article.type} />
+                        {crossOrgActive && typeof article.orgName === 'string' && article.orgName !== '' ? (
+                          <Badge variant="outline" className="max-w-40 truncate font-sans text-[10px] text-paper-dim">
+                            {article.orgName}
+                          </Badge>
+                        ) : null}
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -771,9 +827,9 @@ export function ArticleManager({
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            disabled={actionsDisabled}
+                            disabled={editDisabled}
                             onClick={() => setEditingId((prev) => (prev === article.id ? null : article.id))}
-                            aria-label={`Ubah artikel ${article.title}`}
+                            aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                           >
                             <Pencil className="size-3.5" />
                           </Button>
@@ -856,17 +912,22 @@ export function ArticleManager({
                         {STATUS_LABELS[article.status] ?? article.status}
                       </Badge>
                       <ModeBadge type={article.type} />
+                      {crossOrgActive && typeof article.orgName === 'string' && article.orgName !== '' ? (
+                        <Badge variant="outline" className="mt-1 block max-w-full truncate font-sans text-[10px] text-paper-dim">
+                          {article.orgName}
+                        </Badge>
+                      ) : null}
                     </div>
 
                     <div className="flex items-center justify-end gap-0.5">
-                      <AppTooltip label={`Ubah artikel ${article.title}`}>
+                      <AppTooltip label={crossOrgActive ? `Ubah via organisasi pemilik: ${article.title}` : `Ubah artikel ${article.title}`}>
                         <Button
                           type="button"
                           variant={editingId === article.id ? 'secondary' : 'ghost'}
                           size="icon-sm"
-                          disabled={actionsDisabled}
+                          disabled={editDisabled}
                           onClick={() => setEditingId((prev) => (prev === article.id ? null : article.id))}
-                          aria-label={`Ubah artikel ${article.title}`}
+                          aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                         >
                           <Pencil className="size-3.5" />
                         </Button>

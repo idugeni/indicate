@@ -117,7 +117,7 @@ describe('useTickerRotation', () => {
     tombol.remove();
   });
 
-  it('tetap berputar saat gerakan dikurangi', () => {
+  it('membekukan putaran otomatis saat gerakan dikurangi, navigasi manual tetap jalan', () => {
     Object.defineProperty(window, 'matchMedia', {
       value: () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
       configurable: true,
@@ -127,11 +127,14 @@ describe('useTickerRotation', () => {
     try {
       const { result } = renderHook(() => useTickerRotation(3));
       expect(result.current.reduceMotion).toBe(true);
-      expect(result.current.running).toBe(true);
       act(() => {
         vi.advanceTimersByTime(TICKER_INTERVAL_MS);
       });
-      expect(result.current.index).toBe(1);
+      expect(result.current.index).toBe(0);
+      act(() => {
+        result.current.go(2);
+      });
+      expect(result.current.index).toBe(2);
     } finally {
       vi.useRealTimers();
     }

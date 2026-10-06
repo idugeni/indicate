@@ -24,7 +24,7 @@ export function CleanBluePreferredSourceButton({ site }: { readonly site: Networ
         Tambahkan ke Sumber Pilihan
       </span>
       <span aria-hidden="true" className="h-5 w-px flex-none bg-slate-200" />
-      <Bookmark className="h-4 w-4 flex-none text-[#1a5fd0]" aria-hidden="true" />
+      <Bookmark className="h-4 w-4 flex-none text-[var(--tpl-primary,#1a5fd0)]" aria-hidden="true" />
     </a>
   );
 }

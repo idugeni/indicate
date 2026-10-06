@@ -27,7 +27,7 @@ export function PlatformSection() {
               className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold underline decoration-[#b88d3a] decoration-2 underline-offset-8 transition-colors hover:text-[#8a5f1c]"
             >
               Pelajari layanan penerbitan
-              <ArrowRight className="h-4 w-4 transition-transform duration-180 group-hover:translate-x-1" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
         </div>
@@ -38,7 +38,7 @@ export function PlatformSection() {
               className="group grid gap-1.5 border-b border-[#1a2430]/15 py-6 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-6 lg:py-7"
             >
               <span aria-hidden="true" className="flex items-center gap-2 tabular-nums sm:pt-1.5">
-                <span className="h-px w-5 origin-left scale-x-0 bg-[#b88d3a] transition-transform duration-180 group-hover:scale-x-100" />
+                <span className="h-px w-5 bg-[#b88d3a] opacity-0 transition-opacity duration-180 group-hover:opacity-100" />
                 <span className="font-mono text-[11px] text-[#b88d3a]">
                   {String(index + 1).padStart(2, '0')}
                 </span>
@@ -53,7 +53,7 @@ export function PlatformSection() {
               </span>
               <ArrowRight
                 aria-hidden="true"
-                className="hidden h-5 w-5 -translate-x-2 self-center text-[#b88d3a] opacity-0 transition-all duration-180 group-hover:translate-x-0 group-hover:opacity-100 sm:block"
+                className="hidden h-5 w-5 self-center text-[#b88d3a] opacity-0 transition-opacity duration-180 group-hover:opacity-100 sm:block"
               />
             </li>
           ))}

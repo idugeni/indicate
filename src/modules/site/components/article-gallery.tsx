@@ -25,6 +25,7 @@ export function ArticleGallery({
           thumbSrc={image.thumbnailUrl}
           alt={image.alt ?? title}
           caption={image.caption}
+          captionClassName="px-6 py-3 font-sans text-xs leading-relaxed"
           width={image.width}
           height={image.height}
         />

@@ -22,7 +22,7 @@ export function GreenMinimalPreferredSourceButton({ site }: { readonly site: Net
       <GoogleGLogo className="h-4 w-4 flex-none" />
       <span className="font-sans text-xs font-semibold text-slate-700">Tambah Sumber</span>
       <span aria-hidden="true" className="h-4 w-px flex-none bg-slate-200" />
-      <Bookmark className="h-3.5 w-3.5 flex-none text-[#1d7a38]" aria-hidden="true" />
+      <Bookmark className="h-3.5 w-3.5 flex-none text-[var(--tpl-primary,#1d7a38)]" aria-hidden="true" />
     </a>
   );
 }

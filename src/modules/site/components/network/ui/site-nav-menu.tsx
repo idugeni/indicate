@@ -27,6 +27,13 @@ export type SiteNavLinkStyle = 'pill' | 'underline';
 export interface SiteNavSkin {
   readonly accent: string;
   readonly tone: 'light' | 'dark';
+  readonly card?: string;
+  /** Primary text color; falls back to slate when the caller passes a minimal skin. */
+  readonly ink?: string | undefined;
+  /** Secondary text color for panel labels; falls back to slate. */
+  readonly muted?: string | undefined;
+  /** Panel border color; falls back to slate. */
+  readonly ring?: string | undefined;
 }
 
 const INFO_LINKS = [
@@ -76,6 +83,12 @@ function desktopLinkStyle(
  * @param linkStyle - Pil atau garis bawah.
  * @param dark - Baris nav gelap milik varian masthead.
  * @returns Nav desktop tanpa perilaku template-spesifik.
+ * @remarks Panel dropdown "Lainnya" mengikuti skin template (card/ink/muted/
+ * ring, bukan slate statis). Item dropdown menetralkan warna fokus bawaan
+ * Base UI (`focus:bg-accent` dasbor gelap) karena teks item memakai warna
+ * inline/style template yang selalu menang atas kelas — tanpanya teks gelap
+ * di atas sorotan gelap menjadi tidak terbaca; fokus tetap terlihat lewat
+ * warna sorot yang sama dengan hover.
  */
 export function SiteDesktopNav({
   categories,
@@ -136,16 +149,20 @@ export function SiteDesktopNav({
               <DropdownMenuContent
                 align="center"
                 sideOffset={10}
-                className={
-                  dark
-                    ? 'w-[min(40rem,calc(100vw-2rem))] rounded-2xl border-white/10 bg-[#0e1830] p-6 text-slate-100 shadow-2xl'
-                    : 'w-[min(40rem,calc(100vw-2rem))] rounded-2xl border-slate-200 bg-white p-6 shadow-2xl'
-                }
+                className="w-[min(40rem,calc(100vw-2rem))] rounded-2xl p-6 shadow-2xl"
+                style={{
+                  backgroundColor: skin.card ?? (dark ? '#0e1830' : '#ffffff'),
+                  color: skin.ink ?? (dark ? '#f1f5f9' : '#0f172a'),
+                  border: `1px solid ${skin.ring ?? (dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0')}`,
+                }}
               >
                 <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_170px]">
                   <div className="min-w-0">
                     <div className="flex items-center justify-between gap-3 px-1.5">
-                      <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      <p
+                        className="m-0 font-sans text-[11px] font-bold uppercase tracking-wider"
+                        style={{ color: skin.muted ?? '#94a3b8' }}
+                      >
                         Kanal liputan
                       </p>
                       <span
@@ -165,17 +182,15 @@ export function SiteDesktopNav({
                               aria-current={active ? 'page' : undefined}
                               className={`rounded-xl px-3 py-2 font-sans font-medium no-underline ${
                                 active
-                                  ? 'font-semibold underline decoration-2 underline-offset-4'
+                                  ? 'font-semibold underline decoration-2 underline-offset-4 focus:bg-transparent'
                                   : dark
-                                    ? 'text-slate-200 hover:bg-white/10'
-                                    : 'hover:bg-slate-100'
+                                    ? 'hover:bg-white/10 focus:bg-white/10'
+                                    : 'hover:bg-slate-100 focus:bg-slate-100'
                               }`}
                               style={
                                 active
                                   ? { backgroundColor: `${skin.accent}1A`, color: skin.accent }
-                                  : dark
-                                    ? undefined
-                                    : { color: '#334155' }
+                                  : { color: dark ? (skin.ink ?? '#e2e8f0') : (skin.ink ?? '#334155') }
                               }
                             >
                               {item.label}
@@ -187,14 +202,17 @@ export function SiteDesktopNav({
                     <DropdownMenuLinkItem
                       render={<Link href={CATEGORY_INDEX_HREF} />}
                       aria-current={isCategoryNavActive(path, CATEGORY_INDEX_HREF) ? 'page' : undefined}
-                      className="mt-3 rounded-xl px-3 py-2 font-sans text-[13px] font-bold no-underline hover:opacity-80"
+                      className="mt-3 rounded-xl px-3 py-2 font-sans text-[13px] font-bold no-underline hover:opacity-80 focus:bg-transparent"
                       style={{ color: skin.accent }}
                     >
                       Lihat semua kanal →
                     </DropdownMenuLinkItem>
                   </div>
                   <div className={`border-t pt-5 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0 ${dark ? 'border-white/10' : 'border-slate-200'}`}>
-                    <p className="m-0 px-1.5 font-sans text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <p
+                      className="m-0 px-1.5 font-sans text-[11px] font-bold uppercase tracking-wider"
+                      style={{ color: skin.muted ?? '#94a3b8' }}
+                    >
                       Informasi
                     </p>
                     <ul className="m-0 mt-3 grid list-none gap-1 p-0">
@@ -205,17 +223,15 @@ export function SiteDesktopNav({
                             aria-current={isCategoryNavActive(path, item.href) ? 'page' : undefined}
                             className={`rounded-xl px-3 py-2 font-sans no-underline ${
                               isCategoryNavActive(path, item.href)
-                                ? 'font-semibold underline decoration-2 underline-offset-4'
+                                ? 'font-semibold underline decoration-2 underline-offset-4 focus:bg-transparent'
                                 : dark
-                                  ? 'text-slate-200 hover:bg-white/10'
-                                  : 'hover:bg-slate-100'
+                                  ? 'hover:bg-white/10 focus:bg-white/10'
+                                  : 'hover:bg-slate-100 focus:bg-slate-100'
                             }`}
                             style={
                               isCategoryNavActive(path, item.href)
                                 ? { backgroundColor: `${skin.accent}1A`, color: skin.accent }
-                                : dark
-                                  ? undefined
-                                  : { color: '#334155' }
+                                : { color: dark ? (skin.ink ?? '#e2e8f0') : (skin.ink ?? '#334155') }
                             }
                           >
                             {item.label}
@@ -353,10 +369,12 @@ export function SiteQuickNav({
   categories,
   path,
   accent,
+  dark = true,
 }: {
   readonly categories: readonly CategoryNavItem[];
   readonly path: string;
   readonly accent: string;
+  readonly dark?: boolean;
 }) {
   const items = [{ label: 'Beranda', href: '/' }, ...categories.slice(0, 6)];
   return (
@@ -369,8 +387,8 @@ export function SiteQuickNav({
               <Link
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                className={`inline-flex items-center whitespace-nowrap border-b-2 px-2.5 py-2.5 font-sans text-[13px] transition-colors ${active ? 'border-current font-bold text-white' : 'border-transparent font-medium text-white/65'}`}
-                style={active ? { borderColor: accent } : undefined}
+                className={`inline-flex items-center whitespace-nowrap border-b-2 px-2.5 py-2.5 font-sans text-[13px] transition-colors ${active ? 'border-current font-bold' : 'border-transparent font-medium'} ${dark ? (active ? 'text-white' : 'text-white/65') : active ? '' : 'text-slate-600'}`}
+                style={active ? { borderColor: accent, color: dark ? '#ffffff' : accent } : undefined}
               >
                 {item.label}
               </Link>

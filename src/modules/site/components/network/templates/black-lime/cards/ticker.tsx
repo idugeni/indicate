@@ -26,14 +26,14 @@ export function BlackLimeTicker({ articles }: { readonly articles: readonly Arti
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-1 h-[2px] overflow-hidden rounded-full sm:inset-x-24">
           <span
             key={cycle}
-            className="ticker-progress block h-full w-full origin-left bg-[var(--tpl-primary,#1a5fd0)]"
+            className="ticker-progress block h-full w-full origin-left bg-[var(--tpl-primary,#c5f82a)]"
             style={{ animationDuration: `${TICKER_INTERVAL_MS}ms`, animationPlayState: running ? 'running' : 'paused' }}
           />
         </span>
       ) : null}
       <span className="flex-none self-start rounded-full bg-[var(--tpl-primary,#c5f82a)] px-3.5 py-1.5 font-sans text-xs font-bold tracking-wide text-[var(--tpl-on-primary,#0a0c07)] sm:self-auto">
         <span className="flex items-center gap-1.5">
-          <span aria-hidden="true" className={running && !reduceMotion ? 'ticker-live-dot' : 'h-1.5 w-1.5 rounded-full bg-[#0a0c07]/40'} />
+          <span aria-hidden="true" className={running && !reduceMotion ? 'ticker-live-dot' : 'h-1.5 w-1.5 rounded-full bg-[var(--tpl-on-primary,#0a0c07)]/40'} />
           TERKINI
         </span>
       </span>
@@ -62,7 +62,7 @@ export function BlackLimeTicker({ articles }: { readonly articles: readonly Arti
                 aria-label={`Headline ${position + 1}: ${tickerHeadline(item)}`}
                 aria-current={position === index ? 'true' : undefined}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  position === index ? 'w-5 bg-[var(--tpl-primary,#c5f82a)]' : 'w-1.5 bg-[var(--tpl-ring,#242b1f)] hover:bg-[#c5f82a]/60'
+                  position === index ? 'w-5 bg-[var(--tpl-primary,#c5f82a)]' : 'w-1.5 bg-[var(--tpl-ring,#242b1f)] hover:bg-[var(--tpl-primary,#c5f82a)]/60'
                 }`}
               />
             ))}

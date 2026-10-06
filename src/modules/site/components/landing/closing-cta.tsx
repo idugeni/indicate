@@ -39,14 +39,14 @@ export function ClosingCta({ channels }: { readonly channels: readonly FeatureIt
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/contact"
-              className="group inline-flex items-center gap-2 rounded bg-[#1a2430] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_18px_36px_-16px_rgba(26,36,48,0.55)] transition-all duration-180 hover:-translate-y-0.5 hover:bg-[#2b3a4b] active:translate-y-0 active:bg-[#141d27]"
+              className="group inline-flex items-center gap-2 rounded bg-[#1a2430] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_18px_36px_-16px_rgba(26,36,48,0.55)] transition-colors duration-180 hover:bg-[#2b3a4b] active:bg-[#141d27]"
             >
               Jadwalkan diskusi arsitektur
-              <ArrowRight className="h-4 w-4 transition-transform duration-180 group-hover:translate-x-0.5" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
               href="/services"
-              className="inline-flex items-center gap-2 rounded border border-[#cfc9b8] bg-white/70 px-7 py-3.5 text-sm font-semibold backdrop-blur transition-all duration-180 hover:-translate-y-0.5 hover:border-[#1a2430]/40 hover:bg-white active:translate-y-0"
+              className="inline-flex items-center gap-2 rounded border border-[#cfc9b8] bg-white/70 px-7 py-3.5 text-sm font-semibold backdrop-blur transition-colors duration-180 hover:border-[#1a2430]/40 hover:bg-white"
             >
               Lihat layanan
             </Link>

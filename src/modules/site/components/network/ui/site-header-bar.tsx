@@ -64,7 +64,7 @@ function MenuButton({
         onClick={onOpen}
         aria-expanded={sidebarOpen}
         aria-label="Buka menu"
-        className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#155cb8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#1a5fd0)] lg:hidden"
+        className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] text-[var(--tpl-on-primary,#ffffff)] shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#155cb8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#1a5fd0)] lg:hidden"
       >
         <Menu className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -73,7 +73,7 @@ function MenuButton({
 }
 
 const SEARCH_BUTTON_CLASS =
-  'h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] font-sans text-sm font-bold text-white shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#155cb8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#1a5fd0)]';
+  'h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#1a5fd0)] font-sans text-sm font-bold text-[var(--tpl-on-primary,#ffffff)] shadow-sm transition-colors hover:bg-[var(--tpl-primary-dark,#155cb8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#1a5fd0)]';
 
 /**
  * Orkestrasi bar header klien: brand, nav desktop, pemicu pencarian, dan drawer.
@@ -84,6 +84,7 @@ const SEARCH_BUTTON_CLASS =
  * @param inputId - Id unik input pencarian drawer per template.
  * @param searchSkin - Skin panel pencarian dari tema template.
  * @param layout - Susunan baris header.
+ * @param navStripStyle - Latar strip nav masthead dari tema template.
  * @param quickNav - Baris kanal geser seluler untuk varian masthead.
  * @param drawer - Posisi drawer seluler per template.
  * @returns Bar header interaktif tanpa warna template-spesifik.
@@ -95,6 +96,7 @@ export function SiteHeaderBar({
   inputId,
   searchSkin,
   layout = 'row',
+  navStripStyle,
   quickNav,
   drawer = 'right',
 }: {
@@ -104,6 +106,7 @@ export function SiteHeaderBar({
   readonly inputId: string;
   readonly searchSkin: SiteSearchPanelSkin;
   readonly layout?: SiteHeaderBarLayout;
+  readonly navStripStyle?: React.CSSProperties;
   readonly quickNav?: ReactNode;
   readonly drawer?: SiteDrawerPlacement;
 }) {
@@ -143,8 +146,8 @@ export function SiteHeaderBar({
               <MenuButton sidebarOpen={sidebarOpen} onOpen={openSidebar} buttonRef={menuButtonRef} />
             </div>
           </div>
-          <div className="bg-[#0b1b33]">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div style={navStripStyle}>
+            <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6">
               {nav}
               {quickNav}
             </div>

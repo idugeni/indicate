@@ -24,7 +24,7 @@ export function SoftBluePreferredSourceButton({ site }: { readonly site: Network
         Tambahkan ke Sumber Pilihan
       </span>
       <span aria-hidden="true" className="h-5 w-px flex-none bg-slate-300" />
-      <Bookmark className="h-4 w-4 flex-none text-[#2563eb]" aria-hidden="true" />
+      <Bookmark className="h-4 w-4 flex-none text-[var(--tpl-primary,#2563eb)]" aria-hidden="true" />
     </a>
   );
 }

@@ -26,6 +26,9 @@ export function LandingHeader() {
     const backdrop = backdropRef.current;
     const aside = asideRef.current;
     if (!backdrop || !aside) return undefined;
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return undefined;
+    }
     const items = Array.from(navRef.current?.querySelectorAll('a') ?? []);
     const cta = ctaRef.current;
     const animated = [backdrop, aside, ...items, ...(cta ? [cta] : [])];
@@ -83,7 +86,7 @@ export function LandingHeader() {
                 aria-hidden="true"
                 width={32}
                 height={32}
-                className="h-8 w-8 flex-none transition-transform duration-180 group-hover:-translate-y-px"
+                className="h-8 w-8 flex-none transition-[filter] duration-180 group-hover:brightness-110"
               />
               <span className="grid min-w-0 leading-none">
                 <span className="flex min-w-0 items-center gap-1.5">
@@ -110,7 +113,7 @@ export function LandingHeader() {
                       'relative rounded-full px-4 py-1.5 text-[13px] font-medium whitespace-nowrap transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b88d3a]',
                       active
                         ? 'bg-[#1a2430] text-white shadow-sm'
-                        : 'text-[#4c5b6b] hover:-translate-y-px hover:bg-white hover:text-[#1a2430] hover:shadow-sm active:translate-y-0 active:bg-white',
+                        : 'text-[#4c5b6b] hover:bg-white hover:text-[#1a2430] hover:shadow-sm active:bg-white',
                     )}
                   >
                     {route.label}
@@ -128,7 +131,7 @@ export function LandingHeader() {
               </Link>
               <Link
                 href="/contact"
-                className="hidden items-center gap-1.5 rounded bg-[#1a2430] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(26,36,48,0.6)] transition-all duration-180 hover:-translate-y-0.5 hover:bg-[#2b3a4b] active:translate-y-0 active:bg-[#141d27] md:inline-flex"
+                className="hidden items-center gap-1.5 rounded bg-[#1a2430] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(26,36,48,0.6)] transition-colors duration-180 hover:bg-[#2b3a4b] active:bg-[#141d27] md:inline-flex"
               >
                 Jadwalkan diskusi
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -213,7 +216,7 @@ export function LandingHeader() {
                     open ? 'opacity-100' : 'pointer-events-none opacity-0',
                     active
                       ? 'border-transparent bg-[#1a2430] text-white shadow-md'
-                      : 'border-[#1a2430]/10 bg-white/70 hover:-translate-y-px hover:border-[#1a2430]/25 hover:bg-white hover:shadow-md active:translate-y-0',
+                      : 'border-[#1a2430]/10 bg-white/70 hover:border-[#1a2430]/25 hover:bg-white hover:shadow-md',
                   )}
                 >
                   <span

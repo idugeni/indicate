@@ -8,7 +8,7 @@ export function RedEditorialNewsletter() {
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 right-40 h-56 w-56 rounded-full bg-white/5" />
       <div className="relative grid items-center gap-6 lg:grid-cols-2">
         <div className="flex items-start gap-4">
-          <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[#b91c1c] text-white shadow-md ring-1 ring-white/25">
+          <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary,#b91c1c)] text-white shadow-md ring-1 ring-white/25">
             <Mail className="h-5 w-5" />
           </span>
           <div className="min-w-0">

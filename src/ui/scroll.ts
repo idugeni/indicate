@@ -10,11 +10,16 @@ const SCROLL_DURATION_MS = 650;
  * which forces both CSS `scroll-behavior: smooth` and
  * `scrollTo({ behavior: 'smooth' })` to jump instantly. User wheel or touch
  * input cancels the animation and restores the previous scroll behavior.
+ * Reduced motion jumps instantly instead of animating.
  */
 export function scrollToTop(): void {
   const startY = window.scrollY;
   if (startY === 0) return;
   const root = document.documentElement;
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    window.scrollTo(0, 0);
+    return;
+  }
   const previousBehavior = root.style.scrollBehavior;
   root.style.scrollBehavior = 'auto';
   const startTime = performance.now();

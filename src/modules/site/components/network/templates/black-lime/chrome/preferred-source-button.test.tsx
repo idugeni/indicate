@@ -25,12 +25,12 @@ describe('BlackLimePreferredSourceButton', () => {
   });
 
   it('pakai cincin yang sama dengan chip ikon sosial footer Black Lime', () => {
-    expect(tombol().getAttribute('class')).toMatch(/ring-\[#242b1f\]/);
+    expect(tombol().getAttribute('class')).toMatch(/ring-\[var\(--tpl-ring,#242b1f\)\]/);
   });
 
   it('tetap mempertahankan ikon lime menyala sebagai aksen', () => {
     render(<BlackLimePreferredSourceButton site={makeNetworkSite()} />);
-    expect(document.querySelector('span.rounded-full.bg-\\[\\#c5f82a\\]')).not.toBeNull();
+    expect(document.querySelector('span.rounded-full[class*="--tpl-primary"]')).not.toBeNull();
   });
 
   it('menaut ke preferred source tenant dan aman secara rel', () => {

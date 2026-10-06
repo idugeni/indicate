@@ -11,11 +11,11 @@ const skin: PickCardSkin = {
   badgeStyle,
   headerClass: 'flex-1 px-5 pt-4',
   titleClass: 'line-clamp-2 font-sans text-[17px] font-bold leading-snug tracking-tight text-slate-900',
-  titleLinkClass: 'hover:text-[#b4532a]',
+  titleLinkClass: 'hover:text-[var(--tpl-primary,#b4532a)]',
   descriptionClass: 'line-clamp-3 font-sans text-sm leading-relaxed text-slate-600',
   publisherClass: 'm-0 truncate font-sans text-xs font-bold text-slate-800',
   footerClass: 'mt-auto flex items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-3.5',
-  arrowClass: 'flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#fae7d7] text-[#b4532a] transition-colors hover:bg-[#b4532a] hover:text-white',
+  arrowClass: 'flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary-soft,#fae7d7)] text-[var(--tpl-primary,#b4532a)] transition-colors hover:bg-[var(--tpl-primary,#b4532a)] hover:text-white',
   avatarSkin: WARM_EDITORIAL.authorAvatar,
   Meta: ArticleMeta,
 };

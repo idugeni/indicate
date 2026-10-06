@@ -3,10 +3,10 @@ import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-
 
 export function GreenMinimalNewsletter() {
   return (
-    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[#e0f0e5] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
+    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[var(--tpl-primary-soft,#e0f0e5)] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
       <div className="grid items-center gap-6 md:grid-cols-2">
         <div>
-          <p className="m-0 flex items-center gap-2 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#1d7a38]">
+          <p className="m-0 flex items-center gap-2 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--tpl-primary,#1d7a38)]">
             <Leaf className="h-4 w-4" aria-hidden="true" />
             Langganan Newsletter
           </p>
@@ -29,10 +29,10 @@ export function GreenMinimalNewsletter() {
           </p>
         </div>
       </div>
-      <p className="m-0 mt-4 font-sans text-lg italic leading-relaxed text-[#1d7a38]">
+      <p className="m-0 mt-4 font-sans text-lg italic leading-relaxed text-[#14532d]">
         Informasi untuk masa depan yang lebih baik
       </p>
-      <Leaf aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[#1d7a38]/25 md:block" />
+      <Leaf aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[var(--tpl-primary,#1d7a38)]/25 md:block" />
     </section>
   );
 }

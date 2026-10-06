@@ -7,9 +7,9 @@ import { BlackLimePicks } from '@/modules/site/components/network/templates/blac
 
 export function BlackLimeSearchForm({ query }: { readonly query: string }) {
   return (
-    <section aria-label="Pencarian berita" className="rounded-2xl bg-[#131711] p-5 shadow-sm ring-1 ring-[#242b1f]/60 sm:p-6">
-      <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[#f2f5e9]">
-        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#c5f82a]" />
+    <section aria-label="Pencarian berita" className="rounded-2xl bg-[var(--tpl-card,#131711)] p-5 shadow-sm ring-1 ring-[var(--tpl-ring,#242b1f)]/60 sm:p-6">
+      <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[var(--tpl-ink,#f2f5e9)]">
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#c5f82a)]" />
         {query === '' ? 'Pencarian Berita' : `Hasil untuk “${query}”`}
       </h1>
       <Form className="mt-4" action="/search" role="search">
@@ -18,7 +18,7 @@ export function BlackLimeSearchForm({ query }: { readonly query: string }) {
         </label>
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <div className="relative flex-1">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#646b5e]" />
+            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--tpl-faint,#646b5e)]" />
             <TemplateInput
               id="black-lime-search"
               name="q"
@@ -44,11 +44,11 @@ export function BlackLimeSearchForm({ query }: { readonly query: string }) {
 export function BlackLimeSearchResults({ articles, query }: { readonly articles: readonly ArticleListItem[]; readonly query: string }) {
   if (articles.length === 0) {
     return (
-      <div role="status" className="rounded-2xl border border-dashed border-[#242b1f] bg-[#131711] p-8 text-center sm:p-12">
-        <h2 className="m-0 font-sans text-xl font-bold text-[#f2f5e9]">
+      <div role="status" className="rounded-2xl border border-dashed border-[var(--tpl-ring,#242b1f)] bg-[var(--tpl-card,#131711)] p-8 text-center sm:p-12">
+        <h2 className="m-0 font-sans text-xl font-bold text-[var(--tpl-ink,#f2f5e9)]">
           Tidak ada hasil
         </h2>
-        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-[#a3ad9a]">
+        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-[var(--tpl-muted,#a3ad9a)]">
           {query === ''
             ? 'Ketik kata kunci pada kolom di atas untuk mencari berita.'
             : `Tidak ada berita yang cocok dengan “${query}”. Coba kata kunci lain.`}

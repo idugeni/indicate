@@ -107,22 +107,26 @@ function TitleBlock({
   article,
   skin,
   light = false,
+  withTitle = true,
 }: {
   readonly article: NetworkArticle;
   readonly skin: ArticleHeroSkin;
   readonly light?: boolean;
+  readonly withTitle?: boolean;
 }) {
   const titleColor = light ? '#ffffff' : skin.ink;
   const descColor = light ? 'rgba(255,255,255,0.9)' : skin.muted;
   return (
     <>
       <CategoryEyebrow article={article} skin={skin} />
-      <h1
-        className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl"
-        style={{ color: titleColor }}
-      >
-        {article.title}
-      </h1>
+      {withTitle ? (
+        <h1
+          className="m-0 mt-3 block w-full font-sans text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl"
+          style={{ color: titleColor }}
+        >
+          {article.title}
+        </h1>
+      ) : null}
       <p
         className="m-0 mt-4 block w-full border-l-[3px] pl-4 font-sans text-[19px] font-medium leading-[1.7]"
         style={{ borderColor: skin.accent, color: descColor }}
@@ -195,11 +199,13 @@ function HeroImage({
   figureClassName,
   captionClassName,
   aspectClassName = '',
+  imgClassName = 'aspect-video w-full object-cover',
 }: {
   readonly article: NetworkArticle;
   readonly figureClassName: string;
   readonly captionClassName: string;
   readonly aspectClassName?: string;
+  readonly imgClassName?: string;
 }) {
   return (
     <EditorialImage
@@ -214,6 +220,7 @@ function HeroImage({
       focalX={article.imageFocalX}
       focalY={article.imageFocalY}
       eager
+      className={imgClassName}
       figureClassName={`${figureClassName} ${aspectClassName}`.trim()}
     />
   );
@@ -223,7 +230,7 @@ function StackedHero(props: Omit<ArticleHeroProps, 'variant'>) {
   const { article, siteName, bylineName, reading, canonical, skin } = props;
   return (
     <>
-      <Breadcrumb article={article} />
+      <Breadcrumb article={article} light={skin.tone === 'dark'} />
       <header>
         <TitleBlock article={article} skin={skin} />
         <BylineCard article={article} bylineName={bylineName} reading={reading} canonical={canonical} skin={skin} />
@@ -242,7 +249,7 @@ function BreakoutHero(props: Omit<ArticleHeroProps, 'variant'>) {
   const { article, siteName, bylineName, reading, canonical, skin } = props;
   return (
     <>
-      <Breadcrumb article={article} />
+      <Breadcrumb article={article} light={skin.tone === 'dark'} />
       <div className="relative left-1/2 mt-6 w-screen max-w-none -translate-x-1/2 overflow-hidden">
         <EditorialImage
           src={featuredSrcOf(article)}
@@ -278,7 +285,7 @@ function SplitHero(props: Omit<ArticleHeroProps, 'variant'>) {
   const { article, siteName, bylineName, reading, canonical, skin } = props;
   return (
     <>
-      <Breadcrumb article={article} />
+      <Breadcrumb article={article} light={skin.tone === 'dark'} />
       <div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
         <div className="min-w-0">
           <header>
@@ -293,6 +300,7 @@ function SplitHero(props: Omit<ArticleHeroProps, 'variant'>) {
             figureClassName="m-0 overflow-hidden rounded-2xl shadow-sm"
             captionClassName="px-6 py-3 font-sans text-xs leading-relaxed"
             aspectClassName="aspect-[4/3]"
+            imgClassName="aspect-[4/3] w-full object-cover"
           />
         </div>
       </div>
@@ -321,6 +329,7 @@ function OverlayHero(props: Omit<ArticleHeroProps, 'variant'>) {
           className="h-full w-full object-cover"
         />
         <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-slate-950/10" />
+        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-slate-950/70 to-transparent" />
         <div className="absolute inset-x-0 top-0 p-4 sm:p-6">
           <Breadcrumb article={article} light />
         </div>
@@ -359,17 +368,17 @@ function ViewportHero(props: Omit<ArticleHeroProps, 'variant'>) {
           {article.categoryName === null ? null : (
             <p className="m-0 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-white/70">{article.categoryName}</p>
           )}
-          <p className="m-0 mt-3 max-w-3xl font-serif text-2xl font-medium uppercase leading-snug tracking-[0.15em] text-white sm:text-3xl">
+          <h1 className="m-0 mt-3 max-w-3xl font-serif text-2xl font-medium uppercase leading-snug tracking-[0.15em] text-white sm:text-3xl">
             {article.title}
-          </p>
+          </h1>
           <p className="m-0 mt-3 max-w-xl font-sans text-sm leading-relaxed text-white/80">{article.description}</p>
           <p className="m-0 mt-4 font-sans text-xs text-white/60">{formatDate(article.publishedAt, 'long')}</p>
         </div>
       </div>
       <div className="pt-6">
-        <Breadcrumb article={article} />
+        <Breadcrumb article={article} light={skin.tone === 'dark'} />
         <header>
-          <TitleBlock article={article} skin={skin} />
+          <TitleBlock article={article} skin={skin} withTitle={false} />
           <BylineCard article={article} bylineName={bylineName} reading={reading} canonical={canonical} skin={skin} />
         </header>
         <EditorialNote article={article} siteName={siteName} skin={skin} />
@@ -382,7 +391,7 @@ function TextFirstHero(props: Omit<ArticleHeroProps, 'variant'>) {
   const { article, siteName, bylineName, reading, canonical, skin } = props;
   return (
     <>
-      <Breadcrumb article={article} />
+      <Breadcrumb article={article} light={skin.tone === 'dark'} />
       <header>
         <TitleBlock article={article} skin={skin} />
         <BylineCard article={article} bylineName={bylineName} reading={reading} canonical={canonical} skin={skin} />

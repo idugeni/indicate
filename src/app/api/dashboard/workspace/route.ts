@@ -34,6 +34,7 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(), cursor: z.string().max(200).optional(),
   status: z.enum(['draft', 'in_review', 'scheduled', 'active', 'archived']).optional(), tag: z.string().max(60).optional(),
   sort: z.enum(['updated', 'published-desc', 'published-asc', 'title', 'syndicated']).optional(),
+  scope: z.enum(['all']).optional(),
 });
 const commandSchema = z.object({ organizationId: organizationSchema, action: z.string().min(1).max(100), payload: z.unknown() });
 
@@ -90,7 +91,7 @@ async function handleGET(request: Request) {
   const value = (name: string) => url.searchParams.get(name) ?? undefined;
   const parsed = querySchema.safeParse({
     organizationId: value('organizationId'), view: value('view'), regionId: value('regionId'), siteId: value('siteId'), categoryId: value('categoryId'), publisherId: value('publisherId'), authorId: value('authorId'),
-    publicationState: value('publicationState'), search: value('search'), siteHostname: value('siteHostname'), status: value('status'), tag: value('tag'), sort: value('sort'),
+    publicationState: value('publicationState'), search: value('search'), siteHostname: value('siteHostname'), status: value('status'), tag: value('tag'), sort: value('sort'), scope: value('scope'),
     limit: value('limit'), cursor: value('cursor'), actorId: value('actorId'), action: value('action'), targetType: value('targetType'), outcome: value('outcome'), from: value('from'), to: value('to'),
   });
   if (!parsed.success) {
@@ -104,8 +105,13 @@ async function handleGET(request: Request) {
   const { actor, service } = context;
   const compact = (entries: readonly (readonly [string, string | undefined])[]) => Object.fromEntries(entries.filter(([, item]) => item !== undefined));
     const editorialFilter = compact([['regionId', parsed.data.regionId], ['siteId', parsed.data.siteId], ['siteHostname', parsed.data.siteHostname], ['categoryId', parsed.data.categoryId], ['publisherId', parsed.data.publisherId], ['authorId', parsed.data.authorId], ['publicationState', parsed.data.publicationState], ['status', parsed.data.status], ['tag', parsed.data.tag], ['search', parsed.data.search], ['sort', parsed.data.sort], ['limit', parsed.data.limit === undefined ? undefined : String(parsed.data.limit)], ['cursor', parsed.data.cursor]]);
+    const crossOrgFilter = compact([['publicationState', parsed.data.view === 'published' ? (parsed.data.publicationState ?? 'published') : undefined], ['status', parsed.data.status], ['tag', parsed.data.tag], ['search', parsed.data.search], ['sort', parsed.data.sort], ['limit', parsed.data.limit === undefined ? undefined : String(parsed.data.limit)], ['cursor', parsed.data.cursor]]);
     const rangeFilter = compact([['from', parsed.data.from], ['to', parsed.data.to]]);
     const auditFilter = { ...rangeFilter, ...compact([['actorId', parsed.data.actorId], ['action', parsed.data.action], ['targetType', parsed.data.targetType], ['outcome', parsed.data.outcome], ['limit', parsed.data.limit === undefined ? undefined : String(parsed.data.limit)], ['cursor', parsed.data.cursor]]) };
+    const crossOrg = parsed.data.scope === 'all' && (parsed.data.view === 'articles' || parsed.data.view === 'published');
+    if (crossOrg && (parsed.data.regionId !== undefined || parsed.data.siteId !== undefined || parsed.data.siteHostname !== undefined || parsed.data.categoryId !== undefined || parsed.data.publisherId !== undefined || parsed.data.authorId !== undefined)) {
+      return NextResponse.json(createPublicError('INVALID_INPUT', 'Mode Semua organisasi tidak menerima filter per-organisasi.', requestId), { status: 400 });
+    }
     const result = parsed.data.view === 'dashboard'
       ? actor.actorType === 'user'
         ? await fetchCachedDashboard(actor)
@@ -114,12 +120,17 @@ async function handleGET(request: Request) {
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor, { search: parsed.data.search })
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, { ...editorialFilter, limit: 0 })
       : parsed.data.view === 'taxonomy' ? await service.listTaxonomy(actor)
-      : parsed.data.view === 'articles' ? await service.listEditorial(actor, editorialFilter)
+      : parsed.data.view === 'articles'
+        ? crossOrg
+          ? await service.listCrossOrgEditorial(actor, crossOrgFilter)
+          : await service.listEditorial(actor, editorialFilter)
       : parsed.data.view === 'published'
-        ? await service.listEditorial(actor, {
-          ...editorialFilter,
-          publicationState: parsed.data.publicationState ?? 'published',
-        })
+        ? crossOrg
+          ? await service.listCrossOrgEditorial(actor, crossOrgFilter)
+          : await service.listEditorial(actor, {
+            ...editorialFilter,
+            publicationState: parsed.data.publicationState ?? 'published',
+          })
       : parsed.data.view === 'analytics'
         ? actor.actorType === 'user'
           ? await fetchCachedAnalytics(actor, rangeFilter)

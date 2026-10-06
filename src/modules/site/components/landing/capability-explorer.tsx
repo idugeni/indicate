@@ -57,8 +57,8 @@ export function CapabilityExplorer() {
                   </span>
                   <span
                     className={cn(
-                      'flex-1 font-serif text-xl leading-snug tracking-tight transition-transform duration-180',
-                      selected ? 'translate-x-1 font-medium' : 'group-hover:translate-x-1',
+                      'flex-1 font-serif text-xl leading-snug tracking-tight',
+                      selected ? 'font-medium' : '',
                     )}
                   >
                     {item.title}
@@ -66,8 +66,8 @@ export function CapabilityExplorer() {
                   <ArrowRight
                     aria-hidden="true"
                     className={cn(
-                      'h-4 w-4 flex-none self-center transition-all duration-180',
-                      selected ? 'translate-x-0 text-[#8a5f1c] opacity-100' : '-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-60',
+                      'h-4 w-4 flex-none self-center transition-opacity duration-180',
+                      selected ? 'text-[#8a5f1c] opacity-100' : 'opacity-0 group-hover:opacity-60',
                     )}
                   />
                 </button>
@@ -104,7 +104,7 @@ export function CapabilityExplorer() {
                 <button
                   type="button"
                   onClick={() => setActive((active - 1 + capabilities.length) % capabilities.length)}
-                  className="inline-flex items-center gap-2 rounded border border-[#cfc9b8] bg-white/60 px-4 py-2 text-[13px] font-semibold transition-all duration-180 hover:-translate-y-px hover:border-[#1a2430]/40 hover:bg-white active:translate-y-0"
+                  className="inline-flex items-center gap-2 rounded border border-[#cfc9b8] bg-white/60 px-4 py-2 text-[13px] font-semibold transition-colors duration-180 hover:border-[#1a2430]/40 hover:bg-white"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   Sebelumnya
@@ -112,7 +112,7 @@ export function CapabilityExplorer() {
                 <button
                   type="button"
                   onClick={() => setActive((active + 1) % capabilities.length)}
-                  className="inline-flex items-center gap-2 rounded bg-[#1a2430] px-4 py-2 text-[13px] font-semibold text-white transition-all duration-180 hover:-translate-y-px hover:bg-[#2b3a4b] active:translate-y-0"
+                  className="inline-flex items-center gap-2 rounded bg-[#1a2430] px-4 py-2 text-[13px] font-semibold text-white transition-colors duration-180 hover:bg-[#2b3a4b]"
                 >
                   Berikutnya
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

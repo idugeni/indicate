@@ -12,7 +12,7 @@ export function OrangeModernQuotePanel({ siteName, quote }: { readonly siteName:
   return (
     <aside
       aria-label="Perspektif redaksi"
-      className="relative flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#ea580c] via-[#c2410c] to-[#7c2d12] p-7 text-white shadow-sm lg:sticky lg:top-20"
+      className="relative flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--tpl-primary,#ea580c)] via-[var(--tpl-primary-dark,#c2410c)] to-[#7c2d12] p-7 text-white shadow-sm lg:sticky lg:top-20"
     >
       <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/15" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-black/15" />
@@ -35,7 +35,7 @@ export function OrangeModernQuotePanel({ siteName, quote }: { readonly siteName:
         <Link
           href="/tentang"
           aria-label="Tentang redaksi"
-          className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white text-[#c2410c] transition-colors hover:bg-[#ffedd5]"
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-white text-[var(--tpl-primary-dark,#c2410c)] transition-colors hover:bg-[var(--tpl-primary-soft,#ffedd5)]"
         >
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
@@ -69,7 +69,7 @@ export function OrangeModernLatest({
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#ea580c] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[var(--tpl-primary,#ea580c)] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -124,7 +124,7 @@ export function OrangeModernLatest({
                     <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900">
-                    <Link href={article.href} className="hover:text-[#ea580c]">
+                    <Link href={article.href} className="hover:text-[var(--tpl-primary,#ea580c)]">
                       {article.title}
                     </Link>
                   </h3>

@@ -10,7 +10,7 @@ import {
 } from '@/modules/site/components/network/cards/article-pick-card';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import type { AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
-import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readableTextOnAccent, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 /** Varian related-article yang disepakati: 6 gaya untuk 10 template. */
 export type RelatedVariant = 'grid' | 'numbered' | 'carousel' | 'split-feature' | 'overlay' | 'minimal';
@@ -195,7 +195,7 @@ function GridRelated({
 }) {
   const cardSkin = pickSkin(skin);
   return (
-    <section>
+    <section className="cv-auto">
       <RelatedHeading heading={heading} description={description} skin={skin} />
       <div className="mt-5 grid items-stretch gap-5 md:grid-cols-3">
         {articles.map((article, index) => (
@@ -223,7 +223,7 @@ function NumberedRelated({
   const grid = articles.slice(0, 4);
   const popular = popularFromPool(grid, pool, 5);
   return (
-    <section>
+    <section className="cv-auto">
       <RelatedHeading heading={heading} description={description} skin={skin} />
       <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="grid content-start items-stretch gap-5 sm:grid-cols-2">
@@ -299,11 +299,11 @@ function NumberedRelated({
             className="relative overflow-hidden rounded-2xl p-6 text-white shadow-sm"
             style={{ background: `linear-gradient(135deg, ${skin.accent}, ${skin.accent}99)` }}
           >
-            <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">Perspektif</p>
+            <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">Perspektif</p>
             <blockquote className="m-0 mt-3 font-serif text-2xl font-bold leading-snug">
               &ldquo;Setiap cerita punya dampak.&rdquo;
             </blockquote>
-            <p className="m-0 mt-4 border-t border-white/20 pt-3 font-sans text-xs leading-relaxed text-white/75">
+            <p className="m-0 mt-4 border-t border-white/20 pt-3 font-sans text-xs leading-relaxed text-white/90">
               <span className="block font-bold text-white">Redaksi</span>
               Liputan terverifikasi dari lapangan.
             </p>
@@ -327,7 +327,7 @@ function CarouselRelated({
 }) {
   const cardSkin = pickSkin(skin);
   return (
-    <section>
+    <section className="cv-auto">
       <RelatedHeading heading={heading} description={description} skin={skin} />
       <div className="mt-5 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2">
         {articles.map((article, index) => (
@@ -364,7 +364,7 @@ function SplitFeatureRelated({
   const rest = fillFromPool(articles.slice(1), pool.filter((article) => article.id !== feature.id), 4);
   const featureSrc = articleImage(feature);
   return (
-    <section>
+    <section className="cv-auto">
       <RelatedHeading heading={heading} description={description} skin={skin} />
       <div className="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Link href={feature.href} className="group block min-w-0">
@@ -377,7 +377,7 @@ function SplitFeatureRelated({
               width={feature.imageWidth ?? 800}
               height={feature.imageHeight ?? 450}
               sizes="(max-width: 1024px) 100vw, 66vw"
-              className="aspect-[16/9] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="aspect-[16/9] w-full object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] group-hover:saturate-[1.05] motion-reduce:transition-none"
             />
           </span>
           {feature.categoryName === null ? null : (
@@ -458,7 +458,7 @@ function OverlayRelated({
   readonly skin: RelatedSkin;
 }) {
   return (
-    <section>
+    <section className="cv-auto">
       <RelatedHeading heading={heading} description={description} skin={skin} />
       <div className="mt-5 grid items-stretch gap-5 md:grid-cols-3">
         {articles.map((article) => {
@@ -477,14 +477,14 @@ function OverlayRelated({
                 loading="lazy"
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] group-hover:saturate-[1.05] motion-reduce:transition-none"
               />
-              <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent" />
+              <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none" />
               <span className="absolute inset-x-0 bottom-0 block p-5">
                 {article.categoryName === null ? null : (
                   <span
                     className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
-                    style={{ color: '#ffffff', backgroundColor: skin.accent }}
+                    style={{ color: readableTextOnAccent(skin.accent), backgroundColor: skin.accent }}
                   >
                     {article.categoryName}
                   </span>
@@ -527,7 +527,7 @@ function MinimalRelated({
   const dark = skin.tone === 'dark';
   const rows = fillFromPool(articles, pool, 5);
   return (
-    <section>
+    <section className="cv-auto">
       <RelatedHeading heading={heading} description={description} skin={skin} />
       <ol className="m-0 mt-2 list-none p-0">
         {rows.map((article) => (

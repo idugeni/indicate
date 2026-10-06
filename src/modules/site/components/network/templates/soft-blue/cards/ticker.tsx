@@ -26,7 +26,7 @@ export function SoftBlueTicker({ articles }: { readonly articles: readonly Artic
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-4 bottom-1 h-[2px] overflow-hidden rounded-full sm:inset-x-24">
           <span
             key={cycle}
-            className="ticker-progress block h-full w-full origin-left bg-[var(--tpl-primary,#1a5fd0)]"
+            className="ticker-progress block h-full w-full origin-left bg-[var(--tpl-primary,#2563eb)]"
             style={{ animationDuration: `${TICKER_INTERVAL_MS}ms`, animationPlayState: running ? 'running' : 'paused' }}
           />
         </span>

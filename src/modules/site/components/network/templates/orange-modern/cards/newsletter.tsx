@@ -3,7 +3,7 @@ import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-
 
 export function OrangeModernNewsletter() {
   return (
-    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[#ffedd5] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
+    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[var(--tpl-primary-soft,#ffedd5)] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
       <div className="grid items-center gap-6 md:grid-cols-2">
         <div>
           <h2 className="m-0 font-sans text-2xl font-extrabold leading-tight tracking-tight text-slate-900">
@@ -25,7 +25,7 @@ export function OrangeModernNewsletter() {
           </p>
         </div>
       </div>
-      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[#ea580c]/25 md:block" />
+      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[var(--tpl-primary,#ea580c)]/25 md:block" />
     </section>
   );
 }

@@ -10,15 +10,50 @@ import { resolveRequestId } from '@/core/observability/request-id';
 const MAX_COOKIE_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 /**
- * Redeem a dashboard access key into a bearer cookie, then enter the dashboard.
+ * Dashboard views allowed as an access-key landing target.
  *
- * @param request - Incoming edge request carrying `?key=inda_...`.
- * @returns 303 to the dashboard on success, or to sign-in without disclosing why.
+ * @remarks Mirrors `View` in `view-registry.ts` without importing its icon
+ * components into this edge route; a test pins the parity.
  */
-export function resolveAccessKeyDestination(): string {
-  return '/dashboard';
+const VIEW_DESTINATIONS: ReadonlySet<string> = new Set([
+  'dashboard',
+  'configuration',
+  'publishers',
+  'editorial',
+  'taxonomy',
+  'articles',
+  'media',
+  'publishing',
+  'published',
+  'ads',
+  'analytics',
+  'audit',
+  'operations',
+  'settings',
+  'customers',
+  'content',
+  'billing',
+  'moderation',
+  'ai',
+]);
+
+/**
+ * Resolve the post-redeem landing page for a dashboard access key.
+ *
+ * @param to - Optional `?to=` view slug; unknown values fall back to editorial.
+ * @returns Internal dashboard path; never an external URL.
+ */
+export function resolveAccessKeyDestination(to: string | null): string {
+  if (to !== null && VIEW_DESTINATIONS.has(to)) return `/dashboard?view=${to}`;
+  return '/dashboard?view=editorial';
 }
 
+/**
+ * Redeem a dashboard access key into a bearer cookie, then enter the editorial workspace.
+ *
+ * @param request - Incoming edge request carrying `?key=inda_...` and optional `?to=<view>`.
+ * @returns 303 to the workspace on success, or to sign-in without disclosing why.
+ */
 async function handleGET(request: NextRequest) {
   const requestId = resolveRequestId(request);
   const plaintext = request.nextUrl.searchParams.get('key') ?? '';
@@ -35,7 +70,7 @@ async function handleGET(request: NextRequest) {
   const expiresAt = resolved.identity.expiresAt === null ? null : new Date(resolved.identity.expiresAt).getTime();
   const remainingSeconds =
     expiresAt === null ? MAX_COOKIE_AGE_SECONDS : Math.floor((expiresAt - now.getTime()) / 1000);
-  const response = NextResponse.redirect(new URL(resolveAccessKeyDestination(), request.url), { status: 303 });
+  const response = NextResponse.redirect(new URL(resolveAccessKeyDestination(request.nextUrl.searchParams.get('to')), request.url), { status: 303 });
   response.headers.append(
     'Set-Cookie',
     renderAccessKeyCookie(plaintext, {

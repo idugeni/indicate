@@ -3,10 +3,10 @@ import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-
 
 export function SoftBlueNewsletter() {
   return (
-    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[#dbeafe] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
+    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[var(--tpl-primary-soft,#dbeafe)] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
       <div className="grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
-          <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#2563eb]">
+          <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--tpl-primary,#2563eb)]">
             Berlangganan Newsletter
           </p>
           <h2 className="m-0 mt-2 font-sans text-2xl font-extrabold leading-tight tracking-tight text-slate-900">

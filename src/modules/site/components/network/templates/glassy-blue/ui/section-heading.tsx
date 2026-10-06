@@ -15,7 +15,7 @@ export function SectionHeading({
   return (
     <div>
       <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-slate-900">
-        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1f7cff]" />
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#1f7cff)]" />
         {children}
       </h2>
       {description === undefined || description === '' ? null : (

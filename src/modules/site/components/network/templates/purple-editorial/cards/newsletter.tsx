@@ -3,10 +3,10 @@ import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-
 
 export function PurpleEditorialNewsletter() {
   return (
-    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[#ede9fe] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
+    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[var(--tpl-primary-soft,#ede9fe)] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
       <div className="relative grid items-center gap-6 md:grid-cols-2">
         <div className="flex items-start gap-4">
-          <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-[#7c3aed] text-white shadow-sm">
+          <span aria-hidden="true" className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-[var(--tpl-primary,#7c3aed)] text-white shadow-sm">
             <Mail className="h-6 w-6" />
           </span>
           <div className="min-w-0">
@@ -31,7 +31,7 @@ export function PurpleEditorialNewsletter() {
           </p>
         </div>
       </div>
-      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[#7c3aed]/25 md:block" />
+      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[var(--tpl-primary,#7c3aed)]/25 md:block" />
     </section>
   );
 }

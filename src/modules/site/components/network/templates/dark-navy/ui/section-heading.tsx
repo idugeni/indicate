@@ -14,12 +14,12 @@ export function SectionHeading({
 }) {
   return (
     <div>
-      <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[#eaf0fb]">
-        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2f7bff]" />
+      <h2 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[var(--tpl-ink,#eaf0fb)]">
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#2f7bff)]" />
         {children}
       </h2>
       {description === undefined || description === '' ? null : (
-        <p className="m-0 mt-1 font-sans text-sm text-[#9aa9c4]">{description}</p>
+        <p className="m-0 mt-1 font-sans text-sm text-[var(--tpl-muted,#9aa9c4)]">{description}</p>
       )}
     </div>
   );

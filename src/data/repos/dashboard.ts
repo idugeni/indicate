@@ -3,8 +3,9 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { extractTipTapImages } from '@/modules/site/tiptap-document';
+import { seedInitialViewCount } from '@/modules/publishing/publication-policy';
 import { regionScopeCovers } from '@/modules/site/region-scope';
-import type { ActivityHour, ArticleRecord, ArticleUpdateRecord, RecentActivity, AnalyticsProjection, ConfigurationScope, EditorialScope, NetworkArticlesScope, PublisherClaimScope, PublisherScope, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay, TaxonomyScope } from '@/modules/dashboard/models';
+import type { ActivityHour, ArticleRecord, ArticleUpdateRecord, RecentActivity, AnalyticsProjection, ConfigurationScope, CrossOrgArticleFilter, CrossOrgEditorialScope, EditorialScope, NetworkArticlesScope, PublisherClaimScope, PublisherScope, PublisherFlow, AuditFilter, AuditRecord, ActivationAttemptRecord, DashboardProjection, DashboardTenantState, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, DateWindow, OperationsProjection, RetentionRunRecord, TaskDay, TaxonomyScope } from '@/modules/dashboard/models';
 import { DashboardAccessDeniedError, DashboardConflictError, DashboardRateLimitedError, DashboardSubscriptionInactiveError, type DashboardCollectionName, type MutableTenantState, type DashboardRepository, type DashboardTransaction } from '@/modules/dashboard/ports';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { redact } from '@/core/security/redaction';
@@ -1206,6 +1207,67 @@ export class DrizzleDashboardRepository implements DashboardRepository {
   }
 
   /**
+   * Cross-org steward editorial read: bodyless articles across active organizations.
+   *
+   * Only the platform super-admin grant may call; region-locked actors are
+   * denied even with the grant. Both SECURITY DEFINER calls bypass tenant RLS
+   * by design and filter explicitly (active organizations only, optional
+   * status/tag/search/publication predicates). Bodies are selected nowhere.
+   */
+  async readCrossOrgEditorialScope(
+    actor: AuthorizedTenantActorContext,
+    filter: CrossOrgArticleFilter,
+    page?: { readonly limit?: number; readonly cursor?: string },
+  ): Promise<CrossOrgEditorialScope> {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+    if (actor.regionScopeId !== null && actor.regionScopeId !== undefined) throw new DashboardAccessDeniedError();
+    const limit = page?.limit === 0 ? 0 : clampLimit(page?.limit, 50, EDITORIAL_PAGE_MAX_ROWS);
+    const cursor = page?.cursor !== undefined && /^[0-9a-fA-F-]{36}$/.test(page.cursor) ? page.cursor : null;
+    type CrossOrgRow = {
+      organization_id: string; org_slug: string; org_name: string; id: string;
+      region_id: string | null; publisher_id: string | null; category_id: string | null; author_id: string | null;
+      lead_media_id: string | null; cover_image_url: string | null; slug: string; title: string; excerpt: string | null;
+      canonical_url: string | null; source: string; tags: string[]; status: ArticleRecord['status']; article_type: string;
+      is_sponsored: boolean; video_url: string | null; audio_url: string | null; duration_seconds: number | null;
+      published_at: Date | string | null; scheduled_at: Date | string | null; archived_at: Date | string | null;
+      version: number; created_at: Date | string; updated_at: Date | string;
+      category_ids: string[]; category_names: string[]; portal_hostnames: string[]; published_urls: string[];
+      published_at_max: Date | string | null;
+    };
+    const status = filter.status ?? null;
+    const search = filter.search?.trim() === '' || filter.search === undefined ? null : filter.search;
+    const tag = filter.tag ?? null;
+    const sort = filter.sort ?? 'published-desc';
+    const publicationState = filter.publicationState ?? null;
+    const [rows, counts] = await Promise.all([
+      limit === 0 ? [] : this.database.execute<CrossOrgRow>(sql`SELECT * FROM indicate_private.list_cross_org_articles(${status}, ${search}, ${tag}, ${sort}, ${publicationState}, ${limit}, ${cursor})`),
+      this.database.execute<{ count: number }>(sql`SELECT indicate_private.count_cross_org_articles(${status}, ${search}, ${tag}, ${publicationState}) AS count`),
+    ]);
+    const pageRows = limit === 0 ? [] : rows.slice(0, limit);
+    const articles = pageRows.map((row) => ({
+      id: row.id, organizationId: row.organization_id, regionId: row.region_id, publisherId: row.publisher_id,
+      categoryId: row.category_id, categoryIds: [...(row.category_ids ?? [])], authorId: row.author_id,
+      leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title,
+      excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null,
+      source: row.source, tags: [...(row.tags ?? [])], status: row.status,
+      type: row.article_type as ArticleRecord['type'], isSponsored: row.is_sponsored,
+      videoUrl: row.video_url, audioUrl: row.audio_url, durationSeconds: row.duration_seconds,
+      publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at),
+      archivedAt: optionalIsoOf(row.archived_at), version: row.version,
+      createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at),
+      orgSlug: row.org_slug, orgName: row.org_name,
+      categoryNames: [...(row.category_names ?? [])], portalHostnames: [...(row.portal_hostnames ?? [])],
+      publishedUrls: [...(row.published_urls ?? [])], publishedAtMax: optionalIsoOf(row.published_at_max),
+    }));
+    const lastConsumed = articles.length > 0 ? (articles[articles.length - 1] as { readonly id: string }).id : null;
+    return {
+      articles,
+      articlesNextCursor: rows.length > limit && lastConsumed !== null ? lastConsumed : null,
+      total: counts[0]?.count ?? 0,
+    };
+  }
+
+  /**
    * Scoped network-article read: one site plus its published articles.
    *
    * Mirrors `selectNetworkArticles` in SQL: the site must exist and be active,
@@ -1442,7 +1504,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * di org penyaji (audit + invalidasi di org penyaji). Sinkron, tanpa antrean
    * pekerja: penayangan bridge murni flip status DB, tanpa handshake origin.
    */
-  async requestBridgePublication(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[] }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string }> {
+  async requestBridgePublication(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[]; readonly viewCount?: number | undefined }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string }> {
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
     const siteIds = [...new Set(input.siteIds)].sort();
     if (siteIds.length === 0 || siteIds.length > 200) throw new DashboardAccessDeniedError();
@@ -1457,7 +1519,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
       const siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), inArray(sites.id, siteIds), eq(sites.status, 'active'))).limit(siteIds.length);
       if (siteRows.length !== siteIds.length) throw new DashboardAccessDeniedError();
-      return this.insertPublishedBridge(transaction, actor, input.ownerOrganizationId, input.articleId, flipped.slug, siteRows, now, 'publication.bridge.request');
+      return this.insertPublishedBridge(transaction, actor, input.ownerOrganizationId, input.articleId, flipped.slug, siteRows, now, 'publication.bridge.request', input.viewCount);
     });
     return { bridgeIds, slug: flipped.slug };
   }
@@ -1718,7 +1780,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * ber-slug sama di semua domain. Batas 200 situs per panggilan mengikuti
    * plafon skema bridge.
    */
-  async requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }> {
+  async requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly viewCount?: number | undefined }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }> {
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
     const now = new Date();
     const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: input.ownerOrganizationId, regionScopeId: null };
@@ -1742,7 +1804,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.siteLevel, 'city'), eq(sites.regionId, regionId), eq(sites.status, 'active'))).limit(200);
       }
       if (siteRows.length === 0) throw new DashboardValidationError({ articleId: ['Tidak ada portal aktif untuk wilayah ini.'] });
-      return this.insertPublishedBridge(transaction, actor, input.ownerOrganizationId, input.articleId, flipped.slug, siteRows, now, 'publication.bridge.requestAuto');
+      return this.insertPublishedBridge(transaction, actor, input.ownerOrganizationId, input.articleId, flipped.slug, siteRows, now, 'publication.bridge.requestAuto', input.viewCount);
     });
     return { bridgeIds, slug: flipped.slug, siteCount: bridgeIds.length };
   }
@@ -1758,13 +1820,18 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     return { slug: after.slug, title: after.title, regionId: after.regionId };
   }
 
-  private async insertPublishedBridge(transaction: Transaction, actor: AuthorizedTenantActorContext, ownerOrganizationId: string, articleId: string, slug: string, siteRows: readonly { readonly id: string; readonly normalizedHostname: string }[], now: Date, reason: string): Promise<readonly string[]> {
-    const rows = siteRows.map((site) => ({ organizationId: actor.organizationId, id: crypto.randomUUID(), siteId: site.id, sourceOrganizationId: ownerOrganizationId, sourceArticleId: articleId, state: 'published' as const, stateOccurredAt: now, publishedAt: now, version: 1, createdAt: now, updatedAt: now }));
+  private async insertPublishedBridge(transaction: Transaction, actor: AuthorizedTenantActorContext, ownerOrganizationId: string, articleId: string, slug: string, siteRows: readonly { readonly id: string; readonly normalizedHostname: string }[], now: Date, reason: string, viewCount?: number | undefined): Promise<readonly string[]> {
+    const rows = siteRows.map((site) => ({ organizationId: actor.organizationId, id: crypto.randomUUID(), siteId: site.id, sourceOrganizationId: ownerOrganizationId, sourceArticleId: articleId, state: 'published' as const, stateOccurredAt: now, publishedAt: now, viewCount: viewCount ?? seedInitialViewCount(0, false) ?? 0, version: 1, createdAt: now, updatedAt: now }));
     for (const chunk of insertChunks(rows)) {
       await transaction.insert(portalAssignments).values([...chunk]).onConflictDoUpdate({
         target: [portalAssignments.organizationId, portalAssignments.sourceOrganizationId, portalAssignments.sourceArticleId, portalAssignments.siteId],
-        set: { state: 'published', stateOccurredAt: now, publishedAt: now, updatedAt: now, version: sql`${portalAssignments.version} + 1` },
+        set: viewCount === undefined
+          ? { state: 'published', stateOccurredAt: now, publishedAt: now, updatedAt: now, version: sql`${portalAssignments.version} + 1` }
+          : { state: 'published', stateOccurredAt: now, publishedAt: now, viewCount, updatedAt: now, version: sql`${portalAssignments.version} + 1` },
       });
+    }
+    if (viewCount === undefined) {
+      await transaction.execute(sql`UPDATE public.portal_assignments SET view_count = CASE WHEN random() < 0.70 THEN 1000 + floor(random() * 3001)::int WHEN random() < 0.9473684210526315 THEN 4001 + floor(random() * 4000)::int ELSE 8001 + floor(random() * 4000)::int END WHERE organization_id = ${actor.organizationId}::uuid AND source_organization_id = ${ownerOrganizationId}::uuid AND source_article_id = ${articleId}::uuid AND state = 'published' AND view_count = 0`);
     }
     const ancestorHostnames = await findBridgeAncestorHostnames(
       (query: unknown) => transaction.execute(query as Parameters<Transaction['execute']>[0]),

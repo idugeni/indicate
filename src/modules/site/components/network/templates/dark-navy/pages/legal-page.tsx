@@ -29,12 +29,12 @@ export function DarkNavyLegal({ site, title, description, path = '/', sections, 
     <DarkNavyShell site={site} path={path}>
       <Container className="space-y-6 py-6 md:py-8">
         <div>
-          <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-[#eaf0fb]">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#2f7bff]" />
+          <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-[var(--tpl-ink,#eaf0fb)]">
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#2f7bff)]" />
             {title}
           </h1>
           {description === undefined || description === '' ? null : (
-            <p className="m-0 mt-1 max-w-2xl font-sans text-sm leading-relaxed text-[#9aa9c4]">
+            <p className="m-0 mt-1 max-w-2xl font-sans text-sm leading-relaxed text-[var(--tpl-muted,#9aa9c4)]">
               {description}
             </p>
           )}
@@ -42,15 +42,15 @@ export function DarkNavyLegal({ site, title, description, path = '/', sections, 
             {sections.length} bagian · Berlaku untuk {site.context.normalizedHostname} · Berlaku sejak {effectiveDate}
           </p>
         </div>
-        <nav aria-label="Daftar isi" className="rounded-2xl bg-[#0e1a33] p-4 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-5">
+        <nav aria-label="Daftar isi" className="rounded-2xl bg-[var(--tpl-card,#0e1a33)] p-4 shadow-sm ring-1 ring-[var(--tpl-ring,#1b2c4f)]/60 sm:p-5">
           <ol className="m-0 grid list-none gap-x-8 p-0 sm:grid-cols-2">
             {sections.map((section, index) => (
-              <li key={`${index}:${section.heading}`} className="border-b border-[#1b2c4f] last:border-b-0">
+              <li key={`${index}:${section.heading}`} className="border-b border-[var(--tpl-ring,#1b2c4f)] last:border-b-0">
                 <a
                   href={`#${slugify(section.heading)}`}
-                  className="group flex items-baseline gap-3 py-2 font-sans text-sm text-[#9aa9c4] transition-colors hover:text-[#2f7bff]"
+                  className="group flex items-baseline gap-3 py-2 font-sans text-sm text-[var(--tpl-muted,#9aa9c4)] transition-colors hover:text-[var(--tpl-primary,#2f7bff)]"
                 >
-                  <span className="flex-none font-mono text-[11px] tabular-nums text-[#2f7bff]">
+                  <span className="flex-none font-mono text-[11px] tabular-nums text-[var(--tpl-primary,#2f7bff)]">
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <span className="group-hover:underline">{section.heading}</span>
@@ -59,14 +59,14 @@ export function DarkNavyLegal({ site, title, description, path = '/', sections, 
             ))}
           </ol>
         </nav>
-        <div className="rounded-2xl bg-[#0e1a33] p-4 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-5">
-          <p className="m-0 font-sans text-sm font-bold text-[#eaf0fb]">Dokumen terkait</p>
+        <div className="rounded-2xl bg-[var(--tpl-card,#0e1a33)] p-4 shadow-sm ring-1 ring-[var(--tpl-ring,#1b2c4f)]/60 sm:p-5">
+          <p className="m-0 font-sans text-sm font-bold text-[var(--tpl-ink,#eaf0fb)]">Dokumen terkait</p>
           <ul className="m-0 mt-3 flex list-none flex-wrap gap-2 p-0">
             {TENANT_RELATED_DOCS.filter((doc) => doc.href !== path).map((doc) => (
               <li key={doc.href} className="m-0">
                 <Link
                   href={doc.href}
-                  className="inline-block rounded-full bg-[#0e1a33] px-4 py-2 font-sans text-sm font-semibold text-[#2f7bff] shadow-sm ring-1 ring-[#1b2c4f]/60 transition-colors hover:bg-[#2f7bff] hover:text-white"
+                  className="inline-block rounded-full bg-[var(--tpl-card,#0e1a33)] px-4 py-2 font-sans text-sm font-semibold text-[var(--tpl-primary,#2f7bff)] shadow-sm ring-1 ring-[var(--tpl-ring,#1b2c4f)]/60 transition-colors hover:bg-[var(--tpl-primary,#2f7bff)] hover:text-white"
                 >
                   {doc.label}
                 </Link>
@@ -79,21 +79,21 @@ export function DarkNavyLegal({ site, title, description, path = '/', sections, 
             <article
               key={`${index}:${section.heading}`}
               id={slugify(section.heading)}
-              className="scroll-mt-24 rounded-2xl bg-[#0e1a33] p-5 shadow-sm ring-1 ring-[#1b2c4f]/60 sm:p-6"
+              className="scroll-mt-24 rounded-2xl bg-[var(--tpl-card,#0e1a33)] p-5 shadow-sm ring-1 ring-[var(--tpl-ring,#1b2c4f)]/60 sm:p-6"
             >
               <div className="flex items-baseline gap-3">
                 <span
                   aria-hidden="true"
-                  className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-[#14294f] font-mono text-[11px] font-bold tabular-nums text-[#2f7bff]"
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-[var(--tpl-primary-soft,#14294f)] font-mono text-[11px] font-bold tabular-nums text-[var(--tpl-primary,#2f7bff)]"
                 >
                   {index + 1}
                 </span>
-                <h2 className="m-0 font-sans text-base font-bold tracking-tight text-[#eaf0fb]">
+                <h2 className="m-0 font-sans text-base font-bold tracking-tight text-[var(--tpl-ink,#eaf0fb)]">
                   {section.heading}
                 </h2>
               </div>
               {splitLegalParagraphs(section.body).map((paragraph, index) => (
-                <p key={`${section.heading}-${index}`} className="m-0 mt-3 text-justify font-sans text-sm leading-relaxed text-[#9aa9c4]">{paragraph}</p>
+                <p key={`${section.heading}-${index}`} className="m-0 mt-3 text-justify font-sans text-sm leading-relaxed text-[var(--tpl-muted,#9aa9c4)]">{paragraph}</p>
               ))}
             </article>
           ))}

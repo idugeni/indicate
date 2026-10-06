@@ -14,14 +14,14 @@ export function RedEditorialPickCard({ article }: { readonly article: ArticleLis
   const reading = readingMinutes(article);
   const publisherName = article.attribution;
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#ecd3d3]/70">
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[var(--tpl-ring,#ecd3d3)]/70 transition-shadow duration-300 ease-out hover:shadow-md motion-reduce:transition-none">
       <div className="overflow-hidden">
         <Image
           unoptimized={!isLocalImageSrc(src)}
           src={src}
           alt={article.title}
           loading="lazy"
-          className="aspect-[16/10] w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+          className="aspect-[16/10] w-full object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] motion-reduce:transition-none"
           width={article.imageWidth ?? 800}
           height={article.imageHeight ?? 500}
           sizes="(max-width: 768px) 100vw, 33vw"
@@ -29,16 +29,16 @@ export function RedEditorialPickCard({ article }: { readonly article: ArticleLis
       </div>
       <div className="flex flex-1 flex-col p-5">
         {article.categoryName === null ? null : (
-          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-[#b91c1c]">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-wider text-[var(--tpl-primary,#b91c1c)]">
             {article.categoryName}
           </p>
         )}
-        <h3 className="m-0 mt-1.5 line-clamp-3 font-serif text-lg font-bold leading-snug text-[#230d0d]">
-          <Link href={article.href} className="transition-colors hover:text-[#b91c1c]">
+        <h3 className="m-0 mt-1.5 line-clamp-3 font-serif text-lg font-bold leading-snug text-[var(--tpl-ink,#230d0d)]">
+          <Link href={article.href} className="transition-colors hover:text-[var(--tpl-primary,#b91c1c)]">
             {article.title}
           </Link>
         </h3>
-        <p className="m-0 mt-2 line-clamp-3 text-sm leading-relaxed text-[#705050]">
+        <p className="m-0 mt-2 line-clamp-3 text-sm leading-relaxed text-[var(--tpl-muted,#705050)]">
           {article.description}
         </p>
         <p className="m-0 mt-3 flex min-w-0 items-center gap-2.5">
@@ -67,7 +67,7 @@ export function RedEditorialPickCard({ article }: { readonly article: ArticleLis
             slug={article.slug}
             title={article.title}
             href={article.href}
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[#b91c1c] ring-1 ring-[#ecd3d3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b91c1c]"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[var(--tpl-primary,#b91c1c)] ring-1 ring-[var(--tpl-ring,#ecd3d3)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tpl-primary,#b91c1c)]"
           />
         </p>
       </div>

@@ -3,7 +3,7 @@ import { NewsletterForm } from '@/modules/site/components/network/ui/newsletter-
 
 export function BlackLimeNewsletter() {
   return (
-    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[#22300a] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
+    <section id="newsletter" aria-label="Berlangganan newsletter" className="relative overflow-hidden rounded-2xl bg-[var(--tpl-primary-soft,#22300a)] px-6 py-8 md:px-10" style={{ scrollMarginTop: '5rem' }}>
       <div className="grid items-center gap-6 md:grid-cols-2">
         <div>
           <h2 className="m-0 font-sans text-2xl font-extrabold leading-tight tracking-tight text-slate-100">
@@ -19,13 +19,14 @@ export function BlackLimeNewsletter() {
             formClassName="flex flex-col gap-2.5 sm:flex-row"
             inputClassName="h-11 w-full min-w-0 appearance-none rounded-full px-4 font-sans text-base focus:outline-none sm:flex-1 sm:text-sm"
             buttonClassName="h-11 w-full flex-none rounded-full px-6 font-sans text-sm sm:w-auto"
+            tone="dark"
           />
           <p className="m-0 mt-2.5 font-sans text-xs text-slate-500">
             Kami menghargai privasi Anda. Tidak ada spam, hanya berita penting.
           </p>
         </div>
       </div>
-      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[#c5f82a]/25 md:block" />
+      <Send aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-6 hidden h-28 w-28 rotate-12 text-[var(--tpl-primary,#c5f82a)]/25 md:block" />
     </section>
   );
 }

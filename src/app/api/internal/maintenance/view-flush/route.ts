@@ -232,6 +232,27 @@ async function handleGET(request: Request) {
                 applied += 1;
               }
             }
+            const bridgeChunk = chunk.filter(({ entry }) => pending.has(entry.articleSiteId));
+            if (bridgeChunk.length > 0) {
+              const bridgeValues = sql.join(
+                bridgeChunk.map(({ entry }) => sql`(${entry.articleSiteId}::uuid, ${entry.siteId}::uuid, ${entry.count}::int)`),
+                sql`,`,
+              );
+              const bridgeUpdated = await transaction.execute<{ id: string }>(sql`
+              UPDATE portal_assignments AS p SET view_count = p.view_count + v.count, updated_at = now()
+              FROM (VALUES ${bridgeValues}) AS v(id, site_id, count)
+              WHERE p.organization_id = ${organizationId}::uuid AND p.id = v.id AND p.site_id = v.site_id
+              RETURNING p.id`);
+              commitQueries += 1;
+              for (const row of bridgeUpdated) {
+                const hit = pending.get(row.id);
+                if (hit !== undefined) {
+                  pending.delete(row.id);
+                  appliedKeys.push(hit.key);
+                  applied += 1;
+                }
+              }
+            }
           }
           if (pending.size > 0) {
             const missing = await transaction.execute<{ id: string }>(sql`
@@ -241,7 +262,9 @@ async function handleGET(request: Request) {
               )}) AS v(id, site_id)
               LEFT JOIN article_sites AS s
                 ON s.organization_id = ${organizationId}::uuid AND s.id = v.id AND s.site_id = v.site_id
-              WHERE s.id IS NULL`);
+              LEFT JOIN portal_assignments AS p
+                ON p.organization_id = ${organizationId}::uuid AND p.id = v.id AND p.site_id = v.site_id
+              WHERE s.id IS NULL AND p.id IS NULL`);
             commitQueries += 1;
             for (const row of missing) {
               const hit = pending.get(row.id);
@@ -280,7 +303,7 @@ async function handleGET(request: Request) {
 /**
  * Flush buffered pageview counts into article view totals plus daily buckets.
  *
- * @remarks Pooled sessions carry the previous request's tenant/region GUCs: set_tenant_context rejects a different org (conflict) and a stale region filters rows out, both silently dropping the flush. RESET first per org inside one transaction (one pinned connection), then enforce a clean flush context. Each chunk writes two tables atomically: lifetime view_count and today's article_site_view_days upsert (only RETURNING rows, orphans skip the daily bucket). INCRBY restore is safe from partial duplication because the per-org transaction is atomic: a throw anywhere rolls back that org's whole chunk so the refund equals exactly what was popped; the restore key gets a 7-day EXPIRE.
+ * @remarks Pooled sessions carry the previous request's tenant/region GUCs: set_tenant_context rejects a different org (conflict) and a stale region filters rows out, both silently dropping the flush. RESET first per org inside one transaction (one pinned connection), then enforce a clean flush context. Each chunk writes lifetime view_count to `article_sites` (plus today's `article_site_view_days` upsert for RETURNING rows) and falls through to `portal_assignments` for bridge beacons; orphans missing from both skip the daily bucket. INCRBY restore is safe from partial duplication because the per-org transaction is atomic: a throw anywhere rolls back that org's whole chunk so the refund equals exactly what was popped; the restore key gets a 7-day EXPIRE.
  */
 export const GET = withApiAccess('GET /api/internal/maintenance/view-flush', handleGET);
 

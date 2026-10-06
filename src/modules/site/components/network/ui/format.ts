@@ -138,3 +138,18 @@ export function formatDate(isoString: string, variant: DateVariant = 'short'): s
     return isoString;
   }
 }
+
+/**
+ * Teks terbaca di atas aksen template (badge kategori, pil TERKINI).
+ *
+ * @param accent - Warna aksen hex `#rrggbb` dari tema template.
+ * @returns Hitam pekat untuk aksen terang (mis. lime), putih untuk aksen gelap.
+ * @remarks Format tak dikenal mempertahankan putih (perilaku lama).
+ */
+export function readableTextOnAccent(accent: string): string {
+  const hex = /^#([0-9a-f]{6})$/iu.exec(accent.trim())?.[1] ?? null;
+  if (hex === null) return '#ffffff';
+  const channel = (offset: number): number => parseInt(hex.slice(offset, offset + 2), 16) / 255;
+  const luminance = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  return luminance > 0.45 ? '#0a0c07' : '#ffffff';
+}

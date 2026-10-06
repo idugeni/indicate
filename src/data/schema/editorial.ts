@@ -219,6 +219,7 @@ export const portalAssignments = pgTable('portal_assignments', {
   state: publishingState('state').default('queued').notNull(),
   stateOccurredAt: timestamp('state_occurred_at', { withTimezone: true }).defaultNow().notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
+  viewCount: integer('view_count').default(0).notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
 }, (table) => [
@@ -230,6 +231,7 @@ export const portalAssignments = pgTable('portal_assignments', {
   index('portal_assignments_org_source_idx').on(table.organizationId, table.sourceOrganizationId, table.sourceArticleId),
   check('portal_assignments_published_needs_time', sql`((${table.state} <> 'published') OR (${table.publishedAt} IS NOT NULL))`),
   check('portal_assignments_version_positive', sql`${table.version} > 0`),
+  check('portal_assignments_view_count_nonnegative', sql`${table.viewCount} >= 0`),
 ]);
 
 export const articleCategories = pgTable('article_categories', {

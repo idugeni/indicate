@@ -12,19 +12,19 @@ export function WarmEditorialQuotePanel({ siteName, quote }: { readonly siteName
   return (
     <aside
       aria-label="Perspektif redaksi"
-      className="relative flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#fae7d7] via-[#f3c9a5] to-[#b4532a] p-7 shadow-sm lg:sticky lg:top-20"
+      className="relative flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--tpl-primary-soft,#fae7d7)] via-[#f3c9a5] to-[var(--tpl-primary-dark,#8a3c1d)] p-7 shadow-sm lg:sticky lg:top-20"
     >
       <div className="relative">
-        <p className="m-0 flex items-center gap-2 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#8a3c1d]">
+        <p className="m-0 flex items-center gap-2 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--tpl-primary-dark,#8a3c1d)]">
           Perspektif
-          <span aria-hidden="true" className="h-0.5 w-8 rounded-full bg-[#8a3c1d]" />
+          <span aria-hidden="true" className="h-0.5 w-8 rounded-full bg-[var(--tpl-primary-dark,#8a3c1d)]" />
         </p>
-        <blockquote className="m-0 mt-3 font-serif text-2xl font-bold leading-snug tracking-tight text-[#231208]">
+        <blockquote className="m-0 mt-3 font-serif text-2xl font-bold leading-snug tracking-tight text-[var(--tpl-ink,#231208)]">
           &ldquo;{quote}&rdquo;
         </blockquote>
       </div>
       <div className="relative mt-6">
-        <span aria-hidden="true" className="block h-0.5 w-10 rounded-full bg-[#8a3c1d]" />
+        <span aria-hidden="true" className="block h-0.5 w-10 rounded-full bg-[var(--tpl-primary-dark,#8a3c1d)]" />
         <p className="m-0 mt-3 font-serif text-base font-bold text-white">{siteName}</p>
         <p className="m-0 mt-0.5 font-sans text-xs leading-relaxed text-white/85">
           Karena setiap cerita punya makna.
@@ -59,7 +59,7 @@ export function WarmEditorialLatest({
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#b4532a] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[var(--tpl-primary,#b4532a)] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -114,7 +114,7 @@ export function WarmEditorialLatest({
                     <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-serif text-[17px] font-bold leading-snug text-slate-900">
-                    <Link href={article.href} className="hover:text-[#b4532a]">
+                    <Link href={article.href} className="hover:text-[var(--tpl-primary,#b4532a)]">
                       {article.title}
                     </Link>
                   </h3>

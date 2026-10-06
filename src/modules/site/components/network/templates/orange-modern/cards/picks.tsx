@@ -28,7 +28,7 @@ export function OrangeModernPicks({
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#ea580c] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[var(--tpl-primary,#ea580c)] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

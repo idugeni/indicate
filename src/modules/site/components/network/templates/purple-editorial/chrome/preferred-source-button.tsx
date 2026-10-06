@@ -25,8 +25,8 @@ export function PurpleEditorialPreferredSourceButton({ site }: { readonly site: 
           Tambahkan ke Sumber Pilihan
         </span>
       </span>
-      <span className="flex flex-none items-center border-l border-[#7c3aed]/20 bg-[#ede9fe] px-3">
-        <Bookmark className="h-4 w-4 text-[#7c3aed]" aria-hidden="true" />
+      <span className="flex flex-none items-center border-l border-[var(--tpl-primary,#7c3aed)]/20 bg-[var(--tpl-primary-soft,#ede9fe)] px-3">
+        <Bookmark className="h-4 w-4 text-[var(--tpl-primary,#7c3aed)]" aria-hidden="true" />
       </span>
     </a>
   );

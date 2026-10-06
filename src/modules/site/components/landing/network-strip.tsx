@@ -61,7 +61,7 @@ export function NetworkStrip() {
                     aria-label={brand.name}
                     role="img"
                     className={cn(
-                      'block text-[1.4rem] leading-none whitespace-nowrap transition-transform duration-180 group-hover:-translate-y-0.5 xl:text-[1.55rem]',
+                      'block text-[1.4rem] leading-none whitespace-nowrap xl:text-[1.55rem]',
                       brand.wordmarkClass,
                     )}
                   >
@@ -81,7 +81,7 @@ export function NetworkStrip() {
                   aria-label="Daftarkan brand Anda — hubungi kami"
                   className="group flex flex-1 flex-col items-center justify-center gap-3 px-5 py-8 text-center transition-colors duration-180 outline-offset-[-2px] hover:bg-[#2b3a4b] focus-visible:outline-2 focus-visible:outline-[#e8c87e]"
                 >
-                  <span className="block font-serif text-[1.4rem] leading-none font-black tracking-tight whitespace-nowrap transition-transform duration-180 group-hover:-translate-y-0.5 xl:text-[1.55rem]">
+                  <span className="block font-serif text-[1.4rem] leading-none font-black tracking-tight whitespace-nowrap xl:text-[1.55rem]">
                     <span className="text-[#f4f2ec]">Brand Anda</span>
                     <span className="text-[#e8c87e]"> +</span>
                   </span>

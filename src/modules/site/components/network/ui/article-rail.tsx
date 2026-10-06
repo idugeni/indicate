@@ -35,7 +35,7 @@ interface ArticleRailProps {
  */
 export function ArticleRail({ variant, site, sidebar, followChannels }: ArticleRailProps) {
   return (
-    <aside aria-label="Sidebar artikel" className="grid min-w-0 content-start gap-6 print:hidden lg:sticky lg:top-20">
+    <aside aria-label="Sidebar artikel" className="cv-auto grid min-w-0 content-start gap-6 print:hidden lg:sticky lg:top-20">
       {variant === 'premium' ? (
         <>
           <ArticleSidebarTerpopuler articles={sidebar.terpopuler} />

@@ -384,3 +384,43 @@ describe('ArticleManager server-driven', () => {
     await waitFor(() => expect(onLoadMoreArticles).toHaveBeenCalledTimes(10), { timeout: 3000 });
   });
 });
+
+describe('ArticleManager mode Semua organisasi', () => {
+  const CROSS_DATA = {
+    articles: [
+      { id: 'a-1', title: 'Banjir Wonosobo', slug: 'banjir-wonosobo', status: 'active', type: 'standard', publishedAt: '2026-09-20T00:00:00.000Z', updatedAt: '2026-09-22T00:00:00.000Z', tags: ['bencana'], categoryIds: ['c-9'], regionId: 'r-9', version: 2, body: 'Isi.', excerpt: null, canonicalUrl: null, publisherId: null, authorId: null, categoryId: 'c-9', organizationId: 'org-upt', orgSlug: 'rutan-wonosobo', orgName: 'RUTAN KELAS II B WONOSOBO', categoryNames: ['Siaga'], portalHostnames: ['wonosobo.example'] },
+    ],
+    categories: [],
+    sites: [],
+    articleSites: [],
+    total: 47,
+    articlesNextCursor: null,
+  };
+
+  it('menyembunyikan toggle untuk non-steward', () => {
+    render(<ArticleManager data={CROSS_DATA} />);
+    expect(screen.queryByLabelText('Tampilkan artikel semua organisasi')).toBeNull();
+  });
+
+  it('toggle memanggil onCrossOrgChange dan menyembunyikan filter per-org', async () => {
+    const user = userEvent.setup();
+    const onCrossOrgChange = vi.fn();
+    render(<ArticleManager data={DATA} isSuperAdmin onCrossOrgChange={onCrossOrgChange} />);
+    await user.click(screen.getByLabelText('Tampilkan artikel semua organisasi'));
+    expect(onCrossOrgChange).toHaveBeenCalledWith(true);
+  });
+
+  it('menampilkan lencana org, menonaktifkan ubah, dan merutekan arsip ke org pemilik', async () => {
+    const user = userEvent.setup();
+    const command = vi.fn(async () => ({ id: 'a-1', version: 3 }));
+    render(<ArticleManager data={CROSS_DATA} command={command} crossOrg isSuperAdmin onCrossOrgChange={() => undefined} />);
+    expect(screen.getByText('RUTAN KELAS II B WONOSOBO')).toBeDefined();
+    expect(screen.getByText('Kelola artikel semua organisasi (47)')).toBeDefined();
+    expect(screen.queryByLabelText('Kategori')).toBeNull();
+    expect(screen.queryByLabelText('Portal')).toBeNull();
+    const edit = screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo (pindah ke organisasi pemilik)' });
+    expect(edit.hasAttribute('disabled')).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Arsipkan artikel Banjir Wonosobo' }));
+    expect(command).toHaveBeenCalledWith('article.archive', { id: 'a-1', expectedVersion: 2, ownerOrganizationId: 'org-upt' }, { refresh: true });
+  });
+});

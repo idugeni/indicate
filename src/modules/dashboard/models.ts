@@ -358,6 +358,40 @@ export interface EditorialScope {
   readonly domains: readonly Pick<DomainRecord, 'id' | 'normalizedHostname'>[];
 }
 
+/** One article row in a cross-org steward listing: canonical columns plus display denormalization. */
+export interface CrossOrgArticleRecord extends ArticleRecord {
+  /** Owning organization slug for the steward badge. */
+  readonly orgSlug: string;
+  /** Owning organization display name for the steward badge. */
+  readonly orgName: string;
+  /** Category display names in position order; replaces the per-org lookup map. */
+  readonly categoryNames: readonly string[];
+  /** Apex-resolved active portal hostnames; replaces the sites/articleSites maps. */
+  readonly portalHostnames: readonly string[];
+  /** Published assignment URLs (fallback `https://host/slug` when unset). */
+  readonly publishedUrls: readonly string[];
+  /** Newest published assignment time; null when never published. */
+  readonly publishedAtMax: string | null;
+}
+
+/** Cross-org steward read: keyset-paged bodyless articles with an exact total. */
+export interface CrossOrgEditorialScope {
+  readonly articles: readonly CrossOrgArticleRecord[];
+  readonly articlesNextCursor: string | null;
+  readonly total: number;
+}
+
+/** Filters allowed in cross-org mode; org-scoped ids stay single-org only. */
+export interface CrossOrgArticleFilter {
+  readonly status?: string | undefined;
+  readonly tag?: string | undefined;
+  readonly search?: string | undefined;
+  readonly sort?: 'updated' | 'published-desc' | 'published-asc' | 'title' | 'syndicated' | undefined;
+  readonly publicationState?: string | undefined;
+  readonly limit?: number | undefined;
+  readonly cursor?: string | undefined;
+}
+
 /** Scoped taxonomy read: narrow article facets for counting, never bodies. */
 export interface TaxonomyScope {
   readonly articles: readonly Pick<ArticleRecord, 'id' | 'organizationId' | 'regionId' | 'categoryId' | 'categoryIds' | 'tags'>[];

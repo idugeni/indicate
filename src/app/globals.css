@@ -216,6 +216,17 @@
   [data-template='black-lime'], [data-template='dark-navy'] { color-scheme: dark; }
   [data-template='clean-blue'], [data-template='glassy-blue'], [data-template='green-minimal'], [data-template='orange-modern'], [data-template='purple-editorial'], [data-template='red-editorial'], [data-template='soft-blue'], [data-template='warm-editorial'] { color-scheme: light; }
 
+  /* Below-fold tenant sections skip off-screen paint: on long article pages
+     a fast mobile fling rasterizes every card, badge, and gradient at once
+     and the compositor flashes unpainted (white) tiles over the viewport —
+     even over fixed UI like back-to-top — until scroll settles. Letting the
+     browser skip off-screen sections keeps the fling cheap; the intrinsic
+     size estimate holds scrollbar range so arrival does not jump. */
+  [data-template] .cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 640px;
+  }
+
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-fraunces);
     font-weight: 500;
@@ -788,6 +799,15 @@
     100% { opacity: 1; }
   }
 
+  .gallery-fade {
+    animation: gallery-fade var(--motion-base) var(--easing-standard);
+  }
+
+  @keyframes gallery-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
   .status-bar-rise {
     transform-origin: bottom;
     animation: status-bar-rise 0.5s ease-out backwards;
@@ -831,7 +851,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .ticker-progress { animation: none; }
-    .ai-shimmer, .ai-busy-glow, .status-bar-rise { animation: none; }
+    .ai-shimmer, .ai-busy-glow, .status-bar-rise, .gallery-fade { animation: none; }
   }
 
   .gallery-rail,

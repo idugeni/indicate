@@ -31,7 +31,7 @@ export function ArticleMeta({
   readonly dateVariant?: DateVariant;
 }) {
   const item = 'inline-flex items-center gap-1.5';
-  const icon = 'h-3.5 w-3.5 text-slate-400';
+  const icon = 'h-3.5 w-3.5 text-slate-600';
   return (
     /* `min-w-0` itu wajib: sebagai flex item di baris `justify-between` bersama
        tombol panah, `min-width: auto` membuat baris ini tidak boleh menyusut di

@@ -17,7 +17,7 @@ export function DarkNavyPreferredSourceButton({ site }: { readonly site: Network
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Tambahkan ${site.settings.name} sebagai Sumber Pilihan di Google`}
-      className="inline-flex max-w-full items-center gap-2.5 rounded-full bg-[#2f7bff] py-1.5 pl-1.5 pr-3 shadow-lg shadow-[#2f7bff]/40 transition-shadow hover:shadow-xl hover:shadow-[#2f7bff]/50"
+      className="inline-flex max-w-full items-center gap-2.5 rounded-full bg-[var(--tpl-primary,#2f7bff)] py-1.5 pl-1.5 pr-3 shadow-lg shadow-[#2f7bff]/40 transition-shadow hover:shadow-xl hover:shadow-[#2f7bff]/50"
     >
       <GoogleGLogo className="h-7 w-7 flex-none rounded-full bg-white p-0.5" />
       <span className="min-w-0 flex-1 truncate font-sans text-sm font-semibold text-white">

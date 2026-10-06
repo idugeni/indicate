@@ -101,6 +101,35 @@ describe('PublishedUrlBoard', () => {
     render(<PublishedUrlBoard data={null} />);
     expect(screen.getByText('Belum ada artikel yang tayang di jaringan')).toBeDefined();
   });
+
+  it('mode lintas-org memakai URL denormalisasi dan lencana org', async () => {
+    const user = userEvent.setup();
+    const onCrossOrgChange = vi.fn();
+    render(
+      <PublishedUrlBoard
+        data={{
+          articles: [
+            { id: 'x-1', title: 'Kabar UPT', slug: 'kabar-upt', publishedAt: null, publishedAtMax: '2026-10-06T04:23:50.000Z', publishedUrls: ['https://wonosobo.example/kabar-upt'], orgName: 'RUTAN WONOSOBO' },
+          ],
+          total: 1,
+          articlesNextCursor: null,
+        }}
+        crossOrg
+        isSuperAdmin
+        onCrossOrgChange={onCrossOrgChange}
+      />,
+    );
+    expect(screen.getByText('Kabar UPT')).toBeDefined();
+    expect(screen.getByText('RUTAN WONOSOBO')).toBeDefined();
+    expect(screen.getByText('1 Portal Aktif')).toBeDefined();
+    await user.click(screen.getByLabelText('Tampilkan artikel tayang semua organisasi'));
+    expect(onCrossOrgChange).toHaveBeenCalledWith(false);
+  });
+
+  it('menyembunyikan toggle lintas-org untuk non-steward', () => {
+    render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} />);
+    expect(screen.queryByLabelText('Tampilkan artikel tayang semua organisasi')).toBeNull();
+  });
 });
 
 const pagedArticles = Array.from({ length: 25 }, (unused, index) => ({

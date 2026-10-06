@@ -52,14 +52,14 @@ export function Hero() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/contact"
-                className="group inline-flex items-center gap-2 rounded bg-[#1a2430] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_-16px_rgba(26,36,48,0.55)] transition-all duration-180 hover:-translate-y-0.5 hover:bg-[#2b3a4b] active:translate-y-0 active:bg-[#141d27]"
+                className="group inline-flex items-center gap-2 rounded bg-[#1a2430] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_-16px_rgba(26,36,48,0.55)] transition-colors duration-180 hover:bg-[#2b3a4b] active:bg-[#141d27]"
               >
                 Jadwalkan diskusi arsitektur
-                <ArrowRight className="h-4 w-4 transition-transform duration-180 group-hover:translate-x-0.5" aria-hidden="true" />
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               <Link
                 href="/services"
-                className="inline-flex items-center gap-2 rounded border border-[#cfc9b8] bg-white/60 px-6 py-3 text-sm font-semibold backdrop-blur transition-all duration-180 hover:-translate-y-0.5 hover:border-[#1a2430]/40 hover:bg-white active:translate-y-0"
+                className="inline-flex items-center gap-2 rounded border border-[#cfc9b8] bg-white/60 px-6 py-3 text-sm font-semibold backdrop-blur transition-colors duration-180 hover:border-[#1a2430]/40 hover:bg-white"
               >
                 Lihat layanan
               </Link>
@@ -163,7 +163,7 @@ export function Hero() {
                   </p>
                   <p className="m-0 flex items-center gap-1.5 font-mono text-[11px] text-[#0e6b4f]">
                     <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#149a6d] opacity-60" />
+                      <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-[#149a6d] opacity-60" />
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#0e6b4f]" />
                     </span>
                     2/4 terkirim

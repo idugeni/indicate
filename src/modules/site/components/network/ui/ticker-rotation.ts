@@ -15,7 +15,8 @@ export const TICKER_MAX_ITEMS = 5;
 /**
  * Reason the ticker is paused; `null` means spinning.
  *
- * @remarks Reduced motion never pauses: headlines keep rotating while
+ * @remarks Reduced motion freezes auto-rotation at the current headline;
+ * dots, arrows, swipe, and the manual pause toggle keep working, while
  * entry, progress, and pulse animations stay suppressed.
  */
 export type TickerPauseReason = 'focus' | 'hidden' | 'hover' | 'manual' | 'single';
@@ -91,9 +92,9 @@ const TOUCH_HOVER_GRACE_MS = 700;
  * @param count - Number of headlines being rotated.
  * @param intervalMs - Delay between headlines; defaults to `TICKER_INTERVAL_MS`.
  * @returns Safe index, status, navigation, and root interaction props.
- * @remarks Reduced motion does not pause rotation; it only signals
- * components to swap headlines instantly without entry, progress, or
- * pulse animations.
+ * @remarks Reduced motion freezes auto-rotation; it only signals
+ * components to render headlines instantly without entry, progress, or
+ * pulse animations. Manual navigation always stays available.
  */
 export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS): TickerRotation {
   const [index, setIndex] = useState(0);
@@ -125,13 +126,13 @@ export function useTickerRotation(count: number, intervalMs = TICKER_INTERVAL_MS
   const running = reason === null;
 
   useEffect(() => {
-    if (!running || count < 2) return;
+    if (!running || count < 2 || reduceMotion) return;
     const id = window.setTimeout(() => {
       setIndex((current) => (current + 1) % count);
       setCycle((current) => current + 1);
     }, intervalMs);
     return () => window.clearTimeout(id);
-  }, [running, cycle, count, intervalMs]);
+  }, [running, cycle, count, intervalMs, reduceMotion]);
 
   const go = (next: number) => {
     if (count === 0) return;

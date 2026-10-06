@@ -54,6 +54,18 @@ describe('LandingHeader', () => {
     expect(animateMock).toHaveBeenCalled();
   });
 
+  it('melewatkan animasi WAAPI saat gerakan dikurangi', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+      configurable: true,
+      writable: true,
+    });
+    render(<LandingHeader />);
+    fireEvent.click(screen.getByRole('button', { name: 'Buka menu navigasi' }));
+    expect(screen.getByRole('button', { name: 'Tutup menu navigasi' })).toBeDefined();
+    expect(vi.mocked(Element.prototype.animate)).not.toHaveBeenCalled();
+  });
+
   it('menandai tautan aktif sesuai pathname', () => {
     pathState.current = '/pricing';
     render(<LandingHeader />);

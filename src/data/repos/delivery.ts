@@ -146,6 +146,7 @@ interface BridgePair {
   readonly siteId: string;
   readonly originHost: string;
   readonly publishedAt: Date | string;
+  readonly viewCount: number;
   readonly detail: BridgeDetail;
 }
 
@@ -480,6 +481,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       sourceOrganizationId: portalAssignments.sourceOrganizationId,
       sourceArticleId: portalAssignments.sourceArticleId,
       publishedAt: portalAssignments.publishedAt,
+      viewCount: portalAssignments.viewCount,
       originHost: sites.normalizedHostname,
     })
       .from(portalAssignments)
@@ -517,7 +519,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           const needle = query.search.toLowerCase();
           if (!detail.title.toLowerCase().includes(needle) && !detail.body.toLowerCase().includes(needle)) continue;
         }
-        pairs.push({ bridgeId: row.id, siteId: row.siteId, originHost: row.originHost, publishedAt: row.publishedAt, detail });
+        pairs.push({ bridgeId: row.id, siteId: row.siteId, originHost: row.originHost, publishedAt: row.publishedAt, viewCount: typeof row.viewCount === 'number' ? row.viewCount : 0, detail });
       }
     }
     // One assignments select plus one set-based reader call per owner org.
@@ -629,7 +631,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           publishedAt: iso(pair.publishedAt),
           updatedAt: iso(detail.updated_at),
           articleSiteId: pair.bridgeId,
-          viewCount: 0,
+          viewCount: pair.viewCount,
           type: bridgeArticleType(detail.article_type),
           isSponsored: detail.is_sponsored,
           videoUrl: detail.video_url,

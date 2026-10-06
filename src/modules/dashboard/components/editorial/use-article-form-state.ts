@@ -1068,7 +1068,7 @@ export function useArticleFormState({
       if (typeof created.organizationId === 'string' && created.organizationId !== '' && created.organizationId !== organizationId) {
         if (willPublish && status === 'active' && typeof created.id === 'string' && command !== undefined && targetSiteIds.length > 0) {
           try {
-            const bridged = await command('article.bridge.request', { ownerOrganizationId: created.organizationId, articleId: created.id, siteIds: targetSiteIds });
+            const bridged = await command('article.bridge.request', { ownerOrganizationId: created.organizationId, articleId: created.id, siteIds: targetSiteIds, ...(initialViews === null ? {} : { viewCount: initialViews }) });
             if (bridged !== null) {
               toast.success(`Tersimpan di organisasi tujuan dan tayang ke ${targetSiteIds.length.toLocaleString('id-ID')} portal.`);
             } else {

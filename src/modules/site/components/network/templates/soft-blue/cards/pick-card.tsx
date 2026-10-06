@@ -41,7 +41,7 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
           </span>
         )}
         <h3 className="m-0 mt-2 line-clamp-3 font-sans text-[15px] font-bold leading-snug tracking-tight text-slate-900">
-          <Link href={article.href} className="hover:text-[#2563eb]">
+          <Link href={article.href} className="hover:text-[var(--tpl-primary,#2563eb)]">
             {article.title}
           </Link>
         </h3>
@@ -57,7 +57,7 @@ export function SoftBluePickCard({ article, index }: { readonly article: Article
             href={article.href}
             aria-hidden="true"
             tabIndex={-1}
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#dbeafe] text-[#2563eb] transition-colors hover:bg-[#2563eb] hover:text-white"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[var(--tpl-primary-soft,#dbeafe)] text-[var(--tpl-primary,#2563eb)] transition-colors hover:bg-[var(--tpl-primary,#2563eb)] hover:text-white"
           >
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>

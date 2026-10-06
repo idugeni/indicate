@@ -17,7 +17,7 @@ export function OrangeModernPreferredSourceButton({ site }: { readonly site: Net
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Tambahkan ${site.settings.name} sebagai Sumber Pilihan di Google`}
-      className="inline-flex max-w-full items-center gap-2.5 rounded-full bg-gradient-to-r from-[#ea580c] to-[#f59e0b] py-1.5 pl-1.5 pr-3 shadow-lg shadow-orange-500/30 transition-shadow hover:shadow-xl hover:shadow-orange-500/40"
+      className="inline-flex max-w-full items-center gap-2.5 rounded-full bg-gradient-to-r from-[var(--tpl-primary,#ea580c)] to-[#f59e0b] py-1.5 pl-1.5 pr-3 shadow-lg shadow-orange-500/30 transition-shadow hover:shadow-xl hover:shadow-orange-500/40"
     >
       <GoogleGLogo className="h-7 w-7 flex-none rounded-full bg-white p-0.5" />
       <span className="min-w-0 flex-1 truncate font-sans text-sm font-semibold text-white">

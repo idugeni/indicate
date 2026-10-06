@@ -73,7 +73,7 @@ export function FaqTeaser({ faqs }: { readonly faqs: readonly FaqRow[] }) {
               className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold underline decoration-[#b88d3a] decoration-2 underline-offset-8 transition-colors hover:text-[#8a5f1c]"
             >
               Buka {faqs.length} pertanyaan di pusat bantuan
-              <ArrowRight className="h-4 w-4 transition-transform duration-180 group-hover:translate-x-1" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
         </div>

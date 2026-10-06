@@ -48,7 +48,7 @@ export function ArticleSidebarBacaJuga({ articles }: { readonly articles: readon
           const src = articleImage(item);
           return (
             <li key={item.id} className="m-0 flex gap-3.5 py-5 first:pt-0 last:pb-0">
-              <Link href={item.href} aria-label={item.title} className="block flex-none overflow-hidden rounded-lg">
+              <Link href={item.href} aria-label={item.title} className="group block flex-none overflow-hidden rounded-lg transition-shadow duration-300 ease-out hover:shadow-md hover:ring-1 hover:ring-black/10 motion-reduce:transition-none">
                 <Image
                   unoptimized={!isLocalImageSrc(src)}
                   src={src}
@@ -57,7 +57,7 @@ export function ArticleSidebarBacaJuga({ articles }: { readonly articles: readon
                   width={192}
                   height={192}
                   sizes="96px"
-                  className="h-24 w-24 object-cover transition-transform duration-300 hover:scale-105"
+                  className="h-24 w-24 object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] motion-reduce:transition-none"
                 />
               </Link>
               <div className="min-w-0 flex-1">

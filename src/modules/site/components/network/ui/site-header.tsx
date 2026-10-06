@@ -105,13 +105,14 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
         <header className="sticky top-0 z-40" style={{ backgroundColor: skin.card, borderBottom: `1px solid ${skin.ring}` }}>
           <SiteHeaderBar
             brand={brand}
-            nav={<SiteDesktopNav categories={nav} path={path} skin={skin} linkStyle="pill" dark />}
+            nav={<SiteDesktopNav categories={nav} path={path} skin={skin} linkStyle="pill" dark={skin.tone === 'dark'} />}
             sidebar={sidebar}
             inputId={sidebarId}
             searchSkin={skin.searchPanel}
             drawer={placement}
             layout="masthead"
-            quickNav={<SiteQuickNav categories={nav} path={path} accent={skin.accent} />}
+            navStripStyle={{ backgroundColor: skin.card, borderTop: `1px solid ${skin.ring}` }}
+            quickNav={<SiteQuickNav categories={nav} path={path} accent={skin.accent} dark={skin.tone === 'dark'} />}
           />
         </header>
       );
@@ -124,7 +125,7 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
           >
             <SiteHeaderBar
               brand={brand}
-              nav={<SiteDesktopNav categories={nav} path={path} skin={skin} linkStyle="pill" />}
+              nav={<SiteDesktopNav categories={nav} path={path} skin={skin} linkStyle="pill" dark={skin.tone === 'dark'} />}
               sidebar={sidebar}
               inputId={sidebarId}
               searchSkin={skin.searchPanel}

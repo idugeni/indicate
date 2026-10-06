@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,9 +28,15 @@ export interface ShareButtonsSkin {
  * @param article - Article being shared.
  * @param canonical - Canonical URL of the article.
  * @returns Share channel row.
+ * @remarks Skin colours ride inline styles, not interpolated Tailwind
+ * arbitrary values (`ring-[${...}]`): Tailwind only generates class names
+ * it can read literally, so an interpolated one silently renders nothing
+ * and the ring falls back to `currentColor` — the white circles on dark
+ * heroes. Static brand colours stay as literal classes.
  */
 export function ShareButtons({ skin, article, canonical }: { readonly skin: ShareButtonsSkin; readonly article: ArticleListItem; readonly canonical: string }) {
   const channels = buildShareChannels(article.title, canonical);
+  const ringStyle = { '--tw-ring-color': skin.ring } as CSSProperties;
 
   const copy = async () => {
     try {
@@ -41,15 +48,22 @@ export function ShareButtons({ skin, article, canonical }: { readonly skin: Shar
   };
 
   const round =
-    `flex h-9 w-9 items-center justify-center rounded-full text-[${skin.muted}] ring-1 ring-[${skin.ring}] transition-colors hover:text-[var(--tpl-primary)]`;
+    'flex h-9 w-9 items-center justify-center rounded-full ring-1 transition-colors hover:text-[var(--tpl-primary)]';
   const channel =
-    `flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-[${skin.ring}] transition-colors hover:text-white hover:ring-transparent`;
+    'flex h-9 w-9 items-center justify-center rounded-full ring-1 transition-colors hover:text-white hover:ring-transparent';
   const classByKey: Record<ShareChannelKey, string> = {
-    whatsapp: 'flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tpl-primary)] text-white transition-colors hover:bg-[var(--tpl-primary-dark)]',
-    x: `${channel} text-[${skin.xText}] hover:bg-black`,
+    whatsapp: 'flex h-9 w-9 items-center justify-center rounded-full bg-[var(--tpl-primary)] text-[var(--tpl-on-primary,#ffffff)] transition-colors hover:bg-[var(--tpl-primary-dark)]',
+    x: `${channel} hover:bg-black`,
     facebook: `${channel} text-[#1877F2] hover:bg-[#1877F2]`,
     telegram: `${channel} text-[#229ED9] hover:bg-[#229ED9]`,
     email: round,
+  };
+  const styleByKey: Record<ShareChannelKey, CSSProperties> = {
+    whatsapp: {},
+    x: { ...ringStyle, color: skin.xText },
+    facebook: ringStyle,
+    telegram: ringStyle,
+    email: { ...ringStyle, color: skin.muted },
   };
 
   return (
@@ -62,6 +76,7 @@ export function ShareButtons({ skin, article, canonical }: { readonly skin: Shar
           rel={href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
           aria-label={`Bagikan ke ${label}`}
           className={classByKey[key]}
+          style={styleByKey[key]}
         >
           <Icon className="h-4 w-4" aria-hidden="true" />
         </a>
@@ -72,6 +87,7 @@ export function ShareButtons({ skin, article, canonical }: { readonly skin: Shar
           onClick={() => void copy()}
           aria-label="Salin tautan artikel"
           className={round}
+          style={styleByKey.email}
         >
           <Link2 className="h-4 w-4" aria-hidden="true" />
         </button>

@@ -29,4 +29,24 @@ describe('LiveblogAutoRefresh', () => {
     vi.advanceTimersByTime(600_000);
     expect(refreshMock).not.toHaveBeenCalled();
   });
+
+  it('diam saat gerakan dikurangi', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      value: () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+      configurable: true,
+      writable: true,
+    });
+    try {
+      vi.useFakeTimers();
+      render(<LiveblogAutoRefresh intervalSeconds={60} />);
+      vi.advanceTimersByTime(600_000);
+      expect(refreshMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', {
+        value: () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+        configurable: true,
+        writable: true,
+      });
+    }
+  });
 });

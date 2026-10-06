@@ -134,7 +134,7 @@ export function CommentThread({
   };
 
   return (
-    <section ref={hostRef} className={className ?? THREAD_SECTION_CLASS} aria-labelledby={headingId}>
+    <section ref={hostRef} className={`${className ?? THREAD_SECTION_CLASS} cv-auto`} aria-labelledby={headingId}>
       <h2 id={headingId} className="flex flex-wrap items-baseline gap-x-2 font-heading text-lg font-semibold">
         {heading}
         <CommentCountBadge

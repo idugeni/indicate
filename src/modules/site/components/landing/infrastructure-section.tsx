@@ -64,7 +64,7 @@ export function InfrastructureSection() {
                 </p>
                 <p className="m-0 ml-auto flex items-center gap-1.5 rounded-full bg-[#e3f2e9] px-2.5 py-1 font-mono text-[10px] font-medium text-[#0e6b4f]">
                   <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#149a6d] opacity-60" />
+                    <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-[#149a6d] opacity-60" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#0e6b4f]" />
                   </span>
                   operational

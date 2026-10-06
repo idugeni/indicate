@@ -5,13 +5,17 @@ interface NetworkAttributionProps {
 }
 
 const LINK_STYLES =
-  'font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-900 hover:decoration-slate-600 dark:text-slate-300 dark:decoration-slate-600 dark:hover:text-white dark:hover:decoration-slate-300';
+  'font-medium text-[var(--tpl-ink)] underline underline-offset-4 transition-colors hover:text-[var(--tpl-primary)]';
 
 /**
  * Editorial network attribution below the tenant About profile.
  *
  * @param attribution - Directory plus corporate links, or null for non-serving portals.
  * @returns Two contextual dofollow links, or nothing when the portal does not qualify.
+ * @remarks Colours ride `--tpl-*` template variables, never `dark:` variants:
+ * `<html>` always carries the `dark` class and the custom variant keys off
+ * it, so `dark:text-…` is active on every template including light ones and
+ * washes the line out on light canvases.
  */
 export function NetworkAttribution({ attribution }: NetworkAttributionProps) {
   if (!attribution) {
@@ -19,7 +23,7 @@ export function NetworkAttribution({ attribution }: NetworkAttributionProps) {
   }
 
   return (
-    <p className="font-sans text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+    <p className="font-sans text-sm leading-relaxed text-[var(--tpl-muted)]">
       Portal ini diterbitkan di{' '}
       <a href={attribution.networkHref} className={LINK_STYLES}>
         {attribution.networkAnchor}

@@ -9,7 +9,7 @@ export function WarmEditorialSearchForm({ query }: { readonly query: string }) {
   return (
     <section aria-label="Pencarian berita" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
       <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-slate-900">
-        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#b4532a]" />
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#b4532a)]" />
         {query === '' ? 'Pencarian Berita' : `Hasil untuk “${query}”`}
       </h1>
       <Form className="mt-4" action="/search" role="search">
@@ -18,7 +18,7 @@ export function WarmEditorialSearchForm({ query }: { readonly query: string }) {
         </label>
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <div className="relative flex-1">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <TemplateInput
               id="warm-editorial-search"
               name="q"

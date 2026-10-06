@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { EditorialImage } from '@/modules/site/components/editorial-image';
@@ -21,18 +21,31 @@ export interface CarouselGalleryItem {
  * @returns Foto aktif plus kontrol yang selalu terlihat di sentuh/fokus.
  */
 export function GalleryCarousel({ items }: { readonly items: readonly CarouselGalleryItem[] }) {
-  const [index, setIndex] = useState(() => Math.min(1, items.length - 1));
-  if (items.length === 0) return null;
+  const [index, setIndex] = useState(1);
   const position = Math.min(Math.max(index, 0), items.length - 1);
+  useEffect(() => {
+    if (typeof Image === 'undefined') return;
+    for (const neighbor of [items[position - 1], items[position + 1]]) {
+      if (neighbor !== undefined) {
+        const probe = new Image();
+        probe.src = neighbor.src;
+      }
+    }
+  }, [items, position]);
+  if (items.length === 0) return null;
   const active = items[position]!;
   return (
     <div className="group relative" role="group" aria-label={`Galeri ${items.length} gambar`} aria-roledescription="korsel">
       <EditorialImage
+        key={active.src}
         src={active.src}
         thumbSrc={active.thumbSrc}
         alt={active.alt}
         caption={active.caption}
-        className="aspect-[4/3] w-full object-cover"
+        captionClassName="px-6 py-3 font-sans text-xs leading-relaxed"
+        width={800}
+        height={600}
+        className="gallery-fade aspect-[4/3] w-full object-cover"
         figureClassName="m-0 overflow-hidden rounded-xl"
       />
       <div className="pointer-events-none absolute inset-x-2 top-0 flex aspect-[4/3] items-center justify-between">

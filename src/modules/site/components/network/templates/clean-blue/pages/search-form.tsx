@@ -8,8 +8,8 @@ import { CleanBluePicks } from '@/modules/site/components/network/templates/clea
 export function CleanBlueSearchForm({ query }: { readonly query: string }) {
   return (
     <section aria-label="Pencarian berita" className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 sm:p-6">
-      <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-slate-900">
-        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1a5fd0]" />
+      <h1 className="m-0 flex items-center gap-2.5 font-sans text-xl font-extrabold tracking-tight text-[var(--tpl-ink,#0f172a)]">
+        <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#1a5fd0)]" />
         {query === '' ? 'Pencarian Berita' : `Hasil untuk “${query}”`}
       </h1>
       <Form className="mt-4" action="/search" role="search">
@@ -18,7 +18,7 @@ export function CleanBlueSearchForm({ query }: { readonly query: string }) {
         </label>
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <div className="relative flex-1">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <TemplateInput
               id="clean-blue-search"
               name="q"
@@ -45,7 +45,7 @@ export function CleanBlueSearchResults({ articles, query }: { readonly articles:
   if (articles.length === 0) {
     return (
       <div role="status" className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center sm:p-12">
-        <h2 className="m-0 font-sans text-xl font-bold text-slate-900">
+        <h2 className="m-0 font-sans text-xl font-bold text-[var(--tpl-ink,#0f172a)]">
           Tidak ada hasil
         </h2>
         <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-slate-600">

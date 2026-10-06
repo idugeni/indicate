@@ -12,7 +12,7 @@ type StoreBadgeProps = {
 function StoreBadge({ src, label }: StoreBadgeProps) {
   return (
     <TemplateTooltip label={label}>
-      <span className="group relative block min-w-0 flex-1 basis-0 cursor-pointer overflow-hidden transition duration-180 hover:scale-[1.03] hover:brightness-110">
+      <span className="group relative block min-w-0 flex-1 basis-0 cursor-pointer overflow-hidden transition-all duration-300 ease-out hover:brightness-110 hover:shadow-md motion-reduce:transition-none">
         <Image
           unoptimized
           src={src}

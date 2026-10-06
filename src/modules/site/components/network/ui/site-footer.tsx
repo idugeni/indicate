@@ -285,14 +285,29 @@ function BottomBar({
         <p className="m-0">
           © {year} {site.settings.name}. Semua hak dilindungi undang-undang.
         </p>
-        <p className="m-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-          {LEGAL_LINKS.map((item) => (
-            <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-70">
-              {item.label}
-            </Link>
-          ))}
-        </p>
-        <p className="m-0 font-semibold tracking-wide opacity-80">{COMPANY_NAME}</p>
+        {centered ? (
+          <>
+            <p className="m-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              {LEGAL_LINKS.map((item) => (
+                <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-70">
+                  {item.label}
+                </Link>
+              ))}
+            </p>
+            <p className="m-0 font-semibold tracking-wide opacity-80">{COMPANY_NAME}</p>
+          </>
+        ) : (
+          <div className="grid w-full grid-cols-2 items-start gap-x-3 sm:contents">
+            <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 sm:justify-center">
+              {LEGAL_LINKS.map((item) => (
+                <Link key={item.href} href={item.href} className="transition-opacity hover:opacity-70">
+                  {item.label}
+                </Link>
+              ))}
+            </p>
+            <p className="m-0 text-right font-semibold tracking-wide opacity-80">{COMPANY_NAME}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -327,7 +342,7 @@ function ClassicFooter({
             {site.settings.description}
           </p>
           <SocialRow site={site} socials={socials} palette={palette} />
-          <div className="m-0 mt-4">{preferredSource}</div>
+          <div className="m-0 mt-4 flex justify-center md:justify-start">{preferredSource}</div>
         </div>
         <div className="md:hidden">
           <div style={{ borderTop: `1px solid ${palette.ring}` }}>
@@ -391,6 +406,7 @@ function WordmarkFooter({
               buttonClassName="h-11 w-11 flex-none rounded-xl px-0 font-sans text-sm"
               buttonChildren={<ArrowRight className="h-4 w-4" aria-hidden="true" />}
               buttonAriaLabel="Berlangganan newsletter"
+              tone="dark"
             />
           </div>
         </div>
@@ -411,7 +427,7 @@ function WordmarkFooter({
             <p className="m-0 mt-4 md:hidden">
               <SocialRow site={site} socials={socials} palette={palette} centered />
             </p>
-            <div className="m-0 mt-4">{preferredSource}</div>
+            <div className="m-0 mt-4 flex justify-center md:justify-start">{preferredSource}</div>
           </div>
         </div>
       </div>
@@ -464,6 +480,7 @@ function NewsletterFooter({
               formClassName="flex flex-col gap-2 sm:flex-row"
               inputClassName="h-11 min-w-0 flex-1 rounded-xl px-3 font-sans text-sm"
               buttonClassName="h-11 flex-none rounded-xl px-5 font-sans text-sm"
+              tone={skin.tone}
             />
             <p className="m-0 mt-2 font-sans text-xs" style={{ color: palette.muted }}>
               Kami tidak akan mengirim spam. Baca{' '}
@@ -478,7 +495,7 @@ function NewsletterFooter({
           <div className="min-w-0">
             <BrandRow site={site} tagline={tagline} palette={palette} />
             <SocialRow site={site} socials={socials} palette={palette} />
-            <div className="m-0 mt-4">{preferredSource}</div>
+            <div className="m-0 mt-4 flex justify-center md:justify-start">{preferredSource}</div>
           </div>
           <div className="md:hidden">
             <div style={{ borderTop: `1px solid ${palette.ring}` }}>
@@ -580,7 +597,7 @@ function PremiumFooter({
             </span>
           </p>
           <SocialRow site={site} socials={socials} palette={palette} />
-          <div className="m-0 mt-4">{preferredSource}</div>
+          <div className="m-0 mt-4 flex justify-center md:justify-start">{preferredSource}</div>
         </div>
         <div className="md:hidden">
           <div style={{ borderTop: `1px solid ${palette.ring}` }}>
@@ -655,7 +672,7 @@ function MegaFooter({
             <LinkList links={[...PERUSAHAAN_LINKS, ...BANTUAN_LINKS]} palette={palette} />
           </nav>
         </div>
-        <div className="m-0 mt-8 flex justify-start">{preferredSource}</div>
+        <div className="m-0 mt-8 flex justify-center md:justify-start">{preferredSource}</div>
       </div>
       <BottomBar site={site} year={year} palette={palette} />
     </footer>

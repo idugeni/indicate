@@ -12,7 +12,7 @@ export function PurpleEditorialQuotePanel({ siteName, quote }: { readonly siteNa
   return (
     <aside
       aria-label="Perspektif redaksi"
-      className="relative flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#7c3aed] via-[#a855f7] to-[#ec4899] p-7 text-white shadow-sm lg:sticky lg:top-20"
+      className="relative flex min-h-80 min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--tpl-primary,#7c3aed)] via-[#a855f7] to-[#ec4899] p-7 text-white shadow-sm lg:sticky lg:top-20"
     >
       <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/15" />
       <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-white/10" />
@@ -60,7 +60,7 @@ export function PurpleEditorialLatest({
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#7c3aed] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[var(--tpl-primary,#7c3aed)] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -115,7 +115,7 @@ export function PurpleEditorialLatest({
                     <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 tabular-nums text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                   </p>
                   <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-[15px] font-bold leading-snug text-slate-900">
-                    <Link href={article.href} className="hover:text-[#7c3aed]">
+                    <Link href={article.href} className="hover:text-[var(--tpl-primary,#7c3aed)]">
                       {article.title}
                     </Link>
                   </h3>

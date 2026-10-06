@@ -36,15 +36,15 @@ export function RedEditorialPicks({
     .slice(0, POPULAR_SIZE);
   return (
     <section>
-      <div className="flex items-end justify-between gap-4 border-b border-[#ecd3d3] pb-3">
+      <div className="flex items-end justify-between gap-4 border-b border-[var(--tpl-ring,#ecd3d3)] pb-3">
         <SectionHeading description={description}>{heading}</SectionHeading>
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 pb-1 text-sm font-semibold text-[#230d0d] transition-colors hover:text-[#b91c1c]"
+            className="inline-flex flex-none items-center gap-1 pb-1 text-sm font-semibold text-[var(--tpl-ink,#230d0d)] transition-colors hover:text-[var(--tpl-primary,#b91c1c)]"
           >
             {linkLabel}
-            <ArrowRight className="h-4 w-4 text-[#b91c1c]" aria-hidden="true" />
+            <ArrowRight className="h-4 w-4 text-[var(--tpl-primary,#b91c1c)]" aria-hidden="true" />
           </Link>
         ) : null}
       </div>
@@ -58,9 +58,9 @@ export function RedEditorialPicks({
 
         <aside aria-label="Paling banyak dibaca" className="min-w-0 space-y-6 self-start lg:sticky lg:top-20">
           {popular.length > 0 ? (
-            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#ecd3d3]/70">
-              <p className="m-0 flex items-center gap-2 text-sm font-bold text-[#230d0d]">
-                <TrendingUp className="h-4 w-4 text-[#b91c1c]" aria-hidden="true" />
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[var(--tpl-ring,#ecd3d3)]/70">
+              <p className="m-0 flex items-center gap-2 text-sm font-bold text-[var(--tpl-ink,#230d0d)]">
+                <TrendingUp className="h-4 w-4 text-[var(--tpl-primary,#b91c1c)]" aria-hidden="true" />
                 Paling Banyak Dibaca
               </p>
               <ol className="m-0 mt-4 list-none space-y-4 p-0">
@@ -71,13 +71,13 @@ export function RedEditorialPicks({
                       key={article.id}
                       className="m-0 flex items-start gap-3 border-b border-[#f6e8e8] p-0 pb-4 last:border-b-0 last:pb-0"
                     >
-                      <span aria-hidden="true" className="w-7 flex-none font-serif text-xl font-bold tabular-nums text-[#b91c1c]">
+                      <span aria-hidden="true" className="w-7 flex-none font-serif text-xl font-bold tabular-nums text-[var(--tpl-primary,#b91c1c)]">
                         {String(position + 1).padStart(2, '0')}
                       </span>
                       <span className="min-w-0 flex-1">
                         <Link
                           href={article.href}
-                          className="line-clamp-2 block text-sm font-bold leading-snug text-[#230d0d] transition-colors hover:text-[#b91c1c]"
+                          className="line-clamp-2 block text-sm font-bold leading-snug text-[var(--tpl-ink,#230d0d)] transition-colors hover:text-[var(--tpl-primary,#b91c1c)]"
                         >
                           {article.title}
                         </Link>
@@ -114,7 +114,7 @@ export function RedEditorialPicks({
             </div>
           ) : null}
 
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5f0f0f] via-[#7f1d1d] to-[#b91c1c] p-6 text-white shadow-sm">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5f0f0f] via-[#7f1d1d] to-[var(--tpl-primary,#b91c1c)] p-6 text-white shadow-sm">
             <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/10" />
             <p className="m-0 text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">
               Perspektif

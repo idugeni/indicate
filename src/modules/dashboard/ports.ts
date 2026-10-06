@@ -1,5 +1,5 @@
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import type { ActivationAttemptRecord, AnalyticsProjection, ArticleUpdateRecord, AuditFilter, AuditRecord, ConfigurationScope, DashboardProjection, DashboardTenantState, EditorialScope, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, NetworkArticlesScope, OperationsProjection, PublisherClaimScope, PublisherScope, RetentionRunRecord, TaxonomyScope } from '@/modules/dashboard/models';
+import type { ActivationAttemptRecord, AnalyticsProjection, ArticleUpdateRecord, AuditFilter, AuditRecord, ConfigurationScope, CrossOrgArticleFilter, CrossOrgEditorialScope, DashboardProjection, DashboardTenantState, EditorialScope, EditorialSummaries, EditorialSummaryArticle, InvitationSummary, NetworkArticlesScope, OperationsProjection, PublisherClaimScope, PublisherScope, RetentionRunRecord, TaxonomyScope } from '@/modules/dashboard/models';
 
 export type MutableTenantState = {
   -readonly [Key in keyof DashboardTenantState]: DashboardTenantState[Key] extends readonly (infer Item)[] ? Item[] : DashboardTenantState[Key];
@@ -32,6 +32,15 @@ export interface DashboardRepository {
   readPublisherScope(actor: AuthorizedTenantActorContext, permission: string): Promise<PublisherScope>;
   /** Scoped editorial read (server-ordered, keyset-paged articles plus board lookups). */
   readEditorialScope(actor: AuthorizedTenantActorContext, permission: string, filter: { readonly regionId?: string; readonly siteId?: string; readonly siteHostname?: string; readonly categoryId?: string; readonly publisherId?: string; readonly authorId?: string; readonly publicationState?: string; readonly status?: string; readonly tag?: string; readonly search?: string; readonly sort?: 'updated' | 'published-desc' | 'published-asc' | 'title' | 'syndicated' }, page?: { readonly limit?: number; readonly cursor?: string }): Promise<EditorialScope>;
+  /**
+   * Cross-org steward editorial read (platform super-admin only).
+   *
+   * @param actor - Calling actor; must carry the platform super-admin grant.
+   * @param filter - Steward filters (status, tag, search, sort, publication state only).
+   * @param page - Keyset page (limit, cursor article id).
+   * @returns Bodyless articles across active organizations with an exact total.
+   */
+  readCrossOrgEditorialScope(actor: AuthorizedTenantActorContext, filter: CrossOrgArticleFilter, page?: { readonly limit?: number; readonly cursor?: string }): Promise<CrossOrgEditorialScope>;
   /** Scoped taxonomy read (narrow article facets for counting, never bodies). */
   readTaxonomyScope(actor: AuthorizedTenantActorContext, permission: string): Promise<TaxonomyScope>;
   /** Scoped publisher-claim read (one publisher plus its claim rows). */
@@ -116,7 +125,7 @@ export interface DashboardRepository {
    * @param input - Org pemilik, artikel, dan situs penyaji tujuan.
    * @returns Id baris bridge dan slug untuk invalidasi.
    */
-  requestBridgePublication(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[] }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string }>;
+  requestBridgePublication(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly siteIds: readonly string[]; readonly viewCount?: number | undefined }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string }>;
   /**
    * Tarik penayangan jembatan; artikel pemilik tidak diubah.
    *
@@ -139,7 +148,7 @@ export interface DashboardRepository {
    * @param input - Org pemilik dan artikel; target dihitung dari wilayahnya.
    * @returns Id baris bridge, slug, dan jumlah portal.
    */
-  requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }>;
+  requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly viewCount?: number | undefined }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }>;
   /** List liveblog entries of one article, oldest first, bounded. */
   listArticleUpdates(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string }): Promise<readonly ArticleUpdateRecord[]>;
   /** Append one liveblog entry; sort order continues the article max. */

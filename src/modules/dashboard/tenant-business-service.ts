@@ -37,7 +37,7 @@ import {
 } from '@/modules/dashboard/tenant-service-scope';
 import {
   affiliationSchema, affiliationUpdateSchema, analyticsFilterSchema, articleCreateSchema, articleDeleteSchema, articleFilterSchema, articleTransitionSchema, articleUpdateCreateSchema, articleUpdateDeleteSchema, articleUpdateListSchema, articleUpdateSchema, articleUpdateUpdateSchema, assignmentSchema,
-  auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema,
+  auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema, crossOrgArticleFilterSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
   siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteViewsBulkSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema, bridgeRequestSchema, bridgeUnpublishSchema, bridgeAutoRequestSchema,
@@ -868,6 +868,38 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.readEditorial(actor, filter, 'article.list', 'article');
   }
 
+  /**
+   * Daftar artikel lintas-org untuk steward platform (mode Semua organisasi).
+   *
+   * @param actor - Steward pemanggil; wajib membawa grant platform super_admin.
+   * @param rawFilter - Filter steward (status, tag, search, sort, publicationState, limit, cursor).
+   * @returns Artikel bodyless semua org aktif plus total eksak; lookups
+   * dikosongkan karena baris sudah membawa denormalisasi tampil
+   * (`orgName`, `categoryNames`, `portalHostnames`, `publishedUrls`).
+   */
+  async listCrossOrgEditorial(actor: AuthorizedTenantActorContext, rawFilter: unknown = {}) {
+    const parsed = crossOrgArticleFilterSchema.safeParse(rawFilter);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.list', 'article');
+    if (regionLock(actor) !== null) return this.denied(actor, 'article.list', 'article');
+    try {
+      const filter = defined(parsed.data);
+      const scope = await this.repository.readCrossOrgEditorialScope(actor, filter, {
+        ...(filter.limit === undefined ? {} : { limit: filter.limit }),
+        ...(filter.cursor === undefined ? {} : { cursor: filter.cursor }),
+      });
+      return { ok: true as const, value: {
+        articles: scope.articles, articlesNextCursor: scope.articlesNextCursor, total: scope.total,
+        tagOptions: [], categories: [], authors: [],
+        publishers: [], regions: [], sites: [], domains: [], articleSites: [],
+        regionScope: null,
+      } };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.list', 'article');
+      return this.internal(actor, error, 'dashboard.query.failed', 'article.list', 'article', DASHBOARD_PERMISSIONS.articleRead);
+    }
+  }
+
   private async readEditorial(actor: AuthorizedTenantActorContext, filter: ArticleFilter, action: string, targetType: string) {
     try {
       const scope = await this.repository.readEditorialScope(actor, DASHBOARD_PERMISSIONS.articleRead, filter, {
@@ -1217,11 +1249,46 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   restoreArticle(actor: AuthorizedTenantActorContext, raw: unknown) { return this.transitionArticle(actor, raw, 'draft'); }
   private transitionArticle(actor: AuthorizedTenantActorContext, raw: unknown, status: 'archived' | 'draft') {
     const action = status === 'archived' ? 'article.archive' : 'article.restore';
+    const parsed = articleTransitionSchema.safeParse(raw);
+    if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
+    const ownerId = parsed.data.ownerOrganizationId ?? actor.organizationId;
+    if (ownerId !== actor.organizationId) {
+      return this.transitionArticleForOwner(actor, ownerId, parsed.data, status, action);
+    }
     return this.mutate({ actor, raw, schema: articleTransitionSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action, targetType: 'article', scope: ['articles', 'regions', 'articleSites'], execute: (transaction, value: VersionInput, now) => {
       const before = requireArticleInScope(transaction.state, value.id, actor); requireVersion(before, value.expectedVersion);
       const after: ArticleRecord = { ...before, status, archivedAt: status === 'archived' ? now : null, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.articles, after); this.audit(transaction, action, 'article', after.id, before, after); return after;
     }});
+  }
+
+  /**
+   * Arsipkan/pulihkan artikel milik org lain untuk steward platform.
+   *
+   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param ownerOrgId - Organisasi pemilik artikel; audit dan gate langganan miliknya.
+   * @param value - Id artikel dan versi ekspektasian.
+   * @param status - Status tujuan (`archived` atau `draft`).
+   * @param action - Nama aksi audit.
+   * @returns Artikel sesudah transisi.
+   */
+  private async transitionArticleForOwner(actor: AuthorizedTenantActorContext, ownerOrgId: string, value: VersionInput, status: 'archived' | 'draft', action: string) {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, action, 'article');
+    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, action, 'article');
+    if (regionLock(actor) !== null) return this.denied(actor, action, 'article');
+    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: ownerOrgId, regionScopeId: null };
+    try {
+      const result = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
+        const now = this.clock.now().toISOString();
+        const before = requireArticleInScope(transaction.state, value.id, ownerActor); requireVersion(before, value.expectedVersion);
+        const after: ArticleRecord = { ...before, status, archivedAt: status === 'archived' ? now : null, version: before.version + 1, updatedAt: now };
+        replaceById(transaction.state.articles, after); this.audit(transaction, action, 'article', after.id, before, after); return after;
+      }, ['articles', 'regions', 'articleSites']);
+      return { ok: true as const, value: result };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, action, 'article');
+      return this.internal(actor, error, 'dashboard.mutation.failed', action, 'article', DASHBOARD_PERMISSIONS.articleManage);
+    }
   }
 
   /**
@@ -1236,6 +1303,12 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
    * di lapisan persistensi dan dilaporkan sebagai galat validasi.
    */
   deleteArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
+    const parsed = articleDeleteSchema.safeParse(raw);
+    if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
+    const ownerId = parsed.data.ownerOrganizationId ?? actor.organizationId;
+    if (ownerId !== actor.organizationId) {
+      return this.deleteArticleForOwner(actor, ownerId, parsed.data);
+    }
     return this.mutate({ actor, raw, schema: articleDeleteSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.delete', targetType: 'article', scope: ['articles', 'regions', 'articleSites', 'publishingJobs', 'articleCategories'], execute: (transaction, value: VersionInput) => {
       const before = requireArticleInScope(transaction.state, value.id, actor); requireVersion(before, value.expectedVersion);
       if (before.status !== 'draft' && before.status !== 'archived') {
@@ -1251,6 +1324,43 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       this.syncArticleCategories(transaction.state, before.id, []);
       this.audit(transaction, 'article.delete', 'article', before.id, before, null); return { id: before.id };
     }});
+  }
+
+  /**
+   * Hapus permanen artikel milik org lain untuk steward platform.
+   *
+   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param ownerOrgId - Organisasi pemilik artikel; guard relasi dan audit miliknya.
+   * @param value - Id artikel dan versi ekspektasian.
+   * @returns Id artikel yang dihapus.
+   */
+  private async deleteArticleForOwner(actor: AuthorizedTenantActorContext, ownerOrgId: string, value: VersionInput) {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.delete', 'article');
+    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.delete', 'article');
+    if (regionLock(actor) !== null) return this.denied(actor, 'article.delete', 'article');
+    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: ownerOrgId, regionScopeId: null };
+    try {
+      const result = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
+        const before = requireArticleInScope(transaction.state, value.id, ownerActor); requireVersion(before, value.expectedVersion);
+        if (before.status !== 'draft' && before.status !== 'archived') {
+          throw new DashboardValidationError({ status: ['Arsipkan dulu artikel tayang atau terjadwal sebelum dihapus permanen.'] });
+        }
+        if (transaction.state.articleSites.some((row) => row.articleId === before.id)) {
+          throw new DashboardValidationError({ articleSites: ['Lepas dulu penugasan portal artikel ini sebelum dihapus permanen.'] });
+        }
+        if (transaction.state.publishingJobs.some((row) => row.articleId === before.id)) {
+          throw new DashboardValidationError({ publishingJobs: ['Artikel dengan riwayat job penerbitan tidak bisa dihapus permanen; arsipkan saja.'] });
+        }
+        transaction.state.articles = transaction.state.articles.filter((row) => row.id !== before.id);
+        this.syncArticleCategories(transaction.state, before.id, []);
+        this.audit(transaction, 'article.delete', 'article', before.id, before, null); return { id: before.id };
+      }, ['articles', 'regions', 'articleSites', 'publishingJobs', 'articleCategories']);
+      return { ok: true as const, value: result };
+    } catch (error) {
+      if (error instanceof DashboardValidationError) return { ok: false as const, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.delete', 'article');
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.delete', 'article', DASHBOARD_PERMISSIONS.articleManage);
+    }
   }
 
   assignArticleSites(actor: AuthorizedTenantActorContext, raw: unknown) {

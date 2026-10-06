@@ -7,9 +7,9 @@
 export function BlackLimeEmpty({ title }: { readonly title: string }) {
   return (
     <div className="flex flex-1 flex-col justify-center">
-      <div className="rounded-2xl border border-dashed border-[#242b1f] bg-[#131711] p-8 text-center sm:p-12" role="status">
+      <div className="rounded-2xl border border-dashed border-[var(--tpl-ring,#242b1f)] bg-[var(--tpl-card,#131711)] p-8 text-center sm:p-12" role="status">
         <h1 className="m-0 font-sans text-xl font-bold text-slate-100">Belum ada laporan terbit</h1>
-        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-[#646b5e]">
+        <p className="m-0 mx-auto mt-2 max-w-md font-sans text-sm leading-relaxed text-[var(--tpl-faint,#646b5e)]">
           Konten editorial untuk {title} sedang dalam antrean pemrosesan sinyal atau validasi redaksi.
         </p>
       </div>

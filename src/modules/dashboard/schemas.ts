@@ -233,8 +233,17 @@ export const articleUpdateSchema = z.object({
   type: articleMode.optional(),
   isSponsored: z.boolean().optional(),
 }).strict().superRefine(refineArticleMode);
-export const articleTransitionSchema = z.object({ id, expectedVersion }).strict();
-export const articleDeleteSchema = z.object({ id, expectedVersion }).strict();
+export const articleTransitionSchema = z.object({ id, expectedVersion, ownerOrganizationId: id.optional() }).strict();
+export const articleDeleteSchema = z.object({ id, expectedVersion, ownerOrganizationId: id.optional() }).strict();
+/** Steward cross-org listing filters; org-scoped ids are rejected here and stay single-org only. */
+export const crossOrgArticleFilterSchema = z.object({
+  status: z.enum(['draft', 'in_review', 'scheduled', 'active', 'archived']).optional(),
+  tag: z.string().trim().min(1).max(60).optional(),
+  search: z.string().trim().max(300).optional(),
+  sort: z.enum(['updated', 'published-desc', 'published-asc', 'title', 'syndicated']).optional(),
+  publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(),
+  limit: z.coerce.number().int().min(0).max(500).optional(), cursor: z.uuid().optional(),
+}).strict();
 /** List entri liveblog milik satu artikel mode `liveblog`. */
 export const articleUpdateListSchema = z.object({ articleId: id }).strict();
 /** Tambah satu entri liveblog; `sortOrder` diisi server sebagai max+1. */
@@ -256,11 +265,11 @@ export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).m
  * org aktif pemanggil. Hanya steward platform yang boleh memakainya;
  * penerbitan satu-org tetap lewat `assignmentSchema` + antrean pekerja.
  */
-export const bridgeRequestSchema = z.object({ ownerOrganizationId: id, articleId: id, siteIds: z.array(id).min(1).max(200) }).strict();
+export const bridgeRequestSchema = z.object({ ownerOrganizationId: id, articleId: id, siteIds: z.array(id).min(1).max(200), viewCount: z.int().min(0).max(1_000_000_000).optional() }).strict();
 /** Tarik penayangan jembatan; artikel pemilik tidak diubah. */
 export const bridgeUnpublishSchema = z.object({ ownerOrganizationId: id, articleId: id, siteIds: z.array(id).max(200) }).strict();
 /** Minta penayangan otomatis draf humas ke portal kota asalnya. */
-export const bridgeAutoRequestSchema = z.object({ ownerOrganizationId: id, articleId: id }).strict();
+export const bridgeAutoRequestSchema = z.object({ ownerOrganizationId: id, articleId: id, viewCount: z.int().min(0).max(1_000_000_000).optional() }).strict();
 export const siteViewsSchema = z.object({ articleId: id, siteId: id, viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const siteViewsBulkSchema = z.object({ articleId: id, siteIds: z.array(id).min(1).max(200), viewCount: z.int().min(0).max(1_000_000_000) }).strict();
 export const articleFilterSchema = z.object({

@@ -28,7 +28,7 @@ export function GreenMinimalLatest({
         {linkHref !== null ? (
           <Link
             href={linkHref}
-            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[#1d7a38] hover:underline"
+            className="inline-flex flex-none items-center gap-1 font-sans text-sm font-semibold text-[var(--tpl-primary,#1d7a38)] hover:underline"
           >
             {linkLabel}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -62,7 +62,7 @@ export function GreenMinimalLatest({
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px] font-bold uppercase tracking-wider">
                   <span className="max-w-[16rem] truncate normal-case tracking-normal text-slate-800">{article.attribution}</span>
                   {article.categoryName === null ? null : (
-                    <span className="text-[#1d7a38]">{article.categoryName}</span>
+                    <span className="text-[var(--tpl-primary,#1d7a38)]">{article.categoryName}</span>
                   )}
                   <span className="inline-flex items-center gap-1 font-medium normal-case tracking-normal text-slate-500">
                     <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
@@ -78,12 +78,12 @@ export function GreenMinimalLatest({
                   </span>
                   <CommentCountSlot articleId={article.id} href={article.href} className="inline-flex items-center gap-1 font-medium normal-case tracking-normal text-slate-500" iconClassName="h-3 w-3 opacity-70" />
                 </p>
-                <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-lg font-bold leading-snug text-[#10231a]">
-                  <Link href={article.href} className="hover:text-[#1d7a38]">
+                <h3 className="m-0 mt-1.5 line-clamp-2 font-sans text-lg font-bold leading-snug text-[var(--tpl-ink,#10231a)]">
+                  <Link href={article.href} className="hover:text-[var(--tpl-primary,#1d7a38)]">
                     {article.title}
                   </Link>
                 </h3>
-                <p className="m-0 mt-1.5 line-clamp-2 font-sans text-sm leading-relaxed text-[#4d6356]">
+                <p className="m-0 mt-1.5 line-clamp-2 font-sans text-sm leading-relaxed text-[var(--tpl-muted,#4d6356)]">
                   {article.description}
                 </p>
               </div>

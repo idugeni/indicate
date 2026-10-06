@@ -30,7 +30,7 @@ export function GreenMinimalLegal({ site, title, description, path = '/', sectio
       <Container className="space-y-6 py-6 md:py-8">
         <div>
           <h1 className="m-0 flex items-center gap-2.5 font-sans text-2xl font-extrabold tracking-tight text-slate-900">
-            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[#1d7a38]" />
+            <span aria-hidden="true" className="h-1 w-8 rounded-full bg-[var(--tpl-primary,#1d7a38)]" />
             {title}
           </h1>
           {description === undefined || description === '' ? null : (
@@ -38,7 +38,7 @@ export function GreenMinimalLegal({ site, title, description, path = '/', sectio
               {description}
             </p>
           )}
-          <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-slate-400">
+          <p className="m-0 mt-2 font-mono text-[11px] tabular-nums text-slate-500">
             {sections.length} bagian · Berlaku untuk {site.context.normalizedHostname} · Berlaku sejak {effectiveDate}
           </p>
         </div>
@@ -48,9 +48,9 @@ export function GreenMinimalLegal({ site, title, description, path = '/', sectio
               <li key={`${index}:${section.heading}`} className="border-b border-slate-100 last:border-b-0">
                 <a
                   href={`#${slugify(section.heading)}`}
-                  className="group flex items-baseline gap-3 py-2 font-sans text-sm text-slate-600 transition-colors hover:text-[#1d7a38]"
+                  className="group flex items-baseline gap-3 py-2 font-sans text-sm text-slate-600 transition-colors hover:text-[var(--tpl-primary,#1d7a38)]"
                 >
-                  <span className="flex-none font-mono text-[11px] tabular-nums text-[#1d7a38]">
+                  <span className="flex-none font-mono text-[11px] tabular-nums text-[var(--tpl-primary,#1d7a38)]">
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   <span className="group-hover:underline">{section.heading}</span>
@@ -66,7 +66,7 @@ export function GreenMinimalLegal({ site, title, description, path = '/', sectio
               <li key={doc.href} className="m-0">
                 <Link
                   href={doc.href}
-                  className="inline-block rounded-full bg-white px-4 py-2 font-sans text-sm font-semibold text-[#1d7a38] shadow-sm ring-1 ring-slate-200/60 transition-colors hover:bg-[#1d7a38] hover:text-white"
+                  className="inline-block rounded-full bg-white px-4 py-2 font-sans text-sm font-semibold text-[var(--tpl-primary,#1d7a38)] shadow-sm ring-1 ring-slate-200/60 transition-colors hover:bg-[var(--tpl-primary,#1d7a38)] hover:text-white"
                 >
                   {doc.label}
                 </Link>
@@ -84,7 +84,7 @@ export function GreenMinimalLegal({ site, title, description, path = '/', sectio
               <div className="flex items-baseline gap-3">
                 <span
                   aria-hidden="true"
-                  className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-[#e0f0e5] font-mono text-[11px] font-bold tabular-nums text-[#1d7a38]"
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-[var(--tpl-primary-soft,#e0f0e5)] font-mono text-[11px] font-bold tabular-nums text-[var(--tpl-primary,#1d7a38)]"
                 >
                   {index + 1}
                 </span>

@@ -10,11 +10,14 @@ import { useRouter } from 'next/navigation';
  * @returns Tidak merender apa pun.
  * @remarks Melewati tab tersembunyi agar tidak memboroskan kuota; mengandalkan
  * cache 60 detik plus invalidasi `article.changed` sehingga refresh murah.
+ * Gerakan dikurangi menonaktifkan refresh berkala agar konten tidak tertukar
+ * sendiri; pembaca memuat ulang manual bila menginginkan entri terbaru.
  */
 export function LiveblogAutoRefresh({ intervalSeconds = 60 }: { readonly intervalSeconds?: number }) {
   const router = useRouter();
   useEffect(() => {
     if (intervalSeconds <= 0) return;
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const id = window.setInterval(() => {
       if (!document.hidden) router.refresh();
     }, intervalSeconds * 1000);
