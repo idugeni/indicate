@@ -236,7 +236,7 @@ export const articleUpdateSchema = z.object({
 }).strict().superRefine(refineArticleMode);
 export const articleTransitionSchema = z.object({ id, expectedVersion, ownerOrganizationId: id.optional() }).strict();
 export const articleDeleteSchema = z.object({ id, expectedVersion, ownerOrganizationId: id.optional() }).strict();
-/** Muat satu artikel pemilik beserta lookup org-nya untuk editor steward. */
+/** Muat satu artikel penuh beserta lookup org-nya untuk editor steward lintas-org atau redaksi pemilik satu-org. */
 export const articleEditLoadSchema = z.object({ id, ownerOrganizationId: id }).strict();
 /** Steward cross-org listing filters; org-scoped ids are rejected here and stay single-org only. */
 export const crossOrgArticleFilterSchema = z.object({

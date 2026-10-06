@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImageIcon, Info, LayoutTemplate, Phone, RefreshCw, Search, Star, Trash2 } from 'lucide-react';
+import { ImageIcon, Info, LayoutTemplate, Loader2, Phone, RefreshCw, Search, Star, Trash2 } from 'lucide-react';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { Button } from '@/components/ui/button';
@@ -121,6 +121,8 @@ export function ContentManager() {
   const [drafts, setDrafts] = useState<Readonly<Record<string, Row>>>({});
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
+  /** Baris yang sedang menyimpan/menghapus; baris lain tetap bisa diklik. */
+  const [busyRow, setBusyRow] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -144,8 +146,9 @@ export function ContentManager() {
 
   useEffect(() => { void Promise.resolve().then(() => reload()); }, [reload]);
 
-  const post = useCallback(async (action: string, payload: Record<string, unknown>) => {
-    setBusy(true); setError(null); setNotice(null);
+  const post = useCallback(async (action: string, payload: Record<string, unknown>, rowKey: string) => {
+    setBusyRow(rowKey);
+    setError(null); setNotice(null);
     try {
       const response = await fetch('/api/dashboard/content', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -157,7 +160,7 @@ export function ContentManager() {
     } catch {
       setError('Penyimpanan gagal. Periksa hak akses platform Anda.');
     } finally {
-      setBusy(false);
+      setBusyRow((prev) => (prev === rowKey ? null : prev));
     }
   }, [reload]);
 
@@ -188,7 +191,7 @@ export function ContentManager() {
     const current = getDraftFor(type.kind, type.idKey, row);
     const payload: Record<string, unknown> = {};
     for (const field of type.fields) payload[field.key] = fromFieldValue(field, toFieldValue(field, current));
-    void post(`${type.kind}.save`, { row: payload });
+    void post(`${type.kind}.save`, { row: payload }, `${type.kind}:${String(row[type.idKey])}`);
   };
 
   return (
@@ -248,6 +251,8 @@ export function ContentManager() {
                 {typeRows.map((row) => {
                   const current = getDraftFor(t.kind, t.idKey, row);
                   const rowId = String(row[t.idKey]);
+                  const rowKey = `${t.kind}:${rowId}`;
+                  const rowBusy = busy || busyRow === rowKey;
                   return (
                     <section key={rowId} aria-label={titleFor(t, row)} className="rounded-lg border border-hairline bg-bg-raised p-3.5 transition duration-150 hover:border-hairline-strong">
                       <div className="flex items-baseline justify-between gap-2">
@@ -277,11 +282,12 @@ export function ContentManager() {
                         ))}
                       </div>
                       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <Button type="button" size="sm" variant="default" disabled={busy} onClick={() => saveRowFor(t, row)}>
+                        <Button type="button" size="sm" variant="default" disabled={rowBusy} onClick={() => saveRowFor(t, row)}>
+                          {busyRow === rowKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
                           Simpan
                         </Button>
-                        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => post('row.delete', { kind: t.kind, id: rowId })}>
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Hapus
+                        <Button type="button" size="sm" variant="outline" disabled={rowBusy} onClick={() => post('row.delete', { kind: t.kind, id: rowId }, rowKey)}>
+                          {busyRow === rowKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />} Hapus
                         </Button>
                       </div>
                     </section>

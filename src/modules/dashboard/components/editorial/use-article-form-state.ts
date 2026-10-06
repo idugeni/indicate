@@ -10,7 +10,7 @@ import type {
   PublisherEntity,
   RegionEntity,
 } from '@/modules/dashboard/components/shared/types';
-import { findMatchingCategoryId, findPublisherHomeRegion, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
+import { findMatchingCategoryId, findPublisherHomeRegion, isoToLocalDateTimeInput, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
 import { slugify } from '@/modules/site/slugify';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { TAG_MAX_COUNT } from '@/modules/site/slug-allocator';
@@ -27,6 +27,7 @@ import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/co
 import { COVER_COMPRESS, formatBytes } from '@/modules/publishing/compress-image';
 import { describeArticleTypeProblem, normalizeArticleType, type ArticleType } from '@/modules/site/article-type';
 import {
+  ARTICLE_STATUS_OPTIONS,
   COVER_CAPTION_BYTES_MAX,
   COVER_CAPTION_MIME_ALLOWLIST,
   LIBRARY_PAGE,
@@ -37,7 +38,30 @@ import {
   findForeignMediaIds,
   toCoverLibraryItem,
   type CoverLibraryItem,
+  type EditArticleInit,
 } from '@/modules/dashboard/components/editorial/article-form-types';
+
+/** Status yang bisa dipilih di composer; arsip dibuka sebagai draf dan disimpan eksplisit. */
+const EDITABLE_ARTICLE_STATUSES: ReadonlySet<string> = new Set(
+  ARTICLE_STATUS_OPTIONS.map((option) => option.value),
+);
+
+/**
+ * Ambil daftar kandidat sampul dari pustaka media org aktif.
+ *
+ * @param orgId - Organisasi pemilik pustaka.
+ * @returns Kandidat gambar aktif berversi.
+ */
+async function fetchCoverLibrary(orgId: string): Promise<readonly CoverLibraryItem[]> {
+  const response = await fetch(
+    `/api/dashboard/publishing?organizationId=${encodeURIComponent(orgId)}&view=media&limit=100`,
+  );
+  if (!response.ok) throw new Error('Gagal memuat pustaka media.');
+  const body = (await response.json()) as { readonly media?: readonly unknown[] };
+  return (Array.isArray(body.media) ? body.media : [])
+    .map(toCoverLibraryItem)
+    .filter((item): item is CoverLibraryItem => item !== null);
+}
 
 /**
  * Seluruh state dan aksi formulir tulis artikel sebagai satu hook.
@@ -46,6 +70,8 @@ import {
  * @param onSubmit - Menyimpan article.create; media upload memakai command opsional.
  * @param command - Perintah workspace untuk unggah media editor kaya; tanpa ini unggahan gagal eksplisit.
  * @param organizationId - Tenant pemilik permintaan AI; kosong mematikan fitur AI.
+ * @param initialArticle - Artikel existing untuk mode ubah; tanpa ini berarti mode buat baru.
+ * @param onEditSaved - Dipanggil setelah `article.update` berhasil di mode ubah.
  * @returns Rekaman state, turunan memo, dan penangan aksi untuk kanvas dan inspektor.
  */
 export function useArticleFormState({
@@ -53,11 +79,15 @@ export function useArticleFormState({
   onSubmit,
   command,
   organizationId = '',
+  initialArticle,
+  onEditSaved,
 }: {
   readonly data: unknown;
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
   readonly command?: DashboardCommand;
   readonly organizationId?: string | undefined;
+  readonly initialArticle?: EditArticleInit | undefined;
+  readonly onEditSaved?: (() => void) | undefined;
 }) {
   const model = data as {
     readonly regions?: readonly RegionEntity[];
@@ -88,31 +118,54 @@ export function useArticleFormState({
   const coverUrlInputId = useId();
   const publishOnSaveId = useId();
 
-  const [slug, setSlug] = useState('');
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [status, setStatus] = useState<string>('draft');
+  const isEditing = initialArticle !== undefined;
+  /** Status mentah artikel yang dibuka; non-null berarti mode ubah. */
+  const editOriginalStatus = initialArticle?.status ?? null;
+  const [slug, setSlug] = useState(initialArticle?.slug ?? '');
+  const [slugTouched, setSlugTouched] = useState(isEditing);
+  const [status, setStatus] = useState<string>(() =>
+    initialArticle !== undefined && EDITABLE_ARTICLE_STATUSES.has(initialArticle.status)
+      ? initialArticle.status
+      : 'draft',
+  );
   /** Mode presentasi artikel; `standard` tanpa syarat tambahan. */
-  const [articleType, setArticleType] = useState<ArticleType>('standard');
+  const [articleType, setArticleType] = useState<ArticleType>(() =>
+    initialArticle === undefined ? 'standard' : normalizeArticleType(initialArticle.type),
+  );
   /** URL tonton/berkas luar untuk mode `video`. */
-  const [videoUrl, setVideoUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState(initialArticle?.videoUrl ?? '');
   /** URL dengar/berkas luar untuk mode `audio`. */
-  const [audioUrl, setAudioUrl] = useState('');
+  const [audioUrl, setAudioUrl] = useState(initialArticle?.audioUrl ?? '');
   /** Durasi detik sebagai digit untuk mode `video`/`audio`. */
-  const [durationInput, setDurationInput] = useState('');
+  const [durationInput, setDurationInput] = useState(
+    initialArticle?.durationSeconds === null || initialArticle?.durationSeconds === undefined
+      ? ''
+      : String(initialArticle.durationSeconds),
+  );
   /** Tandai konten berbayar untuk disclosure bersponsor. */
-  const [isSponsored, setIsSponsored] = useState(false);
-  const [categoryIds, setCategoryIds] = useState<readonly string[]>([]);
+  const [isSponsored, setIsSponsored] = useState(initialArticle?.isSponsored ?? false);
+  const [categoryIds, setCategoryIds] = useState<readonly string[]>(() => [...(initialArticle?.categoryIds ?? [])]);
   const [extraCategories, setExtraCategories] = useState<readonly CategoryEntity[]>([]);
-  const [featuredId, setFeaturedId] = useState<string | null>(null);
+  const [featuredId, setFeaturedId] = useState<string | null>(initialArticle?.leadMediaId ?? null);
   const [featuredOrgId, setFeaturedOrgId] = useState<string | null>(null);
   /** Org tercatat tiap gambar inline saat diunggah (null = org sesi saat itu). */
   const [inlineMediaOrgs, setInlineMediaOrgs] = useState<Readonly<Record<string, string | null>>>({});
   const [featuredName, setFeaturedName] = useState('');
   const [featuredPreviewUrl, setFeaturedPreviewUrl] = useState<string | null>(null);
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
-  const [provinceId, setProvinceId] = useState<string | null>(null);
-  const [cityId, setCityId] = useState<string | null>(null);
-  const [isNational, setIsNational] = useState(false);
+  /** Petakan regionId artikel ke pilihan wilayah/kota; loader menjamin daftar wilayah sudah tiba. */
+  const resolveInitialRegion = (): { readonly provinceId: string | null; readonly cityId: string | null } => {
+    const regionId = initialArticle?.regionId ?? null;
+    if (regionId === null) return { provinceId: null, cityId: null };
+    const region = (model?.regions ?? []).find((item) => item.id === regionId) ?? null;
+    if (region === null) return { provinceId: null, cityId: null };
+    return region.kind === 'city'
+      ? { provinceId: region.parentRegionId ?? null, cityId: region.id }
+      : { provinceId: region.id, cityId: null };
+  };
+  const [provinceId, setProvinceId] = useState<string | null>(() => resolveInitialRegion().provinceId);
+  const [cityId, setCityId] = useState<string | null>(() => resolveInitialRegion().cityId);
+  const [isNational, setIsNational] = useState(() => initialArticle !== undefined && initialArticle.regionId === null);
   /** Admin tanpa kunci wilayah boleh menerbitkan nasional ke semua apex. */
   const isUnrestricted = model !== null && model.regionScope === null;
   const nationalActive = isUnrestricted && isNational;
@@ -134,19 +187,24 @@ export function useArticleFormState({
   const libraryExpiry = useRef<ReadonlyMap<string, number>>(new Map());
   const librarySearchInputId = useId();
   const [savingFeaturedMeta, setSavingFeaturedMeta] = useState(false);
-  const [coverUrl, setCoverUrl] = useState('');
-  const [titleText, setTitleText] = useState('');
-  const [descriptionText, setDescriptionText] = useState('');
+  const [coverUrl, setCoverUrl] = useState(initialArticle?.coverImageUrl ?? '');
+  const [titleText, setTitleText] = useState(initialArticle?.title ?? '');
+  const [descriptionText, setDescriptionText] = useState(initialArticle?.excerpt ?? '');
   const [mode, setMode] = useState<'tulis' | 'pratinjau' | 'sumber'>('tulis');
-  const [bodyText, setBodyText] = useState('');
-  const [bodyJsonDraft, setBodyJsonDraft] = useState<TipTapDoc | null>(null);
+  const [bodyText, setBodyText] = useState(initialArticle?.body ?? '');
+  const [bodyJsonDraft, setBodyJsonDraft] = useState<TipTapDoc | null>(() => {
+    const doc = initialArticle?.bodyJson ?? null;
+    return typeof doc === 'object' && doc !== null ? (doc as TipTapDoc) : null;
+  });
   const [richResetKey, setRichResetKey] = useState(0);
   const [isSubmitting, startSubmitTransition] = useTransition();
-  const [publishOnSave, setPublishOnSave] = useState(true);
-  const [source, setSource] = useState('');
-  const [canonicalUrl, setCanonicalUrl] = useState('');
-  const [tags, setTags] = useState<readonly string[]>([]);
-  const [rawScheduleInput, setRawScheduleInput] = useState('');
+  const [publishOnSave, setPublishOnSave] = useState(!isEditing);
+  const [source, setSource] = useState(initialArticle?.source ?? '');
+  const [canonicalUrl, setCanonicalUrl] = useState(initialArticle?.canonicalUrl ?? '');
+  const [tags, setTags] = useState<readonly string[]>(() => [...(initialArticle?.tags ?? [])]);
+  const [rawScheduleInput, setRawScheduleInput] = useState(() =>
+    isoToLocalDateTimeInput(initialArticle?.scheduledAt ?? null),
+  );
   const [rawPublishDateInput, setRawPublishDateInput] = useState('');
   const [viewsInput, setViewsInput] = useState('');
 
@@ -258,15 +316,65 @@ export function useArticleFormState({
     () => activeAuthors.find((a) => a.displayName === 'Redaksi')?.id ?? activeAuthors[0]?.id ?? null,
     [activeAuthors],
   );
-  const [publisherId, setPublisherId] = useState<string | null>(null);
-  const [authorId, setAuthorId] = useState<string | null>(null);
-  const touchedAuthor = useRef(false);
+  const [publisherId, setPublisherId] = useState<string | null>(initialArticle?.publisherId ?? null);
+  const [authorId, setAuthorId] = useState<string | null>(initialArticle?.authorId ?? null);
+  /** Mode ubah tidak pernah menerapkan penulis bawaan; nilai awal adalah kebenaran. */
+  const touchedAuthor = useRef(isEditing);
 
   useEffect(() => {
     if (!touchedAuthor.current && publisherId === null && authorId === null && defaultAuthorId !== null) {
       setAuthorId(defaultAuthorId);
     }
   }, [publisherId, authorId, defaultAuthorId]);
+
+  /** expectedVersion artikel yang diubah; disegarkan dari tiap hasil `article.update`. */
+  const editVersionRef = useRef(initialArticle?.version ?? 0);
+
+  /** Ambil pratinjau sampul artikel yang diubah; id media tetap tersimpan bila gagal. */
+  const coverPreviewRequested = useRef(false);
+  useEffect(() => {
+    const mediaId = initialArticle?.leadMediaId ?? null;
+    if (!isEditing || mediaId === null || command === undefined || coverPreviewRequested.current) return;
+    if (featuredId !== mediaId || featuredPreviewUrl !== null) return;
+    coverPreviewRequested.current = true;
+    void (async () => {
+      try {
+        const result = (await command('media.readMany', { mediaIds: [mediaId] })) as {
+          readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown }[];
+        } | null;
+        const url = result?.items?.find((item) => item?.mediaId === mediaId)?.url;
+        if (typeof url === 'string' && url !== '') setFeaturedPreviewUrl(url);
+      } catch {
+        /* Pratinjau sampul best-effort; id media tetap tersimpan. */
+      }
+    })();
+  }, [isEditing, initialArticle, command, featuredId, featuredPreviewUrl]);
+
+  /**
+   * Lengkapi nama/versi/alt/caption sampul artikel yang diubah dari pustaka.
+   * Tanpa versi, simpan metadata dan titik fokus ditolak server; tanpa
+   * backfill ini tombolnya mati padahal datanya ada. Isian yang sudah
+   * disentuh pengguna tidak pernah ditimpa.
+   */
+  const coverMetaRequested = useRef(false);
+  useEffect(() => {
+    const mediaId = initialArticle?.leadMediaId ?? null;
+    if (!isEditing || mediaId === null || organizationId === undefined || organizationId === '' || coverMetaRequested.current) return;
+    if (featuredId !== mediaId || featuredVersion !== null) return;
+    coverMetaRequested.current = true;
+    void (async () => {
+      try {
+        const item = (await fetchCoverLibrary(organizationId)).find((candidate) => candidate.id === mediaId) ?? null;
+        if (item === null) return;
+        setFeaturedName((prev) => (prev === '' ? fileNameOf(item.objectKey) : prev));
+        setFeaturedVersion((prev) => (prev === null ? item.version : prev));
+        setFeaturedAlt((prev) => (prev === '' ? (item.altText ?? '').trim().slice(0, 300) : prev));
+        setFeaturedCaption((prev) => (prev === '' ? (item.caption ?? '').trim().slice(0, 500) : prev));
+      } catch {
+        /* Metadata sampul best-effort; penjaga versi tetap menolak simpan buta. */
+      }
+    })();
+  }, [isEditing, initialArticle, organizationId, featuredId, featuredVersion]);
 
   const effectiveCategoryIds = useMemo(
     () => (categoryIds.length > 0 ? categoryIds : defaultCategoryId === null ? [] : [defaultCategoryId]),
@@ -609,14 +717,7 @@ export function useArticleFormState({
     setLibraryError(null);
     void (async () => {
       try {
-        const response = await fetch(
-          `/api/dashboard/publishing?organizationId=${encodeURIComponent(organizationId)}&view=media&limit=100`,
-        );
-        if (!response.ok) throw new Error('Gagal memuat pustaka media.');
-        const body = (await response.json()) as { readonly media?: readonly unknown[] };
-        const items = (Array.isArray(body.media) ? body.media : [])
-          .map(toCoverLibraryItem)
-          .filter((item): item is CoverLibraryItem => item !== null);
+        const items = await fetchCoverLibrary(organizationId);
         setLibraryItems(items);
         if (items.length === 0) toast.info('Pustaka media belum berisi gambar.');
       } catch {
@@ -956,7 +1057,7 @@ export function useArticleFormState({
     }
   };
 
-  const handleCreateArticle = (event: FormEvent<HTMLFormElement>) => {
+  const handleSaveArticle = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     const rawSchedule = rawScheduleInput;
@@ -1051,6 +1152,26 @@ export function useArticleFormState({
         return;
       }
       const payload = buildArticlePayload({ ...formSnapshot, status, rawSchedule }, categoryIds);
+      if (isEditing && initialArticle !== undefined) {
+        if (command === undefined) {
+          toast.error('Perintah penyimpanan tidak tersedia. Muat ulang lalu coba lagi.');
+          return;
+        }
+        try {
+          const updated = (await command(
+            'article.update',
+            { id: initialArticle.id, expectedVersion: editVersionRef.current, ...payload },
+            { refresh: true },
+          )) as { readonly version?: unknown } | null;
+          if (typeof updated?.version === 'number') editVersionRef.current = updated.version;
+        } catch (error) {
+          toast.error(error instanceof Error && error.message !== '' ? error.message : 'Artikel gagal diperbarui.');
+          return;
+        }
+        toast.success('Artikel diperbarui.');
+        onEditSaved?.();
+        return;
+      }
       let created: { readonly id?: string; readonly slug?: string; readonly organizationId?: string } | null;
       try {
         created = await onSubmit(payload) as { readonly id?: string; readonly slug?: string; readonly organizationId?: string };
@@ -1139,6 +1260,7 @@ export function useArticleFormState({
     featuredId, setFeaturedId, setFeaturedOrgId, setFeaturedName, setFeaturedPreviewUrl,
     setFeaturedVersion, setFeaturedFocal, featuredName, featuredPreviewUrl, featuredStatus,
     provinceId, setProvinceId, cityId, setCityId, isNational, setIsNational,
+    isEditing, editOriginalStatus,
     isUnrestricted, nationalActive,
     uploadingFeatured, featuredAlt, setFeaturedAlt, featuredCaption, setFeaturedCaption, featuredFocal,
     coverBlobRef, coverRemoteRef, libraryOpen, libraryItems, libraryLoading, libraryError,
@@ -1162,7 +1284,7 @@ export function useArticleFormState({
     effectiveCategoryIds, bodyJsonProblem, modeProblem,
     selectedPublisher, foreignOwnerOrg, selectedAuthor, tagSuggestions,
     foreignMediaIds,
-    libraryFiltered, libraryVisible, command, handleCreateArticle,
+    libraryFiltered, libraryVisible, command, handleSaveArticle,
   };
 }
 

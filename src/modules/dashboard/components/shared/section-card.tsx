@@ -18,9 +18,9 @@ export function SectionCard({
     <section aria-label={title} className="min-w-0">
       <Card className="rounded-lg border border-hairline bg-bg-raised shadow-none ring-0">
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 border-b border-hairline px-4 pb-2.5 pt-3 sm:px-5 sm:pb-3 sm:pt-3.5">
-          <CardTitle className="flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
-            <Icon className="h-4 w-4 text-brass" aria-hidden="true" />
-            {title}
+          <CardTitle className="flex min-w-0 flex-1 items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
+            <Icon className="h-4 w-4 shrink-0 text-brass" aria-hidden="true" />
+            <span className="min-w-0 flex-1 break-words">{title}</span>
           </CardTitle>
           <CardDescription className="m-0 font-mono text-[10px] uppercase tracking-wider text-paper-faint">{eyebrow}</CardDescription>
         </CardHeader>

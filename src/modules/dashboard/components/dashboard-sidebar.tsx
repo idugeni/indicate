@@ -209,31 +209,30 @@ const SidebarBody = memo(function SidebarBody({
       </nav>
 
       <div className="flex-none border-t border-hairline p-3">
-        <SignOutDialog
-          mode="icon"
-          trigger={
-            <button
-              type="button"
-              aria-label="Keluar dari workspace"
-              className={cn(
-                'flex w-full rounded-md text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
-                collapsed ? 'justify-center p-1' : 'items-center gap-2.5 p-1.5',
-              )}
-            >
-              <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
-              {collapsed ? null : (
-                <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
-                  <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
-                  {activeOrganization?.role ? (
-                    <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                      {activeOrganization.role}
-                    </span>
-                  ) : null}
-                </span>
-              )}
-            </button>
-          }
-        />
+        <div className={cn('flex w-full items-center', collapsed ? 'flex-col justify-center gap-2' : 'gap-1')}>
+          <button
+            type="button"
+            aria-label="Buka profil saya"
+            onClick={() => onSelectView('settings')}
+            className={cn(
+              'rounded-md text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
+              collapsed ? 'p-1' : 'flex min-w-0 flex-1 items-center gap-2.5 p-1.5',
+            )}
+          >
+            <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
+            {collapsed ? null : (
+              <span className="grid min-w-0 flex-1 animate-in leading-none fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
+                <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
+                {activeOrganization?.role ? (
+                  <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                    {activeOrganization.role}
+                  </span>
+                ) : null}
+              </span>
+            )}
+          </button>
+          <SignOutDialog mode="icon" />
+        </div>
       </div>
     </>
   );

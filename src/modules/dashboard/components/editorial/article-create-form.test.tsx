@@ -88,6 +88,8 @@ function setup(overrides: {
   command?: (action: string, payload: unknown) => Promise<unknown>;
   organizationId?: string;
   data?: unknown;
+  editArticleId?: string;
+  onExitEdit?: () => void;
 }) {
   const submit = vi.fn(async (payload: unknown) => (overrides.submit ? overrides.submit(payload) : null));
   const cmd = vi.fn(async (action: string, payload: unknown) => {
@@ -101,7 +103,7 @@ function setup(overrides: {
     };
   });
   const { container, unmount } = render(
-    <ArticleCreateForm data={overrides.data ?? DATA} onSubmit={submit} command={cmd} organizationId={overrides.organizationId} />,
+    <ArticleCreateForm data={overrides.data ?? DATA} onSubmit={submit} command={cmd} organizationId={overrides.organizationId} editArticleId={overrides.editArticleId} onExitEdit={overrides.onExitEdit} />,
   );
   return { submit, cmd, container, unmount };
 }
@@ -1301,5 +1303,122 @@ describe('Formulir tulis artikel', () => {
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ isSponsored: true })));
+  });
+});
+
+describe('Formulir ubah artikel', () => {
+  const EDIT_ARTICLE = {
+    id: 'art-9',
+    version: 7,
+    regionId: 'r-2',
+    publisherId: 'p-1',
+    categoryIds: ['c-1'],
+    authorId: 'a-1',
+    leadMediaId: null,
+    coverImageUrl: null,
+    slug: 'judul-lama',
+    title: 'Judul Lama',
+    excerpt: 'Ringkasan lama',
+    canonicalUrl: null,
+    body: 'Isi berita lama.',
+    bodyJson: null,
+    source: 'Rilis resmi',
+    tags: ['wonosobo'],
+    status: 'draft',
+    type: 'standard',
+    isSponsored: false,
+    videoUrl: null,
+    audioUrl: null,
+    durationSeconds: null,
+    scheduledAt: null,
+  };
+
+  async function editCommand(action: string): Promise<unknown> {
+    if (action === 'article.edit.load') {
+      return { article: EDIT_ARTICLE, lookups: { regions: [], publishers: [], categories: [], authors: [] } };
+    }
+    if (action === 'article.update') return { ...EDIT_ARTICLE, version: 8 };
+    return {};
+  }
+
+  it('memuat artikel ke composer yang sama persis dengan mode buat', async () => {
+    const onExitEdit = vi.fn();
+    setup({ organizationId: 'org-1', editArticleId: 'art-9', onExitEdit, command: editCommand });
+    expect(await screen.findByText(/Mode ubah/)).toBeDefined();
+    expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('Judul Lama');
+    expect((screen.getByLabelText('Slug URL') as HTMLInputElement).value).toBe('judul-lama');
+    expect(screen.getByRole('button', { name: 'Simpan perubahan' })).toBeDefined();
+    expect(screen.queryByText('Tayang otomatis')).toBeNull();
+    expect(onExitEdit).not.toHaveBeenCalled();
+  });
+
+  it('menyimpan via article.update dengan expectedVersion lalu keluar', async () => {
+    const onExitEdit = vi.fn();
+    const { cmd, container } = setup({ organizationId: 'org-1', editArticleId: 'art-9', onExitEdit, command: editCommand });
+    expect(await screen.findByText(/Mode ubah/)).toBeDefined();
+    await screen.findByLabelText('Kota / kabupaten');
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(cmd).toHaveBeenCalledWith(
+        'article.update',
+        expect.objectContaining({ id: 'art-9', expectedVersion: 7, title: 'Judul Lama', slug: 'judul-lama', regionId: 'r-2' }),
+        { refresh: true },
+      ),
+    );
+    await waitFor(() => expect(onExitEdit).toHaveBeenCalledTimes(1));
+  });
+
+  it('tombol kembali keluar dari mode ubah tanpa menyimpan', async () => {
+    const user = userEvent.setup();
+    const onExitEdit = vi.fn();
+    const { cmd } = setup({ organizationId: 'org-1', editArticleId: 'art-9', onExitEdit, command: editCommand });
+    expect(await screen.findByText(/Mode ubah/)).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Kembali ke daftar' }));
+    expect(onExitEdit).toHaveBeenCalledTimes(1);
+    expect(cmd).not.toHaveBeenCalledWith('article.update', expect.anything(), expect.anything());
+  });
+
+  it('menampilkan galat dan tombol kembali bila artikel gagal dimuat', async () => {
+    const user = userEvent.setup();
+    const onExitEdit = vi.fn();
+    setup({
+      organizationId: 'org-1',
+      editArticleId: 'art-9',
+      onExitEdit,
+      command: async (action: string) => {
+        if (action === 'article.edit.load') throw new Error('Artikel tidak ditemukan.');
+        return {};
+      },
+    });
+    expect(await screen.findByText(/Gagal memuat artikel untuk diubah/)).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Kembali ke daftar' }));
+    expect(onExitEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it('melengkapi metadata sampul artikel yang diubah dari pustaka', async () => {
+    const articleWithCover = { ...EDIT_ARTICLE, leadMediaId: 'm-1' };
+    const libraryItem = {
+      id: 'm-1', objectKey: 'sampul/uji.webp', mediaType: 'image/webp', sizeBytes: 1000,
+      altText: 'Pasar pagi', caption: 'Suasana pasar', version: 4, state: 'active',
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ media: [libraryItem] }) })));
+    try {
+      setup({
+        organizationId: 'org-1',
+        editArticleId: 'art-9',
+        command: async (action: string) => {
+          if (action === 'article.edit.load') return { article: articleWithCover, lookups: { regions: [], publishers: [], categories: [], authors: [] } };
+          if (action === 'media.readMany') {
+            return { items: [{ mediaId: 'm-1', url: 'https://r2.example/sampul', expiresAt: new Date(Date.now() + 3600000).toISOString() }] };
+          }
+          return {};
+        },
+      });
+      expect(await screen.findByText(/Mode ubah/)).toBeDefined();
+      await waitFor(() => expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Pasar pagi'));
+      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe('Suasana pasar');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

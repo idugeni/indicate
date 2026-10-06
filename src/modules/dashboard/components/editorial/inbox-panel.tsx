@@ -46,7 +46,8 @@ function asInboxRows(value: unknown): readonly InboxRow[] {
  */
 export function ForOrgInbox({ command }: { readonly command?: DashboardCommand | undefined }) {
   const [rows, setRows] = useState<readonly InboxRow[]>([]);
-  const [busyKey, setBusyKey] = useState<string | null>(null);
+  /** Kunci baris yang sedang menayangkan; baris lain tetap bisa diklik. */
+  const [busyKeys, setBusyKeys] = useState<readonly string[]>([]);
 
   useEffect(() => {
     if (command === undefined) return;
@@ -67,9 +68,9 @@ export function ForOrgInbox({ command }: { readonly command?: DashboardCommand |
   if (rows.length === 0) return null;
 
   const publish = async (row: InboxRow) => {
-    if (command === undefined || busyKey !== null) return;
     const key = `${row.organizationId}:${row.articleId}`;
-    setBusyKey(key);
+    if (command === undefined || busyKeys.includes(key)) return;
+    setBusyKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
     try {
       const result = (await command('article.bridge.requestAuto', {
         ownerOrganizationId: row.organizationId,
@@ -82,7 +83,7 @@ export function ForOrgInbox({ command }: { readonly command?: DashboardCommand |
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Gagal menerbitkan dari kotak masuk.');
     } finally {
-      setBusyKey(null);
+      setBusyKeys((prev) => prev.filter((candidate) => candidate !== key));
     }
   };
 
@@ -100,7 +101,7 @@ export function ForOrgInbox({ command }: { readonly command?: DashboardCommand |
       <ul className="m-0 grid list-none gap-2 p-0">
         {rows.map((row) => {
           const key = `${row.organizationId}:${row.articleId}`;
-          const busy = busyKey === key;
+          const busy = busyKeys.includes(key);
           return (
             <li key={key} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded border border-hairline bg-bg px-3 py-2">
               <div className="grid min-w-0 flex-1 gap-0.5">
@@ -112,7 +113,7 @@ export function ForOrgInbox({ command }: { readonly command?: DashboardCommand |
                 </p>
               </div>
               <Badge variant="outline" className="font-mono text-[11px]">{row.orgSlug}</Badge>
-              <Button type="button" size="sm" disabled={command === undefined || busyKey !== null} onClick={() => void publish(row)} className="gap-1.5">
+              <Button type="button" size="sm" disabled={command === undefined || busy} onClick={() => void publish(row)} className="gap-1.5">
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />}
                 {busy ? 'Menayangkan…' : 'Tayangkan'}
               </Button>

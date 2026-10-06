@@ -81,6 +81,10 @@ export function PublishingForm({
   const [jobStatus, setJobStatus] = useState<PublicationStatusProjection | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [isStatusBusy, startStatusTransition] = useTransition();
+  const [isRetryBusy, startRetryTransition] = useTransition();
+  const [isUnpublishBusy, startUnpublishTransition] = useTransition();
+  /** Baris target yang sedang dibalik indeksasinya; baris lain tetap bisa diklik. */
+  const [busyTarget, setBusyTarget] = useState<{ readonly articleSiteId: string; readonly directive: 'index' | 'noindex' } | null>(null);
   const [suggested, setSuggested] = useState<Readonly<Record<string, { readonly title: string; readonly description: string; readonly imageMediaId: string }>>>({});
   const [selectedSiteIds, setSelectedSiteIds] = useState<readonly string[]>([]);
   const [siteQuery, setSiteQuery] = useState('');
@@ -135,27 +139,34 @@ export function PublishingForm({
 
   const hostnames = new Map((model?.sites ?? []).map((site) => [site.id, site.normalizedHostname]));
 
-  const refreshStatus = (jobId: string, action: string, payload: unknown) => {
+  const fetchJobStatus = async (jobId: string, action: string, payload: unknown): Promise<void> => {
     setStatusError(null);
-    startStatusTransition(async () => {
-      try {
-        const result = (await command(action, payload)) as PublicationStatusProjection | null;
-        if (result !== null && typeof result === 'object' && 'job' in result && 'targets' in result) {
-          setJobStatus(result);
-        } else {
-          setStatusError('Status pengiriman tidak dapat dimuat.');
-        }
-      } catch {
-        setStatusError('Status publikasi tidak dapat dimuat.');
+    try {
+      const result = (await command(action, payload)) as PublicationStatusProjection | null;
+      if (result !== null && typeof result === 'object' && 'job' in result && 'targets' in result) {
+        setJobStatus(result);
+      } else {
+        setStatusError('Status pengiriman tidak dapat dimuat.');
       }
+    } catch {
+      setStatusError('Status publikasi tidak dapat dimuat.');
+    }
+  };
+
+  /** Muat ulang status untuk tombol Muat; aksinya sendiri yang menampilkan loading. */
+  const refreshStatus = (jobId: string, action: string, payload: unknown) => {
+    startStatusTransition(() => {
+      void fetchJobStatus(jobId, action, payload);
     });
   };
 
   const flipTargetRobots = (articleSiteId: string, directive: 'index' | 'noindex', jobId: string) => {
     const effect = directive === 'noindex' ? 'menyembunyikan kopi ini dari mesin pencari' : 'menampilkan kembali kopi ini di mesin pencari';
     if (!window.confirm(`Ubah indeksasi kopi ini? Tindakan akan ${effect}.`)) return;
+    if (busyTarget?.articleSiteId === articleSiteId) return;
     setStatusError(null);
-    startStatusTransition(async () => {
+    setBusyTarget({ articleSiteId, directive });
+    void (async () => {
       try {
         const result = (await command('publication.setSiteRobots', { articleSiteId, directive })) as { readonly articleSiteId?: string } | null;
         if (result?.articleSiteId === undefined) {
@@ -163,11 +174,13 @@ export function PublishingForm({
           return;
         }
         toast.success(directive === 'noindex' ? 'Kopi diset noindex.' : 'Kopi diset index.');
-        refreshStatus(jobId, 'publication.status', { jobId });
+        await fetchJobStatus(jobId, 'publication.status', { jobId });
       } catch {
         setStatusError('Perubahan indeksasi tidak dapat disimpan.');
+      } finally {
+        setBusyTarget((prev) => (prev?.articleSiteId === articleSiteId ? null : prev));
       }
-    });
+    })();
   };
 
   const handleArticleChange = (next: string | null) => {
@@ -535,10 +548,10 @@ export function PublishingForm({
               {jobStatus.targets.map((target) => (
                 <div key={target.id} className="py-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-mono text-xs text-paper">{hostnames.get(target.siteId) ?? 'Situs tidak dikenal'}</span>
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-paper">{hostnames.get(target.siteId) ?? 'Situs tidak dikenal'}</span>
                     <TargetStateBadge state={target.state} />
                   </div>
-                  <p className="m-0 mt-1 font-mono text-[11px] tabular-nums text-paper-faint">
+                  <p className="m-0 mt-1 break-all font-mono text-[11px] tabular-nums text-paper-faint">
                     {target.attempt}x percobaan
                     {target.publishedUrl !== null ? ` · ${target.publishedUrl}` : ''}
                     {target.sanitizedError !== null ? ` · ${errorCode(target.sanitizedError)}` : ''}
@@ -548,19 +561,25 @@ export function PublishingForm({
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={isStatusBusy}
+                        disabled={busyTarget?.articleSiteId === target.articleSiteId}
                         onClick={() => flipTargetRobots(target.articleSiteId, 'index', jobStatus.job.id)}
                         className="h-6 px-2 font-mono text-[11px]"
                       >
+                        {busyTarget?.articleSiteId === target.articleSiteId && busyTarget.directive === 'index' ? (
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        ) : null}
                         Indeks
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={isStatusBusy}
+                        disabled={busyTarget?.articleSiteId === target.articleSiteId}
                         onClick={() => flipTargetRobots(target.articleSiteId, 'noindex', jobStatus.job.id)}
                         className="h-6 px-2 font-mono text-[11px]"
                       >
+                        {busyTarget?.articleSiteId === target.articleSiteId && busyTarget.directive === 'noindex' ? (
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        ) : null}
                         Nonindeks
                       </Button>
                     </div>
@@ -572,23 +591,29 @@ export function PublishingForm({
               <Button
                 type="button"
                 variant="outline"
-                disabled={isStatusBusy || !jobStatus.targets.some((target) => target.state === 'failed')}
-                onClick={() => refreshStatus(jobStatus.job.id, 'publication.retry', { jobId: jobStatus.job.id })}
+                disabled={isRetryBusy || !jobStatus.targets.some((target) => target.state === 'failed')}
+                onClick={() => startRetryTransition(() => {
+                  void fetchJobStatus(jobStatus.job.id, 'publication.retry', { jobId: jobStatus.job.id });
+                })}
                 className="flex-1"
               >
+                {isRetryBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
                 Ulangi yang Gagal
               </Button>
               <Button
                 type="button"
                 variant="destructive"
-                disabled={isStatusBusy || !jobStatus.targets.some((target) => target.state === 'published')}
+                disabled={isUnpublishBusy || !jobStatus.targets.some((target) => target.state === 'published')}
                 onClick={() => {
                   if (window.confirm('Tarik publikasi yang tayang pada job ini? Konten hilang dari situs target.')) {
-                    refreshStatus(jobStatus.job.id, 'publication.unpublish', { jobId: jobStatus.job.id });
+                    startUnpublishTransition(() => {
+                      void fetchJobStatus(jobStatus.job.id, 'publication.unpublish', { jobId: jobStatus.job.id });
+                    });
                   }
                 }}
                 className="flex-1"
               >
+                {isUnpublishBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
                 Tarik yang Tayang
               </Button>
             </div>

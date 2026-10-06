@@ -84,14 +84,15 @@
         "url": "https://mcp.vercel.com"
       },
       "next-devtools": {
-        // Menunjuk devDependency lokal, bukan `npx @latest`. `npx` memaksa
-        // registry lookup + contended lock di npm _npx cache tiap spawn, dan
-        // OpenCode start ~10 MCP server npx bersamaan; spawn yang kalah lock
-        // mati seketika dan dilaporkan "Connection closed".
+        // Prefer devDependency lokal; fallback ke npx bila node_modules
+        // belum ter-install (fresh clone tanpa `npm ci`). `npx` langsung
+        // memaksa registry lookup + contended lock di npm _npx cache tiap
+        // spawn, jadi lokal tetap jalur utama saat tersedia.
         "type": "local",
         "command": [
-          "node",
-          "node_modules/next-devtools-mcp/dist/index.js"
+          "cmd",
+          "/c",
+          "node node_modules/next-devtools-mcp/dist/index.js || npx -y next-devtools-mcp@0.4.0"
         ]
       },
       "webmcp": {

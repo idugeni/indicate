@@ -88,4 +88,35 @@ describe('Pengelola konten dinamis', () => {
       ),
     );
   });
+
+  it('baris lain tetap aktif saat satu baris menyimpan', async () => {
+    const bundle = {
+      ...EMPTY,
+      quotes: [
+        { id: 'q-1', quote: 'Layanan cepat', author: 'Budi', role: 'Pembaca', media: 'Portal Uji', sortOrder: 1, active: true },
+        { id: 'q-2', quote: 'Redaksi gesit', author: 'Sari', role: 'Pembaca', media: 'Portal Uji', sortOrder: 2, active: true },
+      ],
+    };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fetchMock = vi.fn(async (_url: unknown, init?: { readonly method?: string; readonly body?: string }) => {
+      if (init?.method === 'POST' && (init.body ?? '').includes('Layanan cepat')) await gate;
+      return { ok: true, json: async () => bundle };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ContentManager />);
+    expect(await screen.findByText('Sari')).toBeDefined();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Simpan' })[0]!);
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/dashboard/content', expect.objectContaining({ method: 'POST' })),
+    );
+    expect(screen.getAllByRole('button', { name: 'Simpan' })[0]!.hasAttribute('disabled')).toBe(true);
+    expect(screen.getAllByRole('button', { name: 'Simpan' })[1]!.hasAttribute('disabled')).toBe(false);
+    release();
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Simpan' })[0]!.hasAttribute('disabled')).toBe(false),
+    );
+  });
 });

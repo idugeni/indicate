@@ -171,6 +171,42 @@ describe('PublishingForm suggest and status', () => {
     await user.click(screen.getByRole('button', { name: /^nonindeks$/i }));
     await waitFor(() => expect(command).toHaveBeenCalledWith('publication.setSiteRobots', { articleSiteId: 'as-1', directive: 'noindex' }), { timeout: 5000 });
   }, USER_EVENT_TIMEOUT_MS);
+
+  it('tombol lain tidak ikut loading saat satu target dibalik indeksasinya', async () => {
+    const user = userEvent.setup();
+    const twoPublished = {
+      job: { id: 'job-1', state: 'queued' },
+      targets: [
+        { id: 't-1', siteId: 'site-1', articleSiteId: 'as-1', state: 'published', attempt: 1, publishedUrl: 'https://portal.example/judul-utama', sanitizedError: null },
+        { id: 't-2', siteId: 'site-2', articleSiteId: 'as-2', state: 'published', attempt: 1, publishedUrl: 'https://berita.example/judul-utama', sanitizedError: null },
+      ],
+    };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const command = vi.fn(async (action: string) => {
+      if (action === 'publication.setSiteRobots') {
+        await gate;
+        return { articleSiteId: 'as-1', directive: 'noindex,nofollow', version: 2 };
+      }
+      return twoPublished;
+    });
+    setup(command);
+    await user.type(screen.getByPlaceholderText(/id dari hasil pengiriman/i), 'job-1');
+    await user.click(screen.getByRole('button', { name: /^muat$/i }));
+    expect(await screen.findByText(/job-1/)).toBeDefined();
+
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    await user.click(screen.getAllByRole('button', { name: /^nonindeks$/i })[0]!);
+    await waitFor(() => expect(command).toHaveBeenCalledWith('publication.setSiteRobots', { articleSiteId: 'as-1', directive: 'noindex' }), { timeout: 5000 });
+    expect(screen.getByRole('button', { name: /^muat$/i }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: /tarik yang tayang/i }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getAllByRole('button', { name: /^indeks$/i })[1]!.hasAttribute('disabled')).toBe(false);
+    expect(screen.getAllByRole('button', { name: /^nonindeks$/i })[0]!.hasAttribute('disabled')).toBe(true);
+    release();
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^nonindeks$/i })[0]!.hasAttribute('disabled')).toBe(false));
+  }, USER_EVENT_TIMEOUT_MS);
 });
 
 describe('PublishingForm daftar situs tujuan', () => {

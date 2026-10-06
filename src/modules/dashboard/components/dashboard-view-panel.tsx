@@ -2,6 +2,7 @@
 
 import { memo } from 'react';
 import dynamic from 'next/dynamic';
+import { parseAsString, useQueryState } from 'nuqs';
 import { Globe, KeyRound, LogIn, Palette, Plug, UserRound, X, Zap } from 'lucide-react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
@@ -192,6 +193,20 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
 }) {
   const metadata = VIEW_REGISTRY[view];
 
+  /**
+   * Artikel yang sedang diubah di Tulis Berita; datang dari Kelola Artikel.
+   * Disimpan di URL agar tautan `?view=editorial&editArticle=<id>` bisa dibagikan
+   * dan tombol kembali browser keluar dari mode ubah dengan wajar.
+   */
+  const [editArticleId, setEditArticleId] = useQueryState(
+    'editArticle',
+    parseAsString.withOptions({ scroll: false, history: 'replace' }),
+  );
+  const exitEdit = () => {
+    void setEditArticleId(null);
+    onSelectView('articles');
+  };
+
   /** Tab-scoped tables: a tab lists only the collections it owns instead of the whole payload. */
   const collectionTables = (keys: readonly string[]) => (
     <DataView
@@ -258,10 +273,12 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           onSubmit={(payload) => command('article.create', payload, { refresh: true })}
           command={command}
           organizationId={organizationId}
+          editArticleId={editArticleId ?? undefined}
+          onExitEdit={exitEdit}
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} /> : null}
+      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onEditArticle={(articleId) => { void setEditArticleId(articleId); onSelectView('editorial'); }} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">

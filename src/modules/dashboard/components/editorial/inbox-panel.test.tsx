@@ -57,4 +57,32 @@ describe('ForOrgInbox', () => {
     const { container } = render(<ForOrgInbox command={undefined} />);
     expect(container.firstChild).toBeNull();
   });
+
+  it('baris lain tetap aktif saat satu baris menayangkan', async () => {
+    const user = userEvent.setup();
+    const second = { ...ROW, organizationId: 'org-upt-2', orgSlug: 'lapas-wonosobo', orgName: 'LAPAS WONOSOBO', articleId: 'art-2', title: 'Berita Kedua' };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const command = vi.fn(async (action: string, payload: unknown) => {
+      if (action === 'article.inbox.list') return [ROW, second];
+      if (action === 'article.bridge.requestAuto') {
+        if ((payload as { readonly articleId?: unknown }).articleId === 'art-1') await gate;
+        return { bridgeIds: ['b-1'], slug: 'berita-upt', siteCount: 3 };
+      }
+      throw new Error(`unexpected ${action}`);
+    });
+    render(<ForOrgInbox command={command} />);
+    expect(await screen.findByText('Berita Kedua')).toBeDefined();
+    await user.click(screen.getAllByRole('button', { name: 'Tayangkan' })[0]!);
+    await waitFor(() => expect(command).toHaveBeenCalledWith('article.bridge.requestAuto', {
+      ownerOrganizationId: 'org-upt',
+      articleId: 'art-1',
+    }));
+    expect(screen.getByRole('button', { name: 'Tayangkan' }).hasAttribute('disabled')).toBe(false);
+    release();
+    await waitFor(() => expect(screen.queryByText('Berita UPT')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Tayangkan' })).toBeDefined();
+  });
 });

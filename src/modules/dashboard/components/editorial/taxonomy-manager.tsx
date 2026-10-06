@@ -645,7 +645,7 @@ export function TaxonomyManager({
                 >
                   <div className="min-w-0">
                     <div className="flex items-start justify-between gap-1.5">
-                      <p className="m-0 truncate font-sans text-xs font-semibold text-paper">
+                      <p className="m-0 min-w-0 flex-1 truncate font-sans text-xs font-semibold text-paper">
                         {category.name}
                       </p>
                       <span

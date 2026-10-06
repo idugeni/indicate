@@ -111,6 +111,41 @@ describe('ArticleManager', () => {
     expect(command).toHaveBeenCalledWith('article.updates.list', { articleId: 'a-9' });
   });
 
+  it('mengalihkan ubah satu-org ke Tulis Berita bila onEditArticle diisi', async () => {
+    const user = userEvent.setup();
+    const command = vi.fn(async () => ({ id: 'a-1', version: 3 }));
+    const onEditArticle = vi.fn();
+    render(<ArticleManager data={DATA} command={command} onEditArticle={onEditArticle} />);
+    await user.click(screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo' }));
+    expect(onEditArticle).toHaveBeenCalledWith('a-1');
+    expect(command).toHaveBeenCalledTimes(1);
+    expect(command).toHaveBeenCalledWith('article.inbox.list', {});
+    expect(screen.queryByRole('form', { name: 'Ubah Artikel' })).toBeNull();
+  });
+
+  it('baris lain tetap aktif saat satu baris memproses', async () => {
+    const user = userEvent.setup();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const command = vi.fn(async () => {
+      await gate;
+      return { id: 'a-1', version: 3 };
+    });
+    render(<ArticleManager data={DATA} command={command} />);
+    await user.clear(screen.getByLabelText('Status'));
+    await user.click(screen.getByRole('button', { name: 'Arsipkan artikel Banjir Wonosobo' }));
+    await waitFor(() => expect(command).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Ubah artikel APBD Jateng' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Arsipkan artikel APBD Jateng' }).hasAttribute('disabled')).toBe(false);
+    release();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo' }).hasAttribute('disabled')).toBe(false),
+    );
+  });
+
   it('menawarkan pulihkan untuk baris arsip', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'a-3', version: 2 }));

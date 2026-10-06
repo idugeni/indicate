@@ -23,9 +23,12 @@ import { AppTooltip } from '@/ui/app-tooltip';
  * @param mode - `icon` renders the compact rail trigger, `button` the labelled form trigger.
  * @param trigger - Element that opens the confirmation, replacing the built-in icon button.
  *   Use it when the surrounding UI already offers a richer affordance, such as the sidebar profile row.
+ * @param open - Controlled open state. Leave undefined for the default uncontrolled trigger behavior.
+ * @param onOpenChange - Receives open-state changes; pair with `open` to close a parent drawer first.
+ * @param hideTrigger - Renders no trigger so a controlled dialog can live outside its opener.
  * @returns The confirmation dialog, opened by its trigger.
  */
-export function SignOutDialog({ mode, trigger }: { readonly mode: 'icon' | 'button'; readonly trigger?: ReactElement }) {
+export function SignOutDialog({ mode, trigger, open, onOpenChange, hideTrigger = false }: { readonly mode: 'icon' | 'button'; readonly trigger?: ReactElement; readonly open?: boolean | undefined; readonly onOpenChange?: ((open: boolean) => void) | undefined; readonly hideTrigger?: boolean | undefined }) {
   const iconTrigger = trigger ?? (
     <button
       type="button"
@@ -37,8 +40,8 @@ export function SignOutDialog({ mode, trigger }: { readonly mode: 'icon' | 'butt
   );
 
   return (
-    <AlertDialog>
-      {mode === 'icon' ? (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {hideTrigger ? null : mode === 'icon' ? (
         <AppTooltip label="Keluar dari workspace" side="right">
           <AlertDialogTrigger render={iconTrigger} />
         </AppTooltip>

@@ -43,7 +43,8 @@ export function LiveblogUpdates({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
+  /** Kunci operasi berjalan (`add` atau id entri); area lain tetap bisa diklik. */
+  const [busyKeys, setBusyKeys] = useState<readonly string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -85,8 +86,8 @@ export function LiveblogUpdates({
     };
   }, [command, articleId, ownerPayload]);
 
-  const mutate = async (run: () => Promise<unknown>, after: () => void): Promise<void> => {
-    setBusy(true);
+  const mutate = async (key: string, run: () => Promise<unknown>, after: () => void): Promise<void> => {
+    setBusyKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
     setError(null);
     try {
       const result = await run();
@@ -96,7 +97,7 @@ export function LiveblogUpdates({
     } catch {
       setError('Permintaan gagal. Coba lagi.');
     } finally {
-      setBusy(false);
+      setBusyKeys((prev) => prev.filter((candidate) => candidate !== key));
     }
   };
 
@@ -107,6 +108,7 @@ export function LiveblogUpdates({
       return;
     }
     void mutate(
+      'add',
       () => command('article.updates.create', { articleId, body, ...ownerPayload }, { refresh: true }),
       () => setDraft(''),
     );
@@ -119,6 +121,7 @@ export function LiveblogUpdates({
       return;
     }
     void mutate(
+      entry.id,
       () => command('article.updates.update', { id: entry.id, expectedVersion: entry.version, body, ...ownerPayload }, { refresh: true }),
       () => setEditingId(null),
     );
@@ -126,6 +129,7 @@ export function LiveblogUpdates({
 
   const remove = (entry: ArticleUpdateRecord) => {
     void mutate(
+      entry.id,
       () => command('article.updates.delete', { id: entry.id, expectedVersion: entry.version, ...ownerPayload }, { refresh: true }),
       () => setConfirmingId(null),
     );
@@ -145,15 +149,15 @@ export function LiveblogUpdates({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="cth: Gol pembuka — skor berubah 1-0."
-          disabled={busy}
+          disabled={busyKeys.includes('add')}
           maxLength={BODY_MAX}
           rows={3}
           className="font-sans text-xs"
         />
         <div className="flex items-center justify-between gap-2">
           <span className="font-mono text-[11px] tabular-nums text-paper-faint">{draft.trim().length}/{BODY_MAX}</span>
-          <Button type="button" size="xs" disabled={busy || draft.trim() === ''} onClick={add}>
-            {busy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Plus className="h-3 w-3" aria-hidden="true" />}
+          <Button type="button" size="xs" disabled={busyKeys.includes('add') || draft.trim() === ''} onClick={add}>
+            {busyKeys.includes('add') ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Plus className="h-3 w-3" aria-hidden="true" />}
             Tambah pembaruan
           </Button>
         </div>
@@ -176,7 +180,7 @@ export function LiveblogUpdates({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    disabled={busy}
+                    disabled={busyKeys.includes(entry.id)}
                     onClick={() => {
                       setEditingId(entry.id);
                       setEditBody(entry.body);
@@ -191,18 +195,18 @@ export function LiveblogUpdates({
                       type="button"
                       variant="ghost"
                       size="xs"
-                      disabled={busy}
+                      disabled={busyKeys.includes(entry.id)}
                       className="text-destructive"
                       onClick={() => remove(entry)}
                     >
-                      {busy ? 'Menghapus…' : 'Ya, hapus'}
+                      {busyKeys.includes(entry.id) ? 'Menghapus…' : 'Ya, hapus'}
                     </Button>
                   ) : (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      disabled={busy}
+                      disabled={busyKeys.includes(entry.id)}
                       className="text-paper-dim hover:text-destructive"
                       onClick={() => {
                         setConfirmingId(entry.id);
@@ -220,17 +224,17 @@ export function LiveblogUpdates({
                   <Textarea
                     value={editBody}
                     onChange={(event) => setEditBody(event.target.value)}
-                    disabled={busy}
+                    disabled={busyKeys.includes(entry.id)}
                     maxLength={BODY_MAX}
                     rows={3}
                     aria-label={`Isi pembaruan ${entry.id}`}
                     className="font-sans text-xs"
                   />
                   <div className="flex items-center gap-1.5">
-                    <Button type="button" size="xs" disabled={busy || editBody.trim() === ''} onClick={() => saveEdit(entry)}>
+                    <Button type="button" size="xs" disabled={busyKeys.includes(entry.id) || editBody.trim() === ''} onClick={() => saveEdit(entry)}>
                       Simpan
                     </Button>
-                    <Button type="button" variant="ghost" size="xs" disabled={busy} onClick={() => setEditingId(null)}>
+                    <Button type="button" variant="ghost" size="xs" disabled={busyKeys.includes(entry.id)} onClick={() => setEditingId(null)}>
                       Batal
                     </Button>
                   </div>

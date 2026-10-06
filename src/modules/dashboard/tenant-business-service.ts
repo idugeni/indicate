@@ -1227,18 +1227,24 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   }
 
   /**
-   * Muat satu artikel pemilik beserta lookup org-nya untuk editor steward.
+   * Muat satu artikel penuh (termasuk body) beserta lookup org-nya untuk editor.
    *
-   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param actor - Steward lintas-org, atau redaksi pemilik satu-org.
    * @param raw - Id artikel dan org pemiliknya.
    * @returns Artikel penuh (termasuk body) plus lookup kategori/penerbit/penulis/wilayah pemilik.
+   * @remarks Steward wajib super_admin tanpa kunci wilayah; pemilik satu-org cukup
+   * `article.manage`, dan bila terkunci wilayah hanya boleh memuat artikel dalam
+   * cakupannya.
    */
   async readArticleForEdit(actor: AuthorizedTenantActorContext, raw: unknown) {
-    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.read', 'article');
     if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.read', 'article');
-    if (regionLock(actor) !== null) return this.denied(actor, 'article.read', 'article');
     const parsed = articleEditLoadSchema.safeParse(raw);
     if (!parsed.success) return this.invalid(actor, parsed.error);
+    const sameOrg = parsed.data.ownerOrganizationId === actor.organizationId;
+    if (!sameOrg) {
+      if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.read', 'article');
+      if (regionLock(actor) !== null) return this.denied(actor, 'article.read', 'article');
+    }
     const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: parsed.data.ownerOrganizationId, regionScopeId: null };
     try {
       const value = await this.repository.executeForOrganization(ownerActor, parsed.data.ownerOrganizationId, async (transaction) => {
@@ -1246,6 +1252,12 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         if (found === undefined) throw new DashboardAccessDeniedError();
         await transaction.refreshArticleContent(found.id);
         const article = requireRecord(transaction.state.articles, found.id);
+        if (sameOrg) {
+          const lock = regionLock(actor);
+          if (lock !== null && (article.regionId === null || !regionScopeCovers(lock, article.regionId, transaction.state.regions))) {
+            throw new DashboardAccessDeniedError();
+          }
+        }
         return {
           article,
           lookups: {

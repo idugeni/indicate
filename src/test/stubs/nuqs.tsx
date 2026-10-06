@@ -15,6 +15,7 @@ import { useCallback, useState } from 'react';
 export function nuqsStub(): Record<string, unknown> {
   return {
     parseAsStringEnum: () => ({ withDefault: (fallback: string) => ({ withOptions: () => ({ kind: 'string', fallback }) }) }),
+    parseAsString: { withOptions: () => ({ kind: 'string', fallback: '' }) },
     parseAsInteger: { withDefault: (fallback: number) => ({ withOptions: () => ({ kind: 'integer', fallback }) }) },
     useQueryState: (key: string, parser: { kind: 'string' | 'integer'; fallback: string | number }) => {
       const initial = parser.kind === 'integer' ? Number(parser.fallback) : String(parser.fallback);

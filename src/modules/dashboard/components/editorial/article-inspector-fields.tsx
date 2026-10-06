@@ -76,7 +76,7 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
     setFeaturedId, setFeaturedOrgId, setFeaturedName, setFeaturedPreviewUrl, setFeaturedVersion,
     setFeaturedFocal,
     status, publishOnSaveId, publishOnSave, setPublishOnSave, targetSiteIds, targetLabel,
-    willPublish, editorStats, rawScheduleInput, setRawScheduleInput, rawPublishDateInput,
+    willPublish, editorStats, rawScheduleInput, setRawScheduleInput, rawPublishDateInput, isEditing,
     setRawPublishDateInput,
     publisherId, authorId, regionOptions, cityOptions, publisherOptions, allCategories,
     defaultCategoryName, authorOptions, effectiveCategoryIds, selectedPublisher,
@@ -118,6 +118,11 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
                     />
                   </div>
                 ) : null}
+                {isEditing ? (
+                  <p className="m-0 rounded border border-hairline bg-bg p-2.5 font-mono text-[11px] leading-relaxed text-paper-faint">
+                    Penerbitan ulang diatur dari Antrean Penerbitan dan Hasil Tayang.
+                  </p>
+                ) : (
                 <div className="flex items-center justify-between gap-2 rounded border border-hairline bg-bg p-2.5">
                   <span className="flex items-center gap-2">
                     <Checkbox
@@ -137,6 +142,7 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
                     </span>
                   ) : null}
                 </div>
+                )}
                 {status !== 'scheduled' && status !== 'active' ? (
                   <AppTooltip label={`Judul ${titleText.length}/60 · Deskripsi ${descriptionText.length}/160`}>
                     <span className="flex items-center gap-1.5">

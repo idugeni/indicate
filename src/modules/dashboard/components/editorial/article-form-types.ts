@@ -179,3 +179,35 @@ export function findForeignMediaIds(
     return owner !== null && owner !== articleOrg;
   });
 }
+
+/**
+ * Nilai awal artikel existing untuk mode ubah composer.
+ *
+ * @remarks Subset `ArticleRecord` yang dipakai mengisi state form; `version`
+ * dipakai sebagai `expectedVersion` dan disegarkan dari hasil `article.update`.
+ */
+export interface EditArticleInit {
+  readonly id: string;
+  readonly version: number;
+  readonly regionId: string | null;
+  readonly publisherId: string | null;
+  readonly categoryIds: readonly string[];
+  readonly authorId: string | null;
+  readonly leadMediaId: string | null;
+  readonly coverImageUrl: string | null;
+  readonly slug: string;
+  readonly title: string;
+  readonly excerpt: string | null;
+  readonly canonicalUrl: string | null;
+  readonly body: string;
+  readonly bodyJson: unknown | null;
+  readonly source: string;
+  readonly tags: readonly string[];
+  readonly status: string;
+  readonly type: string;
+  readonly isSponsored: boolean;
+  readonly videoUrl: string | null;
+  readonly audioUrl: string | null;
+  readonly durationSeconds: number | null;
+  readonly scheduledAt: string | null;
+}

@@ -63,4 +63,34 @@ describe('LiveblogUpdates', () => {
     expect(await screen.findByText('Gol pembuka.')).toBeDefined();
     expect(command).toHaveBeenCalledWith('article.updates.list', { articleId: 'a-1', ownerOrganizationId: 'org-upt' });
   });
+
+  it('entri lain tetap aktif saat satu entri dihapus', async () => {
+    const user = userEvent.setup();
+    const second = { ...ENTRY, id: 'u-2', body: 'Gol kedua.' };
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const command = vi.fn(async (action: string) => {
+      if (action === 'article.updates.list') return [ENTRY, second];
+      if (action === 'article.updates.delete') {
+        await gate;
+        return { id: 'u-1' };
+      }
+      throw new Error(`unexpected action ${action}`);
+    });
+    render(<LiveblogUpdates articleId="a-1" articleTitle="Live Skor" command={command} />);
+    expect(await screen.findByText('Gol kedua.')).toBeDefined();
+    await user.type(screen.getByLabelText('Pembaruan baru (baris pertama jadi judul)'), 'Gol ketiga.');
+    await user.click(screen.getByRole('button', { name: 'Hapus pembaruan u-1' }));
+    await user.click(screen.getByRole('button', { name: 'Ya, hapus' }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith(
+      'article.updates.delete', { id: 'u-1', expectedVersion: 1 }, { refresh: true },
+    ));
+    expect(screen.getByRole('button', { name: 'Menghapus…' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Hapus pembaruan u-2' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Tambah pembaruan' }).hasAttribute('disabled')).toBe(false);
+    release();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Ya, hapus' })).toBeNull());
+  });
 });

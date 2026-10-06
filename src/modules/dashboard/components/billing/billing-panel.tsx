@@ -489,12 +489,14 @@ export function BillingPanel({
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-paper">{invoice.number}</span>
               </AppTooltip>
               <span className="flex-none font-mono text-[11px] tabular-nums text-paper-dim">{formatIdr(invoice.amountIdr)}</span>
-              <span className="min-w-0 flex-none font-mono text-[10px] tabular-nums text-paper-faint">
+              <span className="flex-none font-mono text-[10px] tabular-nums text-paper-faint">
                 {invoice.status === 'unpaid'
                   ? `Tempo ${invoice.dueAt === null ? '-' : formatDate(invoice.dueAt)}`
                   : `Bayar ${invoice.paidAt === null ? '-' : formatDate(invoice.paidAt)}`}
-                {invoice.billingNote ? ` · ${invoice.billingNote}` : ''}
               </span>
+              {invoice.billingNote ? (
+                <span className="w-full min-w-0 break-words font-sans text-[11px] text-paper-dim">{invoice.billingNote}</span>
+              ) : null}
               {invoice.status === 'voided' && invoice.voidReason ? (
                 <span className="w-full font-sans text-[11px] text-error">Batal: {invoice.voidReason}</span>
               ) : null}

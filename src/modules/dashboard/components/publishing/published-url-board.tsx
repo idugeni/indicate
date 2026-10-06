@@ -435,18 +435,18 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
               >
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline/60 pb-2">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:flex-row sm:items-center">
                       <AppTooltip label="Klik untuk menyalin slug">
                         <button
                           type="button"
                           onClick={() => handleCopySlug(entry.articleId, entry.slug)}
-                          className="group inline-flex items-center gap-1 rounded bg-bg px-2 py-0.5 font-mono text-[11px] text-paper-dim transition hover:bg-bg-raised hover:text-paper"
+                          className="group inline-flex min-w-0 max-w-full items-center gap-1 rounded bg-bg px-2 py-0.5 font-mono text-[11px] text-paper-dim transition hover:bg-bg-raised hover:text-paper"
                         >
-                          <span>/{entry.slug}</span>
+                          <span className="min-w-0 truncate">/{entry.slug}</span>
                           {isSlugCopied ? (
-                            <Check className="h-3 w-3 text-emerald-400" />
+                            <Check className="h-3 w-3 shrink-0 text-emerald-400" />
                           ) : (
-                            <Copy className="h-3 w-3 opacity-60 group-hover:opacity-100" />
+                            <Copy className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100" />
                           )}
                         </button>
                       </AppTooltip>

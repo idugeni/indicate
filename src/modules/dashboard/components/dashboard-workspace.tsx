@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { Menu } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar';
@@ -41,6 +41,7 @@ import {
 } from '@/modules/dashboard/components/dashboard-sidebar';
 import { DashboardViewPanel, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/dashboard-view-panel';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
+import { AppTooltip } from '@/ui/app-tooltip';
 
 export type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
 
@@ -154,6 +155,7 @@ export function DashboardWorkspace({
   const [busy, setBusy] = useState(false);
   const [currentPage, setCurrentPage] = useDashboardPage();
   const [navOpen, setNavOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
   const [crossOrg, setCrossOrg] = useState(() => (organizations[0]?.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin));
 
   useEffect(() => {
@@ -635,29 +637,42 @@ export function DashboardWorkspace({
                 onSelect={selectMobileNavView}
               />            </div>
             <div className="flex-none border-t border-hairline px-4 py-3">
-              <SignOutDialog
-                mode="icon"
-                trigger={
+              <div className="flex w-full items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Buka profil saya"
+                  onClick={() => selectMobileNavView('settings')}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+                >
+                  <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
+                  <span className="grid min-w-0 flex-1 leading-none">
+                    <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
+                    {activeOrganization?.role ? (
+                      <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                        {activeOrganization.role}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+                <AppTooltip label="Keluar dari workspace" side="right">
                   <button
                     type="button"
                     aria-label="Keluar dari workspace"
-                    className="flex w-full items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+                    onClick={() => {
+                      setNavOpen(false);
+                      setSignOutOpen(true);
+                    }}
+                    className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
                   >
-                    <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
-                    <span className="grid min-w-0 flex-1 leading-none">
-                      <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
-                      {activeOrganization?.role ? (
-                        <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                          {activeOrganization.role}
-                        </span>
-                      ) : null}
-                    </span>
+                    <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
-                }
-              />
+                </AppTooltip>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
+
+        <SignOutDialog mode="icon" open={signOutOpen} onOpenChange={setSignOutOpen} hideTrigger />
 
         <DashboardViewPanel
           view={view}

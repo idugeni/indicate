@@ -19,9 +19,10 @@ vi.mock('nuqs', async () => {
   const React = await import('react');
   return {
     parseAsStringEnum: () => ({ withDefault: (fallback: unknown) => ({ withOptions: () => fallback }) }),
+    parseAsString: { withOptions: () => null },
     parseAsInteger: { withDefault: (fallback: unknown) => ({ withOptions: () => fallback }) },
     useQueryState: (key: string) => {
-      const [value, setValue] = React.useState(key === 'page' ? 1 : initialView);
+      const [value, setValue] = React.useState(key === 'page' ? 1 : key === 'editArticle' ? null : initialView);
       if (key === 'view') setViewExternal = setValue;
       return [value, setValue];
     },

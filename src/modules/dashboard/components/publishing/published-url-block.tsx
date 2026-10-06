@@ -373,7 +373,7 @@ export function PublishedUrlBlock({
                           {(index + 1).toString().padStart(2, '0')}.
                         </span>
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="shrink-0 rounded bg-bg px-1.5 py-0.5 font-mono text-[10px] text-paper-dim">
+                          <span className="max-w-[120px] shrink-0 truncate rounded bg-bg px-1.5 py-0.5 font-mono text-[10px] text-paper-dim">
                             {hostname}
                           </span>
                           <span className="truncate font-mono text-[11px] text-paper">

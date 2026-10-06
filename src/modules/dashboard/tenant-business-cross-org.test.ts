@@ -254,4 +254,25 @@ describe('TenantBusinessService cross-org steward', () => {
     const locked = await harness().service.readArticleForEdit(lockedSteward, { id: ARTICLE, ownerOrganizationId: OWNER });
     expect(locked.ok).toBe(false);
   });
+
+  it('edit.load se-org memuat artikel sendiri tanpa grant steward', async () => {
+    const sameOrg = { ...steward, organizationId: OWNER, platformPermissionSet: new Set<string>() };
+    const { repository, service } = harness();
+    const result = await service.readArticleForEdit(sameOrg, { id: ARTICLE, ownerOrganizationId: OWNER });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.article.id).toBe(ARTICLE);
+    expect(result.value.lookups.categories).toEqual([{ id: 'c-berita', name: 'Berita' }]);
+    expect((repository.executeForOrganization as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]).toBe(OWNER);
+  });
+
+  it('menolak edit.load se-org tanpa article.manage dan untuk redaksi terkunci region di luar cakupan', async () => {
+    const sameOrg = { ...steward, organizationId: OWNER, platformPermissionSet: new Set<string>() };
+    const noManage = { ...sameOrg, permissionSet: new Set<string>(['article.read']) };
+    const denied = await harness().service.readArticleForEdit(noManage, { id: ARTICLE, ownerOrganizationId: OWNER });
+    expect(denied.ok).toBe(false);
+    const lockedOut = { ...sameOrg, regionScopeId: 'region-1' };
+    const locked = await harness().service.readArticleForEdit(lockedOut, { id: ARTICLE, ownerOrganizationId: OWNER });
+    expect(locked.ok).toBe(false);
+  });
 });

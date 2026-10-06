@@ -291,7 +291,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
           eyebrow={`${reports.length.toLocaleString('id-ID')} laporan · SLA 1x24 jam`}
         >
         <p className="m-0 font-sans text-xs font-medium text-paper">Laporan konten publik</p>
-        <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
+        <p className="m-0 mt-1 break-words font-sans text-[11px] leading-relaxed text-paper-dim">
           SLA peninjauan 1x24 jam (Ketentuan §14). Tindakan penarikan dilakukan lewat alur unpublish yang sudah ada,
           lalu laporan ditandai di sini sebagai bukti penanganan.
         </p>
@@ -309,7 +309,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                   {report.status}
                 </Badge>
               </div>
-              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{report.details}</p>
+              <p className="m-0 mt-1 break-words font-sans text-[11px] leading-relaxed text-paper-dim">{report.details}</p>
               <AppTooltip label={`${report.id} · ${report.reporterContact}`} side="top">
                 <p className="m-0 mt-1 truncate font-mono text-[10px] tabular-nums text-paper-faint">
                   {report.id} · {report.reporterContact}
@@ -395,7 +395,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                 </Badge>
               </div>
               <p className="m-0 mt-0.5 font-mono text-[10px] text-paper-dim">{ticket.requestType}</p>
-              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{ticket.details}</p>
+              <p className="m-0 mt-1 break-words font-sans text-[11px] leading-relaxed text-paper-dim">{ticket.details}</p>
               {ticket.status === 'open' || ticket.status === 'in_progress' ? (
                 <div className="mt-2 flex flex-col gap-1.5 border-t border-hairline/60 pt-2">
                   <Input
@@ -431,7 +431,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
             eyebrow={`${holds.length.toLocaleString('id-ID')} penundaan`}
           >
         <p className="m-0 font-sans text-xs font-medium text-paper">Tunda hapus resmi</p>
-        <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">
+        <p className="m-0 mt-1 break-words font-sans text-[11px] leading-relaxed text-paper-dim">
           Organisasi yang ditunda dilewatkan pembersihan retensi dan penghapusan sampai penundaan dilepas. Satu penundaan aktif per organisasi.
         </p>
         <div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto]">
@@ -474,7 +474,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                   {hold.releasedAt === null ? 'Aktif' : 'Dilepas'}
                 </Badge>
               </div>
-              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{hold.reason}</p>
+              <p className="m-0 mt-1 break-words font-sans text-[11px] leading-relaxed text-paper-dim">{hold.reason}</p>
               <p className="m-0 mt-1 font-mono text-[10px] tabular-nums text-paper-faint">
                 {formatDate(hold.createdAt)} ({formatRelative(hold.createdAt)})
               </p>
@@ -539,7 +539,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                   {row.status}
                 </Badge>
               </div>
-              <p className="m-0 mt-1 font-sans text-[11px] leading-relaxed text-paper-dim">{row.reason}</p>
+              <p className="m-0 mt-1 break-words font-sans text-[11px] leading-relaxed text-paper-dim">{row.reason}</p>
               <p className="m-0 mt-1 font-mono text-[10px] tabular-nums text-paper-faint">
                 {formatDate(row.createdAt)} ({formatRelative(row.createdAt)}
                 {row.completedAt ? ` → ${formatDate(row.completedAt)}` : ''}

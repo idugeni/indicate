@@ -222,6 +222,7 @@ export function ArticleManager({
   articlesTotal,
   onLoadMoreArticles,
   crossOrg,
+  onEditArticle,
 }: {
   readonly data: unknown;
   readonly command?: DashboardCommand | undefined;
@@ -230,6 +231,8 @@ export function ArticleManager({
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
   readonly crossOrg?: boolean | undefined;
+  /** Alihkan ubah satu-org ke Tulis Berita; tanpa ini ubah inline seperti semula. */
+  readonly onEditArticle?: ((articleId: string) => void) | undefined;
 }) {
   const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
@@ -269,7 +272,14 @@ export function ArticleManager({
   const [site, setSite] = useState('');
   const [status, setStatus] = useState('active');
   const [sort, setSort] = useState<string>(DEFAULT_SORT);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyIds, setBusyIds] = useState<readonly string[]>([]);
+  /** Tandai baris sibuk; baris lain tetap bisa diklik dan memproses sendiri. */
+  const markBusy = (id: string): void => {
+    setBusyIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+  const clearBusy = (id: string): void => {
+    setBusyIds((prev) => (prev.includes(id) ? prev.filter((candidate) => candidate !== id) : prev));
+  };
   const [editingId, setEditingId] = useState<string | null>(null);
   const [crossEdit, setCrossEdit] = useState<{ readonly id: string; readonly article: ArchiveArticle; readonly lookups: LookupTables } | null>(null);
   const [deleting, setDeleting] = useState<ArchiveArticle | null>(null);
@@ -419,7 +429,11 @@ export function ArticleManager({
   };
 
   const startEdit = async (article: ArchiveArticle): Promise<void> => {
-    if (command === undefined || busyId !== null) return;
+    if (command === undefined || busyIds.includes(article.id)) return;
+    if (crossOrg !== true && onEditArticle !== undefined) {
+      onEditArticle(article.id);
+      return;
+    }
     if (editingId === article.id) {
       setEditingId(null);
       setCrossEdit(null);
@@ -429,7 +443,7 @@ export function ArticleManager({
     if (crossOrg === true && (ownerId === undefined || ownerId === '')) return;
     setEditingId(article.id);
     if (crossOrg !== true || crossEdit?.id === article.id) return;
-    setBusyId(article.id);
+    markBusy(article.id);
     try {
       const result = await command('article.edit.load', { id: article.id, ownerOrganizationId: ownerId as string });
       const loaded = (typeof result === 'object' && result !== null ? result : {}) as {
@@ -444,35 +458,35 @@ export function ArticleManager({
       setEditingId(null);
       toast.error(error instanceof Error ? error.message : 'Gagal memuat editor lintas-org.');
     } finally {
-      setBusyId(null);
+      clearBusy(article.id);
     }
   };
 
   const runRowAction = async (article: ArchiveArticle): Promise<void> => {
-    if (command === undefined || busyId !== null) return;
+    if (command === undefined || busyIds.includes(article.id)) return;
     const action = article.status === 'archived' ? 'article.restore' : 'article.archive';
     const restoring = article.status === 'archived';
     const ownerPayload = crossOrg === true && typeof article.organizationId === 'string' && article.organizationId !== ''
       ? { ownerOrganizationId: article.organizationId }
       : {};
-    setBusyId(article.id);
+    markBusy(article.id);
     try {
       await command(action, { id: article.id, expectedVersion: article.version, ...ownerPayload }, { refresh: true });
       toast.success(restoring ? 'Artikel dipulihkan.' : 'Artikel diarsipkan.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Perubahan status artikel gagal.');
     } finally {
-      setBusyId(null);
+      clearBusy(article.id);
     }
   };
 
   const confirmDelete = async (): Promise<void> => {
-    if (command === undefined || deleting === null || busyId !== null) return;
+    if (command === undefined || deleting === null || busyIds.includes(deleting.id)) return;
     const target = deleting;
     const ownerPayload = crossOrg === true && typeof target.organizationId === 'string' && target.organizationId !== ''
       ? { ownerOrganizationId: target.organizationId }
       : {};
-    setBusyId(target.id);
+    markBusy(target.id);
     try {
       const result = await command('article.delete', { id: target.id, expectedVersion: target.version, ...ownerPayload }, { refresh: true });
       if (result !== null) {
@@ -482,7 +496,7 @@ export function ArticleManager({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Artikel gagal dihapus.');
     } finally {
-      setBusyId(null);
+      clearBusy(target.id);
     }
   };
 
@@ -683,9 +697,9 @@ export function ArticleManager({
               const isArchived = article.status === 'archived';
               const rowActionLabel = isArchived ? 'Pulihkan' : 'Arsipkan';
               const RowActionIcon = isArchived ? ArchiveRestore : Archive;
-              const actionsDisabled = command === undefined || busyId !== null;
+              const rowBusy = busyIds.includes(article.id);
+              const actionsDisabled = command === undefined || rowBusy;
               const editDisabled = actionsDisabled || (crossOrgActive && (typeof article.organizationId !== 'string' || article.organizationId === ''));
-              const rowBusy = busyId === article.id;
               const statusTone = STATUS_BADGE_TONE[resolveStatus(article.status).tone];
               const visibleTags = article.tags.slice(0, 2);
               const hiddenTagCount = article.tags.length - visibleTags.length;
@@ -700,7 +714,7 @@ export function ArticleManager({
                   {layout === 'mobile' ? (
                   <div className="flex flex-col space-y-3 p-3.5 sm:space-y-3 md:hidden">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                         <span className="font-mono text-xs tabular-nums text-paper-faint">#{rowNumber}</span>
                         <Badge
                           variant="outline"
@@ -725,7 +739,7 @@ export function ArticleManager({
 
                     <div className="flex flex-wrap items-center gap-1">
                       {categoryLabels.map((name) => (
-                        <Badge key={name} variant="outline" className="font-sans text-[10px] text-paper-dim">
+                        <Badge key={name} variant="outline" className="max-w-full truncate font-sans text-[10px] text-paper-dim">
                           {name}
                         </Badge>
                       ))}
@@ -735,7 +749,7 @@ export function ArticleManager({
                         </Badge>
                       ) : null}
                       {visibleTags.map((t) => (
-                        <span key={t} className="font-mono text-[10px] text-paper-faint">
+                        <span key={t} className="max-w-full break-all font-mono text-[10px] text-paper-faint">
                           #{t}
                         </span>
                       ))}
@@ -743,12 +757,12 @@ export function ArticleManager({
 
                     <Separator />
 
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-[10px] text-paper-faint">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-paper-faint">
                         Ubah {formatLong(article.updatedAt)}
                       </span>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex shrink-0 items-center gap-1">
                         <Button
                           type="button"
                           variant="ghost"
@@ -801,12 +815,12 @@ export function ArticleManager({
                         <div className="flex flex-wrap items-center gap-1.5">
                           <PortalList hostnames={portalNames} />
                           {categoryLabels.map((name) => (
-                            <Badge key={name} variant="outline" className="font-sans text-[10px] text-paper-dim">
+                            <Badge key={name} variant="outline" className="max-w-full truncate font-sans text-[10px] text-paper-dim">
                               {name}
                             </Badge>
                           ))}
                           {visibleTags.map((t) => (
-                            <span key={t} className="font-mono text-[10px] text-paper-faint">
+                            <span key={t} className="max-w-full break-all font-mono text-[10px] text-paper-faint">
                               #{t}
                             </span>
                           ))}
@@ -815,7 +829,7 @@ export function ArticleManager({
                     </div>
 
                     <div className="flex flex-none flex-col items-end space-y-2 border-l border-hairline pl-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
                         <span className="font-mono text-[11px] text-paper-faint">
                           {formatLong(article.updatedAt)}
                         </span>
@@ -985,14 +999,15 @@ export function ArticleManager({
                   ) : null}
                   {isEditingThisRow && (
                     <div className="border-t border-hairline bg-paper/5 p-3 sm:p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="font-mono text-xs uppercase tracking-wider text-paper">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <span className="min-w-0 flex-1 truncate font-mono text-xs uppercase tracking-wider text-paper">
                           Edit: {article.title}
                         </span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon-sm"
+                          className="shrink-0"
                           onClick={() => { setEditingId(null); setCrossEdit(null); }}
                           aria-label="Tutup form edit"
                         >
@@ -1047,13 +1062,13 @@ export function ArticleManager({
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
-              disabled={busyId !== null}
+              disabled={deleting !== null && busyIds.includes(deleting.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 void confirmDelete();
               }}
             >
-              {busyId !== null ? 'Menghapus…' : 'Hapus permanen'}
+              {deleting !== null && busyIds.includes(deleting.id) ? 'Menghapus…' : 'Hapus permanen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
