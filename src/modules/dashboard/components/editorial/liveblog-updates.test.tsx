@@ -56,4 +56,11 @@ describe('LiveblogUpdates', () => {
       'article.updates.delete', { id: 'u-1', expectedVersion: 1 }, { refresh: true },
     ));
   });
+
+  it('meneruskan org pemilik untuk steward lintas-org', async () => {
+    const command = stubCommand();
+    render(<LiveblogUpdates articleId="a-1" articleTitle="Live Skor" command={command} ownerOrganizationId="org-upt" />);
+    expect(await screen.findByText('Gol pembuka.')).toBeDefined();
+    expect(command).toHaveBeenCalledWith('article.updates.list', { articleId: 'a-1', ownerOrganizationId: 'org-upt' });
+  });
 });

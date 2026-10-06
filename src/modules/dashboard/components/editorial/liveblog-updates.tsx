@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -24,16 +24,19 @@ function asUpdates(value: unknown): readonly ArticleUpdateRecord[] {
  * @param articleId - Artikel induk; harus mode liveblog di server.
  * @param articleTitle - Judul untuk label aksesibel.
  * @param command - Dispatcher perintah dasbor ke API.
+ * @param ownerOrganizationId - Org pemilik untuk steward lintas-org; tanpa ini jalur satu-org yang dipakai.
  * @returns Panel daftar, tambah, ubah, dan hapus entri.
  */
 export function LiveblogUpdates({
   articleId,
   articleTitle,
   command,
+  ownerOrganizationId,
 }: {
   readonly articleId: string;
   readonly articleTitle: string;
   readonly command: DashboardCommand;
+  readonly ownerOrganizationId?: string | undefined;
 }) {
   const draftId = useId();
   const [updates, setUpdates] = useState<readonly ArticleUpdateRecord[]>([]);
@@ -45,11 +48,16 @@ export function LiveblogUpdates({
   const [editBody, setEditBody] = useState('');
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
+  const ownerPayload = useMemo(
+    () => (ownerOrganizationId === undefined || ownerOrganizationId === '' ? {} : { ownerOrganizationId }),
+    [ownerOrganizationId],
+  );
+
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await command('article.updates.list', { articleId });
+      const result = await command('article.updates.list', { articleId, ...ownerPayload });
       if (result === null) return;
       setUpdates(asUpdates(result));
     } catch {
@@ -57,13 +65,13 @@ export function LiveblogUpdates({
     } finally {
       setLoading(false);
     }
-  }, [command, articleId]);
+  }, [command, articleId, ownerPayload]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const result = await command('article.updates.list', { articleId });
+        const result = await command('article.updates.list', { articleId, ...ownerPayload });
         if (cancelled || result === null) return;
         setUpdates(asUpdates(result));
       } catch {
@@ -75,7 +83,7 @@ export function LiveblogUpdates({
     return () => {
       cancelled = true;
     };
-  }, [command, articleId]);
+  }, [command, articleId, ownerPayload]);
 
   const mutate = async (run: () => Promise<unknown>, after: () => void): Promise<void> => {
     setBusy(true);
@@ -99,7 +107,7 @@ export function LiveblogUpdates({
       return;
     }
     void mutate(
-      () => command('article.updates.create', { articleId, body }, { refresh: true }),
+      () => command('article.updates.create', { articleId, body, ...ownerPayload }, { refresh: true }),
       () => setDraft(''),
     );
   };
@@ -111,14 +119,14 @@ export function LiveblogUpdates({
       return;
     }
     void mutate(
-      () => command('article.updates.update', { id: entry.id, expectedVersion: entry.version, body }, { refresh: true }),
+      () => command('article.updates.update', { id: entry.id, expectedVersion: entry.version, body, ...ownerPayload }, { refresh: true }),
       () => setEditingId(null),
     );
   };
 
   const remove = (entry: ArticleUpdateRecord) => {
     void mutate(
-      () => command('article.updates.delete', { id: entry.id, expectedVersion: entry.version }, { refresh: true }),
+      () => command('article.updates.delete', { id: entry.id, expectedVersion: entry.version, ...ownerPayload }, { refresh: true }),
       () => setConfirmingId(null),
     );
   };

@@ -38,6 +38,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
   }
   const appendAudit = vi.fn();
   const repository = {
+    hasPublishedBridges: vi.fn(async () => false),
     execute: vi.fn(async (actor: unknown, permission: unknown, operation: unknown) => {
       const op = operation as (transaction: unknown) => unknown;
       return op({ state, resolveUserDisplayName: async () => 'Operator', appendAudit, refreshArticleContent: async () => false, articleContentTouched: new Set<string>() });

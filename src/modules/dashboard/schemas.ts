@@ -227,7 +227,8 @@ export const articleUpdateSchema = z.object({
   id,
   expectedVersion,
   body: z.string().trim().min(1).max(200_000).optional(),
-  tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).default([]),
+  /** Absent tags preserve the stored set; only an explicit array replaces it. */
+  tags: z.preprocess((value) => (Array.isArray(value) ? normalizeTagList(value) : value), z.array(z.string().trim().min(1).max(60)).max(TAG_MAX_COUNT)).optional(),
   status: z.enum(['draft', 'in_review', 'scheduled', 'active']).default('draft'),
   /** Update omits defaults: absent mode fields mean "keep current", never "reset to standard". */
   type: articleMode.optional(),
@@ -235,6 +236,8 @@ export const articleUpdateSchema = z.object({
 }).strict().superRefine(refineArticleMode);
 export const articleTransitionSchema = z.object({ id, expectedVersion, ownerOrganizationId: id.optional() }).strict();
 export const articleDeleteSchema = z.object({ id, expectedVersion, ownerOrganizationId: id.optional() }).strict();
+/** Muat satu artikel pemilik beserta lookup org-nya untuk editor steward. */
+export const articleEditLoadSchema = z.object({ id, ownerOrganizationId: id }).strict();
 /** Steward cross-org listing filters; org-scoped ids are rejected here and stay single-org only. */
 export const crossOrgArticleFilterSchema = z.object({
   status: z.enum(['draft', 'in_review', 'scheduled', 'active', 'archived']).optional(),
@@ -245,18 +248,20 @@ export const crossOrgArticleFilterSchema = z.object({
   limit: z.coerce.number().int().min(0).max(500).optional(), cursor: z.uuid().optional(),
 }).strict();
 /** List entri liveblog milik satu artikel mode `liveblog`. */
-export const articleUpdateListSchema = z.object({ articleId: id }).strict();
+export const articleUpdateListSchema = z.object({ articleId: id, ownerOrganizationId: id.optional() }).strict();
 /** Tambah satu entri liveblog; `sortOrder` diisi server sebagai max+1. */
 export const articleUpdateCreateSchema = z.object({
   articleId: id,
   body: z.string().trim().min(1).max(20000),
+  ownerOrganizationId: id.optional(),
 }).strict();
 export const articleUpdateUpdateSchema = z.object({
   id,
   expectedVersion,
   body: z.string().trim().min(1).max(20000),
+  ownerOrganizationId: id.optional(),
 }).strict();
-export const articleUpdateDeleteSchema = z.object({ id, expectedVersion }).strict();
+export const articleUpdateDeleteSchema = z.object({ id, expectedVersion, ownerOrganizationId: id.optional() }).strict();
 export const assignmentSchema = z.object({ articleId: id, siteIds: z.array(id).max(200) }).strict();
 /**
  * Terbitkan artikel milik org lain ke portal org aktif (jembatan lintas-org).
@@ -293,6 +298,7 @@ export type RegionCreateInput = z.infer<typeof regionCreateSchema>;
 export type SiteCreateInput = z.infer<typeof siteCreateSchema>;
 export type PublisherCreateInput = z.infer<typeof publisherCreateSchema>;
 export type ArticleCreateInput = z.infer<typeof articleCreateSchema>;
+export type ArticleUpdateInput = z.infer<typeof articleUpdateSchema>;
 
 
 export const analyticsFilterSchema = z.object({ from: z.iso.datetime().optional(), to: z.iso.datetime().optional() }).strict();

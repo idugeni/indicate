@@ -40,9 +40,9 @@ import {
   auditFilterSchema, authorCreateSchema, authorUpdateSchema, categoryCreateSchema, categoryDeleteSchema, categoryUpdateSchema, crossOrgArticleFilterSchema,
   domainCreateSchema, domainUpdateSchema, invitationCreateSchema, invitationRevokeSchema, isKnownTemplateId, membershipSchema, publisherCreateSchema, publisherDecisionSchema,
   publisherUpdateSchema, regionCreateSchema, regionUpdateSchema, roleCreateSchema, roleUpdateSchema,
-  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteViewsBulkSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema, bridgeRequestSchema, bridgeUnpublishSchema, bridgeAutoRequestSchema,
+  siteCreateSchema, siteSettingsSchema, siteUpdateSchema, siteViewsSchema, siteViewsBulkSchema, siteCachePurgeSchema, tagRemoveSchema, tagRenameSchema, bridgeRequestSchema, bridgeUnpublishSchema, bridgeAutoRequestSchema, articleEditLoadSchema,
 } from '@/modules/dashboard/schemas';
-import type { ArticleCreateInput } from '@/modules/dashboard/schemas';
+import type { ArticleCreateInput, ArticleUpdateInput } from '@/modules/dashboard/schemas';
 
 interface ClockLike { now(): Date }
 interface VersionInput { readonly id: string; readonly expectedVersion: number }
@@ -931,6 +931,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         publishers, regions, sites,
         domains: scope.domains.filter((domain) => referencedDomainIds.has(domain.id)).map(({ id, normalizedHostname }) => ({ id, normalizedHostname })),
         articleSites: scope.articleSites,
+        bridgePublished: scope.bridgePublished,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       } };
     } catch (error) {
@@ -1170,24 +1171,96 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   }
 
   updateArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
-    return this.mutate({ actor, raw, schema: articleUpdateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.update', targetType: 'article', scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'], execute: async (transaction, value, now) => {
-      this.requireArticleReferences(transaction.state, value);
-      const beforeRef = requireRecord(transaction.state.articles, value.id); requireVersion(beforeRef, value.expectedVersion);
-      requireArticleInScope(transaction.state, beforeRef.id, actor);
-      requireLockedRegionValue(transaction.state, actor, value.regionId);
-      if (value.slug !== beforeRef.slug && transaction.state.articles.some(({ id, slug }) => id !== value.id && slug === value.slug)) throw new DashboardConflictError();
-      await transaction.refreshArticleContent(value.id);
-      if (value.body !== undefined || value.bodyJson !== undefined) transaction.articleContentTouched.add(value.id);
-      const before = requireRecord(transaction.state.articles, value.id);
-      const existingCategoryIds = transaction.state.articleCategories.filter((row) => row.articleId === value.id).sort((a, b) => a.position - b.position).map((row) => row.categoryId);
-      const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds === undefined
-        ? (value.categoryId === before.categoryId ? existingCategoryIds : (value.categoryId === null ? [] : [value.categoryId]))
-        : value.categoryIds);
-      const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId', 'article-cover');
-      const mode = this.requireArticleMode({ ...value, leadMediaId }, before);
-      const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body ?? before.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source ?? before.source, tags: [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now, ...mode };
-      replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, distinctCategoryIds); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
-    }});
+    const parsed = articleUpdateSchema.safeParse(raw);
+    if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
+    const ownerId = parsed.data.ownerOrganizationId ?? actor.organizationId;
+    if (ownerId !== actor.organizationId) {
+      return this.updateArticleForOwner(actor, ownerId, parsed.data);
+    }
+    return this.mutate({ actor, raw, schema: articleUpdateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.update', targetType: 'article', scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'], execute: async (transaction, value, now) => this.applyArticleUpdate(transaction, actor, value, now) });
+  }
+
+  private async applyArticleUpdate(transaction: DashboardTransaction, targetActor: AuthorizedTenantActorContext, value: ArticleUpdateInput, now: string): Promise<ArticleRecord> {
+    this.requireArticleReferences(transaction.state, value);
+    const beforeRef = requireRecord(transaction.state.articles, value.id); requireVersion(beforeRef, value.expectedVersion);
+    requireArticleInScope(transaction.state, beforeRef.id, targetActor);
+    requireLockedRegionValue(transaction.state, targetActor, value.regionId);
+    if (value.slug !== beforeRef.slug && transaction.state.articles.some(({ id, slug }) => id !== value.id && slug === value.slug)) throw new DashboardConflictError();
+    await transaction.refreshArticleContent(value.id);
+    if (value.body !== undefined || value.bodyJson !== undefined) transaction.articleContentTouched.add(value.id);
+    const before = requireRecord(transaction.state.articles, value.id);
+    const existingCategoryIds = transaction.state.articleCategories.filter((row) => row.articleId === value.id).sort((a, b) => a.position - b.position).map((row) => row.categoryId);
+    const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds === undefined
+      ? (value.categoryId === before.categoryId ? existingCategoryIds : (value.categoryId === null ? [] : [value.categoryId]))
+      : value.categoryIds);
+    const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId, before.leadMediaId ?? null, 'leadMediaId', 'article-cover');
+    const mode = this.requireArticleMode({ ...value, leadMediaId }, before);
+    const after: ArticleRecord = { ...before, regionId: value.regionId, publisherId: value.publisherId, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, authorId: value.authorId, leadMediaId, coverImageUrl: value.coverImageUrl === undefined ? before.coverImageUrl : (value.coverImageUrl ?? null), slug: value.slug, title: value.title, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, body: value.body ?? before.body, bodyJson: value.bodyJson === undefined ? before.bodyJson : requireValidBodyJson(value.bodyJson), source: value.source ?? before.source, tags: value.tags === undefined ? [...before.tags] : [...value.tags], status: value.status, scheduledAt: value.scheduledAt ?? null, version: before.version + 1, updatedAt: now, ...mode };
+    replaceById(transaction.state.articles, after); this.syncArticleCategories(transaction.state, after.id, distinctCategoryIds); this.audit(transaction, 'article.update', 'article', after.id, before, after); return after;
+  }
+
+  /**
+   * Ubah detail artikel milik org lain untuk steward platform.
+   *
+   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param ownerOrgId - Organisasi pemilik artikel; validasi referensi, guard langganan, dan audit miliknya.
+   * @param value - Payload update yang sudah tervalidasi.
+   * @returns Artikel sesudah update.
+   */
+  private async updateArticleForOwner(actor: AuthorizedTenantActorContext, ownerOrgId: string, value: ArticleUpdateInput) {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.update', 'article');
+    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.update', 'article');
+    if (regionLock(actor) !== null) return this.denied(actor, 'article.update', 'article');
+    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: ownerOrgId, regionScopeId: null };
+    try {
+      const result = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
+        const now = this.clock.now().toISOString();
+        return this.applyArticleUpdate(transaction, ownerActor, value, now);
+      }, ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites']);
+      return { ok: true as const, value: result };
+    } catch (error) {
+      if (error instanceof DashboardValidationError) return { ok: false as const, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.update', 'article');
+      if (error instanceof DashboardConflictError) return { ok: false as const, error: createPublicError('CONFLICT', error.message, actor.requestId) };
+      return this.internal(actor, error, 'dashboard.mutation.failed', 'article.update', 'article', DASHBOARD_PERMISSIONS.articleManage);
+    }
+  }
+
+  /**
+   * Muat satu artikel pemilik beserta lookup org-nya untuk editor steward.
+   *
+   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param raw - Id artikel dan org pemiliknya.
+   * @returns Artikel penuh (termasuk body) plus lookup kategori/penerbit/penulis/wilayah pemilik.
+   */
+  async readArticleForEdit(actor: AuthorizedTenantActorContext, raw: unknown) {
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.read', 'article');
+    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.read', 'article');
+    if (regionLock(actor) !== null) return this.denied(actor, 'article.read', 'article');
+    const parsed = articleEditLoadSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: parsed.data.ownerOrganizationId, regionScopeId: null };
+    try {
+      const value = await this.repository.executeForOrganization(ownerActor, parsed.data.ownerOrganizationId, async (transaction) => {
+        const found = transaction.state.articles.find((candidate) => candidate.id === parsed.data.id);
+        if (found === undefined) throw new DashboardAccessDeniedError();
+        await transaction.refreshArticleContent(found.id);
+        const article = requireRecord(transaction.state.articles, found.id);
+        return {
+          article,
+          lookups: {
+            regions: (transaction.state.regions ?? []).map((region) => ({ id: region.id, name: region.name })),
+            publishers: (transaction.state.publishers ?? []).map((publisher) => ({ id: publisher.id, name: publisher.name })),
+            categories: (transaction.state.categories ?? []).map((category) => ({ id: category.id, name: category.name })),
+            authors: (transaction.state.authors ?? []).map((author) => ({ id: author.id, displayName: author.displayName })),
+          },
+        };
+      }, ['articles', 'regions', 'publishers', 'categories', 'authors']);
+      return { ok: true as const, value };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.read', 'article');
+      return this.internal(actor, error, 'dashboard.query.failed', 'article.read', 'article', DASHBOARD_PERMISSIONS.articleManage);
+    }
   }
 
   private requireFilterReferences(state: { readonly regions: readonly ScopeGeography[]; readonly sites: readonly { readonly id: string; readonly regionId: string | null }[]; readonly categories: readonly { readonly id: string }[]; readonly publishers: readonly { readonly id: string }[]; readonly authors: readonly { readonly id: string }[] }, filter: ArticleFilter, actor?: AuthorizedTenantActorContext): void {
@@ -1306,11 +1379,18 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const parsed = articleDeleteSchema.safeParse(raw);
     if (!parsed.success) return Promise.resolve(this.invalid(actor, parsed.error));
     const ownerId = parsed.data.ownerOrganizationId ?? actor.organizationId;
-    if (ownerId !== actor.organizationId) {
-      return this.deleteArticleForOwner(actor, ownerId, parsed.data);
+    return this.deleteArticleGuarded(actor, ownerId, parsed.data);
+  }
+
+  private async deleteArticleGuarded(actor: AuthorizedTenantActorContext, ownerId: string, value: VersionInput & { readonly ownerOrganizationId?: string | undefined }) {
+    if (await this.repository.hasPublishedBridges(ownerId, value.id)) {
+      return { ok: false as const, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, { bridge: ['Artikel ini masih tayang lintas-org; tarik dulu penayangannya sebelum dihapus permanen.'] }) };
     }
-    return this.mutate({ actor, raw, schema: articleDeleteSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.delete', targetType: 'article', scope: ['articles', 'regions', 'articleSites', 'publishingJobs', 'articleCategories'], execute: (transaction, value: VersionInput) => {
-      const before = requireArticleInScope(transaction.state, value.id, actor); requireVersion(before, value.expectedVersion);
+    if (ownerId !== actor.organizationId) {
+      return this.deleteArticleForOwner(actor, ownerId, value);
+    }
+    return this.mutate({ actor, raw: value, schema: articleDeleteSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.delete', targetType: 'article', scope: ['articles', 'regions', 'articleSites', 'publishingJobs', 'articleCategories'], execute: (transaction, inner: VersionInput) => {
+      const before = requireArticleInScope(transaction.state, inner.id, actor); requireVersion(before, inner.expectedVersion);
       if (before.status !== 'draft' && before.status !== 'archived') {
         throw new DashboardValidationError({ status: ['Arsipkan dulu artikel tayang atau terjadwal sebelum dihapus permanen.'] });
       }
@@ -1586,6 +1666,22 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   }
 
   /**
+   * Resolve an explicit owner-organization override for steward writes.
+   *
+   * @param actor - Calling actor; ownership stays with the active org when unset.
+   * @param ownerOrganizationId - Requested owner org, if any.
+   * @returns Undefined for the same-org path, an owner scope for steward routing, or null when denied.
+   */
+  private ownerScope(actor: AuthorizedTenantActorContext, ownerOrganizationId: string | undefined): { readonly organizationId: string } | null | undefined {
+    const ownerId = ownerOrganizationId ?? actor.organizationId;
+    if (ownerId === actor.organizationId) return undefined;
+    if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return null;
+    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return null;
+    if (regionLock(actor) !== null) return null;
+    return { organizationId: ownerId };
+  }
+
+  /**
    * List entri liveblog milik satu artikel dalam cakupan aktor.
    *
    * @param actor - Konteks tenant terotorisasi.
@@ -1595,8 +1691,10 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   async listArticleUpdates(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<readonly ArticleUpdateRecord[], PublicErrorEnvelope>> {
     const parsed = articleUpdateListSchema.safeParse(raw);
     if (!parsed.success) return this.invalid(actor, parsed.error);
+    const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
+    if (owner === null) return this.denied(actor, 'article.updates.list', 'article');
     return this.summarize(actor, 'article.updates.list', 'article', (repository) =>
-      repository.listArticleUpdates(actor, DASHBOARD_PERMISSIONS.articleManage, { articleId: parsed.data.articleId }));
+      repository.listArticleUpdates(actor, DASHBOARD_PERMISSIONS.articleManage, { articleId: parsed.data.articleId }, owner ?? undefined));
   }
 
   /**
@@ -1609,11 +1707,13 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   async createArticleUpdate(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ArticleUpdateRecord, PublicErrorEnvelope>> {
     const parsed = articleUpdateCreateSchema.safeParse(raw);
     if (!parsed.success) return this.invalid(actor, parsed.error);
+    const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
+    if (owner === null) return this.denied(actor, 'article.updates.create', 'article');
     try {
       const value = await this.repository.createArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
         articleId: parsed.data.articleId,
         body: parsed.data.body,
-      });
+      }, owner ?? undefined);
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.create', 'article');
@@ -1633,12 +1733,14 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   async updateArticleUpdate(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<ArticleUpdateRecord, PublicErrorEnvelope>> {
     const parsed = articleUpdateUpdateSchema.safeParse(raw);
     if (!parsed.success) return this.invalid(actor, parsed.error);
+    const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
+    if (owner === null) return this.denied(actor, 'article.updates.update', 'article');
     try {
       const value = await this.repository.updateArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
         id: parsed.data.id,
         expectedVersion: parsed.data.expectedVersion,
         body: parsed.data.body,
-      });
+      }, owner ?? undefined);
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.update', 'article');
@@ -1659,11 +1761,13 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   async deleteArticleUpdate(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<{ readonly id: string }, PublicErrorEnvelope>> {
     const parsed = articleUpdateDeleteSchema.safeParse(raw);
     if (!parsed.success) return this.invalid(actor, parsed.error);
+    const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
+    if (owner === null) return this.denied(actor, 'article.updates.delete', 'article');
     try {
       const value = await this.repository.deleteArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
         id: parsed.data.id,
         expectedVersion: parsed.data.expectedVersion,
-      });
+      }, owner ?? undefined);
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.delete', 'article');

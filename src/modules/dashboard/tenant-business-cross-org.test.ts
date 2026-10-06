@@ -33,21 +33,47 @@ const ownerArticle = {
   id: ARTICLE,
   organizationId: OWNER,
   regionId: null,
-  status: 'active',
-  version: 2,
-  archivedAt: null,
+  publisherId: null,
+  categoryId: null,
+  categoryIds: [],
+  authorId: null,
+  leadMediaId: null,
+  coverImageUrl: null,
+  slug: 'berita-upt',
   title: 'Berita UPT',
+  excerpt: null,
+  canonicalUrl: null,
+  body: 'Isi.',
+  bodyJson: null,
+  source: 'Humas',
+  tags: ['humas'],
+  status: 'active',
+  type: 'standard',
+  isSponsored: false,
+  videoUrl: null,
+  audioUrl: null,
+  durationSeconds: null,
+  publishedAt: '2026-10-06T04:23:50.000Z',
+  scheduledAt: null,
+  archivedAt: null,
+  version: 2,
+  createdAt: '2026-10-06T04:23:49.000Z',
+  updatedAt: '2026-10-06T04:23:50.000Z',
 };
 
 function harness(repoOverrides: Record<string, unknown> = {}) {
   const ownerState: Record<string, unknown[]> = {
     articles: [{ ...ownerArticle }],
     regions: [],
+    publishers: [],
+    categories: [{ id: 'c-berita', name: 'Berita', slug: 'berita', status: 'active' }],
+    authors: [],
     articleSites: [],
     publishingJobs: [],
     articleCategories: [],
   };
   const repository = {
+    hasPublishedBridges: vi.fn(async () => false),
     execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: (transaction: unknown) => unknown) =>
       operation({
         state: { organizationId: 'org-operator', articles: [], regions: [], articleSites: [], publishingJobs: [], articleCategories: [] },
@@ -140,5 +166,92 @@ describe('TenantBusinessService cross-org steward', () => {
     const { service } = harness();
     const result = await service.deleteArticle(steward, { id: ARTICLE, expectedVersion: 2, ownerOrganizationId: OWNER });
     expect(result.ok).toBe(false);
+  });
+
+  it('hapus ditolak saat bridge masih tayang', async () => {
+    const { repository, service } = harness({ hasPublishedBridges: vi.fn(async () => true) });
+    const result = await service.deleteArticle(steward, { id: ARTICLE, expectedVersion: 2, ownerOrganizationId: OWNER });
+    expect(result.ok).toBe(false);
+    expect(repository.executeForOrganization).not.toHaveBeenCalled();
+    expect(repository.execute).not.toHaveBeenCalled();
+  });
+
+  it('entri liveblog lintas-org diteruskan dengan cakupan pemilik', async () => {
+    const listArticleUpdates = vi.fn(async () => []);
+    const createArticleUpdate = vi.fn(async () => ({ id: 'e-1' }));
+    const { service } = harness({ listArticleUpdates, createArticleUpdate });
+    const listed = await service.listArticleUpdates(steward, { articleId: ARTICLE, ownerOrganizationId: OWNER });
+    expect(listed.ok).toBe(true);
+    expect(listArticleUpdates).toHaveBeenCalledWith(
+      steward, 'article.manage', { articleId: ARTICLE }, { organizationId: OWNER },
+    );
+    const created = await service.createArticleUpdate(steward, { articleId: ARTICLE, body: 'Skor 1-0.', ownerOrganizationId: OWNER });
+    expect(created.ok).toBe(true);
+    expect(createArticleUpdate).toHaveBeenCalledWith(
+      steward, 'article.manage', { articleId: ARTICLE, body: 'Skor 1-0.' }, { organizationId: OWNER },
+    );
+  });
+
+  it('entri liveblog se-org tidak membawa cakupan pemilik', async () => {
+    const listArticleUpdates = vi.fn(async () => []);
+    const { service } = harness({ listArticleUpdates });
+    await service.listArticleUpdates(steward, { articleId: ARTICLE });
+    expect(listArticleUpdates).toHaveBeenCalledWith(steward, 'article.manage', { articleId: ARTICLE }, undefined);
+  });
+
+  it('menolak entri liveblog lintas-org tanpa grant dan untuk steward terkunci region', async () => {
+    const listArticleUpdates = vi.fn(async () => []);
+    const denied = await harness({ listArticleUpdates }).service.listArticleUpdates(plain, { articleId: ARTICLE, ownerOrganizationId: OWNER });
+    expect(denied.ok).toBe(false);
+    const locked = await harness({ listArticleUpdates }).service.listArticleUpdates(lockedSteward, { articleId: ARTICLE, ownerOrganizationId: OWNER });
+    expect(locked.ok).toBe(false);
+    expect(listArticleUpdates).not.toHaveBeenCalled();
+  });
+
+  it('ubah lintas-org lewat org pemilik dan mempertahankan tag', async () => {
+    const { repository, service, ownerState } = harness();
+    const result = await service.updateArticle(steward, {
+      id: ARTICLE, expectedVersion: 2, title: 'Berita UPT Baru', slug: 'berita-upt',
+      regionId: null, status: 'active', ownerOrganizationId: OWNER,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(repository.executeForOrganization).toHaveBeenCalledTimes(1);
+    expect(repository.execute).not.toHaveBeenCalled();
+    expect((repository.executeForOrganization as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]).toBe(OWNER);
+    expect(result.value.title).toBe('Berita UPT Baru');
+    expect(result.value.tags).toEqual(['humas']);
+    expect((ownerState.articles?.[0] as { title: string }).title).toBe('Berita UPT Baru');
+  });
+
+  it('ubah se-org tetap lewat jalur normal', async () => {
+    const { repository, service } = harness();
+    await service.updateArticle(steward, { id: ARTICLE, expectedVersion: 2, title: 'X', slug: 'x', regionId: null });
+    expect(repository.execute).toHaveBeenCalledTimes(1);
+    expect(repository.executeForOrganization).not.toHaveBeenCalled();
+  });
+
+  it('menolak ubah lintas-org tanpa grant dan untuk steward terkunci region', async () => {
+    const denied = await harness().service.updateArticle(plain, { id: ARTICLE, expectedVersion: 2, title: 'X', slug: 'x', regionId: null, ownerOrganizationId: OWNER });
+    expect(denied.ok).toBe(false);
+    const locked = await harness().service.updateArticle(lockedSteward, { id: ARTICLE, expectedVersion: 2, title: 'X', slug: 'x', regionId: null, ownerOrganizationId: OWNER });
+    expect(locked.ok).toBe(false);
+  });
+
+  it('edit.load memuat artikel pemilik beserta lookup org-nya', async () => {
+    const { repository, service } = harness();
+    const result = await service.readArticleForEdit(steward, { id: ARTICLE, ownerOrganizationId: OWNER });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.value.article.id).toBe(ARTICLE);
+    expect(result.value.lookups.categories).toEqual([{ id: 'c-berita', name: 'Berita' }]);
+    expect((repository.executeForOrganization as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]).toBe(OWNER);
+  });
+
+  it('menolak edit.load tanpa grant dan untuk steward terkunci region', async () => {
+    const denied = await harness().service.readArticleForEdit(plain, { id: ARTICLE, ownerOrganizationId: OWNER });
+    expect(denied.ok).toBe(false);
+    const locked = await harness().service.readArticleForEdit(lockedSteward, { id: ARTICLE, ownerOrganizationId: OWNER });
+    expect(locked.ok).toBe(false);
   });
 });

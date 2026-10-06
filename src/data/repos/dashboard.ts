@@ -153,7 +153,7 @@ const INSERT_CHUNK_ROWS = 200;
  * handful of round trips.
  *
  * @param rows - Rows to write, in order.
- * @returns Non-empty slices of at most {@link INSERT_CHUNK_ROWS} rows.
+ * @returns Non-empty slices of at most `INSERT_CHUNK_ROWS` rows.
  */
 export function* insertChunks<T>(rows: readonly T[]): Generator<readonly T[]> {
   for (let offset = 0; offset < rows.length; offset += INSERT_CHUNK_ROWS) {
@@ -1103,11 +1103,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         ...(filter.authorId === undefined ? [] : [sql`a.author_id = ${filter.authorId}::uuid`]),
         ...(filter.status === undefined ? [] : [sql`a.status = ${filter.status}`]),
         ...(filter.tag === undefined ? [] : [sql`a.tags @> ARRAY[${filter.tag}]`]),
-        ...((filter.siteId === undefined && filter.publicationState === undefined) ? [] : [sql`EXISTS (
+        ...((filter.siteId === undefined && filter.publicationState === undefined) ? [] : [sql`(EXISTS (
           SELECT 1 FROM article_sites s
           WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.active
             AND (${filter.siteId ?? null}::uuid IS NULL OR s.site_id = ${filter.siteId ?? null}::uuid)
-            AND (${filter.publicationState ?? null}::text IS NULL OR s.state = ${filter.publicationState ?? null}))`]),
+            AND (${filter.publicationState ?? null}::text IS NULL OR s.state = ${filter.publicationState ?? null}))
+          OR (${filter.siteId ?? null}::uuid IS NULL AND (${filter.publicationState ?? null}::text IS NULL
+            OR a.id = ANY(indicate_private.bridge_article_ids(${organizationId}::uuid, ${filter.publicationState ?? null}::text)))))`]),
         ...(filter.siteHostname === undefined ? [] : [sql`EXISTS (
           SELECT 1 FROM article_sites s
           JOIN sites st ON st.organization_id = ${organizationId} AND st.id = s.site_id
@@ -1119,7 +1121,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const whereAll = sql.join(predicates, sql` AND `);
       const updatedKey = sql`(EXTRACT(EPOCH FROM COALESCE(a.updated_at, a.created_at, a.published_at, a.scheduled_at)) * 1000000)::bigint`;
       const publishedKey = sql`(EXTRACT(EPOCH FROM COALESCE((SELECT max(s.published_at) FROM article_sites s WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.state = 'published' AND s.active), a.published_at, a.created_at)) * 1000000)::bigint`;
-      const syndicatedKey = sql`(SELECT count(*)::bigint FROM article_sites s WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.state = 'published')`;
+      const syndicatedKey = sql`((SELECT count(*)::bigint FROM article_sites s WHERE s.organization_id = ${organizationId} AND s.article_id = a.id AND s.state = 'published') + indicate_private.bridge_published_count(${organizationId}::uuid, a.id))`;
       const orderKey = sort === 'title' ? null : sort === 'syndicated' ? syndicatedKey : sort === 'published-desc' || sort === 'published-asc' ? publishedKey : updatedKey;
       const descending = sort !== 'published-asc';
       type CursorKey = { readonly key: string; readonly id: string };
@@ -1188,6 +1190,20 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         list.push(link.categoryId);
         categoryIdsByArticle.set(link.articleId, list);
       }
+      const bridgeRows = articleIds.length === 0 || filter.publicationState === undefined ? [] : await transaction.execute<{
+        source_article_id: string; url: string; published_at: Date | string;
+      }>(sql`SELECT * FROM indicate_private.list_own_bridge_urls(${organizationId}::uuid, ${sqlStringArray(articleIds)}::uuid[])`);
+      const bridgeByArticle = new Map<string, { urls: string[]; publishedAtMax: string | null }>();
+      for (const row of bridgeRows) {
+        const entry = bridgeByArticle.get(row.source_article_id) ?? { urls: [], publishedAtMax: null };
+        entry.urls.push(row.url);
+        const at = optionalIsoOf(row.published_at);
+        if (at !== null && (entry.publishedAtMax === null || at > entry.publishedAtMax)) entry.publishedAtMax = at;
+        bridgeByArticle.set(row.source_article_id, entry);
+      }
+      const bridgePublished = [...bridgeByArticle].map(([articleId, entry]) => ({
+        articleId, urls: [...new Set(entry.urls)].sort((left, right) => left.localeCompare(right)), publishedAtMax: entry.publishedAtMax,
+      }));
       const articles = pageRows.map((row) => ({ id: row.id, organizationId, regionId: row.region_id, publisherId: row.publisher_id, categoryId: row.category_id, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.author_id, leadMediaId: row.lead_media_id, coverImageUrl: row.cover_image_url, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonical_url, body: '', bodyJson: null, source: row.source, tags: [...row.tags], status: row.status as ArticleRecord['status'], type: row.type, isSponsored: row.is_sponsored, videoUrl: row.video_url, audioUrl: row.audio_url, durationSeconds: row.duration_seconds, publishedAt: optionalIsoOf(row.published_at), scheduledAt: optionalIsoOf(row.scheduled_at), archivedAt: optionalIsoOf(row.archived_at), version: row.version, createdAt: isoOf(row.created_at), updatedAt: isoOf(row.updated_at) }));
       const lastConsumed = articles.length > 0 ? (articleIds[articleIds.length - 1] as string) : null;
       return {
@@ -1196,6 +1212,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         total: totalRows[0]?.count ?? 0,
         tagOptions: tagRows.map((row) => ({ tag: row.tag, count: row.count })),
         articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource as 'manual' | 'auto', expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+        bridgePublished,
         categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         authors: authorRows.map((row) => ({ id: row.id, organizationId, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         publishers: publisherRows.map((row) => ({ id: row.id, name: row.name, attributionLabel: row.attributionLabel, status: row.status, ownerOrganizationId: null as string | null })),
@@ -1559,6 +1576,82 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * @param articleId - Parent article id.
    * @returns Parent id and slug for invalidation.
    */
+  /**
+   * Whether an owner article still has published bridge assignments.
+   *
+   * @param ownerOrganizationId - Organization owning the canonical article.
+   * @param articleId - Canonical article id.
+   * @returns True when at least one serving portal still publishes it.
+   * @remarks Read through the `SECURITY DEFINER` probe so owner-context
+   * callers see serving-org rows their RLS would otherwise hide; used to
+   * block deletes that would orphan live bridge assignments.
+   */
+  async hasPublishedBridges(ownerOrganizationId: string, articleId: string): Promise<boolean> {
+    const rows = await this.database.execute<{ source_article_id: string }>(sql`
+      SELECT source_article_id FROM indicate_private.list_bridge_serving_targets(
+        ${ownerOrganizationId}::uuid, ${sqlStringArray([articleId])}::uuid[]) LIMIT 1`);
+    return rows.length > 0;
+  }
+
+  /**
+   * Purge serving portals holding published bridges of changed owner articles.
+   *
+   * @param actor - Calling actor for tenant-context attribution.
+   * @param ownerOrganizationId - Organization owning the canonical articles.
+   * @param changes - Changed article ids with the slugs to purge.
+   * @remarks Owner edits (dashboard or steward) commit in owner context, whose
+   * RLS cannot see serving-org rows; each serving org therefore gets its own
+   * transaction with its own tenant context. One indexed probe short-circuits
+   * orgs without bridges. Article bytes purge as `article.changed`, the same
+   * corpus reason owner-portal edits use.
+   */
+  private async enqueueBridgeInvalidations(
+    actor: AuthorizedTenantActorContext,
+    ownerOrganizationId: string,
+    changes: readonly { readonly articleId: string; readonly slugs: readonly string[] }[],
+  ): Promise<void> {
+    const ids = [...new Set(changes.map((change) => change.articleId))];
+    if (ids.length === 0) return;
+    const targets = await this.database.execute<{
+      serving_organization_id: string; site_id: string; hostname: string; source_article_id: string;
+    }>(sql`SELECT * FROM indicate_private.list_bridge_serving_targets(
+      ${ownerOrganizationId}::uuid, ${sqlStringArray(ids)}::uuid[])`);
+    if (targets.length === 0) return;
+    const slugsByArticle = new Map<string, Set<string>>();
+    for (const change of changes) {
+      const slugs = slugsByArticle.get(change.articleId) ?? new Set<string>();
+      for (const slug of change.slugs) slugs.add(slug);
+      slugsByArticle.set(change.articleId, slugs);
+    }
+    const byServing = new Map<string, { siteIds: string[]; hostBySite: Map<string, string>; slugs: Set<string> }>();
+    for (const target of targets) {
+      const group = byServing.get(target.serving_organization_id) ?? { siteIds: [], hostBySite: new Map<string, string>(), slugs: new Set<string>() };
+      if (!group.hostBySite.has(target.site_id)) {
+        group.siteIds.push(target.site_id);
+        group.hostBySite.set(target.site_id, target.hostname);
+      }
+      for (const slug of slugsByArticle.get(target.source_article_id) ?? []) group.slugs.add(slug);
+      byServing.set(target.serving_organization_id, group);
+    }
+    for (const [servingOrg, group] of byServing) {
+      await this.database.transaction(async (servingTransaction) => {
+        const servingActor: AuthorizedTenantActorContext = { ...actor, organizationId: servingOrg, regionScopeId: null };
+        await this.establishContextFor(servingTransaction, servingOrg, servingActor);
+        const ancestors = await findBridgeAncestorHostnames(
+          (query: unknown) => servingTransaction.execute(query as Parameters<Transaction['execute']>[0]),
+          servingOrg,
+          group.siteIds,
+        );
+        for (const siteId of group.siteIds) {
+          await servingTransaction.insert(invalidationTasks).values(completeInvalidationValues({
+            organizationId: servingOrg, siteId, currentHostname: group.hostBySite.get(siteId) ?? null,
+            relatedHostnames: ancestors, reason: 'article.changed', articleSlugs: [...group.slugs],
+          }) as never);
+        }
+      });
+    }
+  }
+
   private async requireUpdateParentArticle(transaction: Transaction, actor: AuthorizedTenantActorContext, articleId: string): Promise<{ readonly id: string; readonly slug: string }> {
     const articleRows = await transaction.select({ id: articles.id, regionId: articles.regionId, slug: articles.slug })
       .from(articles)
@@ -1616,6 +1709,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         await transaction.insert(invalidationTasks).values(completeInvalidationValues({ organizationId: actor.organizationId, siteId: site.id, currentHostname: site.normalizedHostname, reason: 'article.changed', articleSlugs: [parent.slug] }) as never);
       }
     }
+    await this.enqueueBridgeInvalidations(actor, actor.organizationId, [{ articleId: parent.id, slugs: [parent.slug] }]);
     await transaction.insert(auditLogs).values({ organizationId: actor.organizationId, id: crypto.randomUUID(), actorType: actor.actorType, actorId: actor.actorId, entryPoint: actor.entryPoint, action, targetType: 'article', targetId, outcome: 'succeeded', changedFields: ['body'], requestId: actor.requestId, before: before === null ? null : { body: before }, after: after === null ? null : { body: after } });
   }
 
@@ -1625,19 +1719,23 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * @param actor - Calling actor; parent article must be in region scope.
    * @param permission - Membership permission to enforce.
    * @param input - Parent article id.
+   * @param owner - Optional platform override; when set, membership authorization is
+   * skipped and the caller must hold the superadmin platform grant.
    * @returns At most 200 entries in display order.
    */
-  async listArticleUpdates(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string }): Promise<readonly ArticleUpdateRecord[]> {
+  async listArticleUpdates(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string }, owner?: { readonly organizationId: string }): Promise<readonly ArticleUpdateRecord[]> {
+    const scoped = owner === undefined ? actor : { ...actor, organizationId: owner.organizationId, regionScopeId: null };
     return this.database.transaction(async (transaction) => {
-      await this.establishContext(transaction, actor);
-      await this.authorize(transaction, actor, permission);
-      const parent = await this.requireUpdateParentArticle(transaction, actor, input.articleId);
+      await this.establishContextFor(transaction, scoped.organizationId, scoped);
+      if (owner === undefined) await this.authorize(transaction, actor, permission);
+      else if (scoped.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+      const parent = await this.requireUpdateParentArticle(transaction, scoped, input.articleId);
       const rows = await transaction.select({ id: articleUpdates.id, articleId: articleUpdates.articleId, body: articleUpdates.body, sortOrder: articleUpdates.sortOrder, publishedAt: articleUpdates.publishedAt, createdBy: articleUpdates.createdBy, version: articleUpdates.version, createdAt: articleUpdates.createdAt, updatedAt: articleUpdates.updatedAt })
         .from(articleUpdates)
-        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.articleId, parent.id)))
+        .where(and(eq(articleUpdates.organizationId, scoped.organizationId), eq(articleUpdates.articleId, parent.id)))
         .orderBy(articleUpdates.sortOrder, articleUpdates.createdAt)
         .limit(200);
-      return rows.map((row) => this.toArticleUpdateRecord(actor.organizationId, row));
+      return rows.map((row) => this.toArticleUpdateRecord(scoped.organizationId, row));
     });
   }
 
@@ -1647,24 +1745,28 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * @param actor - Calling actor; parent article must be in region scope.
    * @param permission - Membership permission to enforce.
    * @param input - Parent article id and entry body.
+   * @param owner - Optional platform override; when set, membership authorization is
+   * skipped and the caller must hold the superadmin platform grant.
    * @returns The persisted entry.
    */
-  async createArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string; readonly body: string }): Promise<ArticleUpdateRecord> {
+  async createArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly articleId: string; readonly body: string }, owner?: { readonly organizationId: string }): Promise<ArticleUpdateRecord> {
+    const scoped = owner === undefined ? actor : { ...actor, organizationId: owner.organizationId, regionScopeId: null };
     return this.database.transaction(async (transaction) => {
-      await this.establishContext(transaction, actor);
-      await this.authorize(transaction, actor, permission);
-      await this.enforceWritableSubscription(transaction, actor);
-      const parent = await this.requireUpdateParentArticle(transaction, actor, input.articleId);
+      await this.establishContextFor(transaction, scoped.organizationId, scoped);
+      if (owner === undefined) await this.authorize(transaction, actor, permission);
+      else if (scoped.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+      await this.enforceWritableSubscriptionFor(transaction, scoped.organizationId, scoped);
+      const parent = await this.requireUpdateParentArticle(transaction, scoped, input.articleId);
       const tail = await transaction.select({ sortOrder: articleUpdates.sortOrder })
         .from(articleUpdates)
-        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.articleId, parent.id)))
+        .where(and(eq(articleUpdates.organizationId, scoped.organizationId), eq(articleUpdates.articleId, parent.id)))
         .orderBy(desc(articleUpdates.sortOrder))
         .limit(1);
       const now = new Date();
       const id = crypto.randomUUID();
-      await transaction.insert(articleUpdates).values({ organizationId: actor.organizationId, id, articleId: parent.id, body: input.body, sortOrder: (tail[0]?.sortOrder ?? 0) + 1, publishedAt: now, createdBy: actor.actorId, version: 1, createdAt: now, updatedAt: now });
-      await this.touchArticleForUpdates(transaction, actor, parent, now, 'article.updates.create', id, null, input.body);
-      return this.toArticleUpdateRecord(actor.organizationId, { id, articleId: parent.id, body: input.body, sortOrder: (tail[0]?.sortOrder ?? 0) + 1, publishedAt: now, createdBy: actor.actorId, version: 1, createdAt: now, updatedAt: now });
+      await transaction.insert(articleUpdates).values({ organizationId: scoped.organizationId, id, articleId: parent.id, body: input.body, sortOrder: (tail[0]?.sortOrder ?? 0) + 1, publishedAt: now, createdBy: scoped.actorId, version: 1, createdAt: now, updatedAt: now });
+      await this.touchArticleForUpdates(transaction, scoped, parent, now, 'article.updates.create', id, null, input.body);
+      return this.toArticleUpdateRecord(scoped.organizationId, { id, articleId: parent.id, body: input.body, sortOrder: (tail[0]?.sortOrder ?? 0) + 1, publishedAt: now, createdBy: scoped.actorId, version: 1, createdAt: now, updatedAt: now });
     });
   }
 
@@ -1674,26 +1776,30 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * @param actor - Calling actor; parent article must be in region scope.
    * @param permission - Membership permission to enforce.
    * @param input - Entry id, expected version, and new body.
+   * @param owner - Optional platform override; when set, membership authorization is
+   * skipped and the caller must hold the superadmin platform grant.
    * @returns The updated entry.
    */
-  async updateArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number; readonly body: string }): Promise<ArticleUpdateRecord> {
+  async updateArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number; readonly body: string }, owner?: { readonly organizationId: string }): Promise<ArticleUpdateRecord> {
+    const scoped = owner === undefined ? actor : { ...actor, organizationId: owner.organizationId, regionScopeId: null };
     return this.database.transaction(async (transaction) => {
-      await this.establishContext(transaction, actor);
-      await this.authorize(transaction, actor, permission);
-      await this.enforceWritableSubscription(transaction, actor);
+      await this.establishContextFor(transaction, scoped.organizationId, scoped);
+      if (owner === undefined) await this.authorize(transaction, actor, permission);
+      else if (scoped.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+      await this.enforceWritableSubscriptionFor(transaction, scoped.organizationId, scoped);
       const existing = await transaction.select({ id: articleUpdates.id, articleId: articleUpdates.articleId, body: articleUpdates.body, sortOrder: articleUpdates.sortOrder, publishedAt: articleUpdates.publishedAt, createdBy: articleUpdates.createdBy, version: articleUpdates.version, createdAt: articleUpdates.createdAt })
         .from(articleUpdates)
-        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, input.id)))
+        .where(and(eq(articleUpdates.organizationId, scoped.organizationId), eq(articleUpdates.id, input.id)))
         .limit(1);
       const before = existing[0];
       if (before === undefined) throw new DashboardAccessDeniedError();
       if (before.version !== input.expectedVersion) throw new DashboardConflictError();
-      const parent = await this.requireUpdateParentArticle(transaction, actor, before.articleId);
+      const parent = await this.requireUpdateParentArticle(transaction, scoped, before.articleId);
       const now = new Date();
       await transaction.update(articleUpdates).set({ body: input.body, version: before.version + 1, updatedAt: now })
-        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, before.id)));
-      await this.touchArticleForUpdates(transaction, actor, parent, now, 'article.updates.update', before.id, before.body, input.body);
-      return this.toArticleUpdateRecord(actor.organizationId, { ...before, body: input.body, version: before.version + 1, updatedAt: now });
+        .where(and(eq(articleUpdates.organizationId, scoped.organizationId), eq(articleUpdates.id, before.id)));
+      await this.touchArticleForUpdates(transaction, scoped, parent, now, 'article.updates.update', before.id, before.body, input.body);
+      return this.toArticleUpdateRecord(scoped.organizationId, { ...before, body: input.body, version: before.version + 1, updatedAt: now });
     });
   }
 
@@ -1703,25 +1809,29 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * @param actor - Calling actor; parent article must be in region scope.
    * @param permission - Membership permission to enforce.
    * @param input - Entry id and expected version.
+   * @param owner - Optional platform override; when set, membership authorization is
+   * skipped and the caller must hold the superadmin platform grant.
    * @returns The removed entry id.
    */
-  async deleteArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number }): Promise<{ readonly id: string }> {
+  async deleteArticleUpdate(actor: AuthorizedTenantActorContext, permission: string, input: { readonly id: string; readonly expectedVersion: number }, owner?: { readonly organizationId: string }): Promise<{ readonly id: string }> {
+    const scoped = owner === undefined ? actor : { ...actor, organizationId: owner.organizationId, regionScopeId: null };
     return this.database.transaction(async (transaction) => {
-      await this.establishContext(transaction, actor);
-      await this.authorize(transaction, actor, permission);
-      await this.enforceWritableSubscription(transaction, actor);
+      await this.establishContextFor(transaction, scoped.organizationId, scoped);
+      if (owner === undefined) await this.authorize(transaction, actor, permission);
+      else if (scoped.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
+      await this.enforceWritableSubscriptionFor(transaction, scoped.organizationId, scoped);
       const existing = await transaction.select({ id: articleUpdates.id, articleId: articleUpdates.articleId, body: articleUpdates.body, version: articleUpdates.version })
         .from(articleUpdates)
-        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, input.id)))
+        .where(and(eq(articleUpdates.organizationId, scoped.organizationId), eq(articleUpdates.id, input.id)))
         .limit(1);
       const before = existing[0];
       if (before === undefined) throw new DashboardAccessDeniedError();
       if (before.version !== input.expectedVersion) throw new DashboardConflictError();
-      const parent = await this.requireUpdateParentArticle(transaction, actor, before.articleId);
+      const parent = await this.requireUpdateParentArticle(transaction, scoped, before.articleId);
       await transaction.delete(articleUpdates)
-        .where(and(eq(articleUpdates.organizationId, actor.organizationId), eq(articleUpdates.id, before.id)));
+        .where(and(eq(articleUpdates.organizationId, scoped.organizationId), eq(articleUpdates.id, before.id)));
       const now = new Date();
-      await this.touchArticleForUpdates(transaction, actor, parent, now, 'article.updates.delete', before.id, before.body, null);
+      await this.touchArticleForUpdates(transaction, scoped, parent, now, 'article.updates.delete', before.id, before.body, null);
       return { id: before.id };
     });
   }
@@ -1896,7 +2006,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         appendAudit: (event) => pendingAudits.push({ ...event, id: crypto.randomUUID(), organizationId: scopedActor.organizationId, actorType: scopedActor.actorType, actorId: scopedActor.actorId, entryPoint: scopedActor.entryPoint, requestId: scopedActor.requestId, occurredAt: new Date().toISOString(), before: event.before === null ? null : redact(event.before) as Record<string, unknown>, after: event.after === null ? null : redact(event.after) as Record<string, unknown> }),
       };
       const result = await operation(dashboardTransaction);
-      await this.persist(transaction, actor.actorId, before, state, pendingAudits, dashboardTransaction.articleContentTouched, loaded);
+      await this.persist(transaction, actor, before, state, pendingAudits, dashboardTransaction.articleContentTouched, loaded);
       return result;
     });
   }
@@ -1913,7 +2023,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     throw new DashboardSubscriptionInactiveError(state ?? 'none');
   }
 
-  private async persist(transaction: Transaction, actorId: string, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[], articleContentTouched: ReadonlySet<string>, loaded?: ReadonlySet<DashboardCollectionName>): Promise<void> {
+  private async persist(transaction: Transaction, actor: AuthorizedTenantActorContext, before: DashboardTenantState, state: MutableTenantState, pendingAudits: readonly AuditRecord[], articleContentTouched: ReadonlySet<string>, loaded?: ReadonlySet<DashboardCollectionName>): Promise<void> {
     const want = (name: DashboardCollectionName): boolean => loaded === undefined || loaded.has(name);
     const index = buildTenantStateIndex(before, state, loaded);
     const domainRows = want('domains') ? state.domains : [];
@@ -2051,7 +2161,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       await transaction.delete(articleRevisions).where(and(eq(articleRevisions.organizationId, state.organizationId), eq(articleRevisions.articleId, articleId)));
       await transaction.delete(articles).where(and(eq(articles.organizationId, state.organizationId), eq(articles.id, articleId)));
     }
-    if (want('articles')) await this.recordArticleRevisions(transaction, actorId, before, index, articleContentTouched);
+    if (want('articles')) await this.recordArticleRevisions(transaction, actor.actorId, before, index, articleContentTouched);
     if (want('articles') && changedArticles.length > 0) await this.syncArticleGalleryMetadata(transaction, changedArticles, state.organizationId);
     const changedArticleSites: DashboardTenantState['articleSites'][number][] = [];
     for (const row of articleSiteRows) {
@@ -2082,6 +2192,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       });
     }
     await this.enqueueDeliveryInvalidations(transaction, before, state, index, loaded);
+    if (want('articles') && changedArticles.length > 0) {
+      await this.enqueueBridgeInvalidations(actor, state.organizationId, changedArticles.map((row) => ({
+        articleId: row.id,
+        slugs: [index.priorArticles.get(row.id)?.slug, row.slug].filter((slug): slug is string => slug !== undefined),
+      })));
+    }
     if (pendingAudits.length > 0) await transaction.insert(auditLogs).values(pendingAudits.map((row) => ({ organizationId: row.organizationId, id: row.id, actorType: row.actorType, actorId: row.actorId, entryPoint: row.entryPoint, action: row.action, targetType: row.targetType, targetId: row.targetId, outcome: row.outcome, changedFields: [...row.changedFields], before: row.before, after: row.after, requestId: row.requestId, occurredAt: new Date(row.occurredAt) })));
   }
 

@@ -397,29 +397,50 @@ describe('ArticleManager mode Semua organisasi', () => {
     articlesNextCursor: null,
   };
 
-  it('menyembunyikan toggle untuk non-steward', () => {
-    render(<ArticleManager data={CROSS_DATA} />);
+  it('tidak merender toggle: mode lintas-org selalu aktif untuk steward', () => {
+    render(<ArticleManager data={CROSS_DATA} crossOrg />);
     expect(screen.queryByLabelText('Tampilkan artikel semua organisasi')).toBeNull();
   });
 
-  it('toggle memanggil onCrossOrgChange dan menyembunyikan filter per-org', async () => {
-    const user = userEvent.setup();
-    const onCrossOrgChange = vi.fn();
-    render(<ArticleManager data={DATA} isSuperAdmin onCrossOrgChange={onCrossOrgChange} />);
-    await user.click(screen.getByLabelText('Tampilkan artikel semua organisasi'));
-    expect(onCrossOrgChange).toHaveBeenCalledWith(true);
+  it('mode lintas-org menyembunyikan filter per-org', () => {
+    render(<ArticleManager data={DATA} crossOrg />);
+    expect(screen.queryByLabelText('Kategori')).toBeNull();
+    expect(screen.queryByLabelText('Portal')).toBeNull();
   });
 
-  it('menampilkan lencana org, menonaktifkan ubah, dan merutekan arsip ke org pemilik', async () => {
+  it('mengaktifkan ubah lintas-org via organisasi pemilik', async () => {
+    const user = userEvent.setup();
+    const command = vi.fn(async (action: string) => {
+      if (action === 'article.edit.load') {
+        return {
+          article: { ...CROSS_DATA.articles[0], version: 2, body: 'Isi.', tags: [] },
+          lookups: { regions: [], publishers: [], categories: [], authors: [] },
+        };
+      }
+      return null;
+    });
+    render(<ArticleManager data={CROSS_DATA} command={command} crossOrg />);
+    const edit = screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo (pindah ke organisasi pemilik)' });
+    expect(edit.hasAttribute('disabled')).toBe(false);
+    await user.click(edit);
+    await waitFor(() => expect(command).toHaveBeenCalledWith('article.edit.load', { id: 'a-1', ownerOrganizationId: 'org-upt' }));
+    expect(await screen.findByText('Edit: Banjir Wonosobo')).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Simpan perubahan' }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith(
+      'article.update',
+      expect.objectContaining({ id: 'a-1', ownerOrganizationId: 'org-upt' }),
+      { refresh: true },
+    ));
+  });
+  it('menampilkan lencana org dan merutekan arsip ke org pemilik', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({ id: 'a-1', version: 3 }));
-    render(<ArticleManager data={CROSS_DATA} command={command} crossOrg isSuperAdmin onCrossOrgChange={() => undefined} />);
+    render(<ArticleManager data={CROSS_DATA} command={command} crossOrg />);
     expect(screen.getByText('RUTAN KELAS II B WONOSOBO')).toBeDefined();
     expect(screen.getByText('Kelola artikel semua organisasi (47)')).toBeDefined();
     expect(screen.queryByLabelText('Kategori')).toBeNull();
     expect(screen.queryByLabelText('Portal')).toBeNull();
-    const edit = screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo (pindah ke organisasi pemilik)' });
-    expect(edit.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo (pindah ke organisasi pemilik)' }).hasAttribute('disabled')).toBe(false);
     await user.click(screen.getByRole('button', { name: 'Arsipkan artikel Banjir Wonosobo' }));
     expect(command).toHaveBeenCalledWith('article.archive', { id: 'a-1', expectedVersion: 2, ownerOrganizationId: 'org-upt' }, { refresh: true });
   });

@@ -54,7 +54,43 @@ npm-facing.
   serves; only `published` rows are listed, since an assignment still queued
   would advertise a link that 404s. The copy payload is the plain numbered list
   with no code fence, so pasting into a chat leaves clean lines, and it always
-  carries every URL even though the block scrolls.
+  carries every URL even though the block scrolls. In steward mode the same
+  board now also lists bridge publications (`portal_assignments`): owner
+  articles with no `article_sites` row of their own appear with their serving
+  portal URLs instead of vanishing from the filter (v274).
+
+- Mode steward selalu aktif: Kelola Artikel dan Hasil Tayang tidak lagi
+  memakai toggle "Semua organisasi" — super_admin langsung membaca seluruh
+  jaringan, bertahan saat pindah halaman, dan kembali ke per-org hanya bila
+  server menolak (mis. steward terkunci region) lewat fallback otomatis.
+  Otorisasi server tidak berubah: tanpa grant `platform.super_admin` cakupan
+  lintas-org tetap ditolak.
+- Ubah artikel lintas-org: tombol Ubah di Kelola Artikel kini bisa diklik
+  steward — editor memuat lookup organisasi pemilik (`article.edit.load`)
+  dan menyimpan lewat org pemilik (`article.update` +
+  `ownerOrganizationId`), dengan audit dan concurrency check yang sama.
+  Entri liveblog kini ikut lintas-org (lihat di bawah). Perbaikan ikutannya:
+  edit inline yang tidak menyentuh tag kini mempertahankan tag lama,
+  bukan mengosongkannya.
+- Hasil Tayang org pemilik memuat bridge (v275): filter `publicationState`
+  per-org kini menghitung `portal_assignments` miliknya
+  (`bridge_article_ids`), URL tayang di portal penyaji digabung ke papan
+  (`bridgePublished`), dan urut sindikasi menjumlah kedua sumber. Kelola
+  Artikel per-org ikut menampilkan artikel yang hanya tayang via bridge.
+- Entri liveblog lintas-org: list, tambah, ubah, dan hapus entri kini
+  menerima `ownerOrganizationId` dan berjalan dalam konteks org pemilik
+  (grant steward + tanpa kunci region, audit atas nama admin); panel entri
+  tampil di editor lintas-org dengan organisasi pemilik diteruskan.
+- Purge portal bridge saat konten pemilik berubah (tanpa migrasi skema):
+  setiap persist artikel dan setiap tulis/hapus entri liveblog kini
+  mem-purge portal penyaji yang memegang bridge published
+  (`article.changed`, satu transaksi per org penyaji). Hapus permanen
+  ditolak selama bridge masih tayang agar tak lahir baris yatim.
+- Batasan yang dipertahankan by design (bukan kelalaian): galeri media
+  lintas-org tetap tertutup (isolasi otorisasi media privat), tulis
+  konfigurasi/taksonomi/audit lintas-org tidak dibuka (blast radius dan
+  permukaan surveilans), dan steward terkunci region tetap ditolak
+  lintas-org.
 
 - Server-verified Cloudflare Turnstile on the tenant report form
   (`POST /api/network/reports`). The widget in the browser now hands a one-time

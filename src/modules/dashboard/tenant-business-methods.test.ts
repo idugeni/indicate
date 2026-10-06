@@ -504,7 +504,7 @@ describe('TenantBusinessService article updates', () => {
     const { service } = updatesHarness({ listArticleUpdates });
     const result = await service.listArticleUpdates(actor, { articleId: ID });
     expect(result.ok).toBe(true);
-    expect(listArticleUpdates).toHaveBeenCalledWith(actor, 'article.manage', { articleId: ID });
+    expect(listArticleUpdates).toHaveBeenCalledWith(actor, 'article.manage', { articleId: ID }, undefined);
   });
 
   it('menolak create tanpa body dan id artikel tak valid', async () => {

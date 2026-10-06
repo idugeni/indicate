@@ -168,8 +168,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   articlesTotal,
   onLoadMoreArticles,
   crossOrg,
-  onCrossOrgChange,
-  isSuperAdmin,
 }: {
   readonly view: View;
   readonly data: unknown;
@@ -191,8 +189,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
   readonly crossOrg?: boolean | undefined;
-  readonly onCrossOrgChange?: ((next: boolean) => void) | undefined;
-  readonly isSuperAdmin?: boolean | undefined;
 }) {
   const metadata = VIEW_REGISTRY[view];
 
@@ -265,7 +261,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onCrossOrgChange={onCrossOrgChange} isSuperAdmin={isSuperAdmin} /> : null}
+      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
@@ -310,7 +306,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         </Tabs>
       ) : null}
       {view === 'media' ? <MediaLibrary data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} organizationId={organizationId} crossOrg={crossOrg} onCrossOrgChange={onCrossOrgChange} isSuperAdmin={isSuperAdmin} /> : null}
+      {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} organizationId={organizationId} crossOrg={crossOrg} /> : null}
       {view === 'publishing' ? (
         <div className="grid gap-6">
           <PublishingForm data={data} command={command} />

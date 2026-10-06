@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (274 migrations):
+-- Reviewed sources, in journal order (276 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -288,6 +288,8 @@
 --   272  20261006060000_cross_org_articles  ledger sha256:0c4bd8822245ced619b568b9e472a1ce25154868d818d9fc5b4774cea84151bd
 --   273  20261006070000_portal_assignments_view_count  ledger sha256:5164e79a582696b222b63c6efdbaff520b9c7c8374276f5b12f02dea0a529d88
 --   274  20261006080000_cross_org_tags_gin_dedup  ledger sha256:b79c9d6179b868aa6001a3e4c79a44d58ba6dbf50d9134d7dcbb5aaa80abf10e
+--   275  20261006090000_cross_org_bridge_urls  ledger sha256:2b926d198c1067803ab6bc114225844bc888abf034586afa5869289537cc8749
+--   276  20261006100000_own_bridge_reads  ledger sha256:7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea
 
 BEGIN;
 
@@ -22355,4 +22357,645 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (273, 'cross_org_tags_gin_dedup', 'sha256:3e9ca75700cd9bb2d59fe977616833abf9de166696dc419adb5ee4effb936bb9');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('b79c9d6179b868aa6001a3e4c79a44d58ba6dbf50d9134d7dcbb5aaa80abf10e', 1791363600000);
+
+-- ----------------------------------------------------------------------
+-- 20261006090000_cross_org_bridge_urls
+-- ----------------------------------------------------------------------
+-- Hasil Tayang lintas-org: hitung penayangan bridge portal_assignments.
+--
+-- `list_cross_org_articles` / `count_cross_org_articles` (v271) hanya
+-- mempertimbangkan `article_sites`, sehingga artikel pemilik (mis. RUTAN
+-- WONOSOBO) yang terbit murni via jembatan `portal_assignments` di org
+-- penyaji (Pengelola Platform) selalu tersaring oleh
+-- `publicationState=published` dan `published_urls`-nya kosong: 2 berita
+-- terbaru tidak tampil di Hasil Tayang mode Semua organisasi walau tayang
+-- di 134 portal. Migrasi ini membuat ketiga agregat per baris (portal,
+-- URL tayang, waktu tayang maks), kunci urut terbit/sindikasi, kursornya,
+-- dan predikat status di kedua fungsi menjadi gabungan `article_sites`
+-- (milik org sendiri) UNION `portal_assignments published` (jembatan org
+-- penyaji, URL `https://hostname-penyaji/slug-pemilik` seperti delivery).
+-- RLS tidak berubah: kedua fungsi tetap SECURITY DEFINER hanya-baca dan
+-- otorisasi super_admin + kunci region null tetap di lapisan aplikasi.
+-- Index baru menutup pencarian sisi-pemilik yang sebelumnya hanya punya
+-- index sisi-penyaji.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE INDEX IF NOT EXISTS portal_assignments_source_published_idx ON public.portal_assignments (source_organization_id, source_article_id, state);
+CREATE OR REPLACE FUNCTION indicate_private.list_cross_org_articles(
+  p_status text,
+  p_search text,
+  p_tag text,
+  p_sort text,
+  p_publication_state text,
+  p_limit int,
+  p_cursor_id uuid
+)
+RETURNS TABLE(
+  organization_id uuid,
+  org_slug text,
+  org_name text,
+  id uuid,
+  region_id uuid,
+  publisher_id uuid,
+  category_id uuid,
+  author_id uuid,
+  lead_media_id uuid,
+  cover_image_url text,
+  slug text,
+  title text,
+  excerpt text,
+  canonical_url text,
+  source text,
+  tags text[],
+  status public.article_status,
+  article_type text,
+  is_sponsored boolean,
+  video_url text,
+  audio_url text,
+  duration_seconds int,
+  published_at timestamp with time zone,
+  scheduled_at timestamp with time zone,
+  archived_at timestamp with time zone,
+  version int,
+  created_at timestamp with time zone,
+  updated_at timestamp with time zone,
+  category_ids uuid[],
+  category_names text[],
+  portal_hostnames text[],
+  published_urls text[],
+  published_at_max timestamp with time zone
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $func$
+DECLARE
+  v_limit int := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 500);
+  v_sort text := CASE WHEN p_sort IN ('updated', 'published-desc', 'published-asc', 'title', 'syndicated') THEN p_sort ELSE 'published-desc' END;
+  v_needle text := NULL;
+  v_cursor_bigint bigint := NULL;
+  v_cursor_title text := NULL;
+  v_cursor_id uuid := NULL;
+BEGIN
+  IF p_search IS NOT NULL AND btrim(p_search) <> '' THEN
+    v_needle := '%' || REPLACE(REPLACE(REPLACE(btrim(p_search), '\', '\\'), '%', '\%'), '_', '\_') || '%';
+  END IF;
+
+  IF p_cursor_id IS NOT NULL THEN
+    IF v_sort = 'title' THEN
+      SELECT a.title, a.id INTO v_cursor_title, v_cursor_id
+      FROM public.articles AS a WHERE a.id = p_cursor_id;
+    ELSIF v_sort = 'syndicated' THEN
+      SELECT ((SELECT COUNT(*)::bigint FROM public.article_sites AS s WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published') + (SELECT COUNT(*)::bigint FROM public.portal_assignments AS pa WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')), a.id
+        INTO v_cursor_bigint, v_cursor_id
+      FROM public.articles AS a WHERE a.id = p_cursor_id;
+    ELSIF v_sort = 'updated' THEN
+      SELECT ((EXTRACT(EPOCH FROM COALESCE(a.updated_at, a.created_at, a.published_at, a.scheduled_at)) * 1000000)::bigint), a.id
+        INTO v_cursor_bigint, v_cursor_id
+      FROM public.articles AS a WHERE a.id = p_cursor_id;
+    ELSE
+      SELECT ((EXTRACT(EPOCH FROM COALESCE(GREATEST((SELECT MAX(s.published_at) FROM public.article_sites AS s WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active), (SELECT MAX(pa.published_at) FROM public.portal_assignments AS pa WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')), a.published_at, a.created_at)) * 1000000)::bigint), a.id
+        INTO v_cursor_bigint, v_cursor_id
+      FROM public.articles AS a WHERE a.id = p_cursor_id;
+    END IF;
+    IF v_cursor_id IS NULL THEN
+      v_cursor_bigint := NULL;
+      v_cursor_title := NULL;
+    END IF;
+  END IF;
+
+  IF v_sort = 'title' THEN
+    RETURN QUERY
+    WITH base AS (
+      SELECT
+        a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
+        a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
+        a.source AS b_source, a.tags AS b_tags, a.status AS b_status, a.type::text AS b_type,
+        a.is_sponsored AS b_sponsored, a.video_url AS b_video, a.audio_url AS b_audio,
+        a.duration_seconds AS b_duration, a.published_at AS b_published, a.scheduled_at AS b_scheduled,
+        a.archived_at AS b_archived, a.version AS b_version, a.created_at AS b_created, a.updated_at AS b_updated,
+        (SELECT COALESCE(ARRAY_AGG(ac.category_id ORDER BY ac.position), '{}'::uuid[])
+         FROM public.article_categories AS ac
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_ids,
+        (SELECT COALESCE(ARRAY_AGG(c.name ORDER BY ac.position), '{}'::text[])
+         FROM public.article_categories AS ac
+         JOIN public.categories AS c ON c.organization_id = ac.organization_id AND c.id = ac.category_id
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_names,
+        (SELECT COALESCE(ARRAY_AGG(h.hostname ORDER BY h.hostname), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active
+           UNION
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS h WHERE h.hostname IS NOT NULL) AS b_portals,
+        (SELECT COALESCE(ARRAY_AGG(u.url ORDER BY u.url), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(s.published_url, 'https://' || st.normalized_hostname || '/' || a.slug) AS url
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state = 'published'
+           UNION
+           SELECT DISTINCT 'https://' || st.normalized_hostname || '/' || a.slug AS url
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS u) AS b_urls,
+        (GREATEST(
+          (SELECT MAX(s.published_at)
+           FROM public.article_sites AS s
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active),
+          (SELECT MAX(pa.published_at)
+           FROM public.portal_assignments AS pa
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')
+        )) AS b_pub_max
+      FROM public.articles AS a
+      JOIN public.organizations AS o ON o.id = a.organization_id
+      WHERE o.status = 'active'
+        AND (p_status IS NULL OR p_status = '' OR a.status::text = p_status)
+        AND (p_tag IS NULL OR p_tag = '' OR a.tags @> ARRAY[p_tag])
+        AND (v_needle IS NULL OR a.title ILIKE v_needle ESCAPE '\' OR a.slug ILIKE v_needle ESCAPE '\')
+        AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
+          SELECT 1 FROM public.article_sites AS s
+          WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state) OR EXISTS (
+          SELECT 1 FROM public.portal_assignments AS pa
+          WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state::text = p_publication_state))
+    )
+    SELECT b_org, b_org_slug, b_org_name, b_id, b_region, b_publisher, b_category, b_author,
+      b_lead_media, b_cover, b_slug, b_title, b_excerpt, b_canonical, b_source, b_tags, b_status,
+      b_type, b_sponsored, b_video, b_audio, b_duration, b_published, b_scheduled, b_archived,
+      b_version, b_created, b_updated, b_cat_ids, b_cat_names, b_portals, b_urls, b_pub_max
+    FROM base
+    WHERE v_cursor_id IS NULL OR v_cursor_title IS NULL OR base.b_title > v_cursor_title OR (base.b_title = v_cursor_title AND base.b_id > v_cursor_id)
+    ORDER BY base.b_title ASC, base.b_id ASC
+    LIMIT v_limit + 1;
+    RETURN;
+  ELSIF v_sort = 'published-asc' THEN
+    RETURN QUERY
+    WITH base AS (
+      SELECT
+        a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
+        a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
+        a.source AS b_source, a.tags AS b_tags, a.status AS b_status, a.type::text AS b_type,
+        a.is_sponsored AS b_sponsored, a.video_url AS b_video, a.audio_url AS b_audio,
+        a.duration_seconds AS b_duration, a.published_at AS b_published, a.scheduled_at AS b_scheduled,
+        a.archived_at AS b_archived, a.version AS b_version, a.created_at AS b_created, a.updated_at AS b_updated,
+        (SELECT COALESCE(ARRAY_AGG(ac.category_id ORDER BY ac.position), '{}'::uuid[])
+         FROM public.article_categories AS ac
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_ids,
+        (SELECT COALESCE(ARRAY_AGG(c.name ORDER BY ac.position), '{}'::text[])
+         FROM public.article_categories AS ac
+         JOIN public.categories AS c ON c.organization_id = ac.organization_id AND c.id = ac.category_id
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_names,
+        (SELECT COALESCE(ARRAY_AGG(h.hostname ORDER BY h.hostname), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active
+           UNION
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS h WHERE h.hostname IS NOT NULL) AS b_portals,
+        (SELECT COALESCE(ARRAY_AGG(u.url ORDER BY u.url), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(s.published_url, 'https://' || st.normalized_hostname || '/' || a.slug) AS url
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state = 'published'
+           UNION
+           SELECT DISTINCT 'https://' || st.normalized_hostname || '/' || a.slug AS url
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS u) AS b_urls,
+        (GREATEST(
+          (SELECT MAX(s.published_at)
+           FROM public.article_sites AS s
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active),
+          (SELECT MAX(pa.published_at)
+           FROM public.portal_assignments AS pa
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')
+        )) AS b_pub_max,
+        ((EXTRACT(EPOCH FROM COALESCE(GREATEST((SELECT MAX(s.published_at) FROM public.article_sites AS s WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active), (SELECT MAX(pa.published_at) FROM public.portal_assignments AS pa WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')), a.published_at, a.created_at)) * 1000000)::bigint) AS b_key
+      FROM public.articles AS a
+      JOIN public.organizations AS o ON o.id = a.organization_id
+      WHERE o.status = 'active'
+        AND (p_status IS NULL OR p_status = '' OR a.status::text = p_status)
+        AND (p_tag IS NULL OR p_tag = '' OR a.tags @> ARRAY[p_tag])
+        AND (v_needle IS NULL OR a.title ILIKE v_needle ESCAPE '\' OR a.slug ILIKE v_needle ESCAPE '\')
+        AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
+          SELECT 1 FROM public.article_sites AS s
+          WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state) OR EXISTS (
+          SELECT 1 FROM public.portal_assignments AS pa
+          WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state::text = p_publication_state))
+    )
+    SELECT b_org, b_org_slug, b_org_name, b_id, b_region, b_publisher, b_category, b_author,
+      b_lead_media, b_cover, b_slug, b_title, b_excerpt, b_canonical, b_source, b_tags, b_status,
+      b_type, b_sponsored, b_video, b_audio, b_duration, b_published, b_scheduled, b_archived,
+      b_version, b_created, b_updated, b_cat_ids, b_cat_names, b_portals, b_urls, b_pub_max
+    FROM base
+    WHERE v_cursor_id IS NULL OR v_cursor_bigint IS NULL OR base.b_key > v_cursor_bigint OR (base.b_key = v_cursor_bigint AND base.b_id > v_cursor_id)
+    ORDER BY base.b_key ASC, base.b_id ASC
+    LIMIT v_limit + 1;
+    RETURN;
+  ELSIF v_sort = 'updated' THEN
+    RETURN QUERY
+    WITH base AS (
+      SELECT
+        a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
+        a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
+        a.source AS b_source, a.tags AS b_tags, a.status AS b_status, a.type::text AS b_type,
+        a.is_sponsored AS b_sponsored, a.video_url AS b_video, a.audio_url AS b_audio,
+        a.duration_seconds AS b_duration, a.published_at AS b_published, a.scheduled_at AS b_scheduled,
+        a.archived_at AS b_archived, a.version AS b_version, a.created_at AS b_created, a.updated_at AS b_updated,
+        (SELECT COALESCE(ARRAY_AGG(ac.category_id ORDER BY ac.position), '{}'::uuid[])
+         FROM public.article_categories AS ac
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_ids,
+        (SELECT COALESCE(ARRAY_AGG(c.name ORDER BY ac.position), '{}'::text[])
+         FROM public.article_categories AS ac
+         JOIN public.categories AS c ON c.organization_id = ac.organization_id AND c.id = ac.category_id
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_names,
+        (SELECT COALESCE(ARRAY_AGG(h.hostname ORDER BY h.hostname), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active
+           UNION
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS h WHERE h.hostname IS NOT NULL) AS b_portals,
+        (SELECT COALESCE(ARRAY_AGG(u.url ORDER BY u.url), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(s.published_url, 'https://' || st.normalized_hostname || '/' || a.slug) AS url
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state = 'published'
+           UNION
+           SELECT DISTINCT 'https://' || st.normalized_hostname || '/' || a.slug AS url
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS u) AS b_urls,
+        (GREATEST(
+          (SELECT MAX(s.published_at)
+           FROM public.article_sites AS s
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active),
+          (SELECT MAX(pa.published_at)
+           FROM public.portal_assignments AS pa
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')
+        )) AS b_pub_max,
+        ((EXTRACT(EPOCH FROM COALESCE(a.updated_at, a.created_at, a.published_at, a.scheduled_at)) * 1000000)::bigint) AS b_key
+      FROM public.articles AS a
+      JOIN public.organizations AS o ON o.id = a.organization_id
+      WHERE o.status = 'active'
+        AND (p_status IS NULL OR p_status = '' OR a.status::text = p_status)
+        AND (p_tag IS NULL OR p_tag = '' OR a.tags @> ARRAY[p_tag])
+        AND (v_needle IS NULL OR a.title ILIKE v_needle ESCAPE '\' OR a.slug ILIKE v_needle ESCAPE '\')
+        AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
+          SELECT 1 FROM public.article_sites AS s
+          WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state) OR EXISTS (
+          SELECT 1 FROM public.portal_assignments AS pa
+          WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state::text = p_publication_state))
+    )
+    SELECT b_org, b_org_slug, b_org_name, b_id, b_region, b_publisher, b_category, b_author,
+      b_lead_media, b_cover, b_slug, b_title, b_excerpt, b_canonical, b_source, b_tags, b_status,
+      b_type, b_sponsored, b_video, b_audio, b_duration, b_published, b_scheduled, b_archived,
+      b_version, b_created, b_updated, b_cat_ids, b_cat_names, b_portals, b_urls, b_pub_max
+    FROM base
+    WHERE v_cursor_id IS NULL OR v_cursor_bigint IS NULL OR base.b_key < v_cursor_bigint OR (base.b_key = v_cursor_bigint AND base.b_id < v_cursor_id)
+    ORDER BY base.b_key DESC, base.b_id DESC
+    LIMIT v_limit + 1;
+    RETURN;
+  ELSIF v_sort = 'syndicated' THEN
+    RETURN QUERY
+    WITH base AS (
+      SELECT
+        a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
+        a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
+        a.source AS b_source, a.tags AS b_tags, a.status AS b_status, a.type::text AS b_type,
+        a.is_sponsored AS b_sponsored, a.video_url AS b_video, a.audio_url AS b_audio,
+        a.duration_seconds AS b_duration, a.published_at AS b_published, a.scheduled_at AS b_scheduled,
+        a.archived_at AS b_archived, a.version AS b_version, a.created_at AS b_created, a.updated_at AS b_updated,
+        (SELECT COALESCE(ARRAY_AGG(ac.category_id ORDER BY ac.position), '{}'::uuid[])
+         FROM public.article_categories AS ac
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_ids,
+        (SELECT COALESCE(ARRAY_AGG(c.name ORDER BY ac.position), '{}'::text[])
+         FROM public.article_categories AS ac
+         JOIN public.categories AS c ON c.organization_id = ac.organization_id AND c.id = ac.category_id
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_names,
+        (SELECT COALESCE(ARRAY_AGG(h.hostname ORDER BY h.hostname), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active
+           UNION
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS h WHERE h.hostname IS NOT NULL) AS b_portals,
+        (SELECT COALESCE(ARRAY_AGG(u.url ORDER BY u.url), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(s.published_url, 'https://' || st.normalized_hostname || '/' || a.slug) AS url
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state = 'published'
+           UNION
+           SELECT DISTINCT 'https://' || st.normalized_hostname || '/' || a.slug AS url
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS u) AS b_urls,
+        (GREATEST(
+          (SELECT MAX(s.published_at)
+           FROM public.article_sites AS s
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active),
+          (SELECT MAX(pa.published_at)
+           FROM public.portal_assignments AS pa
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')
+        )) AS b_pub_max,
+        ((SELECT COUNT(*)::bigint
+         FROM public.article_sites AS s
+         WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published')
+        + (SELECT COUNT(*)::bigint
+         FROM public.portal_assignments AS pa
+         WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')) AS b_key
+      FROM public.articles AS a
+      JOIN public.organizations AS o ON o.id = a.organization_id
+      WHERE o.status = 'active'
+        AND (p_status IS NULL OR p_status = '' OR a.status::text = p_status)
+        AND (p_tag IS NULL OR p_tag = '' OR a.tags @> ARRAY[p_tag])
+        AND (v_needle IS NULL OR a.title ILIKE v_needle ESCAPE '\' OR a.slug ILIKE v_needle ESCAPE '\')
+        AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
+          SELECT 1 FROM public.article_sites AS s
+          WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state) OR EXISTS (
+          SELECT 1 FROM public.portal_assignments AS pa
+          WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state::text = p_publication_state))
+    )
+    SELECT b_org, b_org_slug, b_org_name, b_id, b_region, b_publisher, b_category, b_author,
+      b_lead_media, b_cover, b_slug, b_title, b_excerpt, b_canonical, b_source, b_tags, b_status,
+      b_type, b_sponsored, b_video, b_audio, b_duration, b_published, b_scheduled, b_archived,
+      b_version, b_created, b_updated, b_cat_ids, b_cat_names, b_portals, b_urls, b_pub_max
+    FROM base
+    WHERE v_cursor_id IS NULL OR v_cursor_bigint IS NULL OR base.b_key < v_cursor_bigint OR (base.b_key = v_cursor_bigint AND base.b_id < v_cursor_id)
+    ORDER BY base.b_key DESC, base.b_id DESC
+    LIMIT v_limit + 1;
+    RETURN;
+  ELSE
+    RETURN QUERY
+    WITH base AS (
+      SELECT
+        a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
+        a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
+        a.source AS b_source, a.tags AS b_tags, a.status AS b_status, a.type::text AS b_type,
+        a.is_sponsored AS b_sponsored, a.video_url AS b_video, a.audio_url AS b_audio,
+        a.duration_seconds AS b_duration, a.published_at AS b_published, a.scheduled_at AS b_scheduled,
+        a.archived_at AS b_archived, a.version AS b_version, a.created_at AS b_created, a.updated_at AS b_updated,
+        (SELECT COALESCE(ARRAY_AGG(ac.category_id ORDER BY ac.position), '{}'::uuid[])
+         FROM public.article_categories AS ac
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_ids,
+        (SELECT COALESCE(ARRAY_AGG(c.name ORDER BY ac.position), '{}'::text[])
+         FROM public.article_categories AS ac
+         JOIN public.categories AS c ON c.organization_id = ac.organization_id AND c.id = ac.category_id
+         WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id) AS b_cat_names,
+        (SELECT COALESCE(ARRAY_AGG(h.hostname ORDER BY h.hostname), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active
+           UNION
+           SELECT DISTINCT COALESCE(apex.normalized_hostname, st.normalized_hostname) AS hostname
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           LEFT JOIN public.sites AS apex ON apex.organization_id = st.organization_id AND apex.domain_id = st.domain_id AND apex.site_level = 'apex'
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS h WHERE h.hostname IS NOT NULL) AS b_portals,
+        (SELECT COALESCE(ARRAY_AGG(u.url ORDER BY u.url), '{}'::text[])
+         FROM (
+           SELECT DISTINCT COALESCE(s.published_url, 'https://' || st.normalized_hostname || '/' || a.slug) AS url
+           FROM public.article_sites AS s
+           JOIN public.sites AS st ON st.organization_id = s.organization_id AND st.id = s.site_id
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state = 'published'
+           UNION
+           SELECT DISTINCT 'https://' || st.normalized_hostname || '/' || a.slug AS url
+           FROM public.portal_assignments AS pa
+           JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published'
+         ) AS u) AS b_urls,
+        (GREATEST(
+          (SELECT MAX(s.published_at)
+           FROM public.article_sites AS s
+           WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active),
+          (SELECT MAX(pa.published_at)
+           FROM public.portal_assignments AS pa
+           WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')
+        )) AS b_pub_max,
+        ((EXTRACT(EPOCH FROM COALESCE(GREATEST((SELECT MAX(s.published_at) FROM public.article_sites AS s WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.state = 'published' AND s.active), (SELECT MAX(pa.published_at) FROM public.portal_assignments AS pa WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state = 'published')), a.published_at, a.created_at)) * 1000000)::bigint) AS b_key
+      FROM public.articles AS a
+      JOIN public.organizations AS o ON o.id = a.organization_id
+      WHERE o.status = 'active'
+        AND (p_status IS NULL OR p_status = '' OR a.status::text = p_status)
+        AND (p_tag IS NULL OR p_tag = '' OR a.tags @> ARRAY[p_tag])
+        AND (v_needle IS NULL OR a.title ILIKE v_needle ESCAPE '\' OR a.slug ILIKE v_needle ESCAPE '\')
+        AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
+          SELECT 1 FROM public.article_sites AS s
+          WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state) OR EXISTS (
+          SELECT 1 FROM public.portal_assignments AS pa
+          WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state::text = p_publication_state))
+    )
+    SELECT b_org, b_org_slug, b_org_name, b_id, b_region, b_publisher, b_category, b_author,
+      b_lead_media, b_cover, b_slug, b_title, b_excerpt, b_canonical, b_source, b_tags, b_status,
+      b_type, b_sponsored, b_video, b_audio, b_duration, b_published, b_scheduled, b_archived,
+      b_version, b_created, b_updated, b_cat_ids, b_cat_names, b_portals, b_urls, b_pub_max
+    FROM base
+    WHERE v_cursor_id IS NULL OR v_cursor_bigint IS NULL OR base.b_key < v_cursor_bigint OR (base.b_key = v_cursor_bigint AND base.b_id < v_cursor_id)
+    ORDER BY base.b_key DESC, base.b_id DESC
+    LIMIT v_limit + 1;
+    RETURN;
+  END IF;
+END;
+$func$;
+REVOKE ALL ON FUNCTION indicate_private.list_cross_org_articles(text, text, text, text, text, int, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_cross_org_articles(text, text, text, text, text, int, uuid) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.count_cross_org_articles(
+  p_status text,
+  p_search text,
+  p_tag text,
+  p_publication_state text
+)
+RETURNS int
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT COUNT(*)::int
+  FROM public.articles AS a
+  JOIN public.organizations AS o ON o.id = a.organization_id
+  WHERE o.status = 'active'
+    AND (p_status IS NULL OR p_status = '' OR a.status::text = p_status)
+    AND (p_tag IS NULL OR p_tag = '' OR a.tags @> ARRAY[p_tag])
+    AND (
+      NULLIF(btrim(p_search), '') IS NULL
+      OR a.title ILIKE ('%' || REPLACE(REPLACE(REPLACE(btrim(p_search), '\', '\\'), '%', '\%'), '_', '\_') || '%') ESCAPE '\'
+      OR a.slug ILIKE ('%' || REPLACE(REPLACE(REPLACE(btrim(p_search), '\', '\\'), '%', '\%'), '_', '\_') || '%') ESCAPE '\'
+    )
+    AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
+      SELECT 1 FROM public.article_sites AS s
+      WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state) OR EXISTS (
+      SELECT 1 FROM public.portal_assignments AS pa
+      WHERE pa.source_organization_id = a.organization_id AND pa.source_article_id = a.id AND pa.state::text = p_publication_state))
+$$;
+REVOKE ALL ON FUNCTION indicate_private.count_cross_org_articles(text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.count_cross_org_articles(text, text, text, text) TO indicate_runtime;
+CREATE INDEX IF NOT EXISTS articles_cross_org_status_updated_idx ON public.articles (status, updated_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS articles_cross_org_status_created_idx ON public.articles (status, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS articles_cross_org_tags_gin ON public.articles USING GIN (tags);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (274, 'cross_org_bridge_urls', 'sha256:5875081fe76526ba3e8f0be358eeca3c4e8d8577893de2de66642596d6da18cc');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2b926d198c1067803ab6bc114225844bc888abf034586afa5869289537cc8749', 1791367200000);
+
+-- ----------------------------------------------------------------------
+-- 20261006100000_own_bridge_reads
+-- ----------------------------------------------------------------------
+-- Visibilitas bridge untuk dasbor org pemilik.
+--
+-- `readEditorialScope` per-org memfilter `a.organization_id = :org` dan
+-- agregat tayangnya hanya membaca `article_sites` milik sendiri, sehingga
+-- artikel pemilik (mis. RUTAN) yang terbit murni via `portal_assignments`
+-- di org penyaji tak pernah lolos filter `publicationState` dasbornya
+-- sendiri dan URL tayangnya tak punya sumber. Tiga pembaca SECURITY DEFINER
+-- di bawah menutupnya tanpa menyentuh RLS: hanya baris bridge milik
+-- pasangan (org pemilik, artikel) yang dikembalikan, tanpa body/PII.
+-- Otorisasi (membership `article.read`, kunci region) tetap di lapisan
+-- aplikasi sebelum dipanggil.
+--
+-- Body digest (reproducible): LF-normalize this file, substitute the 64-hex
+-- checksum literal below with 64 zeros, SHA-256 the complete UTF-8 bytes.
+CREATE OR REPLACE FUNCTION indicate_private.bridge_article_ids(
+  p_owner_organization_id uuid,
+  p_state text
+)
+RETURNS uuid[]
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT COALESCE(ARRAY_AGG(DISTINCT pa.source_article_id), '{}'::uuid[])
+  FROM public.portal_assignments AS pa
+  WHERE pa.source_organization_id = p_owner_organization_id
+    AND (p_state IS NULL OR p_state = '' OR pa.state::text = p_state)
+$$;
+REVOKE ALL ON FUNCTION indicate_private.bridge_article_ids(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.bridge_article_ids(uuid, text) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.list_own_bridge_urls(
+  p_owner_organization_id uuid,
+  p_article_ids uuid[]
+)
+RETURNS TABLE(
+  source_article_id uuid,
+  url text,
+  published_at timestamp with time zone
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT pa.source_article_id AS source_article_id,
+    ('https://' || st.normalized_hostname || '/' || a.slug)::text AS url,
+    pa.published_at AS published_at
+  FROM public.portal_assignments AS pa
+  JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+  JOIN public.articles AS a ON a.organization_id = pa.source_organization_id AND a.id = pa.source_article_id
+  WHERE pa.source_organization_id = p_owner_organization_id
+    AND pa.source_article_id = ANY (p_article_ids)
+    AND pa.state = 'published'
+$$;
+REVOKE ALL ON FUNCTION indicate_private.list_own_bridge_urls(uuid, uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_own_bridge_urls(uuid, uuid[]) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.bridge_published_count(
+  p_owner_organization_id uuid,
+  p_source_article_id uuid
+)
+RETURNS bigint
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT COUNT(*)::bigint
+  FROM public.portal_assignments AS pa
+  WHERE pa.source_organization_id = p_owner_organization_id
+    AND pa.source_article_id = p_source_article_id
+    AND pa.state = 'published'
+$$;
+REVOKE ALL ON FUNCTION indicate_private.bridge_published_count(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.bridge_published_count(uuid, uuid) TO indicate_runtime;
+CREATE OR REPLACE FUNCTION indicate_private.list_bridge_serving_targets(
+  p_owner_organization_id uuid,
+  p_article_ids uuid[]
+)
+RETURNS TABLE(
+  serving_organization_id uuid,
+  site_id uuid,
+  hostname text,
+  source_article_id uuid
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT pa.organization_id AS serving_organization_id,
+    pa.site_id AS site_id,
+    st.normalized_hostname AS hostname,
+    pa.source_article_id AS source_article_id
+  FROM public.portal_assignments AS pa
+  JOIN public.sites AS st ON st.organization_id = pa.organization_id AND st.id = pa.site_id
+  WHERE pa.source_organization_id = p_owner_organization_id
+    AND pa.source_article_id = ANY (p_article_ids)
+    AND pa.state = 'published'
+$$;
+REVOKE ALL ON FUNCTION indicate_private.list_bridge_serving_targets(uuid, uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.list_bridge_serving_targets(uuid, uuid[]) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (275, 'own_bridge_reads', 'sha256:2ae7ed596ef17683659955fe4c14ea1ca10d131bb7b77ebf1b897913415d80c9');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea', 1791370800000);
 COMMIT;

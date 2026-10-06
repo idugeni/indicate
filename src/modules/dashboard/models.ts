@@ -343,6 +343,13 @@ export interface PublisherScope {
   readonly regions: readonly RegionRecord[];
 }
 
+/** Bridge publication rollup for one owner article: serving-portal URLs plus the newest bridge time. */
+export interface BridgePublishedEntry {
+  readonly articleId: string;
+  readonly urls: readonly string[];
+  readonly publishedAtMax: string | null;
+}
+
 /** Scoped editorial read: SQL-filtered bodyless articles plus the lookups the board needs. */
 export interface EditorialScope {
   readonly articles: readonly ArticleRecord[];
@@ -350,6 +357,8 @@ export interface EditorialScope {
   readonly total: number;
   readonly tagOptions: readonly { readonly tag: string; readonly count: number }[];
   readonly articleSites: readonly ArticleSiteRecord[];
+  /** Bridge publication URLs for own articles served on other orgs' portals (Hasil Tayang pemilik). */
+  readonly bridgePublished: readonly BridgePublishedEntry[];
   readonly categories: readonly CategoryRecord[];
   readonly authors: readonly AuthorRecord[];
   readonly publishers: readonly (Pick<PublisherRecord, 'id' | 'name' | 'attributionLabel' | 'status'> & { readonly ownerOrganizationId: string | null })[];

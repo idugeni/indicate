@@ -30,7 +30,6 @@ import {
 import type { DashboardCommand } from '@/modules/dashboard/command';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Separator } from '@/components/ui/separator';
 import { AppTooltip } from '@/ui/app-tooltip';
@@ -223,8 +222,6 @@ export function ArticleManager({
   articlesTotal,
   onLoadMoreArticles,
   crossOrg,
-  onCrossOrgChange,
-  isSuperAdmin,
 }: {
   readonly data: unknown;
   readonly command?: DashboardCommand | undefined;
@@ -233,8 +230,6 @@ export function ArticleManager({
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
   readonly crossOrg?: boolean | undefined;
-  readonly onCrossOrgChange?: ((next: boolean) => void) | undefined;
-  readonly isSuperAdmin?: boolean | undefined;
 }) {
   const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
@@ -276,6 +271,7 @@ export function ArticleManager({
   const [sort, setSort] = useState<string>(DEFAULT_SORT);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [crossEdit, setCrossEdit] = useState<{ readonly id: string; readonly article: ArchiveArticle; readonly lookups: LookupTables } | null>(null);
   const [deleting, setDeleting] = useState<ArchiveArticle | null>(null);
   const editorConfig = getEditorConfig('articles');
   const layout = useArticleLayout();
@@ -422,6 +418,36 @@ export function ArticleManager({
     resetPage();
   };
 
+  const startEdit = async (article: ArchiveArticle): Promise<void> => {
+    if (command === undefined || busyId !== null) return;
+    if (editingId === article.id) {
+      setEditingId(null);
+      setCrossEdit(null);
+      return;
+    }
+    const ownerId = crossOrg === true ? article.organizationId : undefined;
+    if (crossOrg === true && (ownerId === undefined || ownerId === '')) return;
+    setEditingId(article.id);
+    if (crossOrg !== true || crossEdit?.id === article.id) return;
+    setBusyId(article.id);
+    try {
+      const result = await command('article.edit.load', { id: article.id, ownerOrganizationId: ownerId as string });
+      const loaded = (typeof result === 'object' && result !== null ? result : {}) as {
+        readonly article?: ArchiveArticle | undefined;
+        readonly lookups?: LookupTables | undefined;
+      };
+      if (typeof loaded.article?.id !== 'string' || typeof loaded.article?.version !== 'number' || typeof loaded.lookups !== 'object' || loaded.lookups === null) {
+        throw new Error('Respons editor tak dikenali.');
+      }
+      setCrossEdit({ id: article.id, article: loaded.article, lookups: loaded.lookups });
+    } catch (error) {
+      setEditingId(null);
+      toast.error(error instanceof Error ? error.message : 'Gagal memuat editor lintas-org.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const runRowAction = async (article: ArchiveArticle): Promise<void> => {
     if (command === undefined || busyId !== null) return;
     const action = article.status === 'archived' ? 'article.restore' : 'article.archive';
@@ -466,21 +492,6 @@ export function ArticleManager({
     <SectionCard icon={Newspaper} title={crossOrgActive ? `Kelola artikel semua organisasi (${totalCount})` : `Kelola artikel (${totalCount})`} eyebrow="Lintas portal">
       <div className="space-y-4">
         <ForOrgInbox command={command} />
-        {isSuperAdmin === true && onCrossOrgChange !== undefined ? (
-          <label className="flex cursor-pointer flex-wrap items-center gap-2 rounded-lg border border-hairline bg-bg px-3 py-2">
-            <Checkbox
-              checked={crossOrgActive}
-              onCheckedChange={(checked) => onCrossOrgChange(checked === true)}
-              aria-label="Tampilkan artikel semua organisasi"
-            />
-            <span className="font-sans text-xs font-medium text-paper">Semua organisasi</span>
-            <span className="font-mono text-[11px] text-paper-faint">
-              {crossOrgActive
-                ? 'Mode steward: arsipkan, pulihkan, dan hapus lintas-org. Ubah detail tetap via organisasi pemilik.'
-                : 'Lihat artikel seluruh jaringan dalam satu daftar.'}
-            </span>
-          </label>
-        ) : null}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1 space-y-1.5">
             <div className="flex items-center justify-between">
@@ -673,12 +684,13 @@ export function ArticleManager({
               const rowActionLabel = isArchived ? 'Pulihkan' : 'Arsipkan';
               const RowActionIcon = isArchived ? ArchiveRestore : Archive;
               const actionsDisabled = command === undefined || busyId !== null;
-              const editDisabled = actionsDisabled || crossOrgActive;
+              const editDisabled = actionsDisabled || (crossOrgActive && (typeof article.organizationId !== 'string' || article.organizationId === ''));
               const rowBusy = busyId === article.id;
               const statusTone = STATUS_BADGE_TONE[resolveStatus(article.status).tone];
               const visibleTags = article.tags.slice(0, 2);
               const hiddenTagCount = article.tags.length - visibleTags.length;
-              const isEditingThisRow = editingId === article.id && editorConfig !== undefined;
+              const crossEditReady = !crossOrgActive || crossEdit?.id === article.id;
+              const isEditingThisRow = editingId === article.id && crossEditReady && editorConfig !== undefined;
 
               return (
                 <li
@@ -742,7 +754,7 @@ export function ArticleManager({
                           variant="ghost"
                           size="icon-sm"
                           disabled={editDisabled}
-                          onClick={() => setEditingId((prev) => (prev === article.id ? null : article.id))}
+                          onClick={() => void startEdit(article)}
                           aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                         >
                           <Pencil className="size-3.5" />
@@ -828,7 +840,7 @@ export function ArticleManager({
                             variant="ghost"
                             size="icon-sm"
                             disabled={editDisabled}
-                            onClick={() => setEditingId((prev) => (prev === article.id ? null : article.id))}
+                            onClick={() => void startEdit(article)}
                             aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                           >
                             <Pencil className="size-3.5" />
@@ -926,7 +938,7 @@ export function ArticleManager({
                           variant={editingId === article.id ? 'secondary' : 'ghost'}
                           size="icon-sm"
                           disabled={editDisabled}
-                          onClick={() => setEditingId((prev) => (prev === article.id ? null : article.id))}
+                          onClick={() => void startEdit(article)}
                           aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                         >
                           <Pencil className="size-3.5" />
@@ -965,6 +977,12 @@ export function ArticleManager({
                   </div>
                   ) : null}
 
+                  {editingId === article.id && crossOrgActive && crossEdit?.id !== article.id ? (
+                    <div className="flex items-center gap-2 border-t border-hairline bg-paper/5 p-3 font-mono text-xs text-paper-dim sm:p-4">
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                      Memuat editor dari organisasi pemilik…
+                    </div>
+                  ) : null}
                   {isEditingThisRow && (
                     <div className="border-t border-hairline bg-paper/5 p-3 sm:p-4">
                       <div className="mb-3 flex items-center justify-between">
@@ -975,7 +993,7 @@ export function ArticleManager({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => setEditingId(null)}
+                          onClick={() => { setEditingId(null); setCrossEdit(null); }}
                           aria-label="Tutup form edit"
                         >
                           <X className="size-3.5" />
@@ -984,16 +1002,23 @@ export function ArticleManager({
                       <RecordEditorForm
                         config={editorConfig}
                         collectionKey="articles"
-                        item={{ ...article }}
-                        lookups={lookups}
+                        item={crossOrgActive && crossEdit !== null ? { ...article, ...crossEdit.article } : { ...article }}
+                        lookups={crossOrgActive && crossEdit !== null ? crossEdit.lookups : lookups}
                         onSaved={() => {
                           setEditingId(null);
+                          setCrossEdit(null);
                         }}
-                        onCancel={() => setEditingId(null)}
-                        onSubmit={async (act, payload) => (command === undefined ? null : command(act, payload))}
+                        onCancel={() => { setEditingId(null); setCrossEdit(null); }}
+                        onSubmit={async (act, payload) => {
+                          if (command === undefined) return null;
+                          if (crossOrgActive && typeof article.organizationId === 'string' && article.organizationId !== '') {
+                            return command(act, { ...payload, ownerOrganizationId: article.organizationId }, { refresh: true });
+                          }
+                          return command(act, payload);
+                        }}
                       />
                       {normalizeArticleType(article.type) === 'liveblog' && command !== undefined ? (
-                        <LiveblogUpdates articleId={article.id} articleTitle={article.title} command={command} />
+                        <LiveblogUpdates articleId={article.id} articleTitle={article.title} command={command} ownerOrganizationId={crossOrgActive ? article.organizationId : undefined} />
                       ) : null}
                     </div>
                   )}

@@ -97,14 +97,28 @@ describe('PublishedUrlBoard', () => {
     expect(screen.getByText('Belum ada artikel yang tayang di jaringan')).toBeDefined();
   });
 
+  it('menggabungkan URL bridge pemilik ke daftar tayang per-org', () => {
+    render(
+      <PublishedUrlBoard
+        data={{
+          articles: ARTICLES,
+          sites: SITES,
+          articleSites: [],
+          bridgePublished: [{ articleId: 'art-2', urls: ['https://wonosobo.example/berita-kedua'], publishedAtMax: '2026-10-05T09:17:46.000Z' }],
+        }}
+      />,
+    );
+    expect(screen.getByText('Berita Kedua')).toBeDefined();
+    fireEvent.click(screen.getAllByRole('button', { name: /buka detail/i })[0]!);
+    expect(screen.getByText('https://wonosobo.example/berita-kedua')).toBeDefined();
+  });
+
   it('tahan payload rusak tanpa melempar', () => {
     render(<PublishedUrlBoard data={null} />);
     expect(screen.getByText('Belum ada artikel yang tayang di jaringan')).toBeDefined();
   });
 
-  it('mode lintas-org memakai URL denormalisasi dan lencana org', async () => {
-    const user = userEvent.setup();
-    const onCrossOrgChange = vi.fn();
+  it('mode lintas-org memakai URL denormalisasi dan lencana org', () => {
     render(
       <PublishedUrlBoard
         data={{
@@ -115,19 +129,15 @@ describe('PublishedUrlBoard', () => {
           articlesNextCursor: null,
         }}
         crossOrg
-        isSuperAdmin
-        onCrossOrgChange={onCrossOrgChange}
       />,
     );
     expect(screen.getByText('Kabar UPT')).toBeDefined();
     expect(screen.getByText('RUTAN WONOSOBO')).toBeDefined();
     expect(screen.getByText('1 Portal Aktif')).toBeDefined();
-    await user.click(screen.getByLabelText('Tampilkan artikel tayang semua organisasi'));
-    expect(onCrossOrgChange).toHaveBeenCalledWith(false);
   });
 
-  it('menyembunyikan toggle lintas-org untuk non-steward', () => {
-    render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} />);
+  it('tidak merender toggle lintas-org: mode lintas-org selalu aktif', () => {
+    render(<PublishedUrlBoard data={{ articles: ARTICLES, sites: SITES, articleSites: ARTICLE_SITES }} crossOrg />);
     expect(screen.queryByLabelText('Tampilkan artikel tayang semua organisasi')).toBeNull();
   });
 });

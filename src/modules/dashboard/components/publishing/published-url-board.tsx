@@ -16,7 +16,6 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
@@ -118,7 +117,7 @@ function formatPublishedAt(value: string | null): string {
   return moment === null ? 'Jadwal belum tercatat' : `Tayang ${moment}`;
 }
 
-export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles, organizationId, crossOrg, onCrossOrgChange, isSuperAdmin }: {
+export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles, organizationId, crossOrg }: {
   readonly data: unknown;
   readonly onFilterApply?: ((query: string) => void) | undefined;
   readonly articlesNextCursor?: string | null | undefined;
@@ -126,8 +125,6 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
   readonly organizationId?: string | undefined;
   readonly crossOrg?: boolean | undefined;
-  readonly onCrossOrgChange?: ((next: boolean) => void) | undefined;
-  readonly isSuperAdmin?: boolean | undefined;
 }) {
   const searchInputId = useId();
   const sortSelectId = useId();
@@ -141,6 +138,7 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
     readonly articles?: readonly ArticleInput[];
     readonly sites?: readonly SiteInput[];
     readonly articleSites?: readonly ArticleSiteInput[];
+    readonly bridgePublished?: readonly { readonly articleId: string; readonly urls: readonly string[]; readonly publishedAtMax: string | null }[];
     readonly total?: number;
     readonly articlesNextCursor?: string | null;
   };
@@ -148,8 +146,8 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
   const crossOrgActive = crossOrg === true;
   const published = useMemo(() => {
     const rows = model.articles ?? [];
-    if (crossOrgActive && rows.some((article) => Array.isArray(article.publishedUrls))) {
-      return rows
+    const collected = crossOrgActive && rows.some((article) => Array.isArray(article.publishedUrls))
+      ? rows
         .filter((article) => Array.isArray(article.publishedUrls) && (article.publishedUrls as readonly string[]).length > 0)
         .map((article) => ({
           articleId: article.id,
@@ -159,20 +157,42 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
           urls: [...new Set(article.publishedUrls as readonly string[])].sort((left, right) => left.localeCompare(right)),
           ...(typeof article.orgName === 'string' && article.orgName !== '' ? { orgName: article.orgName } : {}),
         }))
-        .sort((left, right) => {
-          if (left.publishedAt === right.publishedAt) return left.title.localeCompare(right.title, 'id-ID');
-          if (left.publishedAt === null) return 1;
-          if (right.publishedAt === null) return -1;
-          return right.publishedAt.localeCompare(left.publishedAt);
-        });
+      : collectPublishedUrls({
+        articles: rows,
+        sites: model.sites ?? [],
+        articleSites: model.articleSites ?? [],
+      });
+    const bridge = model.bridgePublished ?? [];
+    if (bridge.length === 0) return collected;
+    const byId = new Map(collected.map((entry) => [entry.articleId, { ...entry, urls: [...entry.urls] }]));
+    const articleById = new Map(rows.map((article) => [article.id, article]));
+    for (const row of bridge) {
+      const existing = byId.get(row.articleId);
+      if (existing !== undefined) {
+        existing.urls = [...new Set([...existing.urls, ...row.urls])].sort((left, right) => left.localeCompare(right));
+        if (row.publishedAtMax !== null && (existing.publishedAt === null || row.publishedAtMax > existing.publishedAt)) {
+          existing.publishedAt = row.publishedAtMax;
+        }
+        continue;
+      }
+      const article = articleById.get(row.articleId);
+      if (article === undefined || row.urls.length === 0) continue;
+      byId.set(row.articleId, {
+        articleId: row.articleId,
+        title: article.title,
+        slug: article.slug,
+        publishedAt: row.publishedAtMax ?? article.publishedAt ?? null,
+        urls: [...new Set(row.urls)].sort((left, right) => left.localeCompare(right)),
+      });
     }
-    return collectPublishedUrls({
-      articles: rows,
-      sites: model.sites ?? [],
-      articleSites: model.articleSites ?? [],
+    return [...byId.values()].sort((left, right) => {
+      if (left.publishedAt === right.publishedAt) return left.title.localeCompare(right.title, 'id-ID');
+      if (left.publishedAt === null) return 1;
+      if (right.publishedAt === null) return -1;
+      return right.publishedAt.localeCompare(left.publishedAt);
     });
   },
-    [model.articles, model.sites, model.articleSites, crossOrgActive],
+    [model.articles, model.sites, model.articleSites, model.bridgePublished, crossOrgActive],
   );
 
   /**
@@ -279,19 +299,6 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
         eyebrow="Monitoring Sindikasi Publikasi"
       >
         <div className="flex flex-col gap-4">
-          {isSuperAdmin === true && onCrossOrgChange !== undefined ? (
-            <label className="flex cursor-pointer flex-wrap items-center gap-2 rounded-lg border border-hairline bg-bg px-3 py-2">
-              <Checkbox
-                checked={crossOrgActive}
-                onCheckedChange={(checked) => onCrossOrgChange(checked === true)}
-                aria-label="Tampilkan artikel tayang semua organisasi"
-              />
-              <span className="font-sans text-xs font-medium text-paper">Semua organisasi</span>
-              <span className="font-mono text-[11px] text-paper-faint">
-                {crossOrgActive ? 'Mode steward: tautan tayang seluruh jaringan.' : 'Lihat hasil tayang seluruh jaringan dalam satu daftar.'}
-              </span>
-            </label>
-          ) : null}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-md border border-hairline bg-bg p-3">
               <div className="flex items-center gap-2 text-paper-dim">
