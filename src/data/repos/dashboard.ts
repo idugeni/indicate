@@ -1887,8 +1887,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
    * @param input - Org pemilik dan artikel; target dihitung dari wilayahnya.
    * @returns Id baris bridge, slug, dan jumlah portal.
    * @remarks Nasional (region null) → semua portal apex; kota → portal kota
-   * ber-slug sama di semua domain. Batas 200 situs per panggilan mengikuti
-   * plafon skema bridge.
+   * ber-slug sama di semua domain. Portal dibaca per halaman sampai habis,
+   * jadi jumlah target mengikuti jaringan, tanpa plafon tetap.
    */
   async requestBridgePublicationAuto(actor: AuthorizedTenantActorContext, input: { readonly ownerOrganizationId: string; readonly articleId: string; readonly viewCount?: number | undefined }): Promise<{ readonly bridgeIds: readonly string[]; readonly slug: string; readonly siteCount: number }> {
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
