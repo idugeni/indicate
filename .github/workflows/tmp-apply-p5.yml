@@ -1,0 +1,23 @@
+name: tmp-apply-p5
+on:
+  push:
+    branches: [fix/network-canvas-cascade]
+    paths: ['.github/workflows/tmp-apply-p5.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Apply patch (fails if context differs)
+        run: |
+          git apply --check .github/tmp-p5.patch
+          git apply .github/tmp-p5.patch
+          git diff --stat
+          git rm -q -f .github/tmp-p5.patch .github/workflows/tmp-apply-p5.yml
+          git config user.name 'github-actions'
+          git config user.email 'github-actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(site): per-template canvas must win over body.bg-bg; paint html too'
+          git push
