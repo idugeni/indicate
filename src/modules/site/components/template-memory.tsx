@@ -33,6 +33,27 @@ export function overlayForTemplate(templateId: string | null): string {
 }
 
 /**
+ * Templates whose canvas is dark. Browser chrome (the Android Chrome toolbar,
+ * the iOS status bar) is painted from `theme-color`, and the network layout
+ * declares a light `#ffffff` for every portal, so on these templates the
+ * toolbar shows as a white strip, most visibly when it sits at the bottom.
+ */
+const DARK_TEMPLATES: ReadonlySet<string> = new Set(['black-lime', 'dark-navy']);
+
+/**
+ * Browser chrome colours for a rendered template.
+ *
+ * @param templateId - Template id read from the DOM, if any.
+ * @returns `theme-color` plus `color-scheme` for a dark template, or `null`
+ * to leave the layout's light default untouched.
+ */
+export function chromeForTemplate(templateId: string | null): { readonly themeColor: string; readonly colorScheme: 'dark' } | null {
+  if (templateId === null || !DARK_TEMPLATES.has(templateId)) return null;
+  const themeColor = TEMPLATE_CANVAS[templateId];
+  return themeColor === undefined ? null : { themeColor, colorScheme: 'dark' };
+}
+
+/**
  * Remember the rendered portal template in a host-scoped cookie.
  *
  * @returns Nothing rendered; writes `indicate-template` once per mount.
@@ -45,6 +66,10 @@ export function TemplateMemory() {
     const templateId = document.querySelector('[data-template]')?.getAttribute('data-template') ?? null;
     if (templateId === null || templateId === '' || TEMPLATE_CANVAS[templateId] === undefined) return;
     document.cookie = `indicate-template=${templateId}; path=/; max-age=31536000; SameSite=Lax`;
+    const chrome = chromeForTemplate(templateId);
+    if (chrome === null) return;
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) meta.content = chrome.themeColor;
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="color-scheme"]')) meta.content = chrome.colorScheme;
   }, []);
   return null;
 }
