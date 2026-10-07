@@ -1906,12 +1906,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) throw new DashboardAccessDeniedError();
       let siteRows: readonly { readonly id: string; readonly normalizedHostname: string }[];
       if (flipped.regionSlug === null) {
-        siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.siteLevel, 'apex'), eq(sites.status, 'active'))).limit(200);
+        siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.siteLevel, 'apex'), eq(sites.status, 'active')));
       } else {
         const regionRows = await transaction.select({ id: regions.id }).from(regions).where(and(eq(regions.organizationId, actor.organizationId), eq(regions.slug, flipped.regionSlug), eq(regions.kind, 'city'), eq(regions.status, 'active'))).limit(1);
         const regionId = regionRows[0]?.id ?? null;
         if (regionId === null) throw new DashboardValidationError({ articleId: ['Wilayah artikel tidak punya portal kota di jaringan.'] });
-        siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.siteLevel, 'city'), eq(sites.regionId, regionId), eq(sites.status, 'active'))).limit(200);
+        siteRows = await transaction.select({ id: sites.id, normalizedHostname: sites.normalizedHostname }).from(sites).where(and(eq(sites.organizationId, actor.organizationId), eq(sites.siteLevel, 'city'), eq(sites.regionId, regionId), eq(sites.status, 'active')));
       }
       if (siteRows.length === 0) throw new DashboardValidationError({ articleId: ['Tidak ada portal aktif untuk wilayah ini.'] });
       return this.insertPublishedBridge(transaction, actor, input.ownerOrganizationId, input.articleId, flipped.slug, siteRows, now, 'publication.bridge.requestAuto', input.viewCount);
