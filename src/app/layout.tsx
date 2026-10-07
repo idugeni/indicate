@@ -112,7 +112,7 @@ const plexMono = IBM_Plex_Mono({
  * sehingga tidak ada flash; nilai asing hanya bisa memilih warna latar karena
  * lookup allowlist. Sumber warna: `TEMPLATE_CANVAS` di `template-memory.tsx`.
  */
-const CANVAS_PAINT_SCRIPT = `try{var m=document.cookie.match(/(?:^|;\\s*)indicate-template=([a-z-]+)/);var c={'clean-blue':'#f5f8fd','black-lime':'#0a0c07','dark-navy':'#070f22','glassy-blue':'#edf4ff','green-minimal':'#f7faf7','orange-modern':'#fff9f4','purple-editorial':'#f8f7ff','red-editorial':'#fffafa','soft-blue':'#f1f6ff','warm-editorial':'#fdf7f0'};var t=m&&c[m[1]];if(t)document.body.style.backgroundColor=t;}catch(e){}`;
+const CANVAS_PAINT_SCRIPT = `try{var m=document.cookie.match(/(?:^|;\\s*)indicate-template=([a-z-]+)/),c={'clean-blue':'#f5f8fd','black-lime':'#0a0c07','dark-navy':'#070f22','glassy-blue':'#edf4ff','green-minimal':'#f7faf7','orange-modern':'#fff9f4','purple-editorial':'#f8f7ff','red-editorial':'#fffafa','soft-blue':'#f1f6ff','warm-editorial':'#fdf7f0'},t=m&&c[m[1]];if(t){document.documentElement.style.backgroundColor=t;document.body.style.backgroundColor=t}var d=m&&({'black-lime':1,'dark-navy':1})[m[1]];if(d){document.documentElement.style.colorScheme='dark';var q=document.querySelector('meta[name="theme-color"]');q&&(q.content=t)}}catch(e){ }`;
 
 /**
  * Portal brand is NOT resolved in the root layout: host + DB reads here
