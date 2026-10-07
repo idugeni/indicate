@@ -202,8 +202,13 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     'editArticle',
     parseAsString.withOptions({ scroll: false, history: 'replace' }),
   );
+  const [editOwnerId, setEditOwnerId] = useQueryState(
+    'editOwner',
+    parseAsString.withOptions({ scroll: false, history: 'replace' }),
+  );
   const exitEdit = () => {
     void setEditArticleId(null);
+    void setEditOwnerId(null);
     onSelectView('articles');
   };
 
@@ -274,11 +279,12 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           command={command}
           organizationId={organizationId}
           editArticleId={editArticleId ?? undefined}
+          editOwnerOrganizationId={editOwnerId ?? undefined}
           onExitEdit={exitEdit}
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onEditArticle={(articleId) => { void setEditArticleId(articleId); onSelectView('editorial'); }} /> : null}
+      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onEditArticle={(articleId, ownerOrganizationId) => { void setEditArticleId(articleId); void setEditOwnerId(ownerOrganizationId ?? null); onSelectView('editorial'); }} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
