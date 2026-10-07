@@ -40,6 +40,9 @@ import { SearchCombobox } from '@/modules/dashboard/components/shared/search-com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { STATUS_BADGE_TONE, resolveStatus } from '@/modules/dashboard/components/data-view-format';
+import { getEditorConfig, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
+import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
+import { LiveblogUpdates } from '@/modules/dashboard/components/editorial/liveblog-updates';
 import { articleTypeLabel, normalizeArticleType } from '@/modules/site/article-type';
 import { ForOrgInbox } from '@/modules/dashboard/components/editorial/inbox-panel';
 
@@ -228,8 +231,8 @@ export function ArticleManager({
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
   readonly crossOrg?: boolean | undefined;
-  /** Alihkan ubah ke Tulis Berita dalam mode edit. */
-  readonly onEditArticle?: ((articleId: string, ownerOrganizationId?: string) => void) | undefined;
+  /** Alihkan ubah satu-org ke Tulis Berita; tanpa ini ubah inline seperti semula. */
+  readonly onEditArticle?: ((articleId: string) => void) | undefined;
 }) {
   const [page, setPage] = useDashboardPage('archivePage');
   const model = data as {
@@ -269,19 +272,18 @@ export function ArticleManager({
   const [site, setSite] = useState('');
   const [status, setStatus] = useState('active');
   const [sort, setSort] = useState<string>(DEFAULT_SORT);
-  const [busyActions, setBusyActions] = useState<Readonly<Record<string, 'archive' | 'delete'>>>({});
+  const [busyIds, setBusyIds] = useState<readonly string[]>([]);
   /** Tandai baris sibuk; baris lain tetap bisa diklik dan memproses sendiri. */
-  const markBusy = (id: string, action: 'archive' | 'delete'): void => {
-    setBusyActions((prev) => ({ ...prev, [id]: action }));
+  const markBusy = (id: string): void => {
+    setBusyIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   };
   const clearBusy = (id: string): void => {
-    setBusyActions((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    setBusyIds((prev) => (prev.includes(id) ? prev.filter((candidate) => candidate !== id) : prev));
   };
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [crossEdit, setCrossEdit] = useState<{ readonly id: string; readonly article: ArchiveArticle; readonly lookups: LookupTables } | null>(null);
   const [deleting, setDeleting] = useState<ArchiveArticle | null>(null);
+  const editorConfig = getEditorConfig('articles');
   const layout = useArticleLayout();
 
   /**
@@ -403,6 +405,13 @@ export function ArticleManager({
   const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
   const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const lookups: LookupTables = {
+    regions: model?.regions ?? [],
+    publishers: model?.publishers ?? [],
+    categories: categories.map((item) => ({ id: item.id, name: item.name })),
+    authors: model?.authors ?? [],
+  };
+
 
   const resetPage = () => setPage(1);
 
@@ -419,20 +428,48 @@ export function ArticleManager({
     resetPage();
   };
 
-  const startEdit = (article: ArchiveArticle): void => {
-    if (command === undefined || busyActions[article.id] !== undefined) return;
-    if (crossOrg === true && !article.organizationId) return;
-    onEditArticle?.(article.id, crossOrg === true ? article.organizationId : undefined);
+  const startEdit = async (article: ArchiveArticle): Promise<void> => {
+    if (command === undefined || busyIds.includes(article.id)) return;
+    if (crossOrg !== true && onEditArticle !== undefined) {
+      onEditArticle(article.id);
+      return;
+    }
+    if (editingId === article.id) {
+      setEditingId(null);
+      setCrossEdit(null);
+      return;
+    }
+    const ownerId = crossOrg === true ? article.organizationId : undefined;
+    if (crossOrg === true && (ownerId === undefined || ownerId === '')) return;
+    setEditingId(article.id);
+    if (crossOrg !== true || crossEdit?.id === article.id) return;
+    markBusy(article.id);
+    try {
+      const result = await command('article.edit.load', { id: article.id, ownerOrganizationId: ownerId as string });
+      const loaded = (typeof result === 'object' && result !== null ? result : {}) as {
+        readonly article?: ArchiveArticle | undefined;
+        readonly lookups?: LookupTables | undefined;
+      };
+      if (typeof loaded.article?.id !== 'string' || typeof loaded.article?.version !== 'number' || typeof loaded.lookups !== 'object' || loaded.lookups === null) {
+        throw new Error('Respons editor tak dikenali.');
+      }
+      setCrossEdit({ id: article.id, article: loaded.article, lookups: loaded.lookups });
+    } catch (error) {
+      setEditingId(null);
+      toast.error(error instanceof Error ? error.message : 'Gagal memuat editor lintas-org.');
+    } finally {
+      clearBusy(article.id);
+    }
   };
 
   const runRowAction = async (article: ArchiveArticle): Promise<void> => {
-    if (command === undefined || busyActions[article.id] !== undefined) return;
+    if (command === undefined || busyIds.includes(article.id)) return;
     const action = article.status === 'archived' ? 'article.restore' : 'article.archive';
     const restoring = article.status === 'archived';
     const ownerPayload = crossOrg === true && typeof article.organizationId === 'string' && article.organizationId !== ''
       ? { ownerOrganizationId: article.organizationId }
       : {};
-    markBusy(article.id, 'archive');
+    markBusy(article.id);
     try {
       await command(action, { id: article.id, expectedVersion: article.version, ...ownerPayload }, { refresh: true });
       toast.success(restoring ? 'Artikel dipulihkan.' : 'Artikel diarsipkan.');
@@ -444,12 +481,12 @@ export function ArticleManager({
   };
 
   const confirmDelete = async (): Promise<void> => {
-    if (command === undefined || deleting === null || busyActions[deleting.id] === 'delete') return;
+    if (command === undefined || deleting === null || busyIds.includes(deleting.id)) return;
     const target = deleting;
     const ownerPayload = crossOrg === true && typeof target.organizationId === 'string' && target.organizationId !== ''
       ? { ownerOrganizationId: target.organizationId }
       : {};
-    markBusy(target.id, 'delete');
+    markBusy(target.id);
     try {
       const result = await command('article.delete', { id: target.id, expectedVersion: target.version, ...ownerPayload }, { refresh: true });
       if (result !== null) {
@@ -660,13 +697,14 @@ export function ArticleManager({
               const isArchived = article.status === 'archived';
               const rowActionLabel = isArchived ? 'Pulihkan' : 'Arsipkan';
               const RowActionIcon = isArchived ? ArchiveRestore : Archive;
-              const rowBusy = busyActions[article.id] !== undefined;
-              const archiveBusy = busyActions[article.id] === 'archive';
+              const rowBusy = busyIds.includes(article.id);
               const actionsDisabled = command === undefined || rowBusy;
-              const editDisabled = actionsDisabled || onEditArticle === undefined || (crossOrgActive && (typeof article.organizationId !== 'string' || article.organizationId === ''));
+              const editDisabled = actionsDisabled || (crossOrgActive && (typeof article.organizationId !== 'string' || article.organizationId === ''));
               const statusTone = STATUS_BADGE_TONE[resolveStatus(article.status).tone];
               const visibleTags = article.tags.slice(0, 2);
               const hiddenTagCount = article.tags.length - visibleTags.length;
+              const crossEditReady = !crossOrgActive || crossEdit?.id === article.id;
+              const isEditingThisRow = editingId === article.id && crossEditReady && editorConfig !== undefined;
 
               return (
                 <li
@@ -730,7 +768,7 @@ export function ArticleManager({
                           variant="ghost"
                           size="icon-sm"
                           disabled={editDisabled}
-                          onClick={() => startEdit(article)}
+                          onClick={() => void startEdit(article)}
                           aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                         >
                           <Pencil className="size-3.5" />
@@ -745,7 +783,7 @@ export function ArticleManager({
                           }}
                           aria-label={`${rowActionLabel} artikel ${article.title}`}
                         >
-                          {archiveBusy ? <Loader2 className="size-3.5 animate-spin" /> : <RowActionIcon className="size-3.5" />}
+                          {rowBusy ? <Loader2 className="size-3.5 animate-spin" /> : <RowActionIcon className="size-3.5" />}
                         </Button>
                         <Button
                           type="button"
@@ -816,7 +854,7 @@ export function ArticleManager({
                             variant="ghost"
                             size="icon-sm"
                             disabled={editDisabled}
-                            onClick={() => startEdit(article)}
+                            onClick={() => void startEdit(article)}
                             aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                           >
                             <Pencil className="size-3.5" />
@@ -833,7 +871,7 @@ export function ArticleManager({
                             }}
                             aria-label={`${rowActionLabel} artikel ${article.title}`}
                           >
-                            {archiveBusy ? <Loader2 className="size-3.5 animate-spin" /> : <RowActionIcon className="size-3.5" />}
+                            {rowBusy ? <Loader2 className="size-3.5 animate-spin" /> : <RowActionIcon className="size-3.5" />}
                           </Button>
                         </AppTooltip>
                         <AppTooltip label={`Hapus ${article.title}`}>
@@ -883,43 +921,45 @@ export function ArticleManager({
                       )}
                     </div>
 
-                    <div className="min-w-0">
-                      <p className="m-0 truncate font-mono text-[11px] text-paper-faint">
-                        {formatLong(article.updatedAt)}
-                      </p>
+                    <div className="flex flex-col font-mono text-[11px] leading-tight text-paper-faint">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="size-3" /> {formatLong(article.publishedAt)}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px]">
+                        <Clock className="size-3" /> {formatLong(article.updatedAt)}
+                      </span>
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex flex-col gap-1">
-                        <Badge
-                          variant="outline"
-                          className={`w-fit font-mono text-[10px] uppercase tracking-wider ${statusTone}`}
-                        >
-                          {STATUS_LABELS[article.status] ?? article.status}
+                    <div>
+                      <Badge
+                        variant="outline"
+                        className={`font-mono text-[10px] uppercase tracking-wider ${statusTone}`}
+                      >
+                        {STATUS_LABELS[article.status] ?? article.status}
+                      </Badge>
+                      <ModeBadge type={article.type} />
+                      {crossOrgActive && typeof article.orgName === 'string' && article.orgName !== '' ? (
+                        <Badge variant="outline" className="mt-1 block max-w-full truncate font-sans text-[10px] text-paper-dim">
+                          {article.orgName}
                         </Badge>
-                        <ModeBadge type={article.type} />
-                        {crossOrgActive && typeof article.orgName === 'string' && article.orgName !== '' ? (
-                          <Badge variant="outline" className="max-w-full truncate font-sans text-[10px] text-paper-dim">
-                            {article.orgName}
-                          </Badge>
-                        ) : null}
-                      </div>
+                      ) : null}
                     </div>
 
-                    <div className="flex items-center justify-end gap-1">
-                      <AppTooltip label={crossOrgActive ? `Ubah ${article.title} (pindah ke organisasi pemilik)` : `Ubah ${article.title}`}>
+                    <div className="flex items-center justify-end gap-0.5">
+                      <AppTooltip label={crossOrgActive ? `Ubah via organisasi pemilik: ${article.title}` : `Ubah artikel ${article.title}`}>
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant={editingId === article.id ? 'secondary' : 'ghost'}
                           size="icon-sm"
                           disabled={editDisabled}
-                          onClick={() => startEdit(article)}
+                          onClick={() => void startEdit(article)}
                           aria-label={crossOrgActive ? `Ubah artikel ${article.title} (pindah ke organisasi pemilik)` : `Ubah artikel ${article.title}`}
                         >
                           <Pencil className="size-3.5" />
                         </Button>
                       </AppTooltip>
-                      <AppTooltip label={`${rowActionLabel} ${article.title}`}>
+
+                      <AppTooltip label={`${rowActionLabel} artikel ${article.title}`}>
                         <Button
                           type="button"
                           variant="ghost"
@@ -930,10 +970,11 @@ export function ArticleManager({
                           }}
                           aria-label={`${rowActionLabel} artikel ${article.title}`}
                         >
-                          {archiveBusy ? <Loader2 className="size-3.5 animate-spin" /> : <RowActionIcon className="size-3.5" />}
+                          {rowBusy ? <Loader2 className="size-3.5 animate-spin" /> : <RowActionIcon className="size-3.5" />}
                         </Button>
                       </AppTooltip>
-                      <AppTooltip label={`Hapus ${article.title}`}>
+
+                      <AppTooltip label={`Hapus permanen artikel ${article.title}`}>
                         <Button
                           type="button"
                           variant="ghost"
@@ -949,46 +990,116 @@ export function ArticleManager({
                     </div>
                   </div>
                   ) : null}
+
+                  {editingId === article.id && crossOrgActive && crossEdit?.id !== article.id ? (
+                    <div className="flex items-center gap-2 border-t border-hairline bg-paper/5 p-3 font-mono text-xs text-paper-dim sm:p-4">
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                      Memuat editor dari organisasi pemilik…
+                    </div>
+                  ) : null}
+                  {isEditingThisRow && (
+                    <div className="border-t border-hairline bg-paper/5 p-3 sm:p-4">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <span className="min-w-0 flex-1 truncate font-mono text-xs uppercase tracking-wider text-paper">
+                          Edit: {article.title}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="shrink-0"
+                          onClick={() => { setEditingId(null); setCrossEdit(null); }}
+                          aria-label="Tutup form edit"
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                      <RecordEditorForm
+                        config={editorConfig}
+                        collectionKey="articles"
+                        item={crossOrgActive && crossEdit !== null ? { ...article, ...crossEdit.article } : { ...article }}
+                        lookups={crossOrgActive && crossEdit !== null ? crossEdit.lookups : lookups}
+                        onSaved={() => {
+                          setEditingId(null);
+                          setCrossEdit(null);
+                        }}
+                        onCancel={() => { setEditingId(null); setCrossEdit(null); }}
+                        onSubmit={async (act, payload) => {
+                          if (command === undefined) return null;
+                          if (crossOrgActive && typeof article.organizationId === 'string' && article.organizationId !== '') {
+                            return command(act, { ...payload, ownerOrganizationId: article.organizationId }, { refresh: true });
+                          }
+                          return command(act, payload);
+                        }}
+                      />
+                      {normalizeArticleType(article.type) === 'liveblog' && command !== undefined ? (
+                        <LiveblogUpdates articleId={article.id} articleTitle={article.title} command={command} ownerOrganizationId={crossOrgActive ? article.organizationId : undefined} />
+                      ) : null}
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ul>
-
-          <div className="mt-6">
-            <DashboardPager
-              page={safePage}
-              pageCount={pageCount}
-              onPageChange={goToPage}
-              total={totalCount}
-              pageSize={PAGE_SIZE}
-            />
-          </div>
         </div>
       )}
 
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus artikel secara permanen?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus permanen artikel?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini akan menghapus <span className="font-bold text-paper">{deleting?.title}</span> beserta seluruh salinannya di portal apex dan regional. Data yang sudah dihapus tidak dapat dipulihkan.
+              {deleting === null
+                ? ''
+                : `"${deleting.title}" dan seluruh revisinya akan dihapus permanen dan tidak bisa dikembalikan. Hanya draf dan arsip yang bisa dihapus; artikel tayang harus diarsipkan terlebih dahulu.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
-              onClick={(event) => {
-                event.preventDefault();
+              disabled={deleting !== null && busyIds.includes(deleting.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
                 void confirmDelete();
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {busyActions[deleting?.id ?? ''] === 'delete' ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-              Hapus permanen
+              {deleting !== null && busyIds.includes(deleting.id) ? 'Menghapus…' : 'Hapus permanen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DashboardPager
+        startIndex={(safePage - 1) * PAGE_SIZE}
+        visibleCount={visible.length}
+        total={totalCount}
+        page={safePage}
+        pageCount={pageCount}
+        onPageChange={goToPage}
+      />
+      {onLoadMoreArticles !== undefined && nextCursor !== null ? (
+        <div className="mt-3 flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (fillingRef.current) return;
+              fillingRef.current = true;
+              void onLoadMoreArticles().finally(() => {
+                fillingRef.current = false;
+              });
+            }}
+          >
+            Muat artikel lebih lama
+          </Button>
+        </div>
+      ) : null}
     </SectionCard>
   );
 }
