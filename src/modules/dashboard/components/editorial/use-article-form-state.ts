@@ -1190,15 +1190,30 @@ export function useArticleFormState({
       }
       if (typeof created.organizationId === 'string' && created.organizationId !== '' && created.organizationId !== organizationId) {
         if (willPublish && status === 'active' && typeof created.id === 'string' && command !== undefined && targetSiteIds.length > 0) {
+          // `siteIds` is capped per command, so the bridge request is split into as
+          // many batches as the network needs instead of one oversized call.
+          let bridgedSites = 0;
+          let declined = false;
           try {
-            const bridged = await command('article.bridge.request', { ownerOrganizationId: created.organizationId, articleId: created.id, siteIds: targetSiteIds, ...(initialViews === null ? {} : { viewCount: initialViews }) });
-            if (bridged !== null) {
-              toast.success(`Tersimpan di organisasi tujuan dan tayang ke ${targetSiteIds.length.toLocaleString('id-ID')} portal.`);
-            } else {
+            for (const batch of chunkPublicationTargets(targetSiteIds)) {
+              const bridged = await command('article.bridge.request', { ownerOrganizationId: created.organizationId, articleId: created.id, siteIds: batch, ...(initialViews === null ? {} : { viewCount: initialViews }) });
+              if (bridged === null) {
+                declined = true;
+                break;
+              }
+              bridgedSites += batch.length;
+            }
+            if (!declined) {
+              toast.success(`Tersimpan di organisasi tujuan dan tayang ke ${bridgedSites.toLocaleString('id-ID')} portal.`);
+            } else if (bridgedSites === 0) {
               toast.info('Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.');
+            } else {
+              toast.warning(`Tersimpan di organisasi tujuan dan ${bridgedSites.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal sudah tayang. Sisanya menyusul dari Antrean Penerbitan.`);
             }
           } catch {
-            toast.error('Tersimpan di organisasi tujuan, tetapi gagal diterbitkan. Coba lagi dari Antrean Penerbitan.');
+            toast.error(bridgedSites === 0
+              ? 'Tersimpan di organisasi tujuan, tetapi gagal diterbitkan. Coba lagi dari Antrean Penerbitan.'
+              : `Tersimpan di organisasi tujuan dan ${bridgedSites.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal sudah tayang, sisanya gagal. Periksa Antrean Penerbitan.`);
           }
         } else {
           toast.info('Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.');
