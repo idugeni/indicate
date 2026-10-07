@@ -1,0 +1,23 @@
+name: tmp-apply-p4
+on:
+  push:
+    branches: [fix/dark-template-theme-color]
+    paths: ['.github/workflows/tmp-apply-p4.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Apply patch (fails if context differs)
+        run: |
+          git apply --check .github/tmp-p4.patch
+          git apply .github/tmp-p4.patch
+          git diff --stat
+          git rm -q -f .github/tmp-p4.patch .github/workflows/tmp-apply-p4.yml
+          git config user.name 'github-actions'
+          git config user.email 'github-actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(site): dark templates colour the browser toolbar (theme-color) instead of a white strip'
+          git push
