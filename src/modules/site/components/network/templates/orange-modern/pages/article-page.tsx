@@ -92,7 +92,7 @@ export function OrangeModernArticle({
             <ArticleAudioPlayer audioUrl={article.audioUrl} durationSeconds={article.durationSeconds} title={article.title} />
           ) : null}
 
-          <div className="mt-8 space-y-7">
+          <div className="article-body-rhythm mt-8">
             <ArticleRichBodyView
               body={article.body}
               bodyJson={article.bodyJson}

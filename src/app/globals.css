@@ -535,6 +535,42 @@
     padding: 2rem 1rem 4rem;
   }
 
+  /* Reading rhythm for the article body shared by every network template.
+     Blocks are direct children of the wrapper (TipTapBodyView and
+     ArticleBodyView both render a fragment), so the rules key off `> *`.
+     Media is a `span.block`, spaced like `.article-body-media`. */
+  .article-body-rhythm {
+    display: flow-root;
+  }
+
+  .article-body-rhythm > * {
+    margin: 0;
+  }
+
+  .article-body-rhythm > * + * {
+    margin-top: 1.5rem;
+  }
+
+  .article-body-rhythm > :is(h2, h3) {
+    line-height: 1.3;
+  }
+
+  .article-body-rhythm > :is(h2, h3):not(:first-child) {
+    margin-top: 2.5rem;
+  }
+
+  .article-body-rhythm > :is(h2, h3) + * {
+    margin-top: 0.75rem;
+  }
+
+  .article-body-rhythm > :is(.article-body-media, span.block):not(:first-child) {
+    margin-top: 2.5rem;
+  }
+
+  .article-body-rhythm > :is(.article-body-media, span.block) + * {
+    margin-top: 2.5rem;
+  }
+
   .article-grid {
     display: grid;
     gap: 1rem;
