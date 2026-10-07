@@ -82,7 +82,7 @@ const publicationOverrideSchema = z.object({
 }).strict().refine((override) => override.title !== undefined || override.description !== undefined || override.imageMediaId !== undefined, 'override_must_define_a_field');
 export const publicationRequestSchema = z.object({
   articleId: z.uuid(),
-  siteIds: z.array(z.uuid()).min(1).max(100),
+  siteIds: z.array(z.uuid()).min(1),
   idempotencyKey: z.string().trim().min(1).max(200),
   options: publicationOptionsSchema,
   publishAt: publicationTimestampSchema.nullable().optional(),
@@ -93,7 +93,7 @@ export const publicationStatusSchema = z.object({ jobId: z.uuid() }).strict();
 
 export const publicationSuggestSchema = z.object({
   articleId: z.uuid(),
-  siteIds: z.array(z.uuid()).min(1).max(100),
+  siteIds: z.array(z.uuid()).min(1),
 }).strict();
 
 export const publicationTargetSelectionSchema = z.object({
@@ -108,7 +108,7 @@ export const publicationSiteRobotsSchema = z.object({
 
 export const publicationBulkRequestSchema = z.object({
   articleIds: z.array(z.uuid()).min(1).max(20),
-  siteIds: z.array(z.uuid()).min(1).max(100),
+  siteIds: z.array(z.uuid()).min(1),
   idempotencyKey: z.string().trim().min(1).max(200),
   options: publicationOptionsSchema,
   publishAt: publicationTimestampSchema.nullable().optional(),
