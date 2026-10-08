@@ -194,6 +194,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly crossOrg?: boolean | undefined;
 }) {
   const metadata = VIEW_REGISTRY[view];
+  const MetadataIcon = metadata.icon;
 
   /**
    * Artikel yang sedang diubah di Tulis Berita; datang dari Kelola Artikel.
@@ -254,7 +255,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="flex min-w-0 items-start gap-3.5">
             <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-indigo-400/15 bg-indigo-400/10 text-indigo-300">
-              <metadata.icon className="h-4.5 w-4.5" aria-hidden="true" />
+              <MetadataIcon className="h-4.5 w-4.5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
