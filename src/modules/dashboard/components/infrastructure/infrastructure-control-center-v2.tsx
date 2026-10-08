@@ -39,16 +39,18 @@ export function InfrastructureControlCenterV2({
   readonly command: DashboardCommand;
   readonly organizationId: string;
 }) {
-  const model = (data ?? {}) as InfrastructureData;
   const [focus, setFocus] = useState<(typeof areas)[number]['id']>('topology');
 
-  const counts = useMemo(() => ({
-    domains: model.domains?.length ?? 0,
-    regions: model.regions?.length ?? 0,
-    sites: model.sites?.length ?? 0,
-    members: model.memberships?.length ?? 0,
-    invites: model.invitations?.length ?? 0,
-  }), [model]);
+  const counts = useMemo(() => {
+    const model = (data ?? {}) as InfrastructureData;
+    return {
+      domains: model.domains?.length ?? 0,
+      regions: model.regions?.length ?? 0,
+      sites: model.sites?.length ?? 0,
+      members: model.memberships?.length ?? 0,
+      invites: model.invitations?.length ?? 0,
+    };
+  }, [data]);
 
   const activeArea = areas.find((area) => area.id === focus) ?? areas[0];
 
@@ -107,18 +109,10 @@ export function InfrastructureControlCenterV2({
       </section>
 
       <SectionCard icon={activeArea.icon} title={activeArea.title} eyebrow={`Focused area · ${activeArea.label}`}>
-        {focus === 'topology' ? (
-          <ConfigurationPanel data={data} command={command} />
-        ) : null}
-        {focus === 'identity' ? (
-          <SiteSettingsForm data={data} command={command} />
-        ) : null}
-        {focus === 'edge' ? (
-          <CachePurgeForm data={data} command={command} />
-        ) : null}
-        {focus === 'access' ? (
-          <AccessManagementForm data={data} command={command} organizationId={organizationId} />
-        ) : null}
+        {focus === 'topology' ? <ConfigurationPanel data={data} command={command} /> : null}
+        {focus === 'identity' ? <SiteSettingsForm data={data} command={command} /> : null}
+        {focus === 'edge' ? <CachePurgeForm data={data} command={command} /> : null}
+        {focus === 'access' ? <AccessManagementForm data={data} command={command} organizationId={organizationId} /> : null}
       </SectionCard>
     </div>
   );
