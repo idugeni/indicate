@@ -34,7 +34,7 @@ describe('NetworkIntelligenceV2', () => {
     render(<NetworkIntelligenceV2 data={BASE} />);
     expect(screen.getByRole('region', { name: 'Network Intelligence' })).toBeDefined();
     expect(screen.getByText('Published deliveries')).toBeDefined();
-    expect(screen.getByText('6')).toBeDefined();
+    expect(screen.getByText('5')).toBeDefined();
     expect(screen.getByText('18')).toBeDefined();
     expect(screen.getByRole('tab', { name: 'Network' })).toBeDefined();
     expect(screen.getByRole('tab', { name: 'Content' })).toBeDefined();
@@ -42,7 +42,7 @@ describe('NetworkIntelligenceV2', () => {
     expect(screen.getByText('Regional coverage')).toBeDefined();
   });
   it('shows an honest empty state when telemetry has no signal', () => {
-    const empty = { ...BASE, articlesByRegion: [], articlesBySite: [], articlesByPublisher: [], outcomesBySiteAndState: [], arusPenerbit: [], tugasHarian: [{ hari: '2026-10-01', diterbitkan: 0, gagal: 0, antre: 0 }], penyaluranHarian: [], viewsHarian: [] };
+    const empty = { ...BASE, articlesByRegion: [], articlesBySite: [], articlesByCategory: [], articlesByPublisher: [], articlesByStatus: [], jobsByState: [], jobsBySiteRegionAndState: [], outcomesBySiteAndState: [], outcomesBySiteRegionAndState: [], arusPenerbit: [], aktivitasPerJam: [], aktivitasTerbaru: [], tugasHarian: [{ hari: '2026-10-01', diterbitkan: 0, gagal: 0, antre: 0 }], penyaluranHarian: [], viewsHarian: [] };
     render(<NetworkIntelligenceV2 data={empty} />);
     expect(screen.getByText('Belum ada telemetry jaringan.')).toBeDefined();
   });
