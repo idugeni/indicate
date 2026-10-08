@@ -60,7 +60,7 @@ import {
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
 import { TelemetryGallery } from '@/modules/dashboard/components/analytics/gallery';
-import { PrimaryBento } from '@/modules/dashboard/components/analytics/primary-bento';
+import { DashboardV2Overview } from '@/modules/dashboard/components/dashboard-v2-overview';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
 import { Progress } from '@/components/ui/progress';
@@ -227,14 +227,23 @@ export function DataView({
           ))}
         </dl>
 
-        <PrimaryBento
-          jobs={jobs ?? {}}
-          succeeded={successfulOutcomes}
-          failed={failedOutcomes}
-          active={activeArticles}
-          archived={archivedArticles}
+        <DashboardV2Overview
+          dashboard={{
+            activeDomains,
+            activeSubdomains,
+            activeSites,
+            activeArticles,
+            archivedArticles,
+            jobsByState: jobs ?? {},
+            successfulSiteOutcomes: successfulOutcomes,
+            failedSiteOutcomes: failedOutcomes,
+            activeMedia,
+            regionScope: typeof dashboard.regionScope === 'object' && dashboard.regionScope !== null
+              ? dashboard.regionScope as { readonly id: string; readonly name: string }
+              : null,
+          }}
           analytics={analytics}
-          organizationId={organizationId}
+          onSelectView={onSelectView}
         />
 
         {onSelectView === undefined ? null : (
