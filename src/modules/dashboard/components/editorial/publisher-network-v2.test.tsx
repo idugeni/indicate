@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { PublisherNetworkV2 } from '@/modules/dashboard/components/editorial/publisher-network-v2';
+import type { DashboardCommand } from '@/modules/dashboard/command';
 
 afterEach(() => cleanup());
 
@@ -16,7 +17,7 @@ const DATA = {
   ],
 };
 
-function setup(command = vi.fn(async () => ({ ok: true })), onFilterApply = vi.fn()) {
+function setup(command: DashboardCommand = vi.fn(async () => ({ ok: true })) as unknown as DashboardCommand, onFilterApply = vi.fn()) {
   return render(
     <PublisherNetworkV2
       data={DATA}

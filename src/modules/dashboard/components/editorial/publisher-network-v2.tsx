@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Users,
   XCircle,
+  type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -54,7 +55,7 @@ interface PublisherData {
   readonly affiliationTotalInScope?: number;
 }
 
-const STATUS_META: Readonly<Record<PublisherStatus, { label: string; icon: typeof CheckCircle2; className: string }>> = {
+const STATUS_META: Readonly<Record<PublisherStatus, { label: string; icon: LucideIcon; className: string }>> = {
   verified: { label: 'Terverifikasi', icon: CheckCircle2, className: 'text-emerald-400' },
   pending: { label: 'Menunggu', icon: Clock3, className: 'text-amber-400' },
   rejected: { label: 'Ditolak', icon: XCircle, className: 'text-rose-400' },
@@ -209,7 +210,7 @@ export function PublisherNetworkV2({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="publisher-v2-type">Klasifikasi</Label>
-              <DashboardSelect id="publisher-v2-type" value={createType} onValueChange={(value) => setCreateType(value ?? 'independent_publisher')} disabled={isMutating}>
+              <DashboardSelect id="publisher-v2-type" placeholder="Pilih klasifikasi" value={createType} onValueChange={(value) => setCreateType(value ?? 'independent_publisher')} disabled={isMutating}>
                 <DashboardSelectItem value="independent_publisher">Penerbit independen regional</DashboardSelectItem>
                 <DashboardSelectItem value="government_institution">Institusi / lembaga kedinasan</DashboardSelectItem>
                 <DashboardSelectItem value="company">Badan usaha / korporasi media</DashboardSelectItem>
@@ -233,11 +234,11 @@ export function PublisherNetworkV2({
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
-          ['Publisher', counts.total, Users],
-          ['Terverifikasi', counts.verified, ShieldCheck],
-          ['Menunggu', counts.pending, Clock3],
-          ['Klaim aktif', counts.activeClaims, FileCheck2],
-        ].map(([label, value, Icon]) => (
+          { label: 'Publisher', value: counts.total, icon: Users },
+          { label: 'Terverifikasi', value: counts.verified, icon: ShieldCheck },
+          { label: 'Menunggu', value: counts.pending, icon: Clock3 },
+          { label: 'Klaim aktif', value: counts.activeClaims, icon: FileCheck2 },
+        ].map(({ label, value, icon: Icon }) => (
           <div key={String(label)} className="rounded-lg border border-hairline bg-bg-raised px-3 py-3">
             <div className="flex items-center gap-2 text-paper-faint"><Icon className="h-3.5 w-3.5" aria-hidden="true" /><span className="font-mono text-[10px] uppercase tracking-wider">{label}</span></div>
             <p className="mt-1 font-mono text-xl tabular-nums text-paper">{Number(value).toLocaleString('id-ID')}</p>
@@ -253,7 +254,7 @@ export function PublisherNetworkV2({
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-paper-faint" aria-hidden="true" />
                 <Input aria-label="Cari publisher" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari publisher atau atribusi" className="pl-9" />
               </div>
-              <DashboardSelect aria-label="Filter status publisher" value={status} onValueChange={(value) => setStatus((value ?? 'all') as typeof status)}>
+              <DashboardSelect aria-label="Filter status publisher" placeholder="Filter status" value={status} onValueChange={(value) => setStatus((value ?? 'all') as typeof status)}>
                 <DashboardSelectItem value="all">Semua status</DashboardSelectItem>
                 <DashboardSelectItem value="verified">Terverifikasi</DashboardSelectItem>
                 <DashboardSelectItem value="pending">Menunggu</DashboardSelectItem>
