@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Archive, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Check, CircleCheck, CircleX, Copy, Eye, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Network, Pencil, PenLine, RefreshCw, RotateCcw, SearchX, Send, SlidersHorizontal } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ArrowUpDown, Check, CircleCheck, Copy, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Network, Pencil, RefreshCw, RotateCcw, SearchX, Send, SlidersHorizontal } from 'lucide-react';
 import { flexRender, useTable } from '@tanstack/react-table';
 import {
   columnVisibilityFeature,
@@ -34,7 +34,6 @@ import { AppTooltip } from '@/ui/app-tooltip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { beginActionProgress } from '@/modules/dashboard/components/shared/action-progress';
-import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import {
   COLLECTION_LIMITS,
   PAGE_SIZE,
@@ -60,10 +59,9 @@ import {
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
 import { TelemetryGallery } from '@/modules/dashboard/components/analytics/gallery';
-import { PrimaryBento } from '@/modules/dashboard/components/analytics/primary-bento';
+import { DashboardV2Overview } from '@/modules/dashboard/components/dashboard-v2-overview';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
-import { Progress } from '@/components/ui/progress';
 
 interface DataViewProps {
   readonly view: View;
@@ -111,7 +109,6 @@ export function DataView({
   collections: onlyCollections,
   command,
   onSelectView,
-  organizationId,
   auditNextCursor,
   onLoadMoreAudit,
 }: DataViewProps) {
@@ -134,134 +131,29 @@ export function DataView({
     const failedOutcomes = asNumber(dashboard.failedSiteOutcomes);
     const analytics = isAnalyticsProjection(dashboard.analytics) ? dashboard.analytics : null;
 
-    const metrics = [
-      { key: 'domains', label: 'Domain Utama', value: activeDomains, icon: Globe },
-      { key: 'subdomains', label: 'Subdomain', value: activeSubdomains, icon: Network },
-      { key: 'sites', label: 'Total Situs', value: activeSites, icon: LayoutGrid },
-      { key: 'articles', label: 'Artikel Tayang', value: activeArticles, icon: FileText },
-      { key: 'archived', label: 'Artikel Arsip', value: archivedArticles, icon: Archive },
-      { key: 'media', label: 'Media', value: activeMedia, icon: Images },
-      { key: 'delivered', label: 'Penyaluran Berhasil', value: successfulOutcomes, icon: CircleCheck },
-      { key: 'views', label: 'Total Tayangan', value: analytics?.totalViews ?? 0, icon: Eye },
-    ];
-
-    const setupSteps: readonly { key: string; label: string; description: string; done: boolean; target: View }[] = [
-      { key: 'domain', label: 'Daftarkan domain utama', description: 'Sambungkan domain utama Anda ke jaringan Indicate.', done: activeDomains > 0, target: 'configuration' },
-      { key: 'site', label: 'Aktifkan subdomain pertama', description: 'Buat situs wilayah di bawah domain utama, mis. semarang.domainanda.id.', done: activeSites > 0, target: 'configuration' },
-      { key: 'article', label: 'Terbitkan artikel pertama', description: 'Tulis artikel perdana dari ruang redaksi.', done: activeArticles > 0, target: 'editorial' },
-      { key: 'delivery', label: 'Capai pengiriman berhasil pertama', description: 'Kirim artikel ke situs dan pastikan tiba.', done: successfulOutcomes > 0, target: 'publishing' },
-    ];
-    const completedSteps = setupSteps.filter((step) => step.done).length;
-
-    const quickActions: readonly { target: View; label: string; description: string; icon: typeof Globe }[] = [
-      { target: 'editorial', label: 'Tulis Berita', description: 'Berita baru untuk jaringan', icon: PenLine },
-      { target: 'publishing', label: 'Antrean Penerbitan', description: 'Pantau status pengiriman', icon: Send },
-      { target: 'media', label: 'Media', description: 'Kelola foto & gambar', icon: Images },
-      { target: 'configuration', label: 'Domain & Wilayah', description: 'Atur domain & subdomain wilayah', icon: Globe },
-    ];
-
     return (
-      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
-        {completedSteps < setupSteps.length ? (
-          <section
-            aria-label="Panduan mulai cepat"
-            className="col-span-full rounded-lg border border-hairline bg-bg-raised p-5 sm:p-6"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="m-0 inline-flex items-center gap-2 font-sans text-sm font-semibold tracking-tight text-paper">
-                <ListChecks className="h-4 w-4 text-brass" aria-hidden="true" />
-                Panduan mulai cepat
-              </h2>
-              <p className="m-0 font-mono text-[11px] tabular-nums text-paper-faint">
-                {completedSteps} dari {setupSteps.length} selesai
-              </p>
-            </div>
-            <Progress value={(completedSteps / setupSteps.length) * 100} aria-label="Kemajuan panduan mulai cepat" className="mt-3 min-w-0" />
-            <ul className="m-0 mt-2 list-none p-0">
-              {setupSteps.map((step) => (
-                <li key={step.key} className="flex items-center gap-3 border-b border-hairline/60 py-2.5 last:border-0 last:pb-0">
-                  {step.done ? (
-                    <CircleCheck className="h-4 w-4 flex-none text-signal" aria-hidden="true" />
-                  ) : (
-                    <CircleX className="h-4 w-4 flex-none text-paper-faint" aria-hidden="true" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className={`m-0 truncate font-sans text-[13px] ${step.done ? 'text-paper-faint line-through' : 'font-medium text-paper'}`}>
-                      {step.label}
-                    </p>
-                    <p className="m-0 font-sans text-xs text-paper-faint line-clamp-2">{step.description}</p>
-                  </div>
-                  {step.done || onSelectView === undefined ? null : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => onSelectView(step.target)}
-                      className="flex-none font-medium text-brass hover:text-brass-soft"
-                    >
-                      Buka
-                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <dl className="col-span-full grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {metrics.map(({ key, label, value, icon: Icon }) => (
-            <div key={key} className="min-w-0 overflow-hidden rounded-lg border border-hairline bg-bg-raised p-5 transition-colors duration-150 hover:border-hairline-strong">
-              <dt className="flex min-w-0 items-center gap-1.5 font-sans text-xs font-medium text-paper-dim">
-                <Icon className="h-3.5 w-3.5 flex-none text-brass" aria-hidden="true" />
-                <span className="min-w-0 flex-1 break-words leading-snug">
-                  {label}
-                </span>
-              </dt>
-              <ChartTip tip={value.toLocaleString('id-ID')}>
-                <dd className="m-0 mt-1.5 truncate font-mono text-2xl font-bold tabular-nums tracking-tight text-paper">
-                  {value.toLocaleString('id-ID')}
-                </dd>
-              </ChartTip>
-            </div>
-          ))}
-        </dl>
-
-        <PrimaryBento
-          jobs={jobs ?? {}}
-          succeeded={successfulOutcomes}
-          failed={failedOutcomes}
-          active={activeArticles}
-          archived={archivedArticles}
-          analytics={analytics}
-          organizationId={organizationId}
-        />
-
-        {onSelectView === undefined ? null : (
-          <section aria-label="Aksi cepat" className="col-span-full">
-            <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {quickActions.map(({ target, label, description, icon: Icon }) => (
-                <Button
-                  key={target}
-                  type="button"
-                  variant="ghost"
-                  onClick={() => onSelectView(target)}
-                  className="group flex h-auto min-w-0 items-center justify-start gap-3 rounded-lg border border-hairline bg-bg-raised p-4 text-left transition-all duration-150 hover:border-hairline-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
-                >
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-bg-raised-2 text-brass transition-colors duration-150 group-hover:bg-bg-raised-3">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-sans text-[13px] font-medium leading-snug text-paper">{label}</span>
-                    <span className="mt-0.5 block truncate font-sans text-xs leading-relaxed text-paper-faint">{description}</span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 flex-none text-paper-faint opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-paper group-hover:opacity-100" aria-hidden="true" />
-                </Button>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+      <DashboardV2Overview
+        dashboard={{
+          activeDomains,
+          activeSubdomains,
+          activeSites,
+          activeArticles,
+          archivedArticles,
+          jobsByState: {
+            queued: asNumber(jobs?.queued),
+            processing: asNumber(jobs?.processing),
+            published: asNumber(jobs?.published),
+            failed: asNumber(jobs?.failed),
+            retrying: asNumber(jobs?.retrying),
+            unpublished: asNumber(jobs?.unpublished),
+          },
+          successfulSiteOutcomes: successfulOutcomes,
+          failedSiteOutcomes: failedOutcomes,
+          activeMedia,
+        }}
+        analytics={analytics}
+        onSelectView={onSelectView}
+      />
     );
   }
 

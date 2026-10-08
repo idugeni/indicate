@@ -34,29 +34,33 @@ const DASHBOARD = {
 };
 
 describe('Tampilan data dasbor', () => {
-  it('merender metrik, panduan, antrean, dan kesehatan', { timeout: 30000 }, async () => {
+  it('merender command center, telemetry, pipeline, dan aksi cepat', () => {
     const handleSelect = vi.fn();
     render(
       <DataView view="dashboard" data={DASHBOARD} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} onSelectView={handleSelect} />,
     );
-    expect(screen.getByText('Domain Utama')).toBeDefined();
-    expect(screen.getByText('Subdomain')).toBeDefined();
-    expect(screen.getByText('Total Tayangan')).toBeDefined();
-    expect(screen.getByText('Panduan mulai cepat')).toBeDefined();
-    expect(await screen.findByText('Distribusi antrean', undefined, { timeout: 30000 })).toBeDefined();
-    expect(await screen.findByText('Corong konversi', undefined, { timeout: 30000 })).toBeDefined();
-    expect(await screen.findByText('Wilayah teratas', undefined, { timeout: 30000 })).toBeDefined();
-    expect(await screen.findByText('Kategori teratas', undefined, { timeout: 30000 })).toBeDefined();
-    expect(await screen.findByText('Komposisi hasil', undefined, { timeout: 30000 })).toBeDefined();
-    expect(await screen.findByText('Tren tayangan', undefined, { timeout: 30000 })).toBeDefined();
+    expect(screen.getByText('Network overview')).toBeDefined();
+    expect(screen.getByText('Situs aktif')).toBeDefined();
+    expect(screen.getByText('Artikel aktif')).toBeDefined();
+    expect(screen.getByText('Delivery success')).toBeDefined();
+    expect(screen.getByText('Total tayangan')).toBeDefined();
+    expect(screen.getByText('Publication pulse')).toBeDefined();
+    expect(screen.getByText('Perlu perhatian')).toBeDefined();
+    expect(screen.getByText('Sukses 7 hari')).toBeDefined();
+    expect(screen.getByText('Wilayah teratas')).toBeDefined();
+    expect(screen.getByText('Aksi cepat')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Pipeline snapshot' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /tulis berita/i }));
     expect(handleSelect).toHaveBeenCalledWith('editorial');
   });
 
-  it('menampilkan panduan penuh saat data kosong', { timeout: 30000 }, async () => {
+  it('menampilkan core metrics dan loading state analytics saat data kosong', () => {
     render(<DataView view="dashboard" data={{}} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} />);
-    expect(screen.getByText(/0 dari 4 selesai/)).toBeDefined();
-    expect(await screen.findAllByText(/Belum ada hasil penyaluran/, undefined, { timeout: 30000 })).toHaveLength(2);
+    expect(screen.getByText('Network overview')).toBeDefined();
+    expect(screen.getByText('Core metrics live')).toBeDefined();
+    expect(screen.getByText('Menunggu analytics')).toBeDefined();
+    expect(screen.getByText('Menyiapkan telemetry')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Pipeline snapshot' })).toBeDefined();
   });
 });
 
