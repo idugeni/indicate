@@ -103,14 +103,17 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   const [listError, setListError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Record<string, SignedAssetAuthorization>>({});
   const [previewingId, setPreviewingId] = useState<string | null>(null);
-  const [page, setPage] = useState<{ readonly key: string; readonly items: readonly LibraryMedia[]; readonly next: string | null }>({ key: '', items: [], next: null });
-  const pageKey = `${querySignature}|${baseSignature}`;
-  const appended = page.key === pageKey ? page.items : [];
+  const [page, setPage] = useState<{ readonly key: string; readonly baseSignature: string; readonly items: readonly LibraryMedia[]; readonly next: string | null }>({ key: '', baseSignature: '', items: [], next: null });
+  const appended = page.key === querySignature ? page.items : [];
   const items = useMemo(() => {
     const known = new Set(baseItems.map((item) => item.id));
     return [...baseItems, ...appended.filter((item) => !known.has(item.id))];
   }, [baseItems, appended]);
-  const cursor = page.key === pageKey ? page.next : querySignature === '||' ? model.nextCursor ?? null : null;
+  const cursor = page.key === querySignature && page.baseSignature === baseSignature
+    ? page.next
+    : querySignature === '||'
+      ? model.nextCursor ?? null
+      : null;
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -138,7 +141,8 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
             ...(state === 'all' ? {} : { state }),
           }));
           if (page === null) throw new Error('Invalid media page');
-          setPage({ key: `${querySignature}|${baseSignature}`, items: [], next: page.next });
+          const requestKey = `${search.trim()}|${owner}|${state}`;
+          setPage({ key: requestKey, baseSignature, items: [], next: page.next });
           setSelectedId(page.items[0]?.id ?? '');
         } catch {
           setListError('Gagal memuat scope media. Coba ubah filter atau ulangi.');
@@ -188,9 +192,9 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
         ...(state === 'all' ? {} : { state }),
       }));
       if (page === null) throw new Error('Invalid media page');
-      const currentItems = page.key === pageKey ? page.items : [];
+      const currentItems = page.key === querySignature ? page.items : [];
       const known = new Set(currentItems.map((item) => item.id));
-      setPage({ key: pageKey, items: [...currentItems, ...page.items.filter((item) => !known.has(item.id))], next: page.next });
+      setPage({ key: querySignature, baseSignature, items: [...currentItems, ...page.items.filter((item) => !known.has(item.id))], next: page.next });
     } catch {
       setListError('Gagal memuat halaman aset berikutnya.');
     } finally {
