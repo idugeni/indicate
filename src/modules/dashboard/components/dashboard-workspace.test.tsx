@@ -95,7 +95,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
-    expect(await screen.findByText('Ringkasan Ekosistem Redaksi')).toBeDefined();
+    expect(await screen.findByText('Network overview')).toBeDefined();
   });
 
   it('collapses and expands the sidebar through the edge rail', () => {
@@ -108,16 +108,15 @@ describe('Dashboard workspace', () => {
 
   it('switches the title when an editorial module is selected', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Ringkasan Ekosistem Redaksi');
+    await screen.findByText('Network overview');
     fireEvent.click(screen.getByRole('button', { name: 'Tulis Berita' }));
-    expect(await screen.findByText('Manajemen Artikel & Konten', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
-    expect(await screen.findByText('Artikel baru', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByText('Content Library', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
   it('pins the footer to the bottom with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Ringkasan Ekosistem Redaksi');
+    await screen.findByText('Network overview');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('sticky');
@@ -147,7 +146,7 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText('jabar.domainanda.id')).toBeNull();
   });
 
-  it('hydrates analytics even when a legacy snapshot still carries embedded analytics', async () => {
+  it('hydrates analytics from a snapshot that carries embedded analytics', async () => {
     const fetchMock = vi.fn(async (url: unknown) => {
       void url;
       return { ok: true, json: async () => ({}) };
@@ -214,7 +213,7 @@ describe('Dashboard workspace', () => {
     expect(JSON.parse(posted[0] ?? '{}')).toMatchObject({ action: 'publisher.submit' });
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledTimes(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     expect(toastMock.success).toHaveBeenCalledWith('Keputusan tata kelola berhasil diterapkan.');
-    // The old wrapper announced the machine action name; callers own the copy now.
+    // The V2 action surface owns the human-facing copy.
     for (const spy of [toastMock.success, toastMock.error, toastMock.info, toastMock.loading]) {
       for (const call of vi.mocked(spy).mock.calls) {
         expect(String(call[0])).not.toMatch(/Perintah .* berhasil dijalankan/);
@@ -303,10 +302,10 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'audit';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('article.create', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await screen.findByText('log-1', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     fireEvent.click(await screen.findByRole('button', { name: 'Muat riwayat lebih lama' }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
     await waitFor(() => expect(calls.some((url) => url.includes('cursor=cursor-1'))).toBe(true), { timeout: LAZY_MODULE_TIMEOUT_MS });
-    expect(await screen.findByText('article.update', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByText('log-2', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Muat riwayat lebih lama' })).toBeNull();
   }, 20000);
 });
