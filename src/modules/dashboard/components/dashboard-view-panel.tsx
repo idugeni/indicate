@@ -133,11 +133,8 @@ const MonetizationControlCenterV2 = dynamic(
     ),
   { loading: () => <DashboardViewSkeleton view="billing" /> },
 );
-const ModerationPanel = dynamic(
-  () =>
-    import('@/modules/dashboard/components/moderation/moderation-panel').then((module) => ({
-      default: module.ModerationPanel,
-    })),
+const TrustModerationV2 = dynamic(
+  () => import('@/modules/dashboard/components/trust/trust-moderation-v2').then((module) => ({ default: module.TrustModerationV2 })),
   { loading: () => <DashboardViewSkeleton view="moderation" /> },
 );
 const AdsManagementPanel = dynamic(
@@ -358,7 +355,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             />
           ) : null}
           {view === 'operations' ? <SystemOperationsV2 data={data} /> : null}
-          {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
+          {view === 'moderation' ? <TrustModerationV2 organizationId={organizationId} /> : null}
           {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
           {view === 'ai' ? (
             <AiManagementPanel organizationId={organizationId} command={command} />

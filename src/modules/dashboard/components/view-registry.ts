@@ -161,7 +161,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   customers: {
     label: 'Customers', title: 'Customer Operations', eyebrow: 'Platform Control', group: 'system',
     description: 'Kelola akun pelanggan, organisasi, dan status langganan.',
-    icon: Building2, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin, suppressesRawCollections: false,
+    icon: Building2, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin, suppressesRawCollections: true,
   },
   content: {
     label: 'Web Content', title: 'Public Web Content', eyebrow: 'Brand Surface', group: 'system',
