@@ -234,13 +234,17 @@ export function DataView({
             activeSites,
             activeArticles,
             archivedArticles,
-            jobsByState: jobs ?? {},
+            jobsByState: {
+              queued: asNumber(jobs?.queued),
+              processing: asNumber(jobs?.processing),
+              published: asNumber(jobs?.published),
+              failed: asNumber(jobs?.failed),
+              retrying: asNumber(jobs?.retrying),
+              unpublished: asNumber(jobs?.unpublished),
+            },
             successfulSiteOutcomes: successfulOutcomes,
             failedSiteOutcomes: failedOutcomes,
             activeMedia,
-            regionScope: typeof dashboard.regionScope === 'object' && dashboard.regionScope !== null
-              ? dashboard.regionScope as { readonly id: string; readonly name: string }
-              : null,
           }}
           analytics={analytics}
           onSelectView={onSelectView}
