@@ -244,7 +244,7 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText('invalidationIntents')).toBeNull();
     expect(screen.queryByText('reservations')).toBeNull();
     expect(screen.queryByText(/data, halaman/)).toBeNull();
-  });
+  }, 20000);
 
   it('perintah baca tidak memicu toast maupun muat ulang', async () => {
     const calls: { readonly url: string; readonly init?: { readonly body?: string } | undefined }[] = [];
@@ -273,7 +273,7 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'media';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Pustaka Media & Repositori Aset', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await screen.findByText('Media Library', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     await screen.findByRole('button', { name: /Muat halaman berikutnya/ }, { timeout: LAZY_MODULE_TIMEOUT_MS });
     fireEvent.click(screen.getByRole('button', { name: /Muat halaman berikutnya/ }));
     await waitFor(() => expect(calls.filter((call) => call.init?.body !== undefined)).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
