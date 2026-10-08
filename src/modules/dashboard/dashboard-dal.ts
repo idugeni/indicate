@@ -77,11 +77,7 @@ export class NextDashboardCacheInvalidator implements DashboardCacheInvalidator 
   async invalidateOrganization(organizationId: string): Promise<void> {
     const store = resolveDashboardStore();
     if (store === null) return;
-    await Promise.all([
-      store.deleteByPrefix('snapshot:' + organizationId + ':'),
-      store.deleteByPrefix('analytics:' + organizationId + ':'),
-      store.deleteByPrefix('full:' + organizationId + ':'),
-    ]);
+    await store.bumpRevision(organizationId);
   }
 }
 
@@ -99,16 +95,16 @@ function resolveDashboardStore(): UpstashSnapshotStore | null {
   }
 }
 
-function dashboardRedisKey(input: ProjectionInput): string {
-  return `snapshot:${input.organizationId}:${input.actorId}:${permissionFingerprint(input.permissions)}:${input.regionScopeId ?? '-'}`;
+function dashboardRedisKey(input: ProjectionInput, revision: number): string {
+  return `snapshot:${input.organizationId}:v${revision}:${input.actorId}:${permissionFingerprint(input.permissions)}:${input.regionScopeId ?? '-'}`;
 }
 
-function analyticsRedisKey(input: AnalyticsInput): string {
-  return `analytics:${input.organizationId}:${input.actorId}:${permissionFingerprint(input.permissions)}:${input.regionScopeId ?? '-'}:${input.from ?? '-'}_${input.to ?? '-'}`;
+function analyticsRedisKey(input: AnalyticsInput, revision: number): string {
+  return `analytics:${input.organizationId}:v${revision}:${input.actorId}:${permissionFingerprint(input.permissions)}:${input.regionScopeId ?? '-'}:${input.from ?? '-'}_${input.to ?? '-'}`;
 }
 
-function fullSnapshotRedisKey(input: ProjectionInput): string {
-  return `full:${input.organizationId}:${input.actorId}:${permissionFingerprint(input.permissions)}:${input.regionScopeId ?? '-'}`;
+function fullSnapshotRedisKey(input: ProjectionInput, revision: number): string {
+  return `full:${input.organizationId}:v${revision}:${input.actorId}:${permissionFingerprint(input.permissions)}:${input.regionScopeId ?? '-'}`;
 }
 
 function isDashboardProjection(value: unknown): value is DashboardProjection {
@@ -210,13 +206,14 @@ async function loadDashboardProjectionFromDatabase(input: ProjectionInput): Prom
   return result.value;
 }
 
-function loadDashboardProjection(input: ProjectionInput): Promise<DashboardProjection> {
+async function loadDashboardProjection(input: ProjectionInput): Promise<DashboardProjection> {
   const permissionKey = [...input.permissions].sort().join(',');
+  const store = resolveDashboardStore();
+  const revision = store === null ? 0 : await store.readRevision(input.organizationId);
   const cached = unstable_cache(
     async (): Promise<DashboardProjection> => {
       const started = Date.now();
-      const store = resolveDashboardStore();
-      const key = dashboardRedisKey(input);
+      const key = dashboardRedisKey(input, revision);
       if (store !== null) {
         const hit = await store.readKey(key);
         if (isDashboardProjection(hit)) {
@@ -230,7 +227,7 @@ function loadDashboardProjection(input: ProjectionInput): Promise<DashboardProje
       if (store !== null) await store.writeKey(key, value, DASHBOARD_REDIS_TTL_SECONDS);
       return value;
     },
-    ['dashboard-snapshot', input.organizationId, input.actorId, permissionKey, input.regionScopeId ?? ''],
+    ['dashboard-snapshot', input.organizationId, `v${revision}`, input.organizationId, input.actorId, permissionKey, input.regionScopeId ?? ''],
     { tags: [orgTag(input.organizationId)], revalidate: DASHBOARD_REVALIDATE_SECONDS },
   );
   return cached();
@@ -261,13 +258,14 @@ async function loadAnalyticsProjectionFromDatabase(input: AnalyticsInput): Promi
  * @param input - Org/actor identity, sorted permissions, region scope, and validated `from`/`to` range.
  * @returns Frozen analytics projection; fails when analytics permission is unmet.
  */
-function loadAnalyticsProjection(input: AnalyticsInput): Promise<AnalyticsProjection> {
+async function loadAnalyticsProjection(input: AnalyticsInput): Promise<AnalyticsProjection> {
   const permissionKey = [...input.permissions].sort().join(',');
+  const store = resolveDashboardStore();
+  const revision = store === null ? 0 : await store.readRevision(input.organizationId);
   const cached = unstable_cache(
     async (): Promise<AnalyticsProjection> => {
       const started = Date.now();
-      const store = resolveDashboardStore();
-      const key = analyticsRedisKey(input);
+      const key = analyticsRedisKey(input, revision);
       if (store !== null) {
         const hit = await store.readKey(key);
         if (isAnalyticsProjection(hit)) {
@@ -281,7 +279,7 @@ function loadAnalyticsProjection(input: AnalyticsInput): Promise<AnalyticsProjec
       if (store !== null) await store.writeKey(key, value, ANALYTICS_REDIS_TTL_SECONDS);
       return value;
     },
-    ['analytics-snapshot', input.organizationId, input.actorId, permissionKey, input.regionScopeId ?? '', input.from ?? '', input.to ?? ''],
+    ['analytics-snapshot', input.organizationId, `v${revision}`, input.organizationId, input.actorId, permissionKey, input.regionScopeId ?? '', input.from ?? '', input.to ?? ''],
     { tags: [orgTag(input.organizationId)], revalidate: ANALYTICS_REVALIDATE_SECONDS },
   );
   return cached();
@@ -396,9 +394,10 @@ export async function getDashboardSnapshot(organizationId: string, identity: Ver
       regionScopeId,
     };
     const store = resolveDashboardStore();
+    const revision = store === null ? 0 : await store.readRevision(organizationId);
     if (store !== null) {
-      const fullKey = fullSnapshotRedisKey(projectionInput);
-      const dashboardKey = dashboardRedisKey(projectionInput);
+      const fullKey = fullSnapshotRedisKey(projectionInput, revision);
+      const dashboardKey = dashboardRedisKey(projectionInput, revision);
       const [fullHit, dashboardHit] = await store.readMany([fullKey, dashboardKey]);
       if (isFullSnapshot(fullHit, organizationId)) {
         return {
@@ -420,7 +419,7 @@ export async function getDashboardSnapshot(organizationId: string, identity: Ver
       organizationId,
       data,
     };
-    if (store !== null) await store.writeKey(fullSnapshotRedisKey(projectionInput), snapshot, DASHBOARD_REDIS_TTL_SECONDS);
+    if (store !== null) await store.writeKey(fullSnapshotRedisKey(projectionInput, revision), snapshot, DASHBOARD_REDIS_TTL_SECONDS);
     return snapshot;
   } catch {
     return null;

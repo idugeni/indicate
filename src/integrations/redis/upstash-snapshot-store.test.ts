@@ -4,7 +4,7 @@ const get = vi.fn();
 const set = vi.fn();
 const expire = vi.fn();
 const del = vi.fn();
-const scan = vi.fn();
+const incr = vi.fn();
 const mget = vi.fn();
 const logEvent = vi.fn();
 
@@ -14,7 +14,7 @@ vi.mock('@upstash/redis', () => ({
     set = set;
     expire = expire;
     del = del;
-    scan = scan;
+    incr = incr;
     mget = mget;
   },
 }));
@@ -88,7 +88,7 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
     get.mockReset();
     set.mockReset();
     del.mockReset();
-    scan.mockReset();
+    incr.mockReset();
   });
 
   it('write menyimpan gzip dan read mengembalikan model yang sama', async () => {
@@ -143,20 +143,22 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
     expect(samples.map((sample) => sample.operation)).toEqual(['redis.get', 'redis.set', 'redis.del']);
   });
 
-  it('deleteByPrefix hanya menghapus prefix tenant dan menyelesaikan scan', async () => {
-    scan.mockResolvedValueOnce(['42', ['prod:snapshot:org-1:user-1']]).mockResolvedValueOnce(['0', ['prod:snapshot:org-1:user-2']]);
-    del.mockResolvedValue(undefined);
-    await store().deleteByPrefix('snapshot:org-1:');
-    expect(scan).toHaveBeenCalledWith('0', { match: 'prod:snapshot:org-1:*', count: 100 });
-    expect(scan).toHaveBeenCalledWith('42', { match: 'prod:snapshot:org-1:*', count: 100 });
-    expect(del).toHaveBeenNthCalledWith(1, 'prod:snapshot:org-1:user-1');
-    expect(del).toHaveBeenNthCalledWith(2, 'prod:snapshot:org-1:user-2');
+  it('readRevision mengembalikan revisi tenant dan default 0 saat key belum ada', async () => {
+    get.mockResolvedValueOnce('7');
+    expect(await store().readRevision('org-1')).toBe(7);
+    expect(get).toHaveBeenCalledWith('prod:revision:org-1');
+
+    get.mockResolvedValueOnce(null);
+    expect(await store().readRevision('org-2')).toBe(0);
   });
 
-  it('deleteByPrefix menolak wildcard agar tidak menjadi global purge', async () => {
-    await expect(store().deleteByPrefix('snapshot:*')).rejects.toThrow('invalid_redis_prefix');
-    expect(scan).not.toHaveBeenCalled();
-    expect(del).not.toHaveBeenCalled();
+  it('bumpRevision menggunakan INCR atomik dan fail-open saat Redis gagal', async () => {
+    incr.mockResolvedValueOnce(8);
+    expect(await store().bumpRevision('org-1')).toBe(8);
+    expect(incr).toHaveBeenCalledWith('prod:revision:org-1');
+
+    incr.mockRejectedValueOnce(new Error('redis down'));
+    expect(await store().bumpRevision('org-1')).toBe(0);
   });
 
   it('mget menghitung hit/miss per kunci, bukan satu bendera', async () => {

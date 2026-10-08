@@ -180,6 +180,36 @@ export class UpstashSnapshotStore {
    * @remarks Accepts plain JSON and `gzip:` values so small keys and
    * threshold-compressed snapshots share one read path.
    */
+  async readRevision(organizationId: string): Promise<number> {
+    const started = Date.now();
+    try {
+      const raw = await this.redis.get(`${this.namespace}:revision:${organizationId}`);
+      const revision = typeof raw === 'number' ? raw : Number(raw);
+      if (!Number.isInteger(revision) || revision < 0) {
+        recordRedisCall('redis.get.revision', started, 1, wireBytesOf(raw), { misses: 1, status: 500 });
+        return 0;
+      }
+      recordRedisCall('redis.get.revision', started, 1, wireBytesOf(raw), { hits: 1 });
+      return revision;
+    } catch {
+      recordRedisCall('redis.get.revision', started, 1, 0, { misses: 1, status: 500 });
+      return 0;
+    }
+  }
+
+  async bumpRevision(organizationId: string): Promise<number> {
+    const started = Date.now();
+    try {
+      const revision = await this.redis.incr(`${this.namespace}:revision:${organizationId}`);
+      recordRedisCall('redis.incr.revision', started, 1, 0, { status: 200 });
+      return revision;
+    } catch {
+      recordRedisCall('redis.incr.revision', started, 1, 0, { status: 500 });
+      /* best-effort: the committed mutation must not fail on cache infrastructure */
+      return 0;
+    }
+  }
+
   async readKey(key: string): Promise<unknown | null> {
     const started = Date.now();
     try {
@@ -234,31 +264,6 @@ export class UpstashSnapshotStore {
       recordRedisCall('redis.set', started, 1, 0, { status: 500 });
       /* best-effort: write failure does not fail the refresh */
     }
-  }
-
-  /**
-   * Delete all keys in this namespace matching a tenant-scoped prefix.
-   *
-   * @remarks Uses SCAN instead of KEYS so invalidation remains bounded and
-   * non-blocking. The prefix must be tenant-scoped; callers must not pass a
-   * global wildcard. Each batch is deleted in one REST pipeline.
-   */
-  async deleteByPrefix(prefix: string): Promise<void> {
-    if (prefix.trim() === '' || prefix.includes('*')) throw new Error('invalid_redis_prefix');
-    let cursor = '0';
-    do {
-      const started = Date.now();
-      try {
-        const scanned = await this.redis.scan(cursor, { match: this.namespace + ':' + prefix + '*', count: 100 });
-        cursor = scanned[0];
-        const keys = scanned[1];
-        if (keys.length > 0) await this.redis.del(...keys);
-        recordRedisCall('redis.scan.invalidate', started, 1 + (keys.length > 0 ? 1 : 0), 0, { status: 200 });
-      } catch {
-        recordRedisCall('redis.scan.invalidate', started, 1, 0, { status: 500 });
-        return;
-      }
-    } while (cursor !== '0');
   }
 
   /**
