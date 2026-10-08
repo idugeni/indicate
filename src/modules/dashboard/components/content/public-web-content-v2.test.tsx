@@ -36,10 +36,11 @@ describe('PublicWebContentV2', () => {
 
   it('opens public component health and filters the surface map', async () => {
     render(<PublicWebContentV2 />);
+    expect(await screen.findByText('FAQ')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /Public Components/ }));
     expect(screen.getByRole('region', { name: 'Public Components' })).toBeDefined();
     fireEvent.change(screen.getByLabelText('Cari public content'), { target: { value: 'faq' } });
-    expect(screen.getByText('FAQ')).toBeDefined();
+    expect(await screen.findByText('FAQ')).toBeDefined();
   });
 
   it('keeps the legacy editor behind an explicit editor action surface', async () => {
