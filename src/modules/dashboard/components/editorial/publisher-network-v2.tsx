@@ -85,8 +85,8 @@ export function PublisherNetworkV2({
   readonly onRefresh: () => void;
 }) {
   const model = (data as PublisherData | null) ?? {};
-  const publishers = model.publishers ?? [];
-  const affiliations = model.affiliations ?? [];
+  const publishers = useMemo(() => model.publishers ?? [], [model.publishers]);
+  const affiliations = useMemo(() => model.affiliations ?? [], [model.affiliations]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'all' | PublisherStatus>('all');
   const [selectedId, setSelectedId] = useState(publishers[0]?.id ?? '');
