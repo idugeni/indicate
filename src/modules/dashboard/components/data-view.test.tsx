@@ -49,7 +49,7 @@ describe('Tampilan data dasbor', () => {
     expect(screen.getByText('Sukses 7 hari')).toBeDefined();
     expect(screen.getByText('Wilayah teratas')).toBeDefined();
     expect(screen.getByText('Aksi cepat')).toBeDefined();
-    expect(screen.getByText('Pipeline snapshot')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Pipeline snapshot' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /tulis berita/i }));
     expect(handleSelect).toHaveBeenCalledWith('editorial');
   });
