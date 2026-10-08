@@ -293,16 +293,63 @@ function EditorLoader({
     );
   }
 
+  return (
+    <LoadedEditor
+      data={data}
+      command={command}
+      organizationId={organizationId}
+      initialArticle={loaded}
+      onExitEdit={onExitEdit}
+    />
+  );
+}
+
+function LoadedEditor({
+  data,
+  command,
+  organizationId,
+  initialArticle,
+  onExitEdit,
+}: {
+  readonly data: unknown;
+  readonly command: DashboardCommand;
+  readonly organizationId: string;
+  readonly initialArticle: EditArticleInit;
+  readonly onExitEdit?: (() => void) | undefined;
+}) {
   const form = useArticleFormState({
     data,
     onSubmit: async () => null,
     command,
     organizationId,
-    initialArticle: loaded,
+    initialArticle,
     onEditSaved: onExitEdit,
   });
 
-  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} initialArticle={loaded} command={command} />;
+  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} initialArticle={initialArticle} command={command} />;
+}
+
+function CreateEditor({
+  data,
+  onSubmit,
+  command,
+  organizationId,
+  onExitEdit,
+}: {
+  readonly data: unknown;
+  readonly onSubmit: (payload: unknown) => Promise<unknown>;
+  readonly command: DashboardCommand;
+  readonly organizationId: string;
+  readonly onExitEdit?: (() => void) | undefined;
+}) {
+  const form = useArticleFormState({
+    data,
+    onSubmit,
+    command,
+    organizationId,
+  });
+
+  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} command={command} />;
 }
 
 export function EditorialWorkspaceV2({
@@ -333,12 +380,13 @@ export function EditorialWorkspaceV2({
     );
   }
 
-  const form = useArticleFormState({
-    data,
-    onSubmit,
-    command,
-    organizationId,
-  });
-
-  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} command={command} />;
+  return (
+    <CreateEditor
+      data={data}
+      onSubmit={onSubmit}
+      command={command}
+      organizationId={organizationId}
+      onExitEdit={onExitEdit}
+    />
+  );
 }
