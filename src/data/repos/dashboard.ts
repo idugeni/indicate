@@ -347,7 +347,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const windowStart = `${window.awal}T00:00:00Z`;
       const windowEnd = `${nextDay(window.akhir)}T00:00:00Z`;
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
-      const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, dailyViewRows, siteViewRows, articleViewRows, totalRow] = await Promise.all([
+      const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, viewAnalyticsRows] = await Promise.all([
         transaction.execute<{ dimension: 'region' | 'category' | 'publisher' | 'status'; key: string | null; count: number }>(sql`
           SELECT
             CASE GROUPING(region_id, category_id, publisher_id, status)
@@ -473,42 +473,79 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             AND s.state_occurred_at >= ${windowStart}::timestamptz
             AND s.state_occurred_at < ${windowEnd}::timestamptz
           GROUP BY 1`),
-        transaction.execute<{ day: string; views: number }>(sql`
-          SELECT d.day::text AS day, COALESCE(SUM(d.views), 0)::int AS views
-          FROM article_site_view_days d
-          WHERE d.organization_id = ${orgId}
-            AND d.day >= ${windowStart}::date
-            AND d.day < ${windowEnd}::date
-          GROUP BY 1`),
-        transaction.execute<{ id: string; name: string; count: number; views: number }>(sql`
-          SELECT d.site_id AS id, st.normalized_hostname AS name,
-            COUNT(DISTINCT d.article_site_id)::int AS count, COALESCE(SUM(d.views), 0)::int AS views
-          FROM article_site_view_days d
-          JOIN sites st ON st.organization_id = ${orgId} AND st.id = d.site_id
-          WHERE d.organization_id = ${orgId}
-            AND (${from}::timestamptz IS NULL OR d.day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
-            AND (${to}::timestamptz IS NULL OR d.day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
-          GROUP BY 1, 2`),
-        transaction.execute<{ id: string; name: string; count: number; views: number }>(sql`
-          SELECT s.article_id AS id, ar.title AS name,
-            COUNT(DISTINCT d.site_id)::int AS count, COALESCE(SUM(d.views), 0)::int AS views
-          FROM article_site_view_days d
-          JOIN article_sites s ON s.organization_id = ${orgId} AND s.id = d.article_site_id
-          JOIN articles ar ON ar.organization_id = ${orgId} AND ar.id = s.article_id
-          WHERE d.organization_id = ${orgId}
-            AND (${from}::timestamptz IS NULL OR d.day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
-            AND (${to}::timestamptz IS NULL OR d.day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
-          GROUP BY 1, 2`),
-        transaction.execute<{ total: number; salur: number }>(sql`
+        transaction.execute<{ kind: 'day' | 'site' | 'article' | 'total'; day: string | null; id: string | null; name: string | null; count: number | null; views: number }>(sql`
+          WITH base AS (
+            SELECT
+              d.day,
+              d.views,
+              d.article_site_id,
+              d.site_id,
+              st.normalized_hostname AS site_name,
+              s.article_id,
+              ar.title AS article_name
+            FROM article_site_view_days d
+            JOIN article_sites s
+              ON s.organization_id = ${orgId}
+             AND s.id = d.article_site_id
+            JOIN articles ar
+              ON ar.organization_id = ${orgId}
+             AND ar.id = s.article_id
+            JOIN sites st
+              ON st.organization_id = ${orgId}
+             AND st.id = d.site_id
+            WHERE d.organization_id = ${orgId}
+          )
           SELECT
-            (SELECT COALESCE(SUM(d.views), 0)::int FROM article_site_view_days d
-              WHERE d.organization_id = ${orgId}
-                AND (${from}::timestamptz IS NULL OR d.day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
-                AND (${to}::timestamptz IS NULL OR d.day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)) AS total,
-            (SELECT count(*)::int FROM article_sites s
-              WHERE s.organization_id = ${orgId}
-                AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
-                AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)) AS salur`),
+            CASE
+              WHEN GROUPING(day) = 0 THEN 'day'
+              WHEN GROUPING(site_id) = 0 THEN 'site'
+              WHEN GROUPING(article_id) = 0 THEN 'article'
+              ELSE 'total'
+            END::text AS kind,
+            CASE WHEN GROUPING(day) = 0 THEN day::text ELSE NULL END AS day,
+            CASE
+              WHEN GROUPING(site_id) = 0 THEN site_id::text
+              WHEN GROUPING(article_id) = 0 THEN article_id::text
+              ELSE NULL
+            END AS id,
+            CASE
+              WHEN GROUPING(site_id) = 0 THEN site_name
+              WHEN GROUPING(article_id) = 0 THEN article_name
+              ELSE NULL
+            END AS name,
+            CASE
+              WHEN GROUPING(day) = 0 THEN NULL
+              WHEN GROUPING(site_id) = 0 THEN COUNT(DISTINCT article_site_id) FILTER (
+                WHERE (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                  AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
+              )::int
+              WHEN GROUPING(article_id) = 0 THEN COUNT(DISTINCT site_id) FILTER (
+                WHERE (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                  AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
+              )::int
+              ELSE NULL
+            END AS count,
+            CASE
+              WHEN GROUPING(day) = 0
+                THEN COALESCE(SUM(views) FILTER (
+                  WHERE day >= ${windowStart}::timestamptz::date
+                    AND day < ${windowEnd}::timestamptz::date
+                ), 0)::int
+              ELSE COALESCE(SUM(views) FILTER (
+                WHERE (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                  AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
+              ), 0)::int
+            END AS views
+          FROM base
+          GROUP BY GROUPING SETS (
+            (day),
+            (site_id, site_name),
+            (article_id, article_name),
+            ()
+          )
+          HAVING GROUPING(day) = 1
+            OR (day >= ${windowStart}::timestamptz::date AND day < ${windowEnd}::timestamptz::date)
+        `),
       ]);
       // GROUPING SETS scans the filtered article relation once for all four dimensions.
       // The previous implementation issued four separate aggregate statements against articles.
@@ -519,6 +556,17 @@ export class DrizzleDashboardRepository implements DashboardRepository {
 
       // Resolve only labels referenced by the analytics result sets. The previous implementation
       // loaded the entire tenant directory and pruned it in JS.
+      const dailyViewRows = viewAnalyticsRows
+        .filter((row) => row.kind === 'day' && row.day !== null)
+        .map((row) => ({ day: row.day as string, views: row.views }));
+      const siteViewRows = viewAnalyticsRows
+        .filter((row) => row.kind === 'site' && row.id !== null && row.name !== null)
+        .map((row) => ({ id: row.id as string, name: row.name as string, count: row.count ?? 0, views: row.views }));
+      const articleViewRows = viewAnalyticsRows
+        .filter((row) => row.kind === 'article' && row.id !== null && row.name !== null)
+        .map((row) => ({ id: row.id as string, name: row.name as string, count: row.count ?? 0, views: row.views }));
+      const totalViewRow = viewAnalyticsRows.find((row) => row.kind === 'total');
+
       const analyticsSiteIds = new Set<string>([
         ...bySite.map((row) => row.key),
         ...siteViewRows.map((row) => row.id),
@@ -655,8 +703,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         viewsByArticle: [...articleViewRows]
           .sort((left, right) => right.views - left.views)
           .map((row) => ({ key: row.id, count: row.count, views: row.views })),
-        totalViews: totalRow[0]?.total ?? 0,
-        totalPenyaluran: totalRow[0]?.salur ?? 0,
+        totalViews: totalViewRow?.views ?? 0,
+        totalPenyaluran: outcomesBySite.reduce((total, row) => total + row.count, 0),
         siteLabels,
         categoryLabels,
         publisherLabels,
