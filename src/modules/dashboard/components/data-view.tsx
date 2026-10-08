@@ -60,6 +60,7 @@ import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
 import { TelemetryGallery } from '@/modules/dashboard/components/analytics/gallery';
 import { DashboardV2CommandCenter } from '@/modules/dashboard/components/dashboard-v2-command-center';
+import { DashboardV2ModuleSurface } from '@/modules/dashboard/components/dashboard-v2-module-surface';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
 
@@ -149,6 +150,8 @@ export function DataView({
       />
     );
   }
+
+  return <DashboardV2ModuleSurface view={view} data={data} onRefresh={onRefresh} />;
 
   const normalizedSource: Record<string, unknown> = Array.isArray(data)
     ? { records: data }
