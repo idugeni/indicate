@@ -93,8 +93,8 @@ const TaxonomyManager = dynamic(
   () => import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({ default: module.TaxonomyManager })),
   { loading: () => <DashboardViewSkeleton view="taxonomy" /> },
 );
-const ArticleManager = dynamic(
-  () => import('@/modules/dashboard/components/editorial/article-manager').then((module) => ({ default: module.ArticleManager })),
+const ContentLibraryV2 = dynamic(
+  () => import('@/modules/dashboard/components/editorial/content-library-v2').then((module) => ({ default: module.ContentLibraryV2 })),
   { loading: () => <DashboardViewSkeleton view="articles" /> },
 );
 const DistributionControlV2 = dynamic(
@@ -279,7 +279,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         />
       ) : null}
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ArticleManager data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onEditArticle={(articleId) => { void setEditArticleId(articleId); onSelectView('editorial'); }} /> : null}
+      {view === 'articles' ? <ContentLibraryV2 data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onEditArticle={(articleId) => { void setEditArticleId(articleId); onSelectView('editorial'); }} /> : null}
       {view === 'configuration' ? (
         <Tabs defaultValue="domain" className="w-full">
           <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
