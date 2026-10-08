@@ -194,7 +194,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly crossOrg?: boolean | undefined;
 }) {
   const metadata = VIEW_REGISTRY[view];
-  const MetadataIcon = metadata.icon;
 
   /**
    * Artikel yang sedang diubah di Tulis Berita; datang dari Kelola Artikel.
