@@ -114,17 +114,10 @@ function isAnalyticsProjection(value: unknown): value is AnalyticsProjection {
   return Array.isArray((value as { readonly articlesByRegion?: unknown }).articlesByRegion);
 }
 
-interface SnapshotData extends DashboardProjection {
-  readonly analytics: AnalyticsProjection;
-}
-
-function isFullSnapshot(value: unknown, organizationId: string): value is DashboardSnapshot & { readonly data: SnapshotData } {
+function isFullSnapshot(value: unknown, organizationId: string): value is DashboardSnapshot & { readonly data: DashboardProjection } {
   if (typeof value !== 'object' || value === null) return false;
   const record = value as { readonly organizationId?: unknown; readonly data?: unknown };
-  if (record.organizationId !== organizationId) return false;
-  if (typeof record.data !== 'object' || record.data === null) return false;
-  const data = record.data as Record<string, unknown>;
-  return isDashboardProjection(data) && isAnalyticsProjection(data.analytics);
+  return record.organizationId === organizationId && isDashboardProjection(record.data);
 }
 
 const PAGEVIEW_BUFFER_ARTICLE_LIMIT = 100;
@@ -346,12 +339,19 @@ export async function fetchCachedAnalytics(
 }
 
 /**
- * Server-first dashboard read with a shared full-snapshot fast path.
+ * Server-first dashboard read with a shared core-metrics fast path.
+ *
+ * @remarks
+ * Analytics is deliberately excluded from the RSC snapshot. It is a heavier
+ * analytical projection and already has a dedicated cache/API path; keeping it
+ * out of the server-first payload prevents first render from waiting on the
+ * analytics workload. The client hydrates analytics independently after the
+ * dashboard core is available.
  *
  * @param organizationId - Organization to snapshot; must match the resolved membership.
  * @param identity - Verified Supabase Auth identity for the session owner.
  * @param preResolved - Local user plus membership already resolved by the caller; skips duplicate lookups.
- * @returns Complete snapshot with embedded analytics, or null so the client falls back to live fetch.
+ * @returns Dashboard core snapshot, or null so the client falls back to live fetch.
  */
 export async function getDashboardSnapshot(organizationId: string, identity: VerifiedAuthIdentity, preResolved?: ResolvedDashboardIdentity): Promise<DashboardSnapshot | null> {
   try {
@@ -389,31 +389,26 @@ export async function getDashboardSnapshot(organizationId: string, identity: Ver
     if (store !== null) {
       const fullKey = fullSnapshotRedisKey(projectionInput);
       const dashboardKey = dashboardRedisKey(projectionInput);
-      const analyticsKey = analyticsRedisKey({ ...projectionInput, from: undefined, to: undefined });
-      const [fullHit, dashboardHit, analyticsHit] = await store.readMany([fullKey, dashboardKey, analyticsKey]);
+      const [fullHit, dashboardHit] = await store.readMany([fullKey, dashboardKey]);
       if (isFullSnapshot(fullHit, organizationId)) {
         return {
           organizationId,
-          data: { ...fullHit.data, analytics: await mergePageviewBuffer(organizationId, fullHit.data.analytics) },
+          data: fullHit.data,
         };
       }
-      if (isDashboardProjection(dashboardHit) && isAnalyticsProjection(analyticsHit)) {
+      if (isDashboardProjection(dashboardHit)) {
         const snapshot: DashboardSnapshot = {
           organizationId,
-          data: { ...dashboardHit, analytics: await mergePageviewBuffer(organizationId, analyticsHit) },
+          data: dashboardHit,
         };
         await store.writeKey(fullKey, snapshot, DASHBOARD_REDIS_TTL_SECONDS);
         return snapshot;
       }
     }
-    const [data, analytics] = await Promise.all([
-      loadDashboardProjection(projectionInput),
-      loadAnalyticsProjection({ ...projectionInput, from: undefined, to: undefined }).catch(() => null),
-    ]);
-    if (analytics === null) return { organizationId, data };
+    const data = await loadDashboardProjection(projectionInput);
     const snapshot: DashboardSnapshot = {
       organizationId,
-      data: { ...data, analytics: await mergePageviewBuffer(organizationId, analytics) },
+      data,
     };
     if (store !== null) await store.writeKey(fullSnapshotRedisKey(projectionInput), snapshot, DASHBOARD_REDIS_TTL_SECONDS);
     return snapshot;
