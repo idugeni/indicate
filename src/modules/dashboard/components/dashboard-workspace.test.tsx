@@ -240,7 +240,7 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'media';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    expect(await screen.findByText('Media Library', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Media Library', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('invalidationIntents')).toBeNull();
     expect(screen.queryByText('reservations')).toBeNull();
     expect(screen.queryByText(/data, halaman/)).toBeNull();
