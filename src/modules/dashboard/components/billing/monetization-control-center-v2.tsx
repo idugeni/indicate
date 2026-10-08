@@ -61,7 +61,24 @@ export function MonetizationControlCenterV2({
     finally { setBusy(false); }
   }, [organizationId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    void getJson(
+      `/api/dashboard/billing?scope=subscription-state&organizationId=${encodeURIComponent(organizationId)}`,
+    )
+      .then((s) => getJson(
+        `/api/dashboard/billing?scope=invoices&organizationId=${encodeURIComponent(organizationId)}`,
+      ).then((i) => ({ s, i })))
+      .then(({ s, i }) => {
+        if (cancelled) return;
+        setState((s as { state: string }).state);
+        setInvoices(i as readonly Invoice[]);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Gagal memuat data monetisasi.');
+      });
+    return () => { cancelled = true; };
+  }, [organizationId]);
 
   useEffect(() => {
     if (!isPlatform) return;

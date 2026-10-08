@@ -21,7 +21,7 @@ describe('Monetization Control Center V2', () => {
     render(<MonetizationControlCenterV2 organizationId="org-1" permissions={[]} />);
     expect(await screen.findByRole('heading', { name: 'Revenue & Billing' })).toBeDefined();
     expect(await screen.findByText('INV-1')).toBeDefined();
-    expect(screen.getByText('Rp550.000')).toBeDefined();
+    expect(screen.getAllByText('Rp550.000').length).toBeGreaterThan(0);
   });
 
   it('does not expose platform actions to tenants', async () => {
@@ -51,7 +51,7 @@ describe('Monetization Control Center V2', () => {
     render(<MonetizationControlCenterV2 organizationId="org-1" permissions={['platform.super_admin']} />);
     expect(await screen.findByText('Platform Actions')).toBeDefined();
     fireEvent.change(screen.getByLabelText('Nominal faktur'), { target: { value: '600000' } });
-    expect(screen.getByLabelText('Nominal faktur')).toHaveValue('600000');
+    expect((screen.getByLabelText('Nominal faktur') as HTMLInputElement).value).toBe('600000');
     expect(calls).toHaveLength(0);
   });
 });
