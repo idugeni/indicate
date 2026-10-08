@@ -273,7 +273,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           command={command}
           organizationId={organizationId}
           onFilterApply={onFilterApply}
-          onRefresh={onRefresh}
         />
       ) : null}
       {view === 'editorial' ? (

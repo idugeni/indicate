@@ -24,7 +24,6 @@ function setup(command: DashboardCommand = vi.fn(async () => ({ ok: true })) as 
       command={command}
       organizationId="org-1"
       onFilterApply={onFilterApply}
-      onRefresh={vi.fn()}
     />,
   );
 }
