@@ -248,19 +248,35 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
       <div
         key={`${organizationId}:${view}`}
-        className="mx-auto w-full max-w-7xl animate-in fade-in slide-in-from-bottom-2 duration-300"
+        className="mx-auto w-full max-w-[1500px] animate-in fade-in slide-in-from-bottom-2 duration-300"
       >
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <p className="m-0 font-sans text-xs font-medium text-paper-faint">
-            {metadata.eyebrow}
-          </p>
-          <h1 className="m-0 mt-1 font-sans text-lg font-semibold tracking-tight text-paper sm:text-xl">
-            {metadata.title}
-          </h1>
-          <p className="m-0 mt-1 font-sans text-[13px] leading-relaxed text-paper-dim">
-            {metadata.description}
-          </p>
+      <header className="relative overflow-visible rounded-2xl border border-white/[0.07] bg-[radial-gradient(circle_at_100%_0%,rgba(99,102,241,0.12),transparent_35%),#0b1020] px-5 py-5 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex min-w-0 items-start gap-3.5">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl border border-indigo-400/15 bg-indigo-400/10 text-indigo-300">
+              <metadata.icon className="h-4.5 w-4.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <p className="m-0 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#68738a]">
+                  {metadata.eyebrow}
+                </p>
+                <span className="h-1 w-1 rounded-full bg-emerald-400" aria-hidden="true" />
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#59657c]">
+                  Workspace
+                </span>
+              </div>
+              <h1 className="m-0 mt-1.5 font-sans text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                {metadata.title}
+              </h1>
+              <p className="m-0 mt-1 max-w-2xl font-sans text-[13px] leading-relaxed text-[#8e99b0]">
+                {metadata.description}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.025] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#68738a]">
+            INDICATE
+          </div>
         </div>
       </header>
 
