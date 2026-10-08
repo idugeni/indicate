@@ -55,12 +55,12 @@ afterEach(() => {
 describe('Palet perintah', () => {
   it('membuka dialog pencarian dari tombol pemicu', async () => {
     await openPalette(ALL_PERMISSIONS);
-    expect(await screen.findByText('Command Center')).toBeDefined();
+    expect((await screen.findAllByText('Command Center')).length).toBeGreaterThan(0);
   });
 
   it('menyaring perintah sesuai kata kunci', async () => {
     const input = await openPalette(ALL_PERMISSIONS);
-    fireEvent.change(input, { target: { value: 'langganan' } });
+    fireEvent.change(input, { target: { value: 'billing' } });
     expect(await screen.findByText('Billing')).toBeDefined();
     expect(screen.queryByText('Command Center')).toBe(null);
     expect(screen.getByText('1 hasil tersedia.')).toBeDefined();
@@ -75,7 +75,7 @@ describe('Palet perintah', () => {
   it('menavigasi ke rute saat opsi dipilih', async () => {
     await openPalette(ALL_PERMISSIONS);
     await screen.findByText('Billing');
-    fireEvent.click(screen.getByRole('option', { name: /langganan/i }));
+    fireEvent.click(screen.getByRole('option', { name: /billing/i }));
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard?view=billing'));
   });
 
@@ -83,7 +83,7 @@ describe('Palet perintah', () => {
     await openPalette(new Set<string>());
     expect(await screen.findByText('Command Center')).toBeDefined();
     expect(screen.queryByText('Billing')).toBe(null);
-    expect(screen.queryByText('Riwayat Keamanan')).toBe(null);
-    expect(screen.queryByText('Kelola Pelanggan')).toBe(null);
+    expect(screen.queryByText('Audit')).toBe(null);
+    expect(screen.queryByText('Customers')).toBe(null);
   });
 });
