@@ -357,6 +357,15 @@ export function DashboardViewSkeleton({ view }: { readonly view: View }) {
           <TablesGridBare columns={2} count={2} />
         </>
       ) : null}
+      {view === 'content' ? (
+        <>
+          <DashboardStatsSkeleton count={4} />
+          <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+            <DashboardPanelSkeleton />
+            <TablesGridBare columns={2} count={2} />
+          </div>
+        </>
+      ) : null}
       {view === 'billing' ? (
         <>
           <DashboardTabsSkeleton />
