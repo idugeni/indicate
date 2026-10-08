@@ -670,6 +670,7 @@ export function DashboardWorkspace({
 
         <DashboardViewPanel
           view={view}
+          displayName={displayName}
           data={data}
           organizationId={organizationId}
           permissions={activePermissions}
