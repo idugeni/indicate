@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Archive, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Check, CircleCheck, CircleX, Copy, Eye, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Network, Pencil, PenLine, RefreshCw, RotateCcw, SearchX, Send, SlidersHorizontal } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, ArrowUpDown, Check, CircleCheck, Copy, FileText, Globe, Images, Inbox, LayoutGrid, ListChecks, MoreVertical, Network, Pencil, RefreshCw, RotateCcw, SearchX, Send, SlidersHorizontal } from 'lucide-react';
 import { flexRender, useTable } from '@tanstack/react-table';
 import {
   columnVisibilityFeature,
@@ -34,7 +34,6 @@ import { AppTooltip } from '@/ui/app-tooltip';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
 import { beginActionProgress } from '@/modules/dashboard/components/shared/action-progress';
-import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import {
   COLLECTION_LIMITS,
   PAGE_SIZE,
@@ -63,7 +62,6 @@ import { TelemetryGallery } from '@/modules/dashboard/components/analytics/galle
 import { DashboardV2Overview } from '@/modules/dashboard/components/dashboard-v2-overview';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
-import { Progress } from '@/components/ui/progress';
 
 interface DataViewProps {
   readonly view: View;
