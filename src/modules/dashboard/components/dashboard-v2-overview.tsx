@@ -116,7 +116,7 @@ function AttentionPanel({
   readonly processing: number;
   readonly retrying: number;
   readonly failed: number;
-  readonly onSelectView?: (view: View) => void;
+  readonly onSelectView?: ((view: View) => void) | undefined;
 }) {
   const attention = failed + retrying;
   const activeQueue = queued + processing;
