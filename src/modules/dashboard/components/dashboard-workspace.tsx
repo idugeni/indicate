@@ -527,7 +527,7 @@ export function DashboardWorkspace({
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-12 flex-none items-center gap-2 border-b border-hairline bg-bg/95 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex h-14 flex-none items-center gap-3 border-b border-white/[0.07] bg-[#080d1a]/90 px-4 backdrop-blur-xl sm:px-6">
           <Button
             type="button"
             variant="ghost"
@@ -548,8 +548,8 @@ export function DashboardWorkspace({
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden text-hairline-strong sm:list-item" />
               <BreadcrumbItem className="min-w-0">
-                <BreadcrumbPage className="truncate font-medium text-paper">
-                  <span key={view} className="block animate-in truncate fade-in duration-200">
+                <BreadcrumbPage className="truncate font-medium text-white">
+                  <span key={view} className="block animate-in truncate font-medium fade-in duration-200">
                     {viewLabel(view)}
                   </span>
                 </BreadcrumbPage>
@@ -557,12 +557,12 @@ export function DashboardWorkspace({
             </BreadcrumbList>
           </Breadcrumb>
 
-          <div className="ml-auto flex flex-none items-center gap-1.5">
+          <div className="ml-auto flex flex-none items-center gap-2">
             <CommandPalette permissions={activePermissions} organizationId={organizationId} />
-            <p className="m-0 hidden items-center gap-2 rounded-md border border-hairline bg-bg-raised px-2.5 py-1.5 font-mono text-xs tabular-nums text-paper-dim md:inline-flex">
+            <p className="m-0 hidden items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-[#8e99b0] md:inline-flex">
               <span className="relative flex h-1.5 w-1.5 flex-none" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-signal" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
               </span>
               <LiveClock />
             </p>
