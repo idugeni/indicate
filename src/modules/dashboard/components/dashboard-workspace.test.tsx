@@ -240,7 +240,7 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'media';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    expect(await screen.findByText('Pustaka Media & Repositori Aset', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByText('Media Library', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('invalidationIntents')).toBeNull();
     expect(screen.queryByText('reservations')).toBeNull();
     expect(screen.queryByText(/data, halaman/)).toBeNull();
@@ -274,8 +274,8 @@ describe('Dashboard workspace', () => {
     initialView = 'media';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('Pustaka Media & Repositori Aset', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
-    await screen.findByRole('button', { name: /Muat 24 lagi/ }, { timeout: LAZY_MODULE_TIMEOUT_MS });
-    fireEvent.click(screen.getByRole('button', { name: /Muat 24 lagi/ }));
+    await screen.findByRole('button', { name: /Muat halaman berikutnya/ }, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    fireEvent.click(screen.getByRole('button', { name: /Muat halaman berikutnya/ }));
     await waitFor(() => expect(calls.filter((call) => call.init?.body !== undefined)).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     expect(calls.filter((call) => call.init?.body === undefined)).toHaveLength(1);
   }, 20000);
