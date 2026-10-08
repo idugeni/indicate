@@ -49,8 +49,8 @@ const ContentManager = dynamic(
   () => import('@/modules/dashboard/components/content/content-manager').then((module) => ({ default: module.ContentManager })),
   { loading: () => <DashboardViewSkeleton view="content" /> },
 );
-const ArticleCreateForm = dynamic(
-  () => import('@/modules/dashboard/components/editorial/editorial-form').then((module) => ({ default: module.ArticleCreateForm })),
+const EditorialWorkspaceV2 = dynamic(
+  () => import('@/modules/dashboard/components/editorial/editorial-workspace-v2').then((module) => ({ default: module.EditorialWorkspaceV2 })),
   { loading: () => <DashboardSplitFormSkeleton /> },
 );
 const IntegrationSettings = dynamic(
@@ -269,7 +269,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
       {view === 'publishers' ? <PublisherForm data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'editorial' ? (
-        <ArticleCreateForm
+        <EditorialWorkspaceV2
           data={data}
           onSubmit={(payload) => command('article.create', payload, { refresh: true })}
           command={command}
