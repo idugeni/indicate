@@ -111,7 +111,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / COMMAND CENTER');
     fireEvent.click(screen.getByRole('button', { name: 'Compose' }));
-    expect(await screen.findByText('Editorial Workspace', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByText('Artikel baru', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
