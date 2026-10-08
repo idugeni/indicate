@@ -181,7 +181,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
       />,
     );
-    await screen.findByText('Domain Utama');
+    await screen.findByText('Network overview');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
