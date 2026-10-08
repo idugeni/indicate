@@ -81,7 +81,7 @@ describe('Palet perintah', () => {
 
   it('menyembunyikan rute yang tidak diizinkan, sama seperti sidebar', async () => {
     await openPalette(new Set<string>());
-    expect(await screen.findByText('Command Center')).toBeDefined();
+    expect((await screen.findAllByText('Command Center')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Billing')).toBe(null);
     expect(screen.queryByText('Audit')).toBe(null);
     expect(screen.queryByText('Customers')).toBe(null);
