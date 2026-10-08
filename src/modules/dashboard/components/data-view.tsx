@@ -59,7 +59,7 @@ import {
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
 import { TelemetryGallery } from '@/modules/dashboard/components/analytics/gallery';
-import { DashboardV2Overview } from '@/modules/dashboard/components/dashboard-v2-overview';
+import { DashboardV2CommandCenter } from '@/modules/dashboard/components/dashboard-v2-command-center';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
 
@@ -117,28 +117,20 @@ export function DataView({
   }
 
   if (view === 'dashboard') {
-    const dashboard = typeof data === 'object' ? (data as Record<string, unknown>) : {};
+    const dashboard = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {};
     const jobs = dashboard.jobsByState as Record<string, number> | undefined;
-
-    const asNumber = (value: unknown): number => (typeof value === 'number' ? value : 0);
-    const activeDomains = asNumber(dashboard.activeDomains);
-    const activeSubdomains = asNumber(dashboard.activeSubdomains);
-    const activeSites = asNumber(dashboard.activeSites);
-    const activeArticles = asNumber(dashboard.activeArticles);
-    const archivedArticles = asNumber(dashboard.archivedArticles);
-    const activeMedia = asNumber(dashboard.activeMedia);
-    const successfulOutcomes = asNumber(dashboard.successfulSiteOutcomes);
-    const failedOutcomes = asNumber(dashboard.failedSiteOutcomes);
+    const asNumber = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
     const analytics = isAnalyticsProjection(dashboard.analytics) ? dashboard.analytics : null;
 
     return (
-      <DashboardV2Overview
+      <DashboardV2CommandCenter
+        displayName="INDICATE"
         dashboard={{
-          activeDomains,
-          activeSubdomains,
-          activeSites,
-          activeArticles,
-          archivedArticles,
+          activeDomains: asNumber(dashboard.activeDomains),
+          activeSubdomains: asNumber(dashboard.activeSubdomains),
+          activeSites: asNumber(dashboard.activeSites),
+          activeArticles: asNumber(dashboard.activeArticles),
+          archivedArticles: asNumber(dashboard.archivedArticles),
           jobsByState: {
             queued: asNumber(jobs?.queued),
             processing: asNumber(jobs?.processing),
@@ -147,12 +139,11 @@ export function DataView({
             retrying: asNumber(jobs?.retrying),
             unpublished: asNumber(jobs?.unpublished),
           },
-          successfulSiteOutcomes: successfulOutcomes,
-          failedSiteOutcomes: failedOutcomes,
-          activeMedia,
+          successfulSiteOutcomes: asNumber(dashboard.successfulSiteOutcomes),
+          failedSiteOutcomes: asNumber(dashboard.failedSiteOutcomes),
         }}
         analytics={analytics}
-        onSelectView={onSelectView}
+        onSelectView={onSelectView ?? (() => undefined)}
       />
     );
   }
