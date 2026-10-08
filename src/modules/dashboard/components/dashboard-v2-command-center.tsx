@@ -352,12 +352,12 @@ export function DashboardV2CommandCenter({
           <Sparkles className="h-4 w-4 text-indigo-300" aria-hidden="true" />
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
+          {([
             ['Write article', 'editorial', FileText],
             ['Publishing queue', 'publishing', Send],
             ['Analytics', 'analytics', Activity],
             ['Network configuration', 'configuration', Layers3],
-          ].map(([label, target, Icon]) => (
+          ] as const).map(([label, target, Icon]) => (
             <button
               key={String(target)}
               type="button"
