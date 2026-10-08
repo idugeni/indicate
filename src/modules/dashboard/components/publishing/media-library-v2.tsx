@@ -84,10 +84,14 @@ function ownerLabel(item: LibraryMedia, model: MediaLibraryV2Model | null): stri
 }
 
 export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2Props) {
-  const model = (data as MediaLibraryV2Model | null) ?? {};
-  const [items, setItems] = useState<readonly LibraryMedia[]>(model.media ?? []);
-  const [cursor, setCursor] = useState<string | null>(model.nextCursor ?? null);
-  const [counts, setCounts] = useState(model.mediaCounts ?? []);
+  const model = useMemo(() => (data as MediaLibraryV2Model | null) ?? {}, [data]);
+  const baseItems = model.media ?? [];
+  const counts = model.mediaCounts ?? [];
+  const baseSignature = useMemo(
+    () => `${model.nextCursor ?? ''}|${baseItems.map((item) => item.id).join(',')}`,
+    [model.nextCursor, baseItems],
+  );
+  const querySignature = `${search.trim()}|${owner}|${state}`;
   const [search, setSearch] = useState('');
   const [owner, setOwner] = useState<'all' | MediaOwnerKind>('all');
   const [state, setState] = useState('all');
@@ -99,12 +103,14 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   const [listError, setListError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Record<string, SignedAssetAuthorization>>({});
   const [previewingId, setPreviewingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setItems(model.media ?? []);
-    setCursor(model.nextCursor ?? null);
-    setCounts(model.mediaCounts ?? []);
-  }, [data]);
+  const [page, setPage] = useState<{ readonly key: string; readonly items: readonly LibraryMedia[]; readonly next: string | null }>({ key: '', items: [], next: null });
+  const pageKey = `${querySignature}|${baseSignature}`;
+  const appended = page.key === pageKey ? page.items : [];
+  const items = useMemo(() => {
+    const known = new Set(baseItems.map((item) => item.id));
+    return [...baseItems, ...appended.filter((item) => !known.has(item.id))];
+  }, [baseItems, appended]);
+  const cursor = page.key === pageKey ? page.next : querySignature === '||' ? model.nextCursor ?? null : null;
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -132,8 +138,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
             ...(state === 'all' ? {} : { state }),
           }));
           if (page === null) throw new Error('Invalid media page');
-          setItems(page.items);
-          setCursor(page.next);
+          setPage({ key: `${querySignature}|${baseSignature}`, items: [], next: page.next });
           setSelectedId(page.items[0]?.id ?? '');
         } catch {
           setListError('Gagal memuat scope media. Coba ubah filter atau ulangi.');
@@ -183,11 +188,9 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
         ...(state === 'all' ? {} : { state }),
       }));
       if (page === null) throw new Error('Invalid media page');
-      setItems((current) => {
-        const known = new Set(current.map((item) => item.id));
-        return [...current, ...page.items.filter((item) => !known.has(item.id))];
-      });
-      setCursor(page.next);
+      const currentItems = page.key === pageKey ? page.items : [];
+      const known = new Set(currentItems.map((item) => item.id));
+      setPage({ key: pageKey, items: [...currentItems, ...page.items.filter((item) => !known.has(item.id))], next: page.next });
     } catch {
       setListError('Gagal memuat halaman aset berikutnya.');
     } finally {
