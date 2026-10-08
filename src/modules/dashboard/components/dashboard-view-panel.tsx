@@ -10,7 +10,6 @@ import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataView } from '@/modules/dashboard/components/data-view';
-import { DashboardV2AreaSurface } from '@/modules/dashboard/components/dashboard-v2-area-surface';
 import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import {
@@ -247,8 +246,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   );
 
   return (
-    <DashboardV2AreaSurface view={view} data={data} onRefresh={onRefresh}>
-      <div className={view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}>
+    <main className="min-w-0 flex-1">
+      <div className={`mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 xl:px-10 ${view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}`}>
       {error ? (
         <Alert
           variant="destructive"
@@ -400,7 +399,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         </PanelErrorBoundary>
       )}
       </div>
-    </DashboardV2AreaSurface>
+    </main>
   );
 });
 
