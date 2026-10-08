@@ -71,14 +71,16 @@ export function PublicWebContentV2() {
   const filteredGroups = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (needle === '') return GROUPS;
-    return GROUPS.filter((group) =>
-      (bundle?.[group.id] ?? []).some((row) =>
-        Object.values(row).some((value) =>
-          String(value ?? '')
-            .toLowerCase()
-            .includes(needle),
+    return GROUPS.filter(
+      (group) =>
+        group.label.toLowerCase().includes(needle) ||
+        (bundle?.[group.id] ?? []).some((row) =>
+          Object.values(row).some((value) =>
+            String(value ?? '')
+              .toLowerCase()
+              .includes(needle),
+          ),
         ),
-      ),
     );
   }, [bundle, query]);
 
