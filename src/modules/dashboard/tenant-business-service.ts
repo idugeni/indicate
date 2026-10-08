@@ -1105,6 +1105,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.requestBridgePublication(actor, parsed.data);
+      await this.invalidateActorOrganization(actor, 'requestBridgePublication');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
@@ -1128,6 +1129,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.unpublishBridge(actor, parsed.data);
+      await this.invalidateActorOrganization(actor, 'unpublishBridge');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
@@ -1168,6 +1170,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.requestBridgePublicationAuto(actor, parsed.data);
+      await this.invalidateActorOrganization(actor, 'requestBridgePublicationAuto');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
@@ -1648,9 +1651,6 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         roleId: parsed.data.roleId,
         tokenHash: parsed.data.tokenHash,
       });
-      await this.invalidateActorOrganization(actor, 'requestBridgePublication');
-      await this.invalidateActorOrganization(actor, 'unpublishBridge');
-      await this.invalidateActorOrganization(actor, 'requestBridgePublicationAuto');
       await this.invalidateActorOrganization(actor, 'createInvitation');
       return { ok: true, value };
     } catch (error) {
