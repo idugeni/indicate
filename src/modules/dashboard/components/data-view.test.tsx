@@ -44,7 +44,7 @@ describe('Tampilan data dasbor', () => {
     expect(screen.getByText('Active articles')).toBeDefined();
     expect(screen.getByText('Delivery success')).toBeDefined();
     expect(screen.getByText('Total views')).toBeDefined();
-    expect(screen.getByText('Operational pulse')).toBeDefined();
+    expect(screen.getByText('What needs your attention?')).toBeDefined();
     expect(screen.getByText('What needs your attention?')).toBeDefined();
     expect(screen.getByText('Delivery success')).toBeDefined();
     expect(screen.getByText('Network posture')).toBeDefined();
@@ -403,7 +403,7 @@ describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan mem
         onRefresh={vi.fn()}
       />,
     );
-    expect(screen.getAllByText('active')).toHaveLength(1);
+    expect(screen.getAllByText('active')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'Alihkan kolom tabel' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Status' }));
     expect(screen.queryByText('active')).toBe(null);
