@@ -95,7 +95,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
-    expect(await screen.findByText('Network overview')).toBeDefined();
+    expect(await screen.findByText('INDICATE / COMMAND CENTER')).toBeDefined();
   });
 
   it('collapses and expands the sidebar through the edge rail', () => {
@@ -108,15 +108,15 @@ describe('Dashboard workspace', () => {
 
   it('switches the title when an editorial module is selected', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Network overview');
-    fireEvent.click(screen.getByRole('button', { name: 'Tulis Berita' }));
-    expect(await screen.findByText('Content Library', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    await screen.findByText('INDICATE / COMMAND CENTER');
+    fireEvent.click(screen.getByRole('button', { name: 'Compose' }));
+    expect(await screen.findByText('Editorial Workspace', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
   it('pins the footer to the bottom with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Network overview');
+    await screen.findByText('INDICATE / COMMAND CENTER');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('sticky');
@@ -159,7 +159,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
       />,
     );
-    await screen.findByText('Network overview');
+    await screen.findByText('INDICATE / COMMAND CENTER');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
@@ -180,7 +180,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
       />,
     );
-    await screen.findByText('Network overview');
+    await screen.findByText('INDICATE / COMMAND CENTER');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
