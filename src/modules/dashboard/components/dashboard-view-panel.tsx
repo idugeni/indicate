@@ -101,8 +101,8 @@ const DistributionControlV2 = dynamic(
   () => import('@/modules/dashboard/components/publishing/distribution-control-v2').then((module) => ({ default: module.DistributionControlV2 })),
   { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
-const PublishedUrlBoard = dynamic(
-  () => import('@/modules/dashboard/components/publishing/published-url-board').then((module) => ({ default: module.PublishedUrlBoard })),
+const LiveResultsV2 = dynamic(
+  () => import('@/modules/dashboard/components/publishing/live-results-v2').then((module) => ({ default: module.LiveResultsV2 })),
   { loading: () => <DashboardViewSkeleton view="published" /> },
 );
 const BillingPanel = dynamic(
@@ -331,7 +331,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         </Tabs>
       ) : null}
       {view === 'media' ? <MediaLibraryV2 data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} organizationId={organizationId} crossOrg={crossOrg} /> : null}
+      {view === 'published' ? <LiveResultsV2 data={data} organizationId={organizationId} /> : null}
       {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
       {view === 'settings' ? (
         <Tabs defaultValue="koneksi" className="w-full">
