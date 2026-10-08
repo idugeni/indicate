@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { cacheLife, cacheTag, unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { connection } from 'next/server';
 import { cache } from 'react';
 import { buildSeoDocument, CATEGORY_INDEX_MINIMUM, indexableRobots, nonIndexableRobots, tenantBrand, tenantFavicon } from '@/modules/site/seo';
 import { extractYouTubeId, isSafeMediaSrc } from '@/modules/site/tiptap-document';
@@ -162,12 +161,6 @@ async function loadCachedSearchSite(
  * listing across five entries.
  */
 export async function resolveNetworkSite(query: NetworkContentQuery = {}, path = '/'): Promise<NetworkSiteData> {
-  // Tenant resolution is request-scoped: the incoming host selects the site.
-  // Defer before loading runtime configuration so Cache Components never tries
-  // to execute this multi-tenant resolver during the build/prerender phase.
-  // The downstream site/content functions remain cacheable once the host/site
-  // identity is known.
-  await connection();
   const { config } = await getDeliveryComposition();
   const context = await requireNetworkContext();
   const sanitized: NetworkContentQuery = {
