@@ -18,31 +18,52 @@ import {
   DashboardStatsSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
-import { VIEW_REGISTRY, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/view-registry';
+import {
+  VIEW_REGISTRY,
+  VIEWS_WITHOUT_RAW_COLLECTIONS,
+} from '@/modules/dashboard/components/view-registry';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 
 const InfrastructureControlCenterV2 = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/infrastructure-control-center-v2').then((module) => ({ default: module.InfrastructureControlCenterV2 })),
+  () =>
+    import('@/modules/dashboard/components/infrastructure/infrastructure-control-center-v2').then(
+      (module) => ({ default: module.InfrastructureControlCenterV2 }),
+    ),
   { loading: () => <DashboardViewSkeleton view="configuration" /> },
 );
 const CustomerManagement = dynamic(
-  () => import('@/modules/dashboard/components/customers/customer-management').then((module) => ({ default: module.CustomerManagement })),
+  () =>
+    import('@/modules/dashboard/components/customers/customer-management').then((module) => ({
+      default: module.CustomerManagement,
+    })),
   { loading: () => <DashboardFormsGridSkeleton columns={3} /> },
 );
 const ContentManager = dynamic(
-  () => import('@/modules/dashboard/components/content/content-manager').then((module) => ({ default: module.ContentManager })),
+  () =>
+    import('@/modules/dashboard/components/content/content-manager').then((module) => ({
+      default: module.ContentManager,
+    })),
   { loading: () => <DashboardViewSkeleton view="content" /> },
 );
 const EditorialWorkspaceV2 = dynamic(
-  () => import('@/modules/dashboard/components/editorial/editorial-workspace-v2').then((module) => ({ default: module.EditorialWorkspaceV2 })),
+  () =>
+    import('@/modules/dashboard/components/editorial/editorial-workspace-v2').then((module) => ({
+      default: module.EditorialWorkspaceV2,
+    })),
   { loading: () => <DashboardSplitFormSkeleton /> },
 );
 const AccessIntegrationsV2 = dynamic(
-  () => import('@/modules/dashboard/components/settings/access-integrations-v2').then((module) => ({ default: module.AccessIntegrationsV2 })),
+  () =>
+    import('@/modules/dashboard/components/settings/access-integrations-v2').then((module) => ({
+      default: module.AccessIntegrationsV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="settings" /> },
 );
 const AiManagementPanel = dynamic(
-  () => import('@/modules/dashboard/components/settings/ai-management-panel').then((module) => ({ default: module.AiManagementPanel })),
+  () =>
+    import('@/modules/dashboard/components/settings/ai-management-panel').then((module) => ({
+      default: module.AiManagementPanel,
+    })),
   {
     loading: () => (
       <div className="space-y-4">
@@ -53,43 +74,82 @@ const AiManagementPanel = dynamic(
   },
 );
 const MediaLibraryV2 = dynamic(
-  () => import('@/modules/dashboard/components/publishing/media-library-v2').then((module) => ({ default: module.MediaLibraryV2 })),
+  () =>
+    import('@/modules/dashboard/components/publishing/media-library-v2').then((module) => ({
+      default: module.MediaLibraryV2,
+    })),
   { loading: () => <DashboardMediaSkeleton /> },
 );
 const PublisherNetworkV2 = dynamic(
-  () => import('@/modules/dashboard/components/editorial/publisher-network-v2').then((module) => ({ default: module.PublisherNetworkV2 })),
+  () =>
+    import('@/modules/dashboard/components/editorial/publisher-network-v2').then((module) => ({
+      default: module.PublisherNetworkV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="publishers" /> },
 );
 const TaxonomyManager = dynamic(
-  () => import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({ default: module.TaxonomyManager })),
+  () =>
+    import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({
+      default: module.TaxonomyManager,
+    })),
   { loading: () => <DashboardViewSkeleton view="taxonomy" /> },
 );
 const ContentLibraryV2 = dynamic(
-  () => import('@/modules/dashboard/components/editorial/content-library-v2').then((module) => ({ default: module.ContentLibraryV2 })),
+  () =>
+    import('@/modules/dashboard/components/editorial/content-library-v2').then((module) => ({
+      default: module.ContentLibraryV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="articles" /> },
 );
 const DistributionControlV2 = dynamic(
-  () => import('@/modules/dashboard/components/publishing/distribution-control-v2').then((module) => ({ default: module.DistributionControlV2 })),
+  () =>
+    import('@/modules/dashboard/components/publishing/distribution-control-v2').then((module) => ({
+      default: module.DistributionControlV2,
+    })),
   { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
 const LiveResultsV2 = dynamic(
-  () => import('@/modules/dashboard/components/publishing/live-results-v2').then((module) => ({ default: module.LiveResultsV2 })),
+  () =>
+    import('@/modules/dashboard/components/publishing/live-results-v2').then((module) => ({
+      default: module.LiveResultsV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="published" /> },
 );
+const AuditSecurityV2 = dynamic(
+  () =>
+    import('@/modules/dashboard/components/audit/audit-security-v2').then((module) => ({
+      default: module.AuditSecurityV2,
+    })),
+  { loading: () => <DashboardViewSkeleton view="audit" /> },
+);
 const MonetizationControlCenterV2 = dynamic(
-  () => import('@/modules/dashboard/components/billing/monetization-control-center-v2').then((module) => ({ default: module.MonetizationControlCenterV2 })),
+  () =>
+    import('@/modules/dashboard/components/billing/monetization-control-center-v2').then(
+      (module) => ({ default: module.MonetizationControlCenterV2 }),
+    ),
   { loading: () => <DashboardViewSkeleton view="billing" /> },
 );
 const ModerationPanel = dynamic(
-  () => import('@/modules/dashboard/components/moderation/moderation-panel').then((module) => ({ default: module.ModerationPanel })),
+  () =>
+    import('@/modules/dashboard/components/moderation/moderation-panel').then((module) => ({
+      default: module.ModerationPanel,
+    })),
   { loading: () => <DashboardViewSkeleton view="moderation" /> },
 );
 const AdsManagementPanel = dynamic(
-  () => import('@/modules/dashboard/components/ads/ads-management-panel').then((module) => ({ default: module.AdsManagementPanel })),
+  () =>
+    import('@/modules/dashboard/components/ads/ads-management-panel').then((module) => ({
+      default: module.AdsManagementPanel,
+    })),
   { loading: () => <DashboardViewSkeleton view="ads" /> },
 );
 /** Views whose payload the server filters from the query string, so `FilterControls` owns real inputs there. */
-const SERVER_FILTER_VIEWS: ReadonlySet<View> = new Set<View>(['analytics', 'audit', 'configuration', 'publishers']);
+const SERVER_FILTER_VIEWS: ReadonlySet<View> = new Set<View>([
+  'analytics',
+  'audit',
+  'configuration',
+  'publishers',
+]);
 
 function hasServerFilters(view: View): boolean {
   return SERVER_FILTER_VIEWS.has(view);
@@ -148,7 +208,13 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly onLoadMoreAudit?: (() => void) | undefined;
   readonly articlesNextCursor?: string | null | undefined;
   readonly articlesTotal?: number | undefined;
-  readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
+  readonly onLoadMoreArticles?:
+    | (() => Promise<{
+        readonly loaded: number;
+        readonly total: number;
+        readonly nextCursor: string | null;
+      } | null>)
+    | undefined;
   readonly crossOrg?: boolean | undefined;
 }) {
   const metadata = VIEW_REGISTRY[view];
@@ -190,85 +256,136 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
 
   return (
     <main className="min-w-0 flex-1">
-      <div className={`mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 xl:px-10 ${view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}`}>
-      {error ? (
-        <Alert
-          variant="destructive"
-          className="flex animate-in items-center gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
-        >
-          <AlertDescription className="flex-1 font-sans text-sm text-paper">{error}</AlertDescription>
-          <AlertAction className="top-1/2 -translate-y-1/2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={onDismissError}
-              aria-label="Tutup pesan kesalahan"
-              className="text-paper-faint hover:text-paper"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </AlertAction>
-        </Alert>
-      ) : null}
+      <div
+        className={`mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 xl:px-10 ${view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}`}
+      >
+        {error ? (
+          <Alert
+            variant="destructive"
+            className="flex animate-in items-center gap-3 border-l-2 border-error bg-error/[0.06] px-4 py-3 fade-in slide-in-from-top-2 duration-200"
+          >
+            <AlertDescription className="flex-1 font-sans text-sm text-paper">
+              {error}
+            </AlertDescription>
+            <AlertAction className="top-1/2 -translate-y-1/2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={onDismissError}
+                aria-label="Tutup pesan kesalahan"
+                className="text-paper-faint hover:text-paper"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </AlertAction>
+          </Alert>
+        ) : null}
 
-      {hasServerFilters(view) ? <FilterControls view={view} data={data} onApply={onFilterApply} /> : null}
+        {hasServerFilters(view) ? (
+          <FilterControls view={view} data={data} onApply={onFilterApply} />
+        ) : null}
 
-      <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
-      {view === 'publishers' ? (
-        <PublisherNetworkV2
-          data={data}
-          command={command}
-          organizationId={organizationId}
-          onFilterApply={onFilterApply}
-        />
-      ) : null}
-      {view === 'editorial' ? (
-        <EditorialWorkspaceV2
-          data={data}
-          onSubmit={(payload) => command('article.create', payload, { refresh: true })}
-          command={command}
-          organizationId={organizationId}
-          editArticleId={editArticleId ?? undefined}
-          onExitEdit={exitEdit}
-        />
-      ) : null}
-      {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'articles' ? <ContentLibraryV2 data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onEditArticle={(articleId) => { void setEditArticleId(articleId); onSelectView('editorial'); }} /> : null}
-      {view === 'configuration' ? (
-        <InfrastructureControlCenterV2 data={data} command={command} organizationId={organizationId} />
-      ) : null}
-      {view === 'media' ? <MediaLibraryV2 data={data} command={command} organizationId={organizationId} /> : null}
-      {view === 'published' ? <LiveResultsV2 data={data} organizationId={organizationId} /> : null}
-      {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
-      {view === 'settings' ? <AccessIntegrationsV2 data={data} command={command} permissions={permissions} /> : null}
-      {view === 'billing' ? <MonetizationControlCenterV2 organizationId={organizationId} permissions={[...permissions]} /> : null}
-      {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
-      {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
-      {view === 'ai' ? <AiManagementPanel organizationId={organizationId} command={command} /> : null}
-      {view === 'customers' ? <CustomerManagement command={command} organizationId={organizationId} /> : null}
-      {view === 'content' ? <ContentManager /> : null}
-      </PanelErrorBoundary>
-
-      {VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) ? null : showSkeleton ? (
-        <DashboardViewSkeleton view={view} />
-      ) : (
-        <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${metadata.title} — data`}>
-        <DataView
-          view={view}
-          displayName={displayName}
-          data={data}
-          currentPage={currentPage}
-          onPageChange={onPageChange}
-          onRefresh={onRefresh}
-          command={command}
-          onSelectView={onSelectView}
-          organizationId={organizationId}
-          auditNextCursor={auditNextCursor}
-          onLoadMoreAudit={onLoadMoreAudit}
-        />
+        <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
+          {view === 'publishers' ? (
+            <PublisherNetworkV2
+              data={data}
+              command={command}
+              organizationId={organizationId}
+              onFilterApply={onFilterApply}
+            />
+          ) : null}
+          {view === 'editorial' ? (
+            <EditorialWorkspaceV2
+              data={data}
+              onSubmit={(payload) => command('article.create', payload, { refresh: true })}
+              command={command}
+              organizationId={organizationId}
+              editArticleId={editArticleId ?? undefined}
+              onExitEdit={exitEdit}
+            />
+          ) : null}
+          {view === 'taxonomy' ? (
+            <TaxonomyManager data={data} command={command} organizationId={organizationId} />
+          ) : null}
+          {view === 'articles' ? (
+            <ContentLibraryV2
+              data={data}
+              command={command}
+              onFilterApply={onFilterApply}
+              articlesNextCursor={articlesNextCursor}
+              articlesTotal={articlesTotal}
+              onLoadMoreArticles={onLoadMoreArticles}
+              crossOrg={crossOrg}
+              onEditArticle={(articleId) => {
+                void setEditArticleId(articleId);
+                onSelectView('editorial');
+              }}
+            />
+          ) : null}
+          {view === 'configuration' ? (
+            <InfrastructureControlCenterV2
+              data={data}
+              command={command}
+              organizationId={organizationId}
+            />
+          ) : null}
+          {view === 'media' ? (
+            <MediaLibraryV2 data={data} command={command} organizationId={organizationId} />
+          ) : null}
+          {view === 'published' ? (
+            <LiveResultsV2 data={data} organizationId={organizationId} />
+          ) : null}
+          {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
+          {view === 'settings' ? (
+            <AccessIntegrationsV2 data={data} command={command} permissions={permissions} />
+          ) : null}
+          {view === 'billing' ? (
+            <MonetizationControlCenterV2
+              organizationId={organizationId}
+              permissions={[...permissions]}
+            />
+          ) : null}
+          {view === 'audit' ? (
+            <AuditSecurityV2
+              data={data}
+              auditNextCursor={auditNextCursor}
+              onLoadMoreAudit={onLoadMoreAudit}
+            />
+          ) : null}
+          {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
+          {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
+          {view === 'ai' ? (
+            <AiManagementPanel organizationId={organizationId} command={command} />
+          ) : null}
+          {view === 'customers' ? (
+            <CustomerManagement command={command} organizationId={organizationId} />
+          ) : null}
+          {view === 'content' ? <ContentManager /> : null}
         </PanelErrorBoundary>
-      )}
+
+        {VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) ? null : showSkeleton ? (
+          <DashboardViewSkeleton view={view} />
+        ) : (
+          <PanelErrorBoundary
+            key={`data:${organizationId}:${view}`}
+            name={`${metadata.title} — data`}
+          >
+            <DataView
+              view={view}
+              displayName={displayName}
+              data={data}
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+              onRefresh={onRefresh}
+              command={command}
+              onSelectView={onSelectView}
+              organizationId={organizationId}
+              auditNextCursor={auditNextCursor}
+              onLoadMoreAudit={onLoadMoreAudit}
+            />
+          </PanelErrorBoundary>
+        )}
       </div>
     </main>
   );

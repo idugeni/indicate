@@ -395,7 +395,15 @@ export function DashboardViewSkeleton({ view }: { readonly view: View }) {
       {view === 'publishing' ? <FormsGridBare columns={1} count={2} /> : null}
       {view === 'published' ? <TablesGridBare columns={1} count={3} /> : null}
       {view === 'analytics' ? <TablesGridBare columns={2} count={4} /> : null}
-      {view === 'audit' ? <TablesGridBare columns={1} count={1} /> : null}
+      {view === 'audit' ? (
+        <>
+          <DashboardStatsSkeleton count={5} />
+          <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+            <DashboardPanelSkeleton />
+            <TablesGridBare columns={2} count={2} />
+          </div>
+        </>
+      ) : null}
       {view === 'operations' ? <TablesGridBare columns={1} count={3} /> : null}
       {view === 'moderation' ? (
         <>

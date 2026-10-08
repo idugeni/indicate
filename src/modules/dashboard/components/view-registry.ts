@@ -146,7 +146,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   audit: {
     label: 'Audit', title: 'Audit & Security', eyebrow: 'Governance', group: 'system',
     description: 'Jejak perubahan, aktor, dan event keamanan yang tidak dapat dihapus.',
-    icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: false,
+    icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: true,
   },
   operations: {
     label: 'Operations', title: 'System Operations', eyebrow: 'Runtime Workloads', group: 'system',
