@@ -291,7 +291,7 @@ export function DashboardV2Overview({
             processing={processing}
             retrying={retrying}
             failed={failed}
-            onSelectView={onSelectView}
+            {...(onSelectView ? { onSelectView } : {})}
           />
 
           <div className="col-span-full">
@@ -326,7 +326,7 @@ export function DashboardV2Overview({
         </div>
       )}
 
-      <QuickActions onSelectView={onSelectView} />
+      <QuickActions {...(onSelectView ? { onSelectView } : {})} />
 
       <Card label="Pipeline snapshot" className="col-span-full">
         <div className="grid gap-4 sm:grid-cols-5">
