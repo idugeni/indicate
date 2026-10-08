@@ -93,7 +93,7 @@ describe('EditorialWorkspaceV2', () => {
       />,
     );
 
-    await u.click(screen.getByRole('button', { name: 'Simpan draf' }));
+    await u.click(screen.getByRole('button', { name: 'Simpan Draf' }));
     expect(form.handleSaveArticle).toHaveBeenCalled();
   });
 
