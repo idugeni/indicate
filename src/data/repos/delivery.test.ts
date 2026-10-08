@@ -458,7 +458,7 @@ describe('readSite projection', () => {
     expect(articleKeys).toHaveLength(1);
     expect(articleKeys[0]).not.toContain('body');
     expect(selectLog.filter((entry) => entry.keys.includes('sortOrder'))).toHaveLength(0);
-    expect(selectLog).toHaveLength(5);
+    expect(selectLog).toHaveLength(6);
     const item = site?.articles[0];
     expect(item).toBeDefined();
     expect(item).not.toHaveProperty('body');
