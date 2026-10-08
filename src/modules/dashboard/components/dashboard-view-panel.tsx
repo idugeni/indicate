@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import dynamic from 'next/dynamic';
 import { parseAsString, useQueryState } from 'nuqs';
-import { Globe, KeyRound, LogIn, Palette, Plug, UserRound, X, Zap } from 'lucide-react';
+import { LogIn, Plug, UserRound, X } from 'lucide-react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
@@ -25,21 +25,9 @@ import { VIEW_REGISTRY, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboar
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
-const ConfigurationPanel = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/configuration-panel').then((module) => ({ default: module.ConfigurationPanel })),
-  { loading: () => <DashboardFormsGridSkeleton columns={3} /> },
-);
-const AccessManagementForm = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/access-management-form').then((module) => ({ default: module.AccessManagementForm })),
-  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
-);
-const SiteSettingsForm = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/site-settings-form').then((module) => ({ default: module.SiteSettingsForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const CachePurgeForm = dynamic(
-  () => import('@/modules/dashboard/components/infrastructure/cache-purge-form').then((module) => ({ default: module.CachePurgeForm })),
-  { loading: () => <DashboardSplitFormSkeleton /> },
+const InfrastructureControlCenterV2 = dynamic(
+  () => import('@/modules/dashboard/components/infrastructure/infrastructure-control-center-v2').then((module) => ({ default: module.InfrastructureControlCenterV2 })),
+  { loading: () => <DashboardViewSkeleton view="configuration" /> },
 );
 const CustomerManagement = dynamic(
   () => import('@/modules/dashboard/components/customers/customer-management').then((module) => ({ default: module.CustomerManagement })),
@@ -288,47 +276,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {view === 'taxonomy' ? <TaxonomyManager data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'articles' ? <ContentLibraryV2 data={data} command={command} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} crossOrg={crossOrg} onEditArticle={(articleId) => { void setEditArticleId(articleId); onSelectView('editorial'); }} /> : null}
       {view === 'configuration' ? (
-        <Tabs defaultValue="domain" className="w-full">
-          <TabsList aria-label="Bagian infrastruktur" className="max-w-full overflow-x-auto overflow-y-clip">
-            <TabsTrigger value="domain" className="flex-none">
-              <Globe className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              <span>Domain & Wilayah</span>
-            </TabsTrigger>
-            <TabsTrigger value="brand" className="flex-none">
-              <Palette className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              <span>SEO & Brand</span>
-            </TabsTrigger>
-            <TabsTrigger value="cache" className="flex-none">
-              <Zap className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              <span>Cache</span>
-            </TabsTrigger>
-            <TabsTrigger value="access" className="flex-none">
-              <KeyRound className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              <span>Akses</span>
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent keepMounted value="domain">
-            <div className="space-y-6">
-              <ConfigurationPanel data={data} command={command} />
-              {collectionTables(['domains', 'regions', 'sites'])}
-            </div>
-          </TabsContent>
-          <TabsContent keepMounted value="brand">
-            <div className="space-y-6">
-              <SiteSettingsForm data={data} command={command} />
-              {collectionTables(['siteSettings'])}
-            </div>
-          </TabsContent>
-          <TabsContent keepMounted value="cache">
-            <CachePurgeForm data={data} command={command} />
-          </TabsContent>
-          <TabsContent keepMounted value="access">
-            <div className="space-y-6">
-              <AccessManagementForm data={data} command={command} organizationId={organizationId} />
-              {collectionTables(['roles', 'memberships', 'invitations', 'activationAttempts'])}
-            </div>
-          </TabsContent>
-        </Tabs>
+        <InfrastructureControlCenterV2 data={data} command={command} organizationId={organizationId} />
       ) : null}
       {view === 'media' ? <MediaLibraryV2 data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'published' ? <LiveResultsV2 data={data} organizationId={organizationId} /> : null}
