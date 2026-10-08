@@ -14,7 +14,7 @@ import { parseTenantAdOverrides, safeTemplateId } from '@/modules/ads/config';
 import { mapPlacementRows, mapTenantAdRows } from '@/modules/ads/db-mapping';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle, type SiteCategory } from '@/modules/delivery/ports';
 import { sqlStringArray } from '@/data/repos/shared/sql-array';
-import { articleSites, articleUpdates, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, officialAffiliations, portalAssignments, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
+import { articleSites, articleUpdates, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, portalAssignments, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
