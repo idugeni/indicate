@@ -250,20 +250,10 @@ describe('Dashboard workspace', () => {
     const calls: { readonly url: string; readonly init?: { readonly body?: string } | undefined }[] = [];
     const fetchMock = vi.fn(async (url: unknown, init?: { readonly body?: string }) => {
       calls.push({ url: String(url), init });
-      if (init?.body !== undefined) {
-        return {
-          ok: true,
-          json: async () => ({
-            items: [{ id: 'm-1', objectKey: 'o/berkas.png', purpose: 'organization-asset', mediaType: 'image/png', sizeBytes: 1024, owner: { kind: 'organization' }, state: 'active', createdAt: '2026-09-24T00:00:00.000Z' }],
-            nextCursor: 'kursor-1',
-          }),
-        };
-      }
       return {
         ok: true,
         json: async () => ({
           media: [{ id: 'm-1', objectKey: 'o/berkas.png', purpose: 'organization-asset', mediaType: 'image/png', sizeBytes: 1024, owner: { kind: 'organization' }, state: 'active', createdAt: '2026-09-24T00:00:00.000Z' }],
-          nextCursor: 'kursor-1',
           mediaCounts: [{ kind: 'organization', count: 1, bytes: 1024 }],
           articles: [],
           sites: [],
@@ -274,10 +264,9 @@ describe('Dashboard workspace', () => {
     initialView = 'media';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByRole('heading', { name: 'Media Library', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS });
-    await screen.findByRole('button', { name: /Muat halaman berikutnya/ }, { timeout: LAZY_MODULE_TIMEOUT_MS });
-    fireEvent.click(screen.getByRole('button', { name: /Muat halaman berikutnya/ }));
-    await waitFor(() => expect(calls.filter((call) => call.init?.body !== undefined)).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
-    expect(calls.filter((call) => call.init?.body === undefined)).toHaveLength(1);
+    expect(screen.queryByText('invalidationIntents')).toBeNull();
+    expect(screen.queryByText('reservations')).toBeNull();
+    expect(calls.filter((call) => call.init?.body !== undefined)).toHaveLength(0);
   }, 20000);
 
   it('menumbuhkan riwayat audit halaman demi halaman lewat kursor', async () => {
