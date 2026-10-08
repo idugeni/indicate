@@ -53,10 +53,6 @@ const ArticleCreateForm = dynamic(
   () => import('@/modules/dashboard/components/editorial/editorial-form').then((module) => ({ default: module.ArticleCreateForm })),
   { loading: () => <DashboardSplitFormSkeleton /> },
 );
-const ArticleDistributeForm = dynamic(
-  () => import('@/modules/dashboard/components/editorial/article-distribute-form').then((module) => ({ default: module.ArticleDistributeForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
 const IntegrationSettings = dynamic(
   () => import('@/modules/dashboard/components/settings/integration-settings').then((module) => ({ default: module.IntegrationSettings })),
   { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
@@ -101,8 +97,8 @@ const ArticleManager = dynamic(
   () => import('@/modules/dashboard/components/editorial/article-manager').then((module) => ({ default: module.ArticleManager })),
   { loading: () => <DashboardViewSkeleton view="articles" /> },
 );
-const PublishingForm = dynamic(
-  () => import('@/modules/dashboard/components/publishing/publishing-form').then((module) => ({ default: module.PublishingForm })),
+const DistributionControlV2 = dynamic(
+  () => import('@/modules/dashboard/components/publishing/distribution-control-v2').then((module) => ({ default: module.DistributionControlV2 })),
   { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
 const PublishedUrlBoard = dynamic(
@@ -329,16 +325,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       ) : null}
       {view === 'media' ? <MediaLibrary data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} organizationId={organizationId} crossOrg={crossOrg} /> : null}
-      {view === 'publishing' ? (
-        <div className="grid gap-6">
-          <PublishingForm data={data} command={command} />
-          <ArticleDistributeForm
-            data={data}
-            onAssign={(payload) => command('article.sites.assign', payload, { refresh: true })}
-            command={command}
-          />
-        </div>
-      ) : null}
+      {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
       {view === 'settings' ? (
         <Tabs defaultValue="koneksi" className="w-full">
           <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto overflow-y-clip">
