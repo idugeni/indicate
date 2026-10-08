@@ -125,7 +125,7 @@ describe('Dashboard workspace', () => {
     expect(screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash')).toBeDefined();
   });
 
-  it('hides stale page collections when switching modules', async () => {
+  it('hides stale infrastructure content when switching modules', async () => {
     initialView = 'configuration';
     const pending = new Promise<void>((resolve) => { releasePublishers = resolve; });
     const fetchMock = vi.fn(async (url: unknown) => {
@@ -134,17 +134,38 @@ describe('Dashboard workspace', () => {
         await pending;
         return { ok: true, json: async () => ({ publishers: [{ id: 'pub-1', name: 'Humas Rutan', status: 'active', version: 1 }] }) };
       }
-      return { ok: true, json: async () => ({ domains: [{ id: 'd-1', normalizedHostname: 'jabar.domainanda.id', status: 'active', version: 1 }] }) };
+      if (target.includes('/api/dashboard/runtime-config')) {
+        return {
+          ok: true,
+          json: async () => ({
+            policy: {
+              allowedMimeTypes: ['image/jpeg'],
+              maxObjectBytes: 10485760,
+              uploadAuthorizationSeconds: 300,
+              readAuthorizationSeconds: 300,
+              version: 1,
+            },
+            policies: {
+              deployment: null,
+              publication: null,
+              webhook: null,
+              cache: null,
+              rateLimits: [],
+            },
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal('fetch', fetchMock);
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
-    expect(await screen.findByText('jabar.domainanda.id', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByRole('heading', { name: 'Network Infrastructure', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     act(() => setViewExternal?.('publishers'));
-    expect(screen.queryByText('jabar.domainanda.id')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
     releasePublishers();
     expect(await screen.findByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
-    expect(screen.queryByText('jabar.domainanda.id')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
   });
 
   it('hydrates analytics from a snapshot that carries embedded analytics', async () => {
