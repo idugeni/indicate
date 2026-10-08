@@ -25,7 +25,6 @@ import { SuccessRate } from '@/modules/dashboard/components/analytics/summary-ch
 import { Timeline } from '@/modules/dashboard/components/analytics/timeline';
 import { TopRanked } from '@/modules/dashboard/components/analytics/summary-insights';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
-import { EmptyState } from '@/modules/dashboard/components/empty-state';
 
 function number(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
