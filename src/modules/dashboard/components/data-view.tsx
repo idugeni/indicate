@@ -111,7 +111,6 @@ export function DataView({
   collections: onlyCollections,
   command,
   onSelectView,
-  organizationId,
   auditNextCursor,
   onLoadMoreAudit,
 }: DataViewProps) {
