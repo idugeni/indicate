@@ -704,7 +704,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           .sort((left, right) => right.views - left.views)
           .map((row) => ({ key: row.id, count: row.count, views: row.views })),
         totalViews: totalViewRow?.views ?? 0,
-        totalPenyaluran: totalViewRow?.views ?? 0,
+        totalPenyaluran: outcomesBySite.reduce((total, row) => total + row.count, 0),
         siteLabels,
         categoryLabels,
         publisherLabels,
