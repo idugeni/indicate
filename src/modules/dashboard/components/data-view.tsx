@@ -58,7 +58,7 @@ import {
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
-import { TelemetryGallery } from '@/modules/dashboard/components/analytics/gallery';
+import { NetworkIntelligenceV2 } from '@/modules/dashboard/components/analytics/network-intelligence-v2';
 import { DashboardV2CommandCenter } from '@/modules/dashboard/components/dashboard-v2-command-center';
 import { getEditorConfig, type EditorTransition, type LookupTables } from '@/modules/dashboard/components/shared/record-editor-config';
 import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-editor-form';
@@ -211,11 +211,7 @@ export function DataView({
   if (view === 'analytics') {
     const projection = data as Partial<AnalyticsProjection>;
     if (Array.isArray(projection.articlesByRegion)) {
-      return (
-        <div className="space-y-10">
-          <TelemetryGallery data={projection as AnalyticsProjection} />
-        </div>
-      );
+      return <NetworkIntelligenceV2 data={projection as AnalyticsProjection} />;
     }
   }
 
