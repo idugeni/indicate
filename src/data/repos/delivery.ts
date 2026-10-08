@@ -546,16 +546,47 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       if (query.search !== undefined) conditions.push(or(sql`${articles.title} ILIKE ${`%${query.search}%`}`, sql`${articles.body} ILIKE ${`%${query.search}%`}`)!);
       const customMedia = aliasedTable(media, 'custom_media');
       const originSite = aliasedTable(sites, 'origin_site');
-       const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, originHost: originSite.normalizedHostname, tags: articles.tags, regionId: articles.regionId, categoryId: articles.categoryId, categorySlug: categories.slug, categoryName: categories.name, authorName: authors.byline, authorDisplayName: authors.displayName, authorBio: authors.bio, authorAvatarUrl: authors.avatarUrl, publisherName: publishers.name, attribution: publishers.attributionLabel, publisherLogoUrl: sql<string | null>`(${publishers.contacts}->>'logoUrl')`, publisherCity: sql<string | null>`(${publishers.contacts}->>'city')`, publisherBio: sql<string | null>`(${publishers.contacts}->>'bio')`, publisherContacts: publishers.contacts, publisherType: publishers.type, publisherVerification: publishers.verificationStatus, publishedAt: articleSites.publishedAt, updatedAt: articles.updatedAt, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, leadObjectKey: media.objectKey, leadMediaWidth: media.widthPx, leadMediaHeight: media.heightPx, leadMediaFocalX: media.focalX, leadMediaFocalY: media.focalY, coverImageUrl: articles.coverImageUrl, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, mediaState: media.state, leadThumbKey: media.thumbObjectKey, customTitle: articleSites.customTitle, customDescription: articleSites.customDescription, robotsDirective: articleSites.seoRobotsDirective, bodyExcerpt: sql<string | null>`CASE WHEN ${articleSites.customDescription} IS NULL THEN substring(${articles.body} from 1 for 600) ELSE NULL END`, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, customObjectKey: customMedia.objectKey, customMediaWidth: customMedia.widthPx, customMediaHeight: customMedia.heightPx, customMediaFocalX: customMedia.focalX, customMediaFocalY: customMedia.focalY, customThumbKey: customMedia.thumbObjectKey, affiliationInstitution: sql<string | null>`official_affiliations.institution_name`, articleSiteId: articleSites.id, viewCount: articleSites.viewCount })
-        .from(articleSites).innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
-        .innerJoin(originSite, and(eq(originSite.organizationId, articleSites.organizationId), eq(originSite.id, articleSites.siteId)))
+      const simpleListing = query.articleSlug === undefined && query.categorySlug === undefined && query.tag === undefined && query.search === undefined;
+      const scopedArticleSites = simpleListing
+        ? transaction.select({
+            id: articleSites.id,
+            organizationId: articleSites.organizationId,
+            articleId: articleSites.articleId,
+            siteId: articleSites.siteId,
+            publishedAt: articleSites.publishedAt,
+            customTitle: articleSites.customTitle,
+            customDescription: articleSites.customDescription,
+            seoRobotsDirective: articleSites.seoRobotsDirective,
+            customImageMediaId: articleSites.customImageMediaId,
+            viewCount: articleSites.viewCount,
+          })
+            .from(articleSites)
+            .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
+            .where(and(
+              eq(articles.organizationId, context.organizationId),
+              eq(articleSites.organizationId, context.organizationId),
+              scope,
+              eq(articleSites.state, 'published'),
+              eq(articleSites.active, true),
+              eq(articles.status, 'active'),
+              isNotNull(articleSites.publishedAt),
+            ))
+            .orderBy(sql`${articleSites.publishedAt} DESC`)
+            .limit(100)
+            .as('scoped_article_sites')
+        : articleSites;
+      const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, originHost: originSite.normalizedHostname, tags: articles.tags, regionId: articles.regionId, categoryId: articles.categoryId, categorySlug: categories.slug, categoryName: categories.name, authorName: authors.byline, authorDisplayName: authors.displayName, authorBio: authors.bio, authorAvatarUrl: authors.avatarUrl, publisherName: publishers.name, attribution: publishers.attributionLabel, publisherLogoUrl: sql<string | null>`(${publishers.contacts}->>'logoUrl')`, publisherCity: sql<string | null>`(${publishers.contacts}->>'city')`, publisherBio: sql<string | null>`(${publishers.contacts}->>'bio')`, publisherContacts: publishers.contacts, publisherType: publishers.type, publisherVerification: publishers.verificationStatus, publishedAt: scopedArticleSites.publishedAt, updatedAt: articles.updatedAt, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, leadObjectKey: media.objectKey, leadMediaWidth: media.widthPx, leadMediaHeight: media.heightPx, leadMediaFocalX: media.focalX, leadMediaFocalY: media.focalY, coverImageUrl: articles.coverImageUrl, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, mediaState: media.state, leadThumbKey: media.thumbObjectKey, customTitle: scopedArticleSites.customTitle, customDescription: scopedArticleSites.customDescription, robotsDirective: scopedArticleSites.seoRobotsDirective, bodyExcerpt: sql<string | null>`CASE WHEN ${scopedArticleSites.customDescription} IS NULL THEN substring(${articles.body} from 1 for 600) ELSE NULL END`, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, customObjectKey: customMedia.objectKey, customMediaWidth: customMedia.widthPx, customMediaHeight: customMedia.heightPx, customMediaFocalX: customMedia.focalX, customMediaFocalY: customMedia.focalY, customThumbKey: customMedia.thumbObjectKey, affiliationInstitution: sql<string | null>`official_affiliations.institution_name`, articleSiteId: scopedArticleSites.id, viewCount: scopedArticleSites.viewCount })
+        .from(scopedArticleSites).innerJoin(articles, and(eq(articles.organizationId, scopedArticleSites.organizationId), eq(articles.id, scopedArticleSites.articleId)))
+        .innerJoin(originSite, and(eq(originSite.organizationId, scopedArticleSites.organizationId), eq(originSite.id, scopedArticleSites.siteId)))
         .leftJoin(categories, and(eq(categories.organizationId, articles.organizationId), eq(categories.id, articles.categoryId), eq(categories.status, 'active')))
         .leftJoin(authors, and(eq(authors.organizationId, articles.organizationId), eq(authors.id, articles.authorId), eq(authors.status, 'active')))
         .leftJoin(publishers, and(eq(publishers.organizationId, articles.organizationId), eq(publishers.id, articles.publisherId), eq(publishers.status, 'active')))
         .leftJoin(media, and(eq(media.organizationId, articles.organizationId), eq(media.id, articles.leadMediaId), eq(media.state, 'active')))
-        .leftJoin(customMedia, and(eq(customMedia.organizationId, articles.organizationId), eq(customMedia.id, articleSites.customImageMediaId), eq(customMedia.state, 'active')))
-        .leftJoin(sql`LATERAL (\n          SELECT oa.institution_name\n          FROM official_affiliations AS oa\n          WHERE oa.organization_id = ${articles.organizationId}\n            AND oa.publisher_id = ${articles.publisherId}\n            AND oa.site_id = ${articleSites.siteId}\n            AND oa.active = true\n            AND oa.verified_at IS NOT NULL\n            AND oa.claim_scopes @> ARRAY['site_name']::text[]\n          OFFSET 0\n        ) AS official_affiliations`, sql`true`)
-        .where(and(...conditions)).orderBy(sql`${articleSites.publishedAt} DESC`).limit(query.articleSlug !== undefined ? 2 : query.search !== undefined ? 20 : 100);
+        .leftJoin(customMedia, and(eq(customMedia.organizationId, articles.organizationId), eq(customMedia.id, scopedArticleSites.customImageMediaId), eq(customMedia.state, 'active')))
+        .leftJoin(sql`LATERAL (\n          SELECT oa.institution_name\n          FROM official_affiliations AS oa\n          WHERE oa.organization_id = ${articles.organizationId}\n            AND oa.publisher_id = ${articles.publisherId}\n            AND oa.site_id = ${scopedArticleSites.siteId}\n            AND oa.active = true\n            AND oa.verified_at IS NOT NULL\n            AND oa.claim_scopes @> ARRAY['site_name']::text[]\n          OFFSET 0\n        ) AS official_affiliations`, sql`true`)
+        .where(simpleListing ? undefined : and(...conditions))
+        .orderBy(sql`${scopedArticleSites.publishedAt} DESC`)
+        .limit(simpleListing ? 100 : query.articleSlug !== undefined ? 2 : query.search !== undefined ? 20 : 100);
       const detailTarget = query.articleSlug === undefined ? undefined : rows[0];
       let detailBody: string | null = null;
       let detailBodyJson: unknown | null = null;
