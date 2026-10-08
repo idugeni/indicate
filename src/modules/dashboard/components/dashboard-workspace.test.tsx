@@ -203,6 +203,7 @@ describe('Dashboard workspace', () => {
     initialView = 'publishers';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText(/v1/, {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await waitFor(() => expect(gets.filter((url) => url.includes('view=publishers'))).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     gets.length = 0;
     fireEvent.click(await screen.findByRole('button', { name: /Kirim verifikasi/i }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
 
