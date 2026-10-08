@@ -58,13 +58,6 @@ function withAnalytics(body: unknown, analytics: unknown): unknown {
   return { ...(body as Record<string, unknown>), analytics };
 }
 
-function hasEmbeddedAnalytics(snapshot: unknown): boolean {
-  if (typeof snapshot !== 'object' || snapshot === null || Array.isArray(snapshot)) return false;
-  const analytics = (snapshot as Record<string, unknown>).analytics;
-  if (typeof analytics !== 'object' || analytics === null || Array.isArray(analytics)) return false;
-  return Array.isArray((analytics as Record<string, unknown>).articlesByRegion);
-}
-
 function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations' | 'workspace' | 'ads' {
   if (target === 'ads' || target.startsWith('ads.')) {
     return 'ads';
@@ -289,7 +282,8 @@ export function DashboardWorkspace({
       const snapshotOrg = initialDashboard.organizationId;
       const snapshotKey = `${snapshotOrg}|dashboard|||`;
       void Promise.resolve().then(() => setPayload({ key: snapshotKey, body: snapshot }));
-      if (hasEmbeddedAnalytics(snapshot)) return;
+      // Analytics is intentionally hydrated after the dashboard core so the
+      // initial RSC response is not coupled to the heavier analytical query set.
       void fetchAnalytics(snapshotOrg).then((analytics) => {
         if (analytics === null || activeOrgRef.current !== snapshotOrg) return;
         setPayload((previous) => (previous === null || previous.key !== snapshotKey
