@@ -39,28 +39,28 @@ describe('Tampilan data dasbor', () => {
     render(
       <DataView view="dashboard" data={DASHBOARD} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} onSelectView={handleSelect} />,
     );
-    expect(screen.getByText('Network overview')).toBeDefined();
-    expect(screen.getByText('Situs aktif')).toBeDefined();
-    expect(screen.getByText('Artikel aktif')).toBeDefined();
+    expect(screen.getByText('INDICATE / COMMAND CENTER')).toBeDefined();
+    expect(screen.getByText('Active sites')).toBeDefined();
+    expect(screen.getByText('Active articles')).toBeDefined();
     expect(screen.getByText('Delivery success')).toBeDefined();
-    expect(screen.getByText('Total tayangan')).toBeDefined();
-    expect(screen.getByText('Publication pulse')).toBeDefined();
-    expect(screen.getByText('Perlu perhatian')).toBeDefined();
-    expect(screen.getByText('Sukses 7 hari')).toBeDefined();
-    expect(screen.getByText('Wilayah teratas')).toBeDefined();
-    expect(screen.getByText('Aksi cepat')).toBeDefined();
-    expect(screen.getByRole('region', { name: 'Pipeline snapshot' })).toBeDefined();
+    expect(screen.getByText('Total views')).toBeDefined();
+    expect(screen.getByText('Operational pulse')).toBeDefined();
+    expect(screen.getByText('What needs your attention?')).toBeDefined();
+    expect(screen.getByText('Delivery success')).toBeDefined();
+    expect(screen.getByText('Network posture')).toBeDefined();
+    expect(screen.getByText('Quick actions')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Operational pulse' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /tulis berita/i }));
     expect(handleSelect).toHaveBeenCalledWith('editorial');
   });
 
   it('menampilkan core metrics dan loading state analytics saat data kosong', () => {
     render(<DataView view="dashboard" data={{}} currentPage={1} onPageChange={vi.fn()} onRefresh={vi.fn()} />);
-    expect(screen.getByText('Network overview')).toBeDefined();
-    expect(screen.getByText('Core metrics live')).toBeDefined();
-    expect(screen.getByText('Menunggu analytics')).toBeDefined();
-    expect(screen.getByText('Menyiapkan telemetry')).toBeDefined();
-    expect(screen.getByRole('region', { name: 'Pipeline snapshot' })).toBeDefined();
+    expect(screen.getByText('INDICATE / COMMAND CENTER')).toBeDefined();
+    expect(screen.getByText('Active sites')).toBeDefined();
+    expect(screen.getByText('Waiting for telemetry')).toBeDefined();
+    expect(screen.getByText('Total views')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Operational pulse' })).toBeDefined();
   });
 });
 
