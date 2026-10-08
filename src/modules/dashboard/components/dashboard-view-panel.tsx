@@ -85,9 +85,9 @@ const MediaLibrary = dynamic(
   () => import('@/modules/dashboard/components/publishing/media-library').then((module) => ({ default: module.MediaLibrary })),
   { loading: () => <DashboardMediaSkeleton /> },
 );
-const PublisherForm = dynamic(
-  () => import('@/modules/dashboard/components/editorial/publisher-form').then((module) => ({ default: module.PublisherForm })),
-  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
+const PublisherNetworkV2 = dynamic(
+  () => import('@/modules/dashboard/components/editorial/publisher-network-v2').then((module) => ({ default: module.PublisherNetworkV2 })),
+  { loading: () => <DashboardViewSkeleton view="publishers" /> },
 );
 const TaxonomyManager = dynamic(
   () => import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({ default: module.TaxonomyManager })),
@@ -267,7 +267,14 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {hasServerFilters(view) ? <FilterControls view={view} data={data} onApply={onFilterApply} /> : null}
 
       <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
-      {view === 'publishers' ? <PublisherForm data={data} command={command} organizationId={organizationId} /> : null}
+      {view === 'publishers' ? (
+        <PublisherNetworkV2
+          data={data}
+          command={command}
+          organizationId={organizationId}
+          onFilterApply={onFilterApply}
+        />
+      ) : null}
       {view === 'editorial' ? (
         <EditorialWorkspaceV2
           data={data}
