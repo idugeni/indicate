@@ -65,6 +65,7 @@ export interface ArticleCreatedNotifier {
  */
 export interface DashboardCacheInvalidator {
   revalidateTags(tags: readonly string[]): Promise<void>;
+  invalidateOrganization(organizationId: string): Promise<void>;
 }
 
 const SITE_LEVEL_RANK: Readonly<Record<SiteLevel, number>> = Object.freeze({ apex: 0, region: 1, city: 2 });
@@ -156,10 +157,13 @@ export class TenantBusinessService {
    * @returns Nothing; a purge failure is telemetry, never a mutation failure.
    */
   private async revalidateCommitted(input: { actor: AuthorizedTenantActorContext; action: string; revalidateTags?: readonly string[] }): Promise<void> {
-    const tags = input.revalidateTags;
-    if (this.cacheInvalidator === null || tags === undefined || tags.length === 0) return;
+    if (this.cacheInvalidator === null) return;
+    const tags = input.revalidateTags ?? [orgTag(input.actor.organizationId)];
     try {
-      await this.cacheInvalidator.revalidateTags(tags);
+      await Promise.all([
+        this.cacheInvalidator.revalidateTags(tags),
+        this.cacheInvalidator.invalidateOrganization(input.actor.organizationId),
+      ]);
     } catch (error) {
       logEvent('warn', {
         event: 'dashboard.cache.invalidate_failed',
@@ -167,6 +171,10 @@ export class TenantBusinessService {
         context: { action: input.action, name: errorIdentity(error) },
       });
     }
+  }
+
+  private async invalidateActorOrganization(actor: AuthorizedTenantActorContext, action: string): Promise<void> {
+    await this.revalidateCommitted({ actor, action });
   }
 
   private base(actor: AuthorizedTenantActorContext, now: string) {
