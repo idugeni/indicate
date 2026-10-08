@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { InfrastructureControlCenterV2 } from './infrastructure-control-center-v2';
 
 vi.mock('@/modules/dashboard/components/infrastructure/configuration-panel', () => ({
@@ -16,6 +16,10 @@ vi.mock('@/modules/dashboard/components/infrastructure/access-management-form', 
   AccessManagementForm: () => <div data-testid="access-surface">Access workflow</div>,
 }));
 
+afterEach(() => {
+  cleanup();
+});
+
 describe('Infrastructure Control Center V2', () => {
   const data = {
     domains: [{ id: 'd1' }],
@@ -29,14 +33,16 @@ describe('Infrastructure Control Center V2', () => {
     render(<InfrastructureControlCenterV2 data={data} command={vi.fn()} organizationId="org-1" />);
     expect(screen.getByRole('heading', { name: 'Network Infrastructure' })).toBeDefined();
     expect(screen.getByText('Domain')).toBeDefined();
-    expect(screen.getByText('2')).toBeDefined();
+    const sitesLabel = screen.getByText('Situs');
+    expect(sitesLabel.nextElementSibling).toHaveTextContent('2');
     expect(screen.getByRole('button', { name: /Domain & Site Topology/i })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('switches focused infrastructure workflows without changing backend contracts', () => {
     render(<InfrastructureControlCenterV2 data={data} command={vi.fn()} organizationId="org-1" />);
-    fireEvent.click(screen.getByRole('button', { name: /Cache & Delivery/i }));
+    const cacheButton = screen.getByRole('button', { name: /Cache & Delivery/i });
+    fireEvent.click(cacheButton);
     expect(screen.getByTestId('cache-surface')).toBeDefined();
-    expect(screen.getByRole('button', { name: /Cache & Delivery/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(cacheButton).toHaveAttribute('aria-pressed', 'true');
   });
 });
