@@ -16,25 +16,33 @@ const DATA = {
   ],
 };
 
-function setup(command = vi.fn(async () => ({ ok: true }))) {
+function setup(command = vi.fn(async () => ({ ok: true })), onFilterApply = vi.fn()) {
   return render(
     <PublisherNetworkV2
       data={DATA}
       command={command}
       organizationId="org-1"
-      onFilterApply={vi.fn()}
+      onFilterApply={onFilterApply}
       onRefresh={vi.fn()}
     />,
   );
 }
 
 describe('PublisherNetworkV2', () => {
-  it('menampilkan ringkasan jaringan dan memilih detail publisher', async () => {
+  it('menampilkan ringkasan jaringan dan memilih detail publisher', () => {
     setup();
     expect(screen.getByText('Publisher Network')).toBeTruthy();
     expect(screen.getByText('2', { selector: 'p' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Media Jateng/i }));
     expect(screen.getByText(/Governance workspace/i)).toBeTruthy();
+  });
+
+  it('meneruskan pencarian ke filter server saat form dikirim', () => {
+    const onFilterApply = vi.fn();
+    setup(undefined, onFilterApply);
+    fireEvent.change(screen.getByRole('textbox', { name: /Cari publisher/i }), { target: { value: ' Radar ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cari' }));
+    expect(onFilterApply).toHaveBeenCalledWith('Radar');
   });
 
   it('menggunakan command production untuk approval dengan optimistic version', async () => {
@@ -47,6 +55,20 @@ describe('PublisherNetworkV2', () => {
       expect.objectContaining({ id: 'pub-1', expectedVersion: 3 }),
       { refresh: true },
     ));
+  });
+
+  it('mengirim alasan penolakan dengan optimistic version', async () => {
+    const command = vi.fn(async () => ({ id: 'pub-1' }));
+    setup(command);
+    fireEvent.click(screen.getByRole('button', { name: /Radar Banyumas/i }));
+    vi.stubGlobal('prompt', vi.fn(() => 'Bukti belum cukup'));
+    fireEvent.click(screen.getByRole('button', { name: /Tolak/i }));
+    await waitFor(() => expect(command).toHaveBeenCalledWith(
+      'publisher.reject',
+      expect.objectContaining({ id: 'pub-1', expectedVersion: 3, reason: 'Bukti belum cukup' }),
+      { refresh: true },
+    ));
+    vi.unstubAllGlobals();
   });
 
   it('mendaftarkan publisher lewat command production', async () => {
