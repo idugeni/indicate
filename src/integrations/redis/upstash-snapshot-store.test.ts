@@ -142,13 +142,13 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
   });
 
   it('deleteByPrefix hanya menghapus prefix tenant dan menyelesaikan scan', async () => {
-    scan.mockResolvedValueOnce(['42', ['prod:snapshot:org-1:user-1']]).mockResolvedValueOnce(['0', ['prod:analytics:org-1:user-1']]);
+    scan.mockResolvedValueOnce(['42', ['prod:snapshot:org-1:user-1']]).mockResolvedValueOnce(['0', ['prod:snapshot:org-1:user-2']]);
     del.mockResolvedValue(undefined);
     await store().deleteByPrefix('snapshot:org-1:');
     expect(scan).toHaveBeenCalledWith('0', { match: 'prod:snapshot:org-1:*', count: 100 });
     expect(scan).toHaveBeenCalledWith('42', { match: 'prod:snapshot:org-1:*', count: 100 });
     expect(del).toHaveBeenNthCalledWith(1, 'prod:snapshot:org-1:user-1');
-    expect(del).toHaveBeenNthCalledWith(2, 'prod:analytics:org-1:user-1');
+    expect(del).toHaveBeenNthCalledWith(2, 'prod:snapshot:org-1:user-2');
   });
 
   it('deleteByPrefix menolak wildcard agar tidak menjadi global purge', async () => {
