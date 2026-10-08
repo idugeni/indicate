@@ -344,9 +344,11 @@ export function DashboardViewSkeleton({ view }: { readonly view: View }) {
       ) : null}
       {view === 'settings' ? (
         <>
-          <DashboardTabsSkeleton />
-          <FormsGridBare columns={2} count={2} />
-          <TablesGridBare columns={2} count={2} />
+          <DashboardStatsSkeleton count={4} />
+          <div className="grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)]">
+            <DashboardPanelSkeleton />
+            <FormsGridBare columns={2} count={2} />
+          </div>
         </>
       ) : null}
       {view === 'publishers' ? (
