@@ -34,8 +34,8 @@ describe('NetworkIntelligenceV2', () => {
     render(<NetworkIntelligenceV2 data={BASE} />);
     expect(screen.getByRole('region', { name: 'Network Intelligence' })).toBeDefined();
     expect(screen.getByText('Published deliveries')).toBeDefined();
-    expect(screen.getByText('Published deliveries').parentElement?.textContent).toContain('5');
-    expect(screen.getByText('Reader views').parentElement?.textContent).toContain('18');
+    expect(screen.getByText('Published deliveries').parentElement?.parentElement?.textContent).toContain('5');
+    expect(screen.getByText('Reader views').parentElement?.parentElement?.textContent).toContain('18');
     expect(screen.getByRole('tab', { name: 'Network' })).toBeDefined();
     expect(screen.getByRole('tab', { name: 'Content' })).toBeDefined();
     expect(screen.getByRole('tab', { name: 'Activity' })).toBeDefined();
