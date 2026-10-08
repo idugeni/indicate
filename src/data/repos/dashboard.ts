@@ -347,19 +347,25 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const windowStart = `${window.awal}T00:00:00Z`;
       const windowEnd = `${nextDay(window.akhir)}T00:00:00Z`;
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
-      const [byRegion, byCategory, byPublisher, byStatus, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, dailyViewRows, siteViewRows, articleViewRows, totalRow, siteLabelRows, categoryLabelRows, publisherLabelRows, regionLabelRows] = await Promise.all([
-        transaction.execute<{ key: string | null; count: number }>(sql`
-          SELECT region_id AS key, count(*)::int AS count FROM articles
-          WHERE organization_id = ${orgId} AND ${inArticleRange} GROUP BY region_id`),
-        transaction.execute<{ key: string; count: number }>(sql`
-          SELECT category_id AS key, count(*)::int AS count FROM articles
-          WHERE organization_id = ${orgId} AND category_id IS NOT NULL AND ${inArticleRange} GROUP BY category_id`),
-        transaction.execute<{ key: string; count: number }>(sql`
-          SELECT publisher_id AS key, count(*)::int AS count FROM articles
-          WHERE organization_id = ${orgId} AND publisher_id IS NOT NULL AND ${inArticleRange} GROUP BY publisher_id`),
-        transaction.execute<{ key: string; count: number }>(sql`
-          SELECT status AS key, count(*)::int AS count FROM articles
-          WHERE organization_id = ${orgId} AND ${inArticleRange} GROUP BY status`),
+      const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, dailyViewRows, siteViewRows, articleViewRows, totalRow, siteLabelRows, categoryLabelRows, publisherLabelRows, regionLabelRows] = await Promise.all([
+        transaction.execute<{ dimension: 'region' | 'category' | 'publisher' | 'status'; key: string | null; count: number }>(sql`
+          SELECT
+            CASE GROUPING(region_id, category_id, publisher_id, status)
+              WHEN 7 THEN 'region'
+              WHEN 11 THEN 'category'
+              WHEN 13 THEN 'publisher'
+              WHEN 14 THEN 'status'
+            END AS dimension,
+            CASE GROUPING(region_id, category_id, publisher_id, status)
+              WHEN 7 THEN region_id::text
+              WHEN 11 THEN category_id::text
+              WHEN 13 THEN publisher_id::text
+              WHEN 14 THEN status::text
+            END AS key,
+            count(*)::int AS count
+          FROM articles
+          WHERE organization_id = ${orgId} AND ${inArticleRange}
+          GROUP BY GROUPING SETS ((region_id), (category_id), (publisher_id), (status))`),
         transaction.execute<{ key: string; count: number }>(sql`
           SELECT state AS key, count(*)::int AS count FROM publishing_jobs
           WHERE organization_id = ${orgId}
@@ -512,6 +518,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         transaction.execute<{ id: string; name: string }>(sql`
           SELECT id, name AS name FROM regions WHERE organization_id = ${orgId}`),
       ]);
+      // GROUPING SETS scans the filtered article relation once for all four dimensions.
+      // The previous implementation issued four separate aggregate statements against articles.
+      const byRegion = articleDimensionRows.filter((row) => row.dimension === 'region').map(({ key, count }) => ({ key, count }));
+      const byCategory = articleDimensionRows.filter((row) => row.dimension === 'category' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
+      const byPublisher = articleDimensionRows.filter((row) => row.dimension === 'publisher' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
+      const byStatus = articleDimensionRows.filter((row) => row.dimension === 'status' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
+
       const points = (rows: readonly { key: string | null; count: number }[]) =>
         [...rows].filter((row): row is { key: string; count: number } => row.key !== null).map(({ key, count }) => ({ key, count })).sort((a, b) => a.key.localeCompare(b.key));
       const dimensionPoints = (rows: readonly { siteId: string; regionId: string | null; state: string; count: number }[]) => {
