@@ -34,8 +34,8 @@ describe('Infrastructure Control Center V2', () => {
     expect(screen.getByRole('heading', { name: 'Network Infrastructure' })).toBeDefined();
     expect(screen.getByText('Domain')).toBeDefined();
     const sitesLabel = screen.getByText('Situs');
-    expect(sitesLabel.nextElementSibling).toHaveTextContent('2');
-    expect(screen.getByRole('button', { name: /Domain & Site Topology/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(sitesLabel.nextElementSibling?.textContent).toBe('2');
+    expect(screen.getByRole('button', { name: /Domain & Site Topology/i }).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('switches focused infrastructure workflows without changing backend contracts', () => {
@@ -43,6 +43,6 @@ describe('Infrastructure Control Center V2', () => {
     const cacheButton = screen.getByRole('button', { name: /Cache & Delivery/i });
     fireEvent.click(cacheButton);
     expect(screen.getByTestId('cache-surface')).toBeDefined();
-    expect(cacheButton).toHaveAttribute('aria-pressed', 'true');
+    expect(cacheButton.getAttribute('aria-pressed')).toBe('true');
   });
 });
