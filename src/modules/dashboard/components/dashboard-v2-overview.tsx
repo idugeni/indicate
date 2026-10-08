@@ -224,7 +224,7 @@ export function DashboardV2Overview({
   analytics,
   onSelectView,
 }: {
-  readonly dashboard: DashboardProjection;
+  readonly dashboard: Pick<DashboardProjection, 'activeDomains' | 'activeSubdomains' | 'activeSites' | 'activeArticles' | 'archivedArticles' | 'jobsByState' | 'successfulSiteOutcomes' | 'failedSiteOutcomes' | 'activeMedia'>;
   readonly analytics: AnalyticsProjection | null;
   readonly onSelectView?: (view: View) => void;
 }) {
