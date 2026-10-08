@@ -115,6 +115,10 @@ const LiveResultsV2 = dynamic(
     })),
   { loading: () => <DashboardViewSkeleton view="published" /> },
 );
+const SystemOperationsV2 = dynamic(
+  () => import('@/modules/dashboard/components/operations/system-operations-v2').then((module) => ({ default: module.SystemOperationsV2 })),
+  { loading: () => <DashboardViewSkeleton view="operations" /> },
+);
 const AuditSecurityV2 = dynamic(
   () =>
     import('@/modules/dashboard/components/audit/audit-security-v2').then((module) => ({
@@ -353,6 +357,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               onLoadMoreAudit={onLoadMoreAudit}
             />
           ) : null}
+          {view === 'operations' ? <SystemOperationsV2 data={data} /> : null}
           {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
           {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
           {view === 'ai' ? (

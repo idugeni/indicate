@@ -404,7 +404,15 @@ export function DashboardViewSkeleton({ view }: { readonly view: View }) {
           </div>
         </>
       ) : null}
-      {view === 'operations' ? <TablesGridBare columns={1} count={3} /> : null}
+            {view === 'operations' ? (
+        <>
+          <DashboardStatsSkeleton count={4} />
+          <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+            <DashboardPanelSkeleton />
+            <TablesGridBare columns={2} count={2} />
+          </div>
+        </>
+      ) : null}
       {view === 'moderation' ? (
         <>
           <DashboardTabsSkeleton />
