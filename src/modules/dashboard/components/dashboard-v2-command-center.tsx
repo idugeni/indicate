@@ -2,10 +2,7 @@
 
 import {
   Activity,
-  ArrowDownRight,
-  ArrowUpRight,
   CheckCircle2,
-  CircleAlert,
   Clock3,
   FileText,
   Globe2,
