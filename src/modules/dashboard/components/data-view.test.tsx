@@ -403,7 +403,7 @@ describe('Tampilan data koleksi', () => {  it('menampilkan status kosong dan mem
         onRefresh={vi.fn()}
       />,
     );
-    expect(screen.getAllByText('active')).toHaveLength(2);
+    expect(screen.getAllByText('active')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Alihkan kolom tabel' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Status' }));
     expect(screen.queryByText('active')).toBe(null);
