@@ -347,7 +347,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const windowStart = `${window.awal}T00:00:00Z`;
       const windowEnd = `${nextDay(window.akhir)}T00:00:00Z`;
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
-      const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewAnalyticsRows] = await Promise.all([
+      const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, viewAnalyticsRows] = await Promise.all([
         transaction.execute<{ dimension: 'region' | 'category' | 'publisher' | 'status'; key: string | null; count: number }>(sql`
           SELECT
             CASE GROUPING(region_id, category_id, publisher_id, status)
@@ -556,6 +556,17 @@ export class DrizzleDashboardRepository implements DashboardRepository {
 
       // Resolve only labels referenced by the analytics result sets. The previous implementation
       // loaded the entire tenant directory and pruned it in JS.
+      const dailyViewRows = viewAnalyticsRows
+        .filter((row) => row.kind === 'day' && row.day !== null)
+        .map((row) => ({ day: row.day as string, views: row.views }));
+      const siteViewRows = viewAnalyticsRows
+        .filter((row) => row.kind === 'site' && row.id !== null && row.name !== null)
+        .map((row) => ({ id: row.id as string, name: row.name as string, count: row.count ?? 0, views: row.views }));
+      const articleViewRows = viewAnalyticsRows
+        .filter((row) => row.kind === 'article' && row.id !== null && row.name !== null)
+        .map((row) => ({ id: row.id as string, name: row.name as string, count: row.count ?? 0, views: row.views }));
+      const totalViewRow = viewAnalyticsRows.find((row) => row.kind === 'total');
+
       const analyticsSiteIds = new Set<string>([
         ...bySite.map((row) => row.key),
         ...siteViewRows.map((row) => row.id),
@@ -646,21 +657,11 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         hari: day,
         ...(deliveriesPerDay.get(day) ?? { diterbitkan: 0, gagal: 0, antre: 0 }),
       }));
-      const dailyViewRows = viewAnalyticsRows
-        .filter((row) => row.kind === 'day' && row.day !== null)
-        .map((row) => ({ day: row.day as string, views: row.views }));
-      const siteViewRows = viewAnalyticsRows
-        .filter((row) => row.kind === 'site' && row.id !== null && row.name !== null)
-        .map((row) => ({ id: row.id as string, name: row.name as string, count: row.count ?? 0, views: row.views }));
-      const articleViewRows = viewAnalyticsRows
-        .filter((row) => row.kind === 'article' && row.id !== null && row.name !== null)
-        .map((row) => ({ id: row.id as string, name: row.name as string, count: row.count ?? 0, views: row.views }));
-      const totalViewRow = viewAnalyticsRows.find((row) => row.kind === 'total');
-      const deliveryCountsPerDay = viewRows.map((row) => [row.day, row.penyaluran] as const);
+      const deliveryCountsPerDay = new Map(viewRows.map((row) => [row.day, row.penyaluran] as const));
       const viewsSumPerDay = new Map(dailyViewRows.map((row) => [row.day, row.views] as const));
       const viewDays = listDays(window.awal, window.akhir).map((day) => ({
         hari: day,
-        penyaluran: new Map(deliveryCountsPerDay).get(day) ?? 0,
+        penyaluran: deliveryCountsPerDay.get(day) ?? 0,
         views: viewsSumPerDay.get(day) ?? 0,
       }));
       const { siteLabels, categoryLabels, publisherLabels, regionLabels, articleLabels } = pruneAnalyticsLabels({
