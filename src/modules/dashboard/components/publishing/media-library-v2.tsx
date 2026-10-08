@@ -85,14 +85,14 @@ function ownerLabel(item: LibraryMedia, model: MediaLibraryV2Model | null): stri
 
 export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2Props) {
   const model = useMemo(() => (data as MediaLibraryV2Model | null) ?? {}, [data]);
-  const baseItems = model.media ?? [];
+  const baseItems = useMemo(() => model.media ?? [], [model.media]);
   const counts = model.mediaCounts ?? [];
   const [search, setSearch] = useState('');
   const [owner, setOwner] = useState<'all' | MediaOwnerKind>('all');
   const [state, setState] = useState('all');
   const querySignature = `${search.trim()}|${owner}|${state}`;
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-  const [selectedId, setSelectedId] = useState(items[0]?.id ?? '');
+  const [selectedId, setSelectedId] = useState('');
   const [drawer, setDrawer] = useState<'none' | 'upload' | 'ai'>('none');
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
@@ -100,7 +100,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   const [preview, setPreview] = useState<Record<string, SignedAssetAuthorization>>({});
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [page, setPage] = useState<{ readonly key: string; readonly items: readonly LibraryMedia[]; readonly next: string | null }>({ key: '', items: [], next: null });
-  const appended = page.key === querySignature ? page.items : [];
+  const appended = useMemo(() => (page.key === querySignature ? page.items : []), [page.key, page.items, querySignature]);
   const items = useMemo(() => {
     const known = new Set(baseItems.map((item) => item.id));
     return [...baseItems, ...appended.filter((item) => !known.has(item.id))];
@@ -136,10 +136,10 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
             ...(owner === 'all' ? {} : { owner }),
             ...(state === 'all' ? {} : { state }),
           }));
-          if (page === null) throw new Error('Invalid media page');
+          if (nextPage === null) throw new Error('Invalid media page');
           const requestKey = `${search.trim()}|${owner}|${state}`;
-          setPage({ key: requestKey, items: [], next: page.next });
-          setSelectedId(page.items[0]?.id ?? '');
+          setPage({ key: requestKey, items: [], next: nextPage.next });
+          setSelectedId(nextPage.items[0]?.id ?? '');
         } catch {
           setListError('Gagal memuat scope media. Coba ubah filter atau ulangi.');
         } finally {
@@ -180,7 +180,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
     if (cursor === null || loadingMore) return;
     setLoadingMore(true);
     try {
-      const page = readPage(await command('media.list', {
+      const nextPage = readPage(await command('media.list', {
         limit: PAGE_SIZE,
         cursor,
         ...(search.trim() === '' ? {} : { search: search.trim() }),
