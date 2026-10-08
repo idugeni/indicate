@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
-import { formatBytes } from '@/modules/publishing/compress-image';
 
 interface LiveArticle {
   readonly id: string;
