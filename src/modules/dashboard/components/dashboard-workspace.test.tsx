@@ -147,7 +147,7 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText('jabar.domainanda.id')).toBeNull();
   });
 
-  it('skips the analytics fetch when the snapshot already carries it', async () => {
+  it('hydrates analytics even when a legacy snapshot still carries embedded analytics', async () => {
     const fetchMock = vi.fn(async (url: unknown) => {
       void url;
       return { ok: true, json: async () => ({}) };
@@ -161,9 +161,11 @@ describe('Dashboard workspace', () => {
       />,
     );
     await screen.findByText('Domain Utama');
-    const urls = fetchMock.mock.calls.map(([url]) => String(url));
-    expect(urls.some((url) => url.includes('view=analytics'))).toBe(false);
-    expect(urls.some((url) => url.includes('view=dashboard'))).toBe(false);
+    await waitFor(() => {
+      const urls = fetchMock.mock.calls.map(([url]) => String(url));
+      expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
+      expect(urls.some((url) => url.includes('view=dashboard'))).toBe(false);
+    });
   });
 
   it('fetches analytics when the snapshot does not carry it yet', async () => {
