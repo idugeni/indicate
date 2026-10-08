@@ -277,8 +277,11 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
             <div className={layout === 'grid' ? 'grid grid-cols-2 gap-px bg-hairline sm:grid-cols-3' : 'divide-y divide-hairline'}>
               {filtered.map((item) => (
                 <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} aria-pressed={selected?.id === item.id} className={layout === 'grid' ? 'group bg-bg-raised p-2 text-left hover:bg-bg-raised-2' : 'flex w-full items-center gap-3 bg-bg-raised p-3 text-left hover:bg-bg-raised-2'}>
-                  <div className={layout === 'grid' ? 'flex aspect-square items-center justify-center overflow-hidden rounded border border-hairline bg-bg' : 'flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-hairline bg-bg'}>
-                    {preview[item.id] ? (<>\n                    {/* eslint-disable-next-line @next/next/no-img-element */}\n                    <img src={preview[item.id]!.url} alt={item.altText ?? fileNameOf(item.objectKey)} className="h-full w-full object-cover" {...preview[item.id]!.headers} />\n                  </>) : <ImageIcon className="h-7 w-7 text-paper-faint" />}
+                  <div className={layout === 'grid' ? 'flex aspect-square items-center justify-center overflow-clip rounded border border-hairline bg-bg' : 'flex h-12 w-12 shrink-0 items-center justify-center overflow-clip rounded border border-hairline bg-bg'}>
+                    {preview[item.id] ? (<>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preview[item.id]!.url} alt={item.altText ?? fileNameOf(item.objectKey)} className="h-full w-full object-cover" {...preview[item.id]!.headers} />
+                  </>) : <ImageIcon className="h-7 w-7 text-paper-faint" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-sans text-xs font-medium text-paper">{fileNameOf(item.objectKey)}</p>
@@ -303,8 +306,11 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
                 <h2 className="mt-1 truncate font-sans text-sm font-semibold text-paper">{fileNameOf(selected.objectKey)}</h2>
               </div>
               <div className="space-y-3 p-3">
-                <div className="flex aspect-video items-center justify-center overflow-hidden rounded border border-hairline bg-bg">
-                  {preview[selected.id] ? (<>\n                    {/* eslint-disable-next-line @next/next/no-img-element */}\n                    <img src={preview[selected.id]!.url} alt={selected.altText ?? fileNameOf(selected.objectKey)} className="max-h-full max-w-full object-contain" {...preview[selected.id]!.headers} />\n                  </>) : <FileImage className="h-10 w-10 text-paper-faint" />}
+                <div className="flex aspect-video items-center justify-center overflow-clip rounded border border-hairline bg-bg">
+                  {preview[selected.id] ? (<>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preview[selected.id]!.url} alt={selected.altText ?? fileNameOf(selected.objectKey)} className="max-h-full max-w-full object-contain" {...preview[selected.id]!.headers} />
+                  </>) : <FileImage className="h-10 w-10 text-paper-faint" />}
                 </div>
                 {PREVIEWABLE.has(selected.mediaType) && !preview[selected.id] ? <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => void requestPreview(selected)} disabled={previewingId === selected.id}>{previewingId === selected.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}{previewingId === selected.id ? 'Meminta otorisasi…' : 'Buka pratinjau aman'}</Button> : null}
                 <dl className="grid grid-cols-2 gap-2 text-xs">
