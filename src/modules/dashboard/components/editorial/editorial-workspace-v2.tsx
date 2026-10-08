@@ -166,14 +166,10 @@ function WorkspaceSurface({
             </select>
           </div>
           <div className="hidden flex-1 sm:block" />
-          <div className="flex w-full gap-2 sm:w-auto">
-            <Button type="submit" variant="outline" disabled={isSubmitting} className="flex-1 gap-1.5 sm:flex-none">
-              {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Save className="h-3.5 w-3.5" aria-hidden="true" />}
-              {isEditing ? 'Simpan perubahan' : 'Simpan draf'}
-            </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1 gap-1.5 sm:flex-none">
-              {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : willPublish ? <Send className="h-3.5 w-3.5" aria-hidden="true" /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}
-              {isEditing ? 'Simpan & terapkan' : ((willPublish ? ARTICLE_PUBLISH_ON_SAVE_LABELS[status] : ARTICLE_SUBMIT_LABELS[status]) ?? 'Simpan Artikel')}
+          <div className="flex w-full justify-end sm:w-auto">
+            <Button type="submit" disabled={isSubmitting} className="w-full gap-1.5 sm:w-auto">
+              {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : willPublish ? <Send className="h-3.5 w-3.5" aria-hidden="true" /> : isEditing ? <Save className="h-3.5 w-3.5" aria-hidden="true" /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}
+              {isEditing ? 'Simpan perubahan' : ((willPublish ? ARTICLE_PUBLISH_ON_SAVE_LABELS[status] : ARTICLE_SUBMIT_LABELS[status]) ?? 'Simpan Artikel')}
             </Button>
           </div>
         </div>
