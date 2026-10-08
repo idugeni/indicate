@@ -347,7 +347,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const windowStart = `${window.awal}T00:00:00Z`;
       const windowEnd = `${nextDay(window.akhir)}T00:00:00Z`;
       const inArticleRange = sql`(${from}::timestamptz IS NULL OR created_at >= ${from}::timestamptz) AND (${to}::timestamptz IS NULL OR created_at <= ${to}::timestamptz)`;
-      const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, dailyViewRows, siteViewRows, articleViewRows, totalRow, siteLabelRows, categoryLabelRows, publisherLabelRows, regionLabelRows] = await Promise.all([
+      const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, dailyViewRows, siteViewRows, articleViewRows, totalRow] = await Promise.all([
         transaction.execute<{ dimension: 'region' | 'category' | 'publisher' | 'status'; key: string | null; count: number }>(sql`
           SELECT
             CASE GROUPING(region_id, category_id, publisher_id, status)
@@ -509,15 +509,51 @@ export class DrizzleDashboardRepository implements DashboardRepository {
               WHERE s.organization_id = ${orgId}
                 AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
                 AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)) AS salur`),
-        transaction.execute<{ id: string; name: string }>(sql`
-          SELECT id, normalized_hostname AS name FROM sites WHERE organization_id = ${orgId}`),
-        transaction.execute<{ id: string; name: string }>(sql`
-          SELECT id, name AS name FROM categories WHERE organization_id = ${orgId}`),
-        transaction.execute<{ id: string; name: string }>(sql`
-          SELECT id, name AS name FROM publishers WHERE organization_id = ${orgId}`),
-        transaction.execute<{ id: string; name: string }>(sql`
-          SELECT id, name AS name FROM regions WHERE organization_id = ${orgId}`),
       ]);
+      // Resolve only labels referenced by the analytics result sets. The previous implementation
+      // loaded the entire tenant directory and pruned it in JS.
+      const analyticsSiteIds = new Set<string>([
+        ...bySite.map((row) => row.key),
+        ...siteViewRows.map((row) => row.id),
+        ...jobDimensions.map((row) => row.siteId),
+        ...outcomeDimensions.map((row) => row.siteId),
+        ...outcomesBySite.flatMap((row) => {
+          const separator = row.key.indexOf(':');
+          return separator > 0 ? [row.key.slice(0, separator)] : [];
+        }),
+        ...flowRows.map((row) => row.site),
+      ]);
+      const analyticsCategoryIds = new Set(byCategory.map((row) => row.key));
+      const analyticsPublisherIds = new Set([
+        ...byPublisher.map((row) => row.key),
+        ...flowRows.map((row) => row.publisher),
+      ]);
+      const analyticsRegionIds = new Set<string>([
+        ...byRegion.flatMap((row) => row.key === null ? [] : [row.key]),
+        ...jobDimensions.flatMap((row) => row.regionId === null ? [] : [row.regionId]),
+        ...outcomeDimensions.flatMap((row) => row.regionId === null ? [] : [row.regionId]),
+      ]);
+      const labelRows = await transaction.execute<{ kind: 'site' | 'category' | 'publisher' | 'region'; id: string; name: string }>(sql`
+        SELECT 'site'::text AS kind, id, normalized_hostname AS name
+        FROM sites
+        WHERE organization_id = ${orgId} AND id = ANY(${sqlStringArray([...analyticsSiteIds])}::uuid[])
+        UNION ALL
+        SELECT 'category'::text AS kind, id, name
+        FROM categories
+        WHERE organization_id = ${orgId} AND id = ANY(${sqlStringArray([...analyticsCategoryIds])}::uuid[])
+        UNION ALL
+        SELECT 'publisher'::text AS kind, id, name
+        FROM publishers
+        WHERE organization_id = ${orgId} AND id = ANY(${sqlStringArray([...analyticsPublisherIds])}::uuid[])
+        UNION ALL
+        SELECT 'region'::text AS kind, id, name
+        FROM regions
+        WHERE organization_id = ${orgId} AND id = ANY(${sqlStringArray([...analyticsRegionIds])}::uuid[])
+      `);
+      const siteLabelRows = labelRows.filter((row) => row.kind === 'site').map(({ id, name }) => ({ id, name }));
+      const categoryLabelRows = labelRows.filter((row) => row.kind === 'category').map(({ id, name }) => ({ id, name }));
+      const publisherLabelRows = labelRows.filter((row) => row.kind === 'publisher').map(({ id, name }) => ({ id, name }));
+      const regionLabelRows = labelRows.filter((row) => row.kind === 'region').map(({ id, name }) => ({ id, name }));
       // GROUPING SETS scans the filtered article relation once for all four dimensions.
       // The previous implementation issued four separate aggregate statements against articles.
       const byRegion = articleDimensionRows.filter((row) => row.dimension === 'region').map(({ key, count }) => ({ key, count }));
