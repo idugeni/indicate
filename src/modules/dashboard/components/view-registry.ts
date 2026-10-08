@@ -170,7 +170,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   },
   ai: {
     label: 'AI Control', title: 'AI Control Center', eyebrow: 'Intelligence Layer', group: 'system',
-    description: 'Kelola kredensial, routing, dan konfigurasi asisten AI.,
+    description: 'Kelola kredensial, routing, dan konfigurasi asisten AI.',
     icon: Bot, requiredPermission: INTEGRATIONS_PERMISSIONS.aiManage, suppressesRawCollections: true,
   },
 };
