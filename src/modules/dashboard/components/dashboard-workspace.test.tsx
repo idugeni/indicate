@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
+import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 
 /** The workspace loads eighteen panels through `next/dynamic`, so a lazy panel needs more than the 1s default. */
 const LAZY_MODULE_TIMEOUT_MS = 8000;
@@ -52,7 +53,7 @@ const ORGANIZATIONS = [
     id: 'org-1',
     name: 'Org Uji',
     role: 'admin',
-    permissions: [],
+    permissions: [DASHBOARD_PERMISSIONS.auditRead],
   },
 ] as never;
 
