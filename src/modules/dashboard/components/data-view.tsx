@@ -65,6 +65,7 @@ import { RecordEditorForm } from '@/modules/dashboard/components/shared/record-e
 
 interface DataViewProps {
   readonly view: View;
+  readonly displayName?: string;
   readonly data: unknown;
   readonly currentPage: number;
   readonly onPageChange: (page: number) => void;
@@ -102,6 +103,7 @@ function StatusMark({ status }: { readonly status: string }) {
  */
 export function DataView({
   view,
+  displayName = 'INDICATE',
   data,
   currentPage,
   onPageChange,
@@ -124,7 +126,7 @@ export function DataView({
 
     return (
       <DashboardV2CommandCenter
-        displayName="INDICATE"
+        displayName={displayName}
         dashboard={{
           activeDomains: asNumber(dashboard.activeDomains),
           activeSubdomains: asNumber(dashboard.activeSubdomains),
