@@ -14,8 +14,8 @@ import type { OrganizationOption, View } from '@/modules/dashboard/components/da
 import { AppTooltip } from '@/ui/app-tooltip';
 import { cn } from '@/ui/cn';
 
-const SIDEBAR_WIDTH = 256;
-const SIDEBAR_COLLAPSED_WIDTH = 64;
+const SIDEBAR_WIDTH = 272;
+const SIDEBAR_COLLAPSED_WIDTH = 68;
 
 /**
  * Render the sidebar navigation items, grouped and permission gated.
@@ -46,10 +46,10 @@ export function DashboardNavList({
         >
           {collapsed ? (
             groupIndex > 0 ? (
-              <div className="mx-4 border-t border-hairline" aria-hidden="true" />
+              <div className="mx-4 border-t border-white/[0.07]" aria-hidden="true" />
             ) : null
           ) : (
-            <h3 className="px-2 pb-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+            <h3 className="px-2 pb-1 font-sans text-[11px] font-medium uppercase tracking-wider text-[#68738a]">
               {group.title}
             </h3>
           )}
@@ -69,12 +69,12 @@ export function DashboardNavList({
                       onClick={() => onSelect(navView)}
                       className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
                         isActive
-                          ? 'bg-bg-raised-3 text-paper'
-                          : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
+                          ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
+                          : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
                       }`}
                     >
                       <Icon
-                        className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
+                        className={`h-4 w-4 flex-none ${isActive ? 'text-white' : 'text-paper-faint'}`}
                         aria-hidden="true"
                       />
                     </Button>
@@ -91,8 +91,8 @@ export function DashboardNavList({
                   onClick={() => onSelect(navView)}
                   className={`flex w-full items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left font-sans text-[13px] font-normal transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
                     isActive
-                      ? 'bg-bg-raised-3 font-medium text-paper'
-                      : 'text-paper-dim hover:bg-bg-raised-2 hover:text-paper'
+                      ? 'bg-white/[0.05] font-medium text-paper'
+                      : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
                   }`}
                 >
                   <Icon
@@ -150,7 +150,7 @@ const SidebarBody = memo(function SidebarBody({
 
   return (
     <>
-      <div className={`flex h-12 flex-none items-center border-b border-hairline ${collapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}>
+      <div className={`flex h-12 flex-none items-center border-b border-white/[0.07] ${collapsed ? 'justify-center px-0' : 'gap-2 px-3'}`}>
         <Image
           src="/brand/indicate-mark.svg"
           alt=""
@@ -173,7 +173,7 @@ const SidebarBody = memo(function SidebarBody({
       </div>
 
       {collapsed ? null : (
-        <div className="flex-none animate-in border-b border-hairline p-3 fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
+        <div className="flex-none animate-in border-b border-white/[0.07] p-3 fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
           <Label htmlFor={selectOrgId} className="px-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
             Organisasi
           </Label>
@@ -215,7 +215,7 @@ const SidebarBody = memo(function SidebarBody({
             aria-label="Buka profil saya"
             onClick={() => onSelectView('settings')}
             className={cn(
-              'rounded-md text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
+              'rounded-md text-left transition-colors duration-150 hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
               collapsed ? 'p-1' : 'flex min-w-0 flex-1 items-center gap-2.5 p-1.5',
             )}
           >
@@ -271,7 +271,7 @@ export function DashboardSidebar(props: {
       aria-label="Navigasi utama Dashboard"
       style={collapsed ? undefined : { width: renderedWidth }}
       className={cn(
-        'sticky top-0 z-40 hidden h-screen supports-[height:100svh]:h-svh flex-none flex-col border-r border-hairline bg-bg-raised/40 md:flex',
+        'sticky top-0 z-40 hidden h-screen supports-[height:100svh]:h-svh flex-none flex-col border-r border-hairline bg-[#080d1a]/40 md:flex',
         collapsed ? 'w-16' : 'w-64',
         dragging
           ? 'transition-none'

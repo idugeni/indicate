@@ -79,98 +79,98 @@ export type ViewGroup = 'overview' | 'editorial' | 'publishing' | 'system';
 
 export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   dashboard: {
-    label: 'Beranda', title: 'Ringkasan Ekosistem Redaksi', eyebrow: 'Ringkasan Sistem', group: 'overview',
-    description: 'Angka penting jaringan berita Anda: situs, artikel, pengiriman, dan pembaca.',
+    label: 'Command Center', title: 'Command Center', eyebrow: 'Operational Intelligence', group: 'overview',
+    description: 'Kesehatan jaringan, workload distribusi, exception, dan aktivitas terbaru.',
     icon: LayoutDashboard, suppressesRawCollections: false,
   },
   analytics: {
-    label: 'Statistik & Grafik', title: 'Statistik & Grafik', eyebrow: 'Statistik Jaringan', group: 'overview',
-    description: 'Grafik pembaca, pengiriman, dan aktivitas per daerah.',
+    label: 'Intelligence', title: 'Network Intelligence', eyebrow: 'Decision Support', group: 'overview',
+    description: 'Analisis pembaca, distribusi, situs, penerbit, dan tren jaringan.',
     icon: BarChart3, suppressesRawCollections: false,
   },
   editorial: {
-    label: 'Tulis Berita', title: 'Manajemen Artikel & Konten', eyebrow: 'Ruang Kerja Redaksi', group: 'editorial',
-    description: 'Tulis dan kelola berita sebelum dikirim ke situs.',
+    label: 'Compose', title: 'Editorial Workspace', eyebrow: 'Content Operations', group: 'editorial',
+    description: 'Susun, review, dan siapkan artikel untuk distribusi jaringan.',
     icon: FileText, suppressesRawCollections: true,
   },
   articles: {
-    label: 'Kelola Artikel', title: 'Kelola Artikel Lintas Portal', eyebrow: 'Semua Portal', group: 'editorial',
-    description: 'Kelola seluruh artikel jaringan: cari, saring, ubah, dan arsipkan.',
+    label: 'Content Library', title: 'Content Library', eyebrow: 'Editorial Inventory', group: 'editorial',
+    description: 'Cari, filter, edit, dan arsipkan seluruh artikel jaringan.',
     icon: Newspaper, suppressesRawCollections: true,
   },
   taxonomy: {
-    label: 'Kategori & Tag', title: 'Kelola Kategori & Tag', eyebrow: 'Taksonomi Redaksi', group: 'editorial',
-    description: 'Atur kanal kategori dan rapikan tag topik di semua artikel.',
+    label: 'Taxonomy', title: 'Taxonomy Studio', eyebrow: 'Editorial Structure', group: 'editorial',
+    description: 'Bangun struktur kategori dan tag yang konsisten di seluruh jaringan.',
     icon: Tags, suppressesRawCollections: true,
   },
   publishers: {
-    label: 'Daftar Penerbit', title: 'Daftar Lembaga Penerbit', eyebrow: 'Jaringan Penerbit', group: 'editorial',
-    description: 'Kelola lembaga penerbit dan status verifikasinya.',
+    label: 'Publishers', title: 'Publisher Network', eyebrow: 'Source Network', group: 'editorial',
+    description: 'Kelola lembaga penerbit, afiliasi, dan status verifikasi.',
     icon: Users, suppressesRawCollections: false,
   },
   media: {
-    label: 'Media', title: 'Galeri Media', eyebrow: 'Aset Media', group: 'editorial',
-    description: 'Kumpulan foto dan gambar untuk berita.',
+    label: 'Media Library', title: 'Media Library', eyebrow: 'Asset Operations', group: 'editorial',
+    description: 'Kelola aset visual yang dipakai oleh workflow editorial.',
     icon: FolderKanban, suppressesRawCollections: true,
   },
   publishing: {
-    label: 'Antrean Penerbitan', title: 'Antrean Penerbitan', eyebrow: 'Antrean Pengiriman', group: 'publishing',
-    description: 'Daftar pengiriman artikel ke situs beserta statusnya.',
+    label: 'Delivery', title: 'Distribution Control', eyebrow: 'Syndication Operations', group: 'publishing',
+    description: 'Pantau queue, delivery, retry, dan hasil distribusi artikel.',
     icon: Share2, suppressesRawCollections: true,
   },
   published: {
-    label: 'Hasil Tayang', title: 'Hasil Tayang', eyebrow: 'URL Siap Dishare', group: 'publishing',
-    description: 'Semua URL artikel yang sudah tayang, bernomor dan siap disalin ke WhatsApp.',
+    label: 'Live Results', title: 'Live Results', eyebrow: 'Published Network', group: 'publishing',
+    description: 'Lacak URL hasil distribusi yang sudah tayang dan siap dibagikan.',
     icon: Link2, suppressesRawCollections: true,
   },
   ads: {
-    label: 'Iklan', title: 'Manajemen Iklan Jaringan', eyebrow: 'Monetisasi Portal', group: 'publishing',
-    description: 'Atur slot iklan sekali untuk seluruh situs jaringan: pilih ukuran, isi konten, lalu Simpan.',
+    label: 'Monetization', title: 'Monetization Control', eyebrow: 'Revenue Operations', group: 'publishing',
+    description: 'Kelola inventory iklan dan konfigurasi monetisasi jaringan.',
     icon: Megaphone, requiredPermission: DASHBOARD_PERMISSIONS.siteManage, suppressesRawCollections: true,
   },
   configuration: {
-    label: 'Domain & Wilayah', title: 'Domain & Wilayah', eyebrow: 'Pengaturan Domain', group: 'system',
-    description: 'Atur domain, subdomain wilayah, dan akses pengguna.',
+    label: 'Network', title: 'Network Infrastructure', eyebrow: 'Tenant Infrastructure', group: 'system',
+    description: 'Kelola domain, wilayah, site, branding, dan infrastruktur tenant.',
     icon: Globe, suppressesRawCollections: true,
   },
   settings: {
-    label: 'Koneksi & Kunci Akses', title: 'Koneksi & Kunci Akses', eyebrow: 'Kunci & Koneksi', group: 'system',
-    description: 'Kunci akses dan surel.',
+    label: 'Access', title: 'Access & Integrations', eyebrow: 'Identity & Integrations', group: 'system',
+    description: 'Kelola API keys, access keys, koneksi, dan profil akses.',
     icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead, suppressesRawCollections: true,
   },
   billing: {
-    label: 'Langganan', title: 'Langganan', eyebrow: 'Tagihan', group: 'system',
-    description: 'Status aktivasi organisasi.',
+    label: 'Billing', title: 'Billing & Plan', eyebrow: 'Commercial Control', group: 'system',
+    description: 'Status paket, aktivasi, dan kontrol langganan organisasi.',
     icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead, suppressesRawCollections: true,
   },
   audit: {
-    label: 'Riwayat Keamanan', title: 'Riwayat Keamanan', eyebrow: 'Catatan Keamanan', group: 'system',
-    description: 'Riwayat siapa mengubah apa; tidak bisa dihapus.',
+    label: 'Audit', title: 'Audit & Security', eyebrow: 'Governance', group: 'system',
+    description: 'Jejak perubahan, aktor, dan event keamanan yang tidak dapat dihapus.',
     icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: false,
   },
   operations: {
-    label: 'Tugas Latar Belakang', title: 'Tugas Latar Belakang', eyebrow: 'Tugas Mesin', group: 'system',
-    description: 'Pekerjaan mesin di belakang layar: pembersihan dan antrean sistem.',
+    label: 'Operations', title: 'System Operations', eyebrow: 'Runtime Workloads', group: 'system',
+    description: 'Pantau pekerjaan background, cleanup, retry, dan workload sistem.',
     icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: false,
   },
   moderation: {
-    label: 'Laporan & Data Pengguna', title: 'Laporan & Data Pengguna', eyebrow: 'Keamanan Konten', group: 'system',
-    description: 'Laporan konten bermasalah dan permintaan data pengguna.',
+    label: 'Moderation', title: 'Trust & Moderation', eyebrow: 'Safety Operations', group: 'system',
+    description: 'Tangani laporan konten dan permintaan data pengguna.',
     icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: true,
   },
   customers: {
-    label: 'Kelola Pelanggan', title: 'Kelola Pelanggan', eyebrow: 'Pelanggan & Langganan', group: 'system',
-    description: 'Kelola akun pelanggan dan langganannya.',
+    label: 'Customers', title: 'Customer Operations', eyebrow: 'Platform Control', group: 'system',
+    description: 'Kelola akun pelanggan, organisasi, dan status langganan.',
     icon: Building2, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin, suppressesRawCollections: false,
   },
   content: {
-    label: 'Konten Website', title: 'Konten Website', eyebrow: 'Halaman Publik', group: 'system',
-    description: 'Testimoni, tanya-jawab, dan kontak yang tampil di situs publik.',
+    label: 'Web Content', title: 'Public Web Content', eyebrow: 'Brand Surface', group: 'system',
+    description: 'Kelola konten publik seperti FAQ, testimoni, dan kontak.',
     icon: LayoutTemplate, requiredPermission: INTEGRATIONS_PERMISSIONS.contentManage, suppressesRawCollections: true,
   },
   ai: {
-    label: 'Asisten AI', title: 'Asisten AI', eyebrow: 'Kontrol AI', group: 'system',
-    description: 'Kelola kredensial dan routing model asisten AI.',
+    label: 'AI Control', title: 'AI Control Center', eyebrow: 'Intelligence Layer', group: 'system',
+    description: 'Kelola kredensial, routing, dan konfigurasi asisten AI.',
     icon: Bot, requiredPermission: INTEGRATIONS_PERMISSIONS.aiManage, suppressesRawCollections: true,
   },
 };
@@ -182,10 +182,10 @@ export const VIEWS_WITHOUT_RAW_COLLECTIONS: ReadonlySet<View> = new Set<View>(
 );
 
 const GROUP_TITLES: Readonly<Record<ViewGroup, string>> = {
-  overview: 'Ringkasan',
-  editorial: 'Redaksi & Konten',
-  publishing: 'Penerbitan',
-  system: 'Pengaturan Sistem',
+  overview: 'Command Center',
+  editorial: 'Content Operations',
+  publishing: 'Distribution',
+  system: 'Platform Control',
 };
 
 export function groupTitle(group: ViewGroup): string {

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
+import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 
 /** The workspace loads eighteen panels through `next/dynamic`, so a lazy panel needs more than the 1s default. */
 const LAZY_MODULE_TIMEOUT_MS = 8000;
@@ -52,7 +53,7 @@ const ORGANIZATIONS = [
     id: 'org-1',
     name: 'Org Uji',
     role: 'admin',
-    permissions: [],
+    permissions: [DASHBOARD_PERMISSIONS.auditRead],
   },
 ] as never;
 
@@ -95,7 +96,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
-    expect(await screen.findByText('Ringkasan Ekosistem Redaksi')).toBeDefined();
+    expect(await screen.findByText('INDICATE / COMMAND CENTER')).toBeDefined();
   });
 
   it('collapses and expands the sidebar through the edge rail', () => {
@@ -108,16 +109,15 @@ describe('Dashboard workspace', () => {
 
   it('switches the title when an editorial module is selected', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Ringkasan Ekosistem Redaksi');
-    fireEvent.click(screen.getByRole('button', { name: 'Tulis Berita' }));
-    expect(await screen.findByText('Manajemen Artikel & Konten', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    await screen.findByText('INDICATE / COMMAND CENTER');
+    fireEvent.click(screen.getByRole('button', { name: 'Compose' }));
     expect(await screen.findByText('Artikel baru', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
   it('pins the footer to the bottom with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Ringkasan Ekosistem Redaksi');
+    await screen.findByText('INDICATE / COMMAND CENTER');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('sticky');
@@ -147,7 +147,7 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText('jabar.domainanda.id')).toBeNull();
   });
 
-  it('hydrates analytics even when a legacy snapshot still carries embedded analytics', async () => {
+  it('hydrates analytics from a snapshot that carries embedded analytics', async () => {
     const fetchMock = vi.fn(async (url: unknown) => {
       void url;
       return { ok: true, json: async () => ({}) };
@@ -160,7 +160,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
       />,
     );
-    await screen.findByText('Network overview');
+    await screen.findByText('INDICATE / COMMAND CENTER');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
@@ -181,7 +181,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
       />,
     );
-    await screen.findByText('Network overview');
+    await screen.findByText('INDICATE / COMMAND CENTER');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
@@ -214,7 +214,7 @@ describe('Dashboard workspace', () => {
     expect(JSON.parse(posted[0] ?? '{}')).toMatchObject({ action: 'publisher.submit' });
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledTimes(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     expect(toastMock.success).toHaveBeenCalledWith('Keputusan tata kelola berhasil diterapkan.');
-    // The old wrapper announced the machine action name; callers own the copy now.
+    // The V2 action surface owns the human-facing copy.
     for (const spy of [toastMock.success, toastMock.error, toastMock.info, toastMock.loading]) {
       for (const call of vi.mocked(spy).mock.calls) {
         expect(String(call[0])).not.toMatch(/Perintah .* berhasil dijalankan/);

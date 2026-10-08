@@ -151,6 +151,7 @@ function hasServerFilters(view: View): boolean {
  */
 const DashboardViewPanel = memo(function DashboardViewPanel({
   view,
+  displayName,
   data,
   organizationId,
   permissions,
@@ -171,6 +172,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   crossOrg,
 }: {
   readonly view: View;
+  readonly displayName: string;
   readonly data: unknown;
   readonly organizationId: string;
   readonly permissions: ReadonlySet<string>;
@@ -207,6 +209,27 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     onSelectView('articles');
   };
 
+  if (view === 'dashboard') {
+    return (
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
+        <div className="mx-auto w-full max-w-[1500px]">
+          <PanelErrorBoundary name="Dashboard V2">
+            <DataView
+              view={view}
+              displayName={displayName}
+              data={data}
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+              onRefresh={onRefresh}
+              command={command}
+              onSelectView={onSelectView}
+            />
+          </PanelErrorBoundary>
+        </div>
+      </main>
+    );
+  }
+
   /** Tab-scoped tables: a tab lists only the collections it owns instead of the whole payload. */
   const collectionTables = (keys: readonly string[]) => (
     <DataView
@@ -222,26 +245,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   );
 
   return (
-    <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
-      <div
-        key={`${organizationId}:${view}`}
-        className="mx-auto w-full max-w-7xl animate-in fade-in slide-in-from-bottom-2 duration-300"
-      >
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <p className="m-0 font-sans text-xs font-medium text-paper-faint">
-            {metadata.eyebrow}
-          </p>
-          <h1 className="m-0 mt-1 font-sans text-lg font-semibold tracking-tight text-paper sm:text-xl">
-            {metadata.title}
-          </h1>
-          <p className="m-0 mt-1 font-sans text-[13px] leading-relaxed text-paper-dim">
-            {metadata.description}
-          </p>
-        </div>
-      </header>
-
-      <div className={view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}>
+    <main className="min-w-0 flex-1">
+      <div className={`mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 xl:px-10 ${view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}`}>
       {error ? (
         <Alert
           variant="destructive"
@@ -379,6 +384,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${metadata.title} — data`}>
         <DataView
           view={view}
+          displayName={displayName}
           data={data}
           currentPage={currentPage}
           onPageChange={onPageChange}
@@ -391,7 +397,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         />
         </PanelErrorBoundary>
       )}
-      </div>
       </div>
     </main>
   );
