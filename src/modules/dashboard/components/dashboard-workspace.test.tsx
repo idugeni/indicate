@@ -273,7 +273,7 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'media';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Media Library', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await screen.findByRole('heading', { name: 'Media Library', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS });
     await screen.findByRole('button', { name: /Muat halaman berikutnya/ }, { timeout: LAZY_MODULE_TIMEOUT_MS });
     fireEvent.click(screen.getByRole('button', { name: /Muat halaman berikutnya/ }));
     await waitFor(() => expect(calls.filter((call) => call.init?.body !== undefined)).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
