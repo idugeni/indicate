@@ -87,10 +87,10 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   const model = useMemo(() => (data as MediaLibraryV2Model | null) ?? {}, [data]);
   const baseItems = model.media ?? [];
   const counts = model.mediaCounts ?? [];
-  const querySignature = `${search.trim()}|${owner}|${state}`;
   const [search, setSearch] = useState('');
   const [owner, setOwner] = useState<'all' | MediaOwnerKind>('all');
   const [state, setState] = useState('all');
+  const querySignature = `${search.trim()}|${owner}|${state}`;
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [selectedId, setSelectedId] = useState(items[0]?.id ?? '');
   const [drawer, setDrawer] = useState<'none' | 'upload' | 'ai'>('none');
@@ -130,7 +130,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
       setListError(null);
       void (async () => {
         try {
-          const page = readPage(await command('media.list', {
+          const nextPage = readPage(await command('media.list', {
             limit: PAGE_SIZE,
             ...(search.trim() === '' ? {} : { search: search.trim() }),
             ...(owner === 'all' ? {} : { owner }),
@@ -187,10 +187,10 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
         ...(owner === 'all' ? {} : { owner }),
         ...(state === 'all' ? {} : { state }),
       }));
-      if (page === null) throw new Error('Invalid media page');
+      if (nextPage === null) throw new Error('Invalid media page');
       const currentItems = page.key === querySignature ? page.items : [];
       const known = new Set(currentItems.map((item) => item.id));
-      setPage({ key: querySignature, items: [...currentItems, ...page.items.filter((item) => !known.has(item.id))], next: page.next });
+      setPage({ key: querySignature, items: [...currentItems, ...nextPage.items.filter((item) => !known.has(item.id))], next: nextPage.next });
     } catch {
       setListError('Gagal memuat halaman aset berikutnya.');
     } finally {
