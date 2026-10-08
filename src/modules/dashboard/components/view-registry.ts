@@ -151,7 +151,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   operations: {
     label: 'Operations', title: 'System Operations', eyebrow: 'Runtime Workloads', group: 'system',
     description: 'Pantau pekerjaan background, cleanup, retry, dan workload sistem.',
-    icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: false,
+    icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: true,
   },
   moderation: {
     label: 'Moderation', title: 'Trust & Moderation', eyebrow: 'Safety Operations', group: 'system',
