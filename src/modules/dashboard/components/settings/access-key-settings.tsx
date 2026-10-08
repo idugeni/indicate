@@ -64,9 +64,11 @@ function formatDate(value: string | null): string {
 export function AccessKeySettings({
   command,
   data,
+  canManage = true,
 }: {
   readonly command: DashboardCommand;
   readonly data: unknown;
+  readonly canManage?: boolean;
 }) {
   const nameId = useId();
   const [presetDays, setPresetDays] = useState<number | null>(30);
@@ -140,7 +142,7 @@ export function AccessKeySettings({
             id={nameId}
             name="name"
             required
-            disabled={isIssuing}
+            disabled={isIssuing || !canManage}
             placeholder="cth: Laptop cadangan"
             className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
           />
@@ -154,7 +156,7 @@ export function AccessKeySettings({
                 type="button"
                 variant={presetDays === preset.days ? 'default' : 'outline'}
                 size="sm"
-                disabled={isIssuing}
+                disabled={isIssuing || !canManage}
                 onClick={() => setPresetDays(preset.days)}
               >
                 {preset.label}
@@ -162,7 +164,7 @@ export function AccessKeySettings({
             ))}
           </div>
         </div>
-        <Button type="submit" variant="default" disabled={isIssuing} className="w-full">
+        <Button type="submit" variant="default" disabled={isIssuing || !canManage} className="w-full">
           {isIssuing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Link2 className="h-3.5 w-3.5" aria-hidden="true" />}
           <span>Terbitkan Tautan Akses</span>
         </Button>
@@ -201,7 +203,7 @@ export function AccessKeySettings({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={revokingId === item.id}
+                    disabled={revokingId === item.id || !canManage}
                     onClick={() => handleRevoke(item)}
                     aria-label={`Cabut kunci ${item.name}`}
                   >

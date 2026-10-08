@@ -30,10 +30,12 @@ export function IntegrationSettings({
   command,
   isPlatform = false,
   email = null,
+  canManage = true,
 }: {
   readonly command: DashboardCommand;
   readonly isPlatform?: boolean;
   readonly email?: EmailStatus | null;
+  readonly canManage?: boolean;
 }) {
   const [issuedPlaintext, setIssuedPlaintext] = useState<string | null>(null);
   const [scopes, setScopes] = useState<readonly string[]>(DEFAULT_SCOPES);
@@ -127,7 +129,7 @@ export function IntegrationSettings({
               id={apiKeyNameId}
               name="name"
               required
-              disabled={isIssuing}
+              disabled={isIssuing || !canManage}
               placeholder="cth: Aplikasi Mobile"
               className="h-8 rounded border-hairline-strong bg-bg px-2.5 font-sans text-xs text-paper transition-colors duration-180 hover:border-hairline focus-visible:ring-brass"
             />
@@ -141,7 +143,7 @@ export function IntegrationSettings({
               <Input
                 id={apiKeyScopesId}
                 value={scopeDraft}
-                disabled={isIssuing}
+                disabled={isIssuing || !canManage}
                 onChange={(event) => setScopeDraft(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter') return;
@@ -170,7 +172,7 @@ export function IntegrationSettings({
                     <button
                       type="button"
                       onClick={() => removeScope(scope)}
-                      disabled={isIssuing}
+                      disabled={isIssuing || !canManage}
                       aria-label={`Hapus hak akses ${scope}`}
                       className="text-paper-faint transition-colors duration-150 hover:text-error"
                     >
@@ -188,7 +190,7 @@ export function IntegrationSettings({
           <Button
             type="submit"
             variant="default"
-            disabled={isIssuing || scopes.length === 0}
+            disabled={isIssuing || scopes.length === 0 || !canManage}
             className="w-full"
           >
             {isIssuing ? (

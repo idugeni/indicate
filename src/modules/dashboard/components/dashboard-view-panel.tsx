@@ -3,27 +3,23 @@
 import { memo } from 'react';
 import dynamic from 'next/dynamic';
 import { parseAsString, useQueryState } from 'nuqs';
-import { LogIn, Plug, UserRound, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataView } from '@/modules/dashboard/components/data-view';
 import { FilterControls } from '@/modules/dashboard/components/filter-controls';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import {
-  DashboardFormSkeleton,
   DashboardFormsGridSkeleton,
   DashboardMediaSkeleton,
   DashboardSplitFormSkeleton,
   DashboardStatsSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
-import type { EmailStatus } from '@/modules/dashboard/components/settings/integration-settings';
 import { VIEW_REGISTRY, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/view-registry';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
-import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 const InfrastructureControlCenterV2 = dynamic(
   () => import('@/modules/dashboard/components/infrastructure/infrastructure-control-center-v2').then((module) => ({ default: module.InfrastructureControlCenterV2 })),
@@ -41,13 +37,9 @@ const EditorialWorkspaceV2 = dynamic(
   () => import('@/modules/dashboard/components/editorial/editorial-workspace-v2').then((module) => ({ default: module.EditorialWorkspaceV2 })),
   { loading: () => <DashboardSplitFormSkeleton /> },
 );
-const IntegrationSettings = dynamic(
-  () => import('@/modules/dashboard/components/settings/integration-settings').then((module) => ({ default: module.IntegrationSettings })),
-  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
-);
-const AccessKeySettings = dynamic(
-  () => import('@/modules/dashboard/components/settings/access-key-settings').then((module) => ({ default: module.AccessKeySettings })),
-  { loading: () => <DashboardFormSkeleton /> },
+const AccessIntegrationsV2 = dynamic(
+  () => import('@/modules/dashboard/components/settings/access-integrations-v2').then((module) => ({ default: module.AccessIntegrationsV2 })),
+  { loading: () => <DashboardViewSkeleton view="settings" /> },
 );
 const AiManagementPanel = dynamic(
   () => import('@/modules/dashboard/components/settings/ai-management-panel').then((module) => ({ default: module.AiManagementPanel })),
@@ -60,15 +52,6 @@ const AiManagementPanel = dynamic(
     ),
   },
 );
-function selectEmailStatus(data: unknown): EmailStatus | null {
-  if (typeof data !== 'object' || data === null || !('email' in data)) return null;
-  const email = (data as { readonly email?: unknown }).email;
-  if (typeof email !== 'object' || email === null) return null;
-  const status = email as { readonly configured?: unknown; readonly defaultFrom?: unknown; readonly webhook?: unknown };
-  if (typeof status.configured !== 'boolean' || typeof status.webhook !== 'boolean') return null;
-  if (status.defaultFrom !== null && typeof status.defaultFrom !== 'string') return null;
-  return { configured: status.configured, defaultFrom: status.defaultFrom, webhook: status.webhook };
-}
 const MediaLibraryV2 = dynamic(
   () => import('@/modules/dashboard/components/publishing/media-library-v2').then((module) => ({ default: module.MediaLibraryV2 })),
   { loading: () => <DashboardMediaSkeleton /> },
@@ -105,15 +88,6 @@ const AdsManagementPanel = dynamic(
   () => import('@/modules/dashboard/components/ads/ads-management-panel').then((module) => ({ default: module.AdsManagementPanel })),
   { loading: () => <DashboardViewSkeleton view="ads" /> },
 );
-const LoginMethodsForm = dynamic(
-  () => import('@/modules/dashboard/components/settings/login-methods-form').then((module) => ({ default: module.LoginMethodsForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-const ProfileForm = dynamic(
-  () => import('@/modules/dashboard/components/settings/profile-form').then((module) => ({ default: module.ProfileForm })),
-  { loading: () => <DashboardFormSkeleton /> },
-);
-
 /** Views whose payload the server filters from the query string, so `FilterControls` owns real inputs there. */
 const SERVER_FILTER_VIEWS: ReadonlySet<View> = new Set<View>(['analytics', 'audit', 'configuration', 'publishers']);
 
@@ -214,20 +188,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     );
   }
 
-  /** Tab-scoped tables: a tab lists only the collections it owns instead of the whole payload. */
-  const collectionTables = (keys: readonly string[]) => (
-    <DataView
-      view={view}
-      data={data}
-      collections={keys}
-      currentPage={currentPage}
-      onPageChange={onPageChange}
-      onRefresh={onRefresh}
-      command={command}
-      organizationId={organizationId}
-    />
-  );
-
   return (
     <main className="min-w-0 flex-1">
       <div className={`mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8 xl:px-10 ${view === 'publishers' ? 'space-y-4 pt-4' : 'space-y-6 pt-6'}`}>
@@ -281,37 +241,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       {view === 'media' ? <MediaLibraryV2 data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'published' ? <LiveResultsV2 data={data} organizationId={organizationId} /> : null}
       {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
-      {view === 'settings' ? (
-        <Tabs defaultValue="koneksi" className="w-full">
-          <TabsList aria-label="Bagian pengaturan" className="max-w-full overflow-x-auto overflow-y-clip">
-            <TabsTrigger value="koneksi" className="flex-none">
-              <Plug className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              <span>Koneksi</span>
-            </TabsTrigger>
-            <TabsTrigger value="profil" className="flex-none">
-              <UserRound className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              <span>Profil</span>
-            </TabsTrigger>
-            <TabsTrigger value="login" className="flex-none">
-              <LogIn className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
-              <span>Login</span>
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent keepMounted value="koneksi">
-            <div className="space-y-6">
-              <IntegrationSettings command={command} isPlatform={permissions.has(INTEGRATIONS_PERMISSIONS.superAdmin) || permissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin)} email={selectEmailStatus(data)} />
-              <AccessKeySettings command={command} data={data} />
-              {collectionTables(['apiKeys', 'accessKeys'])}
-            </div>
-          </TabsContent>
-          <TabsContent keepMounted value="profil">
-            <ProfileForm />
-          </TabsContent>
-          <TabsContent keepMounted value="login">
-            <LoginMethodsForm />
-          </TabsContent>
-        </Tabs>
-      ) : null}
+      {view === 'settings' ? <AccessIntegrationsV2 data={data} command={command} permissions={permissions} /> : null}
       {view === 'billing' ? <MonetizationControlCenterV2 organizationId={organizationId} permissions={[...permissions]} /> : null}
       {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
       {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
