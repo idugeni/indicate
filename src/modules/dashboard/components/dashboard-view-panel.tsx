@@ -31,12 +31,9 @@ const InfrastructureControlCenterV2 = dynamic(
     ),
   { loading: () => <DashboardViewSkeleton view="configuration" /> },
 );
-const CustomerManagement = dynamic(
-  () =>
-    import('@/modules/dashboard/components/customers/customer-management').then((module) => ({
-      default: module.CustomerManagement,
-    })),
-  { loading: () => <DashboardFormsGridSkeleton columns={3} /> },
+const CustomerOperationsV2 = dynamic(
+  () => import('@/modules/dashboard/components/customers/customer-operations-v2').then((module) => ({ default: module.CustomerOperationsV2 })),
+  { loading: () => <DashboardViewSkeleton view="customers" /> },
 );
 const ContentManager = dynamic(
   () =>
@@ -360,9 +357,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           {view === 'ai' ? (
             <AiManagementPanel organizationId={organizationId} command={command} />
           ) : null}
-          {view === 'customers' ? (
-            <CustomerManagement command={command} organizationId={organizationId} />
-          ) : null}
+          {view === 'customers' ? <CustomerOperationsV2 organizationId={organizationId} command={command} /> : null}
           {view === 'content' ? <ContentManager /> : null}
         </PanelErrorBoundary>
 
