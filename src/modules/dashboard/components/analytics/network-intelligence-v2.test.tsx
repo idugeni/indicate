@@ -19,7 +19,7 @@ const BASE: AnalyticsProjection = {
   jendela: { awal: '2026-10-01', akhir: '2026-10-08' },
   tugasHarian: [{ hari: '2026-10-01', diterbitkan: 2, gagal: 1, antre: 1 }, { hari: '2026-10-02', diterbitkan: 3, gagal: 0, antre: 0 }],
   penyaluranHarian: [{ hari: '2026-10-01', diterbitkan: 2, gagal: 1, antre: 1 }, { hari: '2026-10-02', diterbitkan: 3, gagal: 0, antre: 0 }],
-  viewsHarian: [{ hari: '2026-10-01', views: 11 }, { hari: '2026-10-02', views: 7 }],
+  viewsHarian: [{ hari: '2026-10-01', views: 11, penyaluran: 2 }, { hari: '2026-10-02', views: 7, penyaluran: 3 }],
   aktivitasPerJam: [],
   aktivitasTerbaru: [],
   arusPenerbit: [{ penerbit: 'pub-1', situs: 'site-1', hasil: 'published', jumlah: 5 }],
