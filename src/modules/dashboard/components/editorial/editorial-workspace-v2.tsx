@@ -317,7 +317,7 @@ export function EditorialWorkspaceV2({
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
   readonly command: DashboardCommand;
   readonly organizationId?: string;
-  readonly editArticleId?: string;
+  readonly editArticleId?: string | undefined;
   readonly onExitEdit?: () => void;
 }) {
   if (editArticleId) {
