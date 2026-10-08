@@ -48,7 +48,7 @@ describe('Tampilan data dasbor', () => {
     expect(screen.getByText('What needs your attention?')).toBeDefined();
     expect(screen.getByText('Delivery success')).toBeDefined();
     expect(screen.getByText('System at a glance')).toBeDefined();
-    expect(screen.getByText('Quick actions')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Quick actions' })).toBeDefined();
     expect(screen.getByRole('region', { name: 'Operational pulse' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /tulis berita/i }));
     expect(handleSelect).toHaveBeenCalledWith('editorial');
