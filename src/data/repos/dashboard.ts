@@ -474,7 +474,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             AND s.state_occurred_at < ${windowEnd}::timestamptz
           GROUP BY 1`),
         transaction.execute<{ kind: 'day' | 'site' | 'article' | 'total'; day: string | null; id: string | null; name: string | null; count: number | null; views: number }>(sql`
-          WITH filtered AS (
+          WITH base AS (
             SELECT
               d.day,
               d.views,
@@ -494,8 +494,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
               ON st.organization_id = ${orgId}
              AND st.id = d.site_id
             WHERE d.organization_id = ${orgId}
-              AND d.day >= ${windowStart}::date
-              AND d.day < ${windowEnd}::date
           )
           SELECT
             CASE
@@ -517,17 +515,35 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             END AS name,
             CASE
               WHEN GROUPING(day) = 0 OR GROUPING(site_id) = 0 OR GROUPING(article_id) = 0
-                THEN COUNT(DISTINCT article_site_id)::int
+                THEN COUNT(DISTINCT article_site_id) FILTER (
+                  WHERE GROUPING(day) = 0
+                    OR (
+                      (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                      AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
+                    )
+                )::int
               ELSE NULL
             END AS count,
-            COALESCE(SUM(views), 0)::int AS views
-          FROM filtered
+            CASE
+              WHEN GROUPING(day) = 0
+                THEN COALESCE(SUM(views) FILTER (
+                  WHERE day >= ${windowStart}::timestamptz::date
+                    AND day < ${windowEnd}::timestamptz::date
+                ), 0)::int
+              ELSE COALESCE(SUM(views) FILTER (
+                WHERE (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                  AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
+              ), 0)::int
+            END AS views
+          FROM base
           GROUP BY GROUPING SETS (
             (day),
             (site_id, site_name),
             (article_id, article_name),
             ()
           )
+          HAVING GROUPING(day) = 1
+            OR (day >= ${windowStart}::timestamptz::date AND day < ${windowEnd}::timestamptz::date)
         `),
       ]);
       // GROUPING SETS scans the filtered article relation once for all four dimensions.
