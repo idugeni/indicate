@@ -73,6 +73,16 @@ export class NextDashboardCacheInvalidator implements DashboardCacheInvalidator 
   async revalidateTags(tags: readonly string[]): Promise<void> {
     for (const tag of tags) revalidateTag(tag, 'max');
   }
+
+  async invalidateOrganization(organizationId: string): Promise<void> {
+    const store = resolveDashboardStore();
+    if (store === null) return;
+    await Promise.all([
+      store.deleteByPrefix('snapshot:' + organizationId + ':'),
+      store.deleteByPrefix('analytics:' + organizationId + ':'),
+      store.deleteByPrefix('full:' + organizationId + ':'),
+    ]);
+  }
 }
 
 function resolveDashboardStore(): UpstashSnapshotStore | null {
