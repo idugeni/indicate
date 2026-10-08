@@ -77,11 +77,13 @@ export function PublisherNetworkV2({
   command,
   organizationId,
   onFilterApply,
+  onRefresh,
 }: {
   readonly data: unknown;
   readonly command: DashboardCommand;
   readonly organizationId: string;
   readonly onFilterApply: (query: string) => void;
+  readonly onRefresh: () => void;
 }) {
   const model = (data as PublisherData | null) ?? {};
   const publishers = useMemo(() => model.publishers ?? [], [model.publishers]);
@@ -136,6 +138,7 @@ export function PublisherNetworkV2({
         try {
           await command(action, { id: selected.id, expectedVersion: selected.version, reason }, { refresh: true });
           toast.success('Penerbit ditolak.');
+          onRefresh();
         } catch (error) {
           toast.error(error instanceof Error ? error.message : 'Keputusan gagal diterapkan.');
         }
@@ -146,6 +149,7 @@ export function PublisherNetworkV2({
       try {
         await command(action, { id: selected.id, expectedVersion: selected.version }, { refresh: true });
         toast.success('Status penerbit diperbarui.');
+        onRefresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Keputusan gagal diterapkan.');
       }
@@ -174,6 +178,7 @@ export function PublisherNetworkV2({
         setCreateAttribution('');
         setCreateEvidence('');
         setCreating(false);
+        onRefresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Pendaftaran penerbit gagal.');
       }
