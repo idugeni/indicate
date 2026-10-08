@@ -161,9 +161,12 @@ export function DataView({
     string,
     Record<string, unknown>[],
   ][];
-  const collections = (onlyCollections ?? allCollections)
-    .filter((key): key is string => typeof key === 'string')
-    .map((key) => [key, normalizedSource[key] as Record<string, unknown>[]] as [string, Record<string, unknown>[]]);
+  const requestedCollections = onlyCollections;
+  const collections = requestedCollections === undefined
+    ? allCollections
+    : requestedCollections
+        .filter((key): key is string => key in normalizedSource)
+        .map((key) => [key, normalizedSource[key] as Record<string, unknown>[]] as [string, Record<string, unknown>[]]);
 
   const lookups: LookupTables = Object.fromEntries(collections);
 
