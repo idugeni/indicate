@@ -105,8 +105,8 @@ const LiveResultsV2 = dynamic(
   () => import('@/modules/dashboard/components/publishing/live-results-v2').then((module) => ({ default: module.LiveResultsV2 })),
   { loading: () => <DashboardViewSkeleton view="published" /> },
 );
-const BillingPanel = dynamic(
-  () => import('@/modules/dashboard/components/billing/billing-panel').then((module) => ({ default: module.BillingPanel })),
+const MonetizationControlCenterV2 = dynamic(
+  () => import('@/modules/dashboard/components/billing/monetization-control-center-v2').then((module) => ({ default: module.MonetizationControlCenterV2 })),
   { loading: () => <DashboardViewSkeleton view="billing" /> },
 );
 const ModerationPanel = dynamic(
@@ -364,7 +364,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           </TabsContent>
         </Tabs>
       ) : null}
-      {view === 'billing' ? <BillingPanel organizationId={organizationId} permissions={[...permissions]} /> : null}
+      {view === 'billing' ? <MonetizationControlCenterV2 organizationId={organizationId} permissions={[...permissions]} /> : null}
       {view === 'moderation' ? <ModerationPanel organizationId={organizationId} /> : null}
       {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
       {view === 'ai' ? <AiManagementPanel organizationId={organizationId} command={command} /> : null}
