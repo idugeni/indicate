@@ -177,7 +177,7 @@ function AttentionPanel({
   );
 }
 
-function QuickActions({ onSelectView }: { readonly onSelectView?: (view: View) => void }) {
+function QuickActions({ onSelectView }: { readonly onSelectView?: ((view: View) => void) | undefined }) {
   const actions: readonly { view: View; label: string; description: string; icon: typeof FileText }[] = [
     { view: 'editorial', label: 'Tulis berita', description: 'Buat artikel baru', icon: FileText },
     { view: 'publishing', label: 'Publishing', description: 'Pantau pengiriman', icon: Send },
@@ -226,7 +226,7 @@ export function DashboardV2Overview({
 }: {
   readonly dashboard: Pick<DashboardProjection, 'activeDomains' | 'activeSubdomains' | 'activeSites' | 'activeArticles' | 'archivedArticles' | 'jobsByState' | 'successfulSiteOutcomes' | 'failedSiteOutcomes' | 'activeMedia'>;
   readonly analytics: AnalyticsProjection | null;
-  readonly onSelectView?: (view: View) => void;
+  readonly onSelectView?: ((view: View) => void) | undefined;
 }) {
   const jobs = dashboard.jobsByState;
   const published = number(jobs.published);
