@@ -86,7 +86,9 @@ function records(data: unknown): Record<string, RecordValue[]> {
   if (Array.isArray(data)) return { records: data.filter(isRecord) };
   if (!isRecord(data)) return {};
   return Object.fromEntries(
-    Object.entries(data).filter(([, value]) => Array.isArray(value)).map(([key, value]) => [key, value.filter(isRecord)]),
+    Object.entries(data)
+      .filter(([, value]) => Array.isArray(value))
+      .map(([key, value]) => [key, (value as unknown[]).filter(isRecord)]),
   );
 }
 
