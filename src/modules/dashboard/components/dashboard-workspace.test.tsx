@@ -303,10 +303,10 @@ describe('Dashboard workspace', () => {
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'audit';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('log-1', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await screen.findByText('article.create', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     fireEvent.click(await screen.findByRole('button', { name: 'Muat riwayat lebih lama' }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
     await waitFor(() => expect(calls.some((url) => url.includes('cursor=cursor-1'))).toBe(true), { timeout: LAZY_MODULE_TIMEOUT_MS });
-    expect(await screen.findByText('log-2', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect(await screen.findByText('article.update', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Muat riwayat lebih lama' })).toBeNull();
   }, 20000);
 });
