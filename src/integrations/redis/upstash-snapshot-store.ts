@@ -237,6 +237,31 @@ export class UpstashSnapshotStore {
   }
 
   /**
+   * Delete all keys in this namespace matching a tenant-scoped prefix.
+   *
+   * @remarks Uses SCAN instead of KEYS so invalidation remains bounded and
+   * non-blocking. The prefix must be tenant-scoped; callers must not pass a
+   * global wildcard. Each batch is deleted in one REST pipeline.
+   */
+  async deleteByPrefix(prefix: string): Promise<void> {
+    if (prefix.trim() === '' || prefix.includes('*')) throw new Error('invalid_redis_prefix');
+    let cursor = '0';
+    do {
+      const started = Date.now();
+      try {
+        const scanned = await this.redis.scan(cursor, { match: this.namespace + ':' + prefix + '*', count: 100 });
+        cursor = scanned[0];
+        const keys = scanned[1];
+        if (keys.length > 0) await this.redis.del(...keys);
+        recordRedisCall('redis.scan.invalidate', started, 1 + (keys.length > 0 ? 1 : 0), 0, { status: 200 });
+      } catch {
+        recordRedisCall('redis.scan.invalidate', started, 1, 0, { status: 500 });
+        return;
+      }
+    } while (cursor !== '0');
+  }
+
+  /**
    * Delete a namespaced key after invalidation.
    *
    * @param key - Key suffix appended to the store namespace.

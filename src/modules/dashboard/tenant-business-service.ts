@@ -65,6 +65,7 @@ export interface ArticleCreatedNotifier {
  */
 export interface DashboardCacheInvalidator {
   revalidateTags(tags: readonly string[]): Promise<void>;
+  invalidateOrganization(organizationId: string): Promise<void>;
 }
 
 const SITE_LEVEL_RANK: Readonly<Record<SiteLevel, number>> = Object.freeze({ apex: 0, region: 1, city: 2 });
@@ -156,10 +157,13 @@ export class TenantBusinessService {
    * @returns Nothing; a purge failure is telemetry, never a mutation failure.
    */
   private async revalidateCommitted(input: { actor: AuthorizedTenantActorContext; action: string; revalidateTags?: readonly string[] }): Promise<void> {
-    const tags = input.revalidateTags;
-    if (this.cacheInvalidator === null || tags === undefined || tags.length === 0) return;
+    if (this.cacheInvalidator === null) return;
+    const tags = input.revalidateTags ?? [orgTag(input.actor.organizationId)];
     try {
-      await this.cacheInvalidator.revalidateTags(tags);
+      await Promise.all([
+        this.cacheInvalidator.revalidateTags(tags),
+        this.cacheInvalidator.invalidateOrganization(input.actor.organizationId),
+      ]);
     } catch (error) {
       logEvent('warn', {
         event: 'dashboard.cache.invalidate_failed',
@@ -167,6 +171,10 @@ export class TenantBusinessService {
         context: { action: input.action, name: errorIdentity(error) },
       });
     }
+  }
+
+  private async invalidateActorOrganization(actor: AuthorizedTenantActorContext, action: string): Promise<void> {
+    await this.revalidateCommitted({ actor, action });
   }
 
   private base(actor: AuthorizedTenantActorContext, now: string) {
@@ -1097,6 +1105,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.requestBridgePublication(actor, parsed.data);
+      await this.invalidateActorOrganization(actor, 'requestBridgePublication');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
@@ -1120,6 +1129,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.unpublishBridge(actor, parsed.data);
+      await this.invalidateActorOrganization(actor, 'unpublishBridge');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
@@ -1160,6 +1170,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.requestBridgePublicationAuto(actor, parsed.data);
+      await this.invalidateActorOrganization(actor, 'requestBridgePublicationAuto');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Please correct the highlighted fields.', actor.requestId, error.fields) };
@@ -1640,6 +1651,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         roleId: parsed.data.roleId,
         tokenHash: parsed.data.tokenHash,
       });
+      await this.invalidateActorOrganization(actor, 'createInvitation');
       return { ok: true, value };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.create', 'invitation');
@@ -1654,6 +1666,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.revokeInvitation(actor, DASHBOARD_PERMISSIONS.membershipManage, { id: parsed.data.id });
+      await this.invalidateActorOrganization(actor, 'revokeInvitation');
       return { ok: true, value };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.revoke', 'invitation');
@@ -1726,6 +1739,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         articleId: parsed.data.articleId,
         body: parsed.data.body,
       }, owner ?? undefined);
+      await this.invalidateActorOrganization(actor, 'createArticleUpdate');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.create', 'article');
@@ -1753,6 +1767,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         expectedVersion: parsed.data.expectedVersion,
         body: parsed.data.body,
       }, owner ?? undefined);
+      await this.invalidateActorOrganization(actor, 'updateArticleUpdate');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.update', 'article');
@@ -1780,6 +1795,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         id: parsed.data.id,
         expectedVersion: parsed.data.expectedVersion,
       }, owner ?? undefined);
+      await this.invalidateActorOrganization(actor, 'deleteArticleUpdate');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.delete', 'article');

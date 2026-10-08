@@ -41,7 +41,7 @@ function stateWith(overrides: Record<string, readonly unknown[]> = {}): Record<s
   return state;
 }
 
-function harness(collections: Record<string, readonly unknown[]> = {}) {
+function harness(collections: Record<string, readonly unknown[]> = {}, cacheInvalidator?: { revalidateTags: (tags: readonly string[]) => Promise<void>; invalidateOrganization: (organizationId: string) => Promise<void> }) {
   const state = stateWith(collections);
   const appendAudit = vi.fn();
   const repository = {
@@ -52,7 +52,7 @@ function harness(collections: Record<string, readonly unknown[]> = {}) {
     recordDenied: vi.fn(async () => undefined),
     enqueueCachePurge: vi.fn(async () => []),
   };
-  const service = new TenantBusinessService(repository as never, { create: () => ID }, { now: () => NOW });
+  const service = new TenantBusinessService(repository as never, { create: () => ID }, { now: () => NOW }, null, cacheInvalidator);
   return { repository, service, state, appendAudit };
 }
 
@@ -133,6 +133,20 @@ function scopeHierarchyFixture(): Record<string, readonly unknown[]> {
     articleSites: [],
   };
 }
+
+describe('TenantBusinessService cache invalidation', () => {
+  it('default mutate invalidates Next tag dan Redis tenant projections setelah commit', async () => {
+    const cacheInvalidator = {
+      revalidateTags: vi.fn(async () => undefined),
+      invalidateOrganization: vi.fn(async () => undefined),
+    };
+    const { service } = harness({}, cacheInvalidator);
+    const result = await service.createDomain(actor, { normalizedHostname: 'fakta01.my.id' });
+    expect(result.ok).toBe(true);
+    expect(cacheInvalidator.revalidateTags).toHaveBeenCalledWith(['org:org-1']);
+    expect(cacheInvalidator.invalidateOrganization).toHaveBeenCalledWith('org-1');
+  });
+});
 
 describe('TenantBusinessService domains regions', () => {
   it('membuat domain dan mengaudit', async () => {

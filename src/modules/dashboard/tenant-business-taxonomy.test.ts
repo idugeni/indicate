@@ -199,7 +199,7 @@ describe('TenantBusinessService taxonomy', () => {
 describe('TenantBusinessService category cache invalidation', () => {
   function harnessWithInvalidator(
     collections: Record<string, readonly unknown[]> = {},
-    invalidator: { revalidateTags: (tags: readonly string[]) => Promise<void> } | null = null,
+    invalidator: { revalidateTags: (tags: readonly string[]) => Promise<void>; invalidateOrganization: (organizationId: string) => Promise<void> } | null = null,
   ) {
     const state = stateWith(collections);
     const appendAudit = vi.fn();
@@ -224,7 +224,8 @@ describe('TenantBusinessService category cache invalidation', () => {
 
   it('merevalidasi tag org saat kategori dibuat', async () => {
     const revalidateTags = vi.fn(async () => undefined);
-    const { service } = harnessWithInvalidator({}, { revalidateTags });
+    const invalidateOrganization = vi.fn(async () => undefined);
+    const { service } = harnessWithInvalidator({}, { revalidateTags, invalidateOrganization });
     const result = await service.createCategory(actor, { name: 'Ekonomi', slug: 'ekonomi', status: 'active' });
     expect(result.ok).toBe(true);
     expect(revalidateTags).toHaveBeenCalledTimes(1);
@@ -233,7 +234,8 @@ describe('TenantBusinessService category cache invalidation', () => {
 
   it('merevalidasi tag org saat kategori diubah dan dihapus', async () => {
     const revalidateTags = vi.fn(async () => undefined);
-    const { service } = harnessWithInvalidator({ categories: [category()] }, { revalidateTags });
+    const invalidateOrganization = vi.fn(async () => undefined);
+    const { service } = harnessWithInvalidator({ categories: [category()] }, { revalidateTags, invalidateOrganization });
     const updated = await service.updateCategory(actor, { id: ID, name: 'Politik Baru', slug: 'politik', status: 'active', expectedVersion: 1 });
     expect(updated.ok).toBe(true);
     const deleted = await service.deleteCategory(actor, { id: ID, expectedVersion: 2 });
@@ -242,19 +244,22 @@ describe('TenantBusinessService category cache invalidation', () => {
     expect(revalidateTags).toHaveBeenCalledWith(['org:org-1']);
   });
 
-  it('tidak menyentuh cache saat mutasi non-kategori', async () => {
+  it('menginvalidasi cache organisasi untuk setiap mutasi tenant', async () => {
     const revalidateTags = vi.fn(async () => undefined);
-    const { service } = harnessWithInvalidator({ articles: [article()] }, { revalidateTags });
+    const invalidateOrganization = vi.fn(async () => undefined);
+    const { service } = harnessWithInvalidator({ articles: [article()] }, { revalidateTags, invalidateOrganization });
     const result = await service.renameTag(actor, { from: 'Harga Emas', to: 'logam-mulia' });
     expect(result.ok).toBe(true);
-    expect(revalidateTags).not.toHaveBeenCalled();
+    expect(revalidateTags).toHaveBeenCalledWith(['org:org-1']);
+    expect(invalidateOrganization).toHaveBeenCalledWith('org-1');
   });
 
   it('mutasi tetap berhasil saat revalidasi gagal', async () => {
     const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       const revalidateTags = vi.fn(async (): Promise<void> => { throw new Error('tag store down'); });
-      const { service, state } = harnessWithInvalidator({}, { revalidateTags });
+      const invalidateOrganization = vi.fn(async () => undefined);
+      const { service, state } = harnessWithInvalidator({}, { revalidateTags, invalidateOrganization });
       const result = await service.createCategory(actor, { name: 'Ekonomi', slug: 'ekonomi', status: 'active' });
       expect(result.ok).toBe(true);
       expect(state.categories as unknown[]).toHaveLength(1);

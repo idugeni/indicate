@@ -4,6 +4,7 @@ const get = vi.fn();
 const set = vi.fn();
 const expire = vi.fn();
 const del = vi.fn();
+const scan = vi.fn();
 const mget = vi.fn();
 const logEvent = vi.fn();
 
@@ -13,6 +14,7 @@ vi.mock('@upstash/redis', () => ({
     set = set;
     expire = expire;
     del = del;
+    scan = scan;
     mget = mget;
   },
 }));
@@ -85,6 +87,8 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
   beforeEach(() => {
     get.mockReset();
     set.mockReset();
+    del.mockReset();
+    scan.mockReset();
   });
 
   it('write menyimpan gzip dan read mengembalikan model yang sama', async () => {
@@ -137,6 +141,22 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
     expect(samples).toHaveLength(3);
     for (const sample of samples) expect(sample.status).toBe(500);
     expect(samples.map((sample) => sample.operation)).toEqual(['redis.get', 'redis.set', 'redis.del']);
+  });
+
+  it('deleteByPrefix hanya menghapus prefix tenant dan menyelesaikan scan', async () => {
+    scan.mockResolvedValueOnce(['42', ['prod:snapshot:org-1:user-1']]).mockResolvedValueOnce(['0', ['prod:snapshot:org-1:user-2']]);
+    del.mockResolvedValue(undefined);
+    await store().deleteByPrefix('snapshot:org-1:');
+    expect(scan).toHaveBeenCalledWith('0', { match: 'prod:snapshot:org-1:*', count: 100 });
+    expect(scan).toHaveBeenCalledWith('42', { match: 'prod:snapshot:org-1:*', count: 100 });
+    expect(del).toHaveBeenNthCalledWith(1, 'prod:snapshot:org-1:user-1');
+    expect(del).toHaveBeenNthCalledWith(2, 'prod:snapshot:org-1:user-2');
+  });
+
+  it('deleteByPrefix menolak wildcard agar tidak menjadi global purge', async () => {
+    await expect(store().deleteByPrefix('snapshot:*')).rejects.toThrow('invalid_redis_prefix');
+    expect(scan).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
   });
 
   it('mget menghitung hit/miss per kunci, bukan satu bendera', async () => {
