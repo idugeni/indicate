@@ -1648,6 +1648,10 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         roleId: parsed.data.roleId,
         tokenHash: parsed.data.tokenHash,
       });
+      await this.invalidateActorOrganization(actor, 'requestBridgePublication');
+      await this.invalidateActorOrganization(actor, 'unpublishBridge');
+      await this.invalidateActorOrganization(actor, 'requestBridgePublicationAuto');
+      await this.invalidateActorOrganization(actor, 'createInvitation');
       return { ok: true, value };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.create', 'invitation');
@@ -1662,6 +1666,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     try {
       const value = await this.repository.revokeInvitation(actor, DASHBOARD_PERMISSIONS.membershipManage, { id: parsed.data.id });
+      await this.invalidateActorOrganization(actor, 'revokeInvitation');
       return { ok: true, value };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'invitation.revoke', 'invitation');
@@ -1734,6 +1739,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         articleId: parsed.data.articleId,
         body: parsed.data.body,
       }, owner ?? undefined);
+      await this.invalidateActorOrganization(actor, 'createArticleUpdate');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.create', 'article');
@@ -1761,6 +1767,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         expectedVersion: parsed.data.expectedVersion,
         body: parsed.data.body,
       }, owner ?? undefined);
+      await this.invalidateActorOrganization(actor, 'updateArticleUpdate');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.update', 'article');
@@ -1788,6 +1795,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         id: parsed.data.id,
         expectedVersion: parsed.data.expectedVersion,
       }, owner ?? undefined);
+      await this.invalidateActorOrganization(actor, 'deleteArticleUpdate');
       return { ok: true, value } as const;
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.updates.delete', 'article');
