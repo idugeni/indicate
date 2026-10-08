@@ -510,6 +510,13 @@ export class DrizzleDashboardRepository implements DashboardRepository {
                 AND (${from}::timestamptz IS NULL OR s.state_occurred_at >= ${from}::timestamptz)
                 AND (${to}::timestamptz IS NULL OR s.state_occurred_at <= ${to}::timestamptz)) AS salur`),
       ]);
+      // GROUPING SETS scans the filtered article relation once for all four dimensions.
+      // The previous implementation issued four separate aggregate statements against articles.
+      const byRegion = articleDimensionRows.filter((row) => row.dimension === 'region').map(({ key, count }) => ({ key, count }));
+      const byCategory = articleDimensionRows.filter((row) => row.dimension === 'category' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
+      const byPublisher = articleDimensionRows.filter((row) => row.dimension === 'publisher' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
+      const byStatus = articleDimensionRows.filter((row) => row.dimension === 'status' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
+
       // Resolve only labels referenced by the analytics result sets. The previous implementation
       // loaded the entire tenant directory and pruned it in JS.
       const analyticsSiteIds = new Set<string>([
@@ -554,13 +561,6 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const categoryLabelRows = labelRows.filter((row) => row.kind === 'category').map(({ id, name }) => ({ id, name }));
       const publisherLabelRows = labelRows.filter((row) => row.kind === 'publisher').map(({ id, name }) => ({ id, name }));
       const regionLabelRows = labelRows.filter((row) => row.kind === 'region').map(({ id, name }) => ({ id, name }));
-      // GROUPING SETS scans the filtered article relation once for all four dimensions.
-      // The previous implementation issued four separate aggregate statements against articles.
-      const byRegion = articleDimensionRows.filter((row) => row.dimension === 'region').map(({ key, count }) => ({ key, count }));
-      const byCategory = articleDimensionRows.filter((row) => row.dimension === 'category' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
-      const byPublisher = articleDimensionRows.filter((row) => row.dimension === 'publisher' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
-      const byStatus = articleDimensionRows.filter((row) => row.dimension === 'status' && row.key !== null).map(({ key, count }) => ({ key: key as string, count }));
-
       const points = (rows: readonly { key: string | null; count: number }[]) =>
         [...rows].filter((row): row is { key: string; count: number } => row.key !== null).map(({ key, count }) => ({ key, count })).sort((a, b) => a.key.localeCompare(b.key));
       const dimensionPoints = (rows: readonly { siteId: string; regionId: string | null; state: string; count: number }[]) => {
