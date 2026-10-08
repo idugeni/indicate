@@ -81,8 +81,8 @@ function selectEmailStatus(data: unknown): EmailStatus | null {
   if (status.defaultFrom !== null && typeof status.defaultFrom !== 'string') return null;
   return { configured: status.configured, defaultFrom: status.defaultFrom, webhook: status.webhook };
 }
-const MediaLibrary = dynamic(
-  () => import('@/modules/dashboard/components/publishing/media-library').then((module) => ({ default: module.MediaLibrary })),
+const MediaLibraryV2 = dynamic(
+  () => import('@/modules/dashboard/components/publishing/media-library-v2').then((module) => ({ default: module.MediaLibraryV2 })),
   { loading: () => <DashboardMediaSkeleton /> },
 );
 const PublisherNetworkV2 = dynamic(
@@ -330,7 +330,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           </TabsContent>
         </Tabs>
       ) : null}
-      {view === 'media' ? <MediaLibrary data={data} command={command} organizationId={organizationId} /> : null}
+      {view === 'media' ? <MediaLibraryV2 data={data} command={command} organizationId={organizationId} /> : null}
       {view === 'published' ? <PublishedUrlBoard data={data} onFilterApply={onFilterApply} articlesNextCursor={articlesNextCursor} articlesTotal={articlesTotal} onLoadMoreArticles={onLoadMoreArticles} organizationId={organizationId} crossOrg={crossOrg} /> : null}
       {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
       {view === 'settings' ? (
