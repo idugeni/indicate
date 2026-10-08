@@ -60,7 +60,7 @@ describe('Tampilan data dasbor', () => {
     expect(screen.getByText('Core metrics live')).toBeDefined();
     expect(screen.getByText('Menunggu analytics')).toBeDefined();
     expect(screen.getByText('Menyiapkan telemetry')).toBeDefined();
-    expect(screen.getByText('Pipeline snapshot')).toBeDefined();
+    expect(screen.getByRole('region', { name: 'Pipeline snapshot' })).toBeDefined();
   });
 });
 
