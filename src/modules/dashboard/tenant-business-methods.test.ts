@@ -41,7 +41,7 @@ function stateWith(overrides: Record<string, readonly unknown[]> = {}): Record<s
   return state;
 }
 
-function harness(collections: Record<string, readonly unknown[]> = {}, cacheInvalidator?: { revalidateTags: ReturnType<typeof vi.fn>; invalidateOrganization: ReturnType<typeof vi.fn> }) {
+function harness(collections: Record<string, readonly unknown[]> = {}, cacheInvalidator?: { revalidateTags: (tags: readonly string[]) => Promise<void>; invalidateOrganization: (organizationId: string) => Promise<void> }) {
   const state = stateWith(collections);
   const appendAudit = vi.fn();
   const repository = {
