@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import type { AnalyticsProjection, DashboardProjection, ViewDay } from '@/modules/dashboard/models';
+import type { AnalyticsProjection, DashboardProjection, TaskDay } from '@/modules/dashboard/models';
+import type { ReactNode } from 'react';
 import { KpiSparkline } from '@/modules/dashboard/components/analytics/kpi-spark';
 import { PublicationTrend } from '@/modules/dashboard/components/analytics/trend';
 import { SiteStack, SiteViewsBar } from '@/modules/dashboard/components/analytics/primary-bento';
@@ -35,7 +36,7 @@ function Card({
   className = '',
   label,
 }: {
-  readonly children: React.ReactNode;
+  readonly children: ReactNode;
   readonly className?: string;
   readonly label?: string;
 }) {
@@ -236,7 +237,7 @@ export function DashboardV2Overview({
   const views = number(analytics?.totalViews);
   const deliveryTotal = dashboard.successfulSiteOutcomes + dashboard.failedSiteOutcomes;
   const deliveryRate = deliveryTotal > 0 ? Math.round((dashboard.successfulSiteOutcomes / deliveryTotal) * 100) : 0;
-  const series: readonly ViewDay[] = analytics?.penyaluranHarian ?? analytics?.tugasHarian ?? [];
+  const series: readonly TaskDay[] = analytics?.penyaluranHarian ?? analytics?.tugasHarian ?? [];
   const siteName = (id: string): string => analytics?.siteLabels?.[id] ?? id.slice(0, 8);
   const regionRows = analytics?.articlesByRegion ?? [];
   const siteRows = analytics?.articlesBySite ?? [];
