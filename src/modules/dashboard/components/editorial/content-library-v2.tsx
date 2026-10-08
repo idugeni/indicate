@@ -19,7 +19,7 @@ const statuses=[{value:'',label:'Semua status'},{value:'active',label:'Aktif'},{
 function dateLabel(v:string|null|undefined){if(!v)return 'Belum tayang';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});}
 
 export function ContentLibraryV2({data,command,onFilterApply,articlesNextCursor,articlesTotal,onLoadMoreArticles,crossOrg,onEditArticle}:{
-readonly data:unknown;readonly command?:DashboardCommand;readonly onFilterApply?:(q:string)=>void;readonly articlesNextCursor?:string|null;readonly articlesTotal?:number;readonly onLoadMoreArticles?:()=>Promise<{readonly loaded:number;readonly total:number;readonly nextCursor:string|null}|null>;readonly crossOrg?:boolean;readonly onEditArticle?:(id:string)=>void;
+readonly data:unknown;readonly command?:DashboardCommand|undefined;readonly onFilterApply?:(q:string)=>void|undefined;readonly articlesNextCursor?:string|null|undefined;readonly articlesTotal?:number|undefined;readonly onLoadMoreArticles?:(()=>Promise<{readonly loaded:number;readonly total:number;readonly nextCursor:string|null}|null>)|undefined;readonly crossOrg?:boolean|undefined;readonly onEditArticle?:(id:string)=>void|undefined;
 }){
  const model=(data??{}) as {readonly articles?:readonly Row[];readonly total?:number;readonly articlesNextCursor?:string|null};
  const rows=useMemo(()=>[...(model.articles??[])],[model.articles]);const total=model.total??articlesTotal??rows.length;const cursor=model.articlesNextCursor??articlesNextCursor??null;
