@@ -196,24 +196,20 @@ describe('Dashboard workspace', () => {
       else gets.push(String(url));
       return {
         ok: true,
-        json: async () => (init?.body === undefined ? { publishers: [{ id: 'p-1', name: 'Humas Rutan', version: 1 }] } : { publisherId: 'p-2' }),
+        json: async () => (init?.body === undefined ? { publishers: [{ id: 'p-1', name: 'Humas Rutan', version: 1, verificationStatus: 'unverified', status: 'active' }] } : { publisherId: 'p-2' }),
       };
     });
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'publishers';
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    // Readiness has to be the resolved publisher card, not the name: the name
-    // also renders inside the combobox once options arrive, so `findByText`
-    // turns a timing race into "found multiple elements". The submit button is
-    // no better - it stays enabled until data loads.
-    await screen.findByText(/ID: p-1\.\.\. · Versi 1/, {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await screen.findByText(/v1/, {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     gets.length = 0;
-    fireEvent.click(await screen.findByRole('button', { name: /Terapkan Keputusan/i }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
+    fireEvent.click(await screen.findByRole('button', { name: /Kirim verifikasi/i }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
 
     await waitFor(() => expect(posted).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     expect(JSON.parse(posted[0] ?? '{}')).toMatchObject({ action: 'publisher.submit' });
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledTimes(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
-    expect(toastMock.success).toHaveBeenCalledWith('Keputusan tata kelola berhasil diterapkan.');
+    expect(toastMock.success).toHaveBeenCalledWith('Status penerbit diperbarui.');
     // The V2 action surface owns the human-facing copy.
     for (const spy of [toastMock.success, toastMock.error, toastMock.info, toastMock.loading]) {
       for (const call of vi.mocked(spy).mock.calls) {
