@@ -151,8 +151,6 @@ export function DataView({
     );
   }
 
-  return <DashboardV2ModuleSurface view={view} data={data} onRefresh={onRefresh} />;
-
   const normalizedSource: Record<string, unknown> = Array.isArray(data)
     ? { records: data }
     : typeof data === 'object' && data !== null
@@ -163,11 +161,9 @@ export function DataView({
     string,
     Record<string, unknown>[],
   ][];
-  const collections = onlyCollections === undefined
-    ? allCollections
-    : (onlyCollections
-        .filter((key): key is string => key in normalizedSource)
-        .map((key) => [key, normalizedSource[key] as Record<string, unknown>[]] as [string, Record<string, unknown>[]]));
+  const collections = (onlyCollections ?? allCollections)
+    .filter((key): key is string => typeof key === 'string')
+    .map((key) => [key, normalizedSource[key] as Record<string, unknown>[]] as [string, Record<string, unknown>[]]);
 
   const lookups: LookupTables = Object.fromEntries(collections);
 
@@ -244,7 +240,8 @@ export function DataView({
 
   if (view === 'publishers' && primaryCollection !== undefined && firstReference !== undefined) {
     const [primaryKey, primaryItems] = primaryCollection;
-    const [referenceKey, referenceItems] = singleReference ?? firstReference;
+    const referenceCollection = singleReference ?? firstReference;
+    const [referenceKey, referenceItems] = referenceCollection;
     return (
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <div className="min-w-0 space-y-3">
@@ -283,7 +280,7 @@ export function DataView({
     );
   }
 
-  return <div className="space-y-6">{collections.map(([collectionKey, items]) => renderTable(collectionKey, items))}</div>;
+  return <DashboardV2ModuleSurface view={view} data={data} onRefresh={onRefresh} />;
 }
 
 type CollectionItem = Record<string, unknown>;
