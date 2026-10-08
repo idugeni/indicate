@@ -49,13 +49,22 @@ Definition of done for a V2 area:
 - Use focused local/static checks before pushing when possible.
 - Do not repeatedly rerun expensive workflows without a changed input.
 - Full Quality Gate is mandatory before merge.
+- Batch related fixes into the same coherent push/PR update instead of pushing every tiny iteration.
 
 ### Vercel
-- CI is the primary compile/test/debug environment.
-- Do not use deployment previews as the default debugging loop.
-- Avoid unnecessary push/commit cycles that trigger deployments.
-- Prefer one validated merge followed by deployment verification.
-- Never claim deployment health without evidence.
+- Treat Vercel as a deployment/release environment, not the primary compile/test/debug loop.
+- Production deployment must come only from the verified main branch.
+- Do not push directly to main to trigger production deployment.
+- Feature branches/PRs may use Preview Deployments for environment-specific verification, but they are not the default debugging loop.
+- Batch related fixes locally and in CI before pushing to a PR to avoid unnecessary Preview Deployment churn.
+- Do not create empty commits, no-op commits, or commits solely to trigger a Vercel deployment.
+- Do not manually redeploy the same commit unless there is a concrete infrastructure/runtime reason.
+- Use Preview Deployments only for questions that require Vercel runtime/environment behavior: routing, environment variables, serverless/runtime behavior, headers, caching, build configuration, production-like integration, or visual verification that cannot be proven in CI.
+- For UI-only or compile/test-only changes, prefer Tier A/B verification before using Preview.
+- A Vercel Preview failure is an engineering signal: fix the root cause in the same PR, then verify again. Do not create a new PR just to obtain another deployment.
+- After merge, verify the resulting production deployment and main; do not claim production health without direct evidence.
+- Keep the repository's Vercel production branch aligned with main.
+- If Preview Deployments are later disabled at the project level for cost reasons, retain the same CI-first and production-only release discipline; do not compensate by pushing directly to main.
 
 ### Supabase/Postgres
 - UI refactors must not cause unnecessary database writes.
@@ -146,3 +155,5 @@ Use Observed for direct evidence, Derived for calculations from evidence, and As
 - [ ] All test shards pass.
 - [ ] Quality Gate passes.
 - [ ] Main is verified after merge.
+- [ ] Production deployment is attributable to a verified main merge.
+- [ ] Preview was used only when it answered a question that CI could not answer.
