@@ -151,6 +151,7 @@ function hasServerFilters(view: View): boolean {
  */
 const DashboardViewPanel = memo(function DashboardViewPanel({
   view,
+  displayName,
   data,
   organizationId,
   permissions,
@@ -171,6 +172,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   crossOrg,
 }: {
   readonly view: View;
+  readonly displayName: string;
   readonly data: unknown;
   readonly organizationId: string;
   readonly permissions: ReadonlySet<string>;
@@ -206,6 +208,27 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     void setEditArticleId(null);
     onSelectView('articles');
   };
+
+  if (view === 'dashboard') {
+    return (
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
+        <div className="mx-auto w-full max-w-[1500px]">
+          <PanelErrorBoundary name="Dashboard V2">
+            <DataView
+              view={view}
+              displayName={displayName}
+              data={data}
+              currentPage={currentPage}
+              onPageChange={onPageChange}
+              onRefresh={onRefresh}
+              command={command}
+              onSelectView={onSelectView}
+            />
+          </PanelErrorBoundary>
+        </div>
+      </main>
+    );
+  }
 
   /** Tab-scoped tables: a tab lists only the collections it owns instead of the whole payload. */
   const collectionTables = (keys: readonly string[]) => (
@@ -379,6 +402,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         <PanelErrorBoundary key={`data:${organizationId}:${view}`} name={`${metadata.title} — data`}>
         <DataView
           view={view}
+          displayName={displayName}
           data={data}
           currentPage={currentPage}
           onPageChange={onPageChange}
