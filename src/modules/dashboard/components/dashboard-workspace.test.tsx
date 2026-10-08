@@ -134,6 +134,27 @@ describe('Dashboard workspace', () => {
         await pending;
         return { ok: true, json: async () => ({ publishers: [{ id: 'pub-1', name: 'Humas Rutan', status: 'active', version: 1 }] }) };
       }
+      if (target.includes('/api/dashboard/runtime-config')) {
+        return {
+          ok: true,
+          json: async () => ({
+            policy: {
+              allowedMimeTypes: ['image/jpeg'],
+              maxObjectBytes: 10485760,
+              uploadAuthorizationSeconds: 300,
+              readAuthorizationSeconds: 300,
+              version: 1,
+            },
+            policies: {
+              deployment: null,
+              publication: null,
+              webhook: null,
+              cache: null,
+              rateLimits: [],
+            },
+          }),
+        };
+      }
       return { ok: true, json: async () => ({ domains: [{ id: 'd-1', normalizedHostname: 'jabar.domainanda.id', status: 'active', version: 1 }] }) };
     });
     vi.stubGlobal('fetch', fetchMock);
