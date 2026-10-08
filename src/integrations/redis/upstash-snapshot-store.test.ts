@@ -87,6 +87,8 @@ describe('UpstashSnapshotStore snapshot terkompresi', () => {
   beforeEach(() => {
     get.mockReset();
     set.mockReset();
+    del.mockReset();
+    scan.mockReset();
   });
 
   it('write menyimpan gzip dan read mengembalikan model yang sama', async () => {
