@@ -514,14 +514,15 @@ export class DrizzleDashboardRepository implements DashboardRepository {
               ELSE NULL
             END AS name,
             CASE
-              WHEN GROUPING(day) = 0 OR GROUPING(site_id) = 0 OR GROUPING(article_id) = 0
-                THEN COUNT(DISTINCT article_site_id) FILTER (
-                  WHERE GROUPING(day) = 0
-                    OR (
-                      (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
-                      AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
-                    )
-                )::int
+              WHEN GROUPING(day) = 0 THEN NULL
+              WHEN GROUPING(site_id) = 0 THEN COUNT(DISTINCT article_site_id) FILTER (
+                WHERE (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                  AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
+              )::int
+              WHEN GROUPING(article_id) = 0 THEN COUNT(DISTINCT site_id) FILTER (
+                WHERE (${from}::timestamptz IS NULL OR day >= (${from}::timestamptz AT TIME ZONE 'UTC')::date)
+                  AND (${to}::timestamptz IS NULL OR day <= (${to}::timestamptz AT TIME ZONE 'UTC')::date)
+              )::int
               ELSE NULL
             END AS count,
             CASE
