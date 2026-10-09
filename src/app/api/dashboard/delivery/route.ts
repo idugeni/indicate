@@ -18,7 +18,7 @@ const commandSchema = z.object({ organizationId: z.uuid(), siteId: z.uuid(), act
  * @param error - Error thrown by the provisioning composition.
  * @returns Status honoring pending (503), conflict (409), unavailable (404), and invalid config (400).
  */
-export function deliveryErrorStatus(error: unknown): number {
+function deliveryErrorStatus(error: unknown): number {
   if (error instanceof DeliveryOperationPendingError) return 503;
   if (error instanceof DeliveryConflictError) return 409;
   if (error instanceof DeliveryResourceUnavailableError) return 404;
@@ -56,4 +56,4 @@ async function handlePOST(request: Request) {
   }
 }
 
-export const POST = withApiAccess('POST /api/dashboard/delivery', handlePOST);
+const POST = withApiAccess('POST /api/dashboard/delivery', handlePOST);
