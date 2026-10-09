@@ -24,6 +24,11 @@ vi.mock('@/integrations/redis/upstash-publication-queue', () => ({ UpstashPublic
 vi.mock('@/data/repos/integrations', () => ({ DrizzleIntegrationsRepository: class {} }));
 vi.mock('@/data/repos/ai', () => ({ DrizzleAiRepository: class {} }));
 vi.mock('@/data/repos/dashboard-access-keys', () => ({ DrizzleDashboardAccessKeyRepository: class {} }));
+vi.mock('@/data/repos/billing', () => ({ DrizzleBillingRepository: class {} }));
+vi.mock('@/data/repos/moderation', () => ({ DrizzleModerationRepository: class {} }));
+vi.mock('@/data/repos/content/admin', () => ({ DrizzleContentAdminRepository: class { listContent = async () => ({ marketing: [] }); } }));
+vi.mock('@/modules/billing/billing-service', () => ({ BillingService: class { subscriptionState = async () => ({ ok: true, value: { state: 'active' } }); } }));
+vi.mock('@/modules/moderation/moderation-service', () => ({ ModerationService: class { listReports = async () => ({ ok: true, value: [] }); } }));
 vi.mock('@/modules/integrations/api-key-service', () => ({ ApiKeyService: class { list = async () => ({ ok: true, value: [] }); } }));
 vi.mock('@/modules/integrations/customer-service', () => ({ CustomerService: class { readSubscription = async () => ({ ok: true, value: null }); } }));
 vi.mock('@/modules/integrations/ai-service', () => ({ AiService: class { overview = async () => ({ ok: true, value: { configured: true } }); } }));
@@ -64,6 +69,14 @@ describe('executeOperatorPlan', () => {
   it('executes additional tenant-scoped read capabilities', async () => {
     for (const capabilityId of ['ads-control-center.ads.read', 'media-library.assets.read', 'distribution-control.deliveries.read', 'live-results.deliveries.read', 'access-integrations.integrations.read', 'ai-control-center.ai-status.read']) {
       const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId, arguments: {} }] } });
+      expect(result).toMatchObject({ ok: true, results: [{ capabilityId, ok: true }] });
+    }
+  });
+
+  it('executes the remaining tenant and platform-scoped read handlers', async () => {
+    const platformActor = { actorType: 'user' as const, actorId: 'platform-1', verifiedAuthUserId: 'auth-1', organizationId: null, permissionSet: new Set<string>(), platformPermissionSet: new Set(['platform.billing.read', 'platform.moderation.read']), entryPoint: 'dashboard' as const, requestId: 'req-1' };
+    for (const capabilityId of ['billing-plan.billing.read', 'trust-moderation.cases.read', 'customer-operations.customers.read', 'public-web-content.content.read']) {
+      const result = await executeOperatorPlan({ actor, platformActor, plan: { steps: [{ id: 'step_1', capabilityId, arguments: {} }] } });
       expect(result).toMatchObject({ ok: true, results: [{ capabilityId, ok: true }] });
     }
   });
