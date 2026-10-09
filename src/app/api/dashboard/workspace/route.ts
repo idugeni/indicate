@@ -47,7 +47,7 @@ const isContextError = (value: ContextResult): value is ReturnType<typeof create
  * @param error - Envelope produced by `createNonDisclosingDenial` or `createPublicError`.
  * @returns Status code honoring 403/429 for subscription and purge cooldown denials.
  */
-const responseStatus = (error: ReturnType<typeof createNonDisclosingDenial>) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404
+export const responseStatus = (error: ReturnType<typeof createNonDisclosingDenial>) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404
   : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'CONFLICT' ? 409
     : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 
@@ -215,5 +215,5 @@ async function handlePOST(request: Request) {
  *
  * @remarks Platform-only callers need an on_behalf ticket for dashboard surfaces; otherwise deny + audit.
  */
-const GET = withApiAccess('GET /api/dashboard/workspace', handleGET);
-const POST = withApiAccess('POST /api/dashboard/workspace', handlePOST);
+export const GET = withApiAccess('GET /api/dashboard/workspace', handleGET);
+export const POST = withApiAccess('POST /api/dashboard/workspace', handlePOST);
