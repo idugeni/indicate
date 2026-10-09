@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
-import { statusFor } from '@/app/api/dashboard/billing/route';
+import { statusFor } from '@/app/api/dashboard/billing/route-helpers';
 
 describe('billing statusFor', () => {
   it('memetakan forbidden platform ke 403 dan rate limit ke 429', () => {
