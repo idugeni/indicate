@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
-import { status as genericStatus } from '@/app/api/webhooks/generic/route';
-import { status as resendStatus } from '@/app/api/webhooks/resend/route';
-import { status as v1Status } from '@/app/api/v1/commands/route';
+import { status as genericStatus } from '@/app/api/webhooks/generic/route-helpers';
+import { status as resendStatus } from '@/app/api/webhooks/resend/route-helpers';
+import { status as v1Status } from '@/app/api/v1/commands/route-helpers';
 
 describe.each([
   ['resend', resendStatus],
