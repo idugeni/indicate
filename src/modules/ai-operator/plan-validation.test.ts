@@ -54,7 +54,7 @@ describe('AI Operator plan validation', () => {
   });
 
   it('provides JSON Schema only for authorized executable tools', () => {
-    const tools = listAiOperatorPlanningTools(actor(['dashboard.read', 'publishing.request']));
+    const tools = listAiOperatorPlanningTools(actor(['dashboard.read', 'analytics.read', 'article.read', 'publishing.read', 'publishing.request', 'media.read', 'site.read', 'audit.read']));
     expect(tools.map((item) => item.id)).toContain('dashboard.overview.read');
     expect(tools.map((item) => item.id)).toContain('publishing.delivery.request');
     expect(tools.map((item) => item.id)).not.toContain('content.articles.create');
