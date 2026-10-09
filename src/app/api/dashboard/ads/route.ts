@@ -26,7 +26,7 @@ const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().mi
  * @remarks Multipart payloads cannot travel the JSON command path, so the
  * upload entry receives its storage dependency here instead.
  */
-interface AdsUploadDeps {
+export interface AdsUploadDeps {
   readonly storage: AdCreativeUploadStorage;
   readonly publicHost: string | null;
 }
@@ -41,7 +41,7 @@ interface AdsUploadDeps {
  * @param uploadDeps - Storage surface required only by `ads.creative.upload`.
  * @returns Handler for known actions, `undefined` otherwise.
  */
-function resolveAdsAction(
+export function resolveAdsAction(
   service: AdsService,
   actor: AuthorizedTenantActorContext,
   requestId: string,
@@ -76,7 +76,7 @@ function resolveAdsAction(
  * @param error - Envelope produced by `AdsService` or denial helpers.
  * @returns Status code defaulting to 500 for non-disclosing denials.
  */
-const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 function response(error: PublicErrorEnvelope) {
   return NextResponse.json(error, { status: statusFor(error) });
 }
@@ -184,5 +184,5 @@ async function handleUpload(request: Request, requestId: string) {
   }
 }
 
-const GET = withApiAccess('GET /api/dashboard/ads', handleGET);
-const POST = withApiAccess('POST /api/dashboard/ads', handlePOST);
+export const GET = withApiAccess('GET /api/dashboard/ads', handleGET);
+export const POST = withApiAccess('POST /api/dashboard/ads', handlePOST);
