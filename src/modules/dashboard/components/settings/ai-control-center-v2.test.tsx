@@ -84,12 +84,13 @@ describe('AI Control Center V2', () => {
     expect(screen.getByRole('button', { name: /Muat ulang/ })).toBeDefined();
   });
 
-  it('opens advanced configuration only on explicit user action', async () => {
+  it('opens the CRUD workspace through the persistent V2 navigation', async () => {
     stubFetch();
     render(<AiControlCenterV2 organizationId="org-1" command={command} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Konfigurasi lanjutan/ }));
-    expect(await screen.findByRole('heading', { name: 'Konfigurasi AI lengkap' })).toBeDefined();
-    expect(screen.getByRole('button', { name: /Kembali ke Control Center/ })).toBeDefined();
+    fireEvent.click(await screen.findByRole('button', { name: 'Kelola AI' }));
+    expect(await screen.findByText('Workflow CRUD dan kebijakan AI')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ringkasan' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Kelola AI' }).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('handles a valid but empty activity and chain health without inventing rows', async () => {

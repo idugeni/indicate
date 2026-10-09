@@ -3,7 +3,6 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft,
   CircleDollarSign,
   Image,
   Megaphone,
@@ -380,22 +379,37 @@ export function AdsControlCenterV2({ organizationId }: { readonly organizationId
 
   if (showAdvanced) {
     return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-5">
+        <header className="grid gap-4 border-b border-hairline pb-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-brass">
-              Advanced controls
+            <p className="m-0 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-brass">
+              Revenue Operations · Ad Inventory
             </p>
-            <h2 className="m-0 mt-1 font-serif text-xl font-semibold text-paper">
-              Konfigurasi iklan lengkap
-            </h2>
+            <h1 className="m-0 mt-1 font-serif text-2xl font-semibold tracking-tight text-paper sm:text-3xl">
+              Ads Control Center
+            </h1>
+            <p className="m-0 mt-2 max-w-2xl text-sm leading-6 text-paper-dim">
+              Kelola slot, kreatif, pengiklan, campaign, dan placement langsung dari workspace V2.
+            </p>
           </div>
-          <Button type="button" variant="outline" onClick={() => setShowAdvanced(false)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Kembali ke Control Center
-          </Button>
-        </div>
-        <AdsManagementPanel organizationId={organizationId} />
+          <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-hairline bg-bg-raised p-1" aria-label="Workspace iklan">
+            <Button type="button" size="sm" variant="ghost" aria-pressed={!showAdvanced} onClick={() => setShowAdvanced(false)}>
+              Ringkasan
+            </Button>
+            <Button type="button" size="sm" aria-pressed={showAdvanced} onClick={() => setShowAdvanced(true)}>
+              Kelola iklan
+            </Button>
+          </div>
+        </header>
+        <Card className="rounded-lg border-hairline bg-bg-raised shadow-none">
+          <CardHeader className="border-b border-hairline pb-3">
+            <CardTitle className="text-sm">Workflow CRUD iklan</CardTitle>
+            <CardDescription>Perubahan inventori dan campaign memakai API organisasi yang sama; operasi penyimpanan dilakukan hanya setelah konfirmasi pengguna.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <AdsManagementPanel organizationId={organizationId} />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -415,15 +429,19 @@ export function AdsControlCenterV2({ organizationId }: { readonly organizationId
             tetap tersedia saat perlu mengubah konfigurasi.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" onClick={() => void load()} disabled={busy}>
             <RefreshCw className={'mr-2 h-4 w-4 ' + (busy ? 'animate-spin' : '')} />
             Muat ulang
           </Button>
-          <Button type="button" onClick={() => setShowAdvanced(true)}>
-            <SlidersHorizontal className="mr-2 h-4 w-4" />
-            Konfigurasi lanjutan
-          </Button>
+          <div className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-bg-raised p-1" aria-label="Workspace iklan">
+            <Button type="button" size="sm" aria-pressed={!showAdvanced} onClick={() => setShowAdvanced(false)}>
+              Ringkasan
+            </Button>
+            <Button type="button" size="sm" variant="ghost" aria-pressed={showAdvanced} onClick={() => setShowAdvanced(true)}>
+              Kelola iklan
+            </Button>
+          </div>
         </div>
       </header>
 

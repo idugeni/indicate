@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
-  ArrowLeft,
   Bot,
   CheckCircle2,
   Clock3,
@@ -265,22 +264,37 @@ export function AiControlCenterV2({
 
   if (showAdvanced) {
     return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-5">
+        <header className="grid gap-4 border-b border-hairline pb-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-brass">
-              Advanced controls
+            <p className="m-0 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-brass">
+              Intelligence Layer · AI Control Plane
             </p>
-            <h2 className="m-0 mt-1 font-serif text-xl font-semibold text-paper">
-              Konfigurasi AI lengkap
-            </h2>
+            <h1 className="m-0 mt-1 font-serif text-2xl font-semibold tracking-tight text-paper sm:text-3xl">
+              AI Control Center
+            </h1>
+            <p className="m-0 mt-2 max-w-2xl text-sm leading-6 text-paper-dim">
+              Kelola kredensial, routing, kebijakan biaya, dan fallback tanpa meninggalkan workspace V2.
+            </p>
           </div>
-          <Button type="button" variant="outline" onClick={() => setShowAdvanced(false)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Kembali ke Control Center
-          </Button>
-        </div>
-        <AiManagementPanel organizationId={organizationId} command={command} />
+          <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-hairline bg-bg-raised p-1" aria-label="Workspace AI">
+            <Button type="button" size="sm" variant="ghost" aria-pressed={!showAdvanced} onClick={() => setShowAdvanced(false)}>
+              Ringkasan
+            </Button>
+            <Button type="button" size="sm" aria-pressed={showAdvanced} onClick={() => setShowAdvanced(true)}>
+              Kelola AI
+            </Button>
+          </div>
+        </header>
+        <Card className="rounded-lg border-hairline bg-bg-raised shadow-none">
+          <CardHeader className="border-b border-hairline pb-3">
+            <CardTitle className="text-sm">Workflow CRUD dan kebijakan AI</CardTitle>
+            <CardDescription>Operasi kredensial dan rotasi secret tetap memakai konfirmasi eksplisit serta endpoint organisasi yang ada.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <AiManagementPanel organizationId={organizationId} command={command} />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -300,15 +314,19 @@ export function AiControlCenterV2({
             lanjutan hanya saat perlu mengubah kebijakan atau kredensial.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" onClick={() => void load()} disabled={busy}>
             <RefreshCw className={`mr-2 h-4 w-4 ${busy ? 'animate-spin' : ''}`} />
             Muat ulang
           </Button>
-          <Button type="button" onClick={() => setShowAdvanced(true)}>
-            <SlidersHorizontal className="mr-2 h-4 w-4" />
-            Konfigurasi lanjutan
-          </Button>
+          <div className="inline-flex items-center gap-1 rounded-lg border border-hairline bg-bg-raised p-1" aria-label="Workspace AI">
+            <Button type="button" size="sm" aria-pressed={!showAdvanced} onClick={() => setShowAdvanced(false)}>
+              Ringkasan
+            </Button>
+            <Button type="button" size="sm" variant="ghost" aria-pressed={showAdvanced} onClick={() => setShowAdvanced(true)}>
+              Kelola AI
+            </Button>
+          </div>
         </div>
       </header>
 
