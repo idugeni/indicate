@@ -67,6 +67,9 @@ describe('AI Operator tool registry', () => {
   it('validates bounded filters for site and audit read tools', () => {
     expect(authorizeAiOperatorTool(actor(['media.read']), 'media.assets.read', {}))
       .toEqual({ allowed: true, requiresApproval: false, risk: 'read' });
+    expect(authorizeAiOperatorTool(actor(['media.read'], ['platform.super_admin']), 'media.assets.read', {
+      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+    })).toEqual({ allowed: false, reason: 'INVALID_INPUT' });
     expect(authorizeAiOperatorTool(actor(['publishing.read']), 'publishing.delivery.read', {
       jobId: '11111111-1111-4111-8111-111111111111',
     })).toEqual({ allowed: true, requiresApproval: false, risk: 'read' });
