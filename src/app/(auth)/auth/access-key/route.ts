@@ -10,33 +10,6 @@ import { resolveAccessKeyDestination } from './route-helpers';
 
 const MAX_COOKIE_AGE_SECONDS = 30 * 24 * 60 * 60;
 
-/**
- * Dashboard views allowed as an access-key landing target.
- *
- * @remarks Mirrors `View` in `view-registry.ts` without importing its icon
- * components into this edge route; a test pins the parity.
- */
-const VIEW_DESTINATIONS: ReadonlySet<string> = new Set([
-  'dashboard',
-  'configuration',
-  'publishers',
-  'editorial',
-  'taxonomy',
-  'articles',
-  'media',
-  'publishing',
-  'published',
-  'ads',
-  'analytics',
-  'audit',
-  'operations',
-  'settings',
-  'customers',
-  'content',
-  'billing',
-  'moderation',
-  'ai',
-]);
 
 /**
  * Redirect without caching or forwarding the bearer URL as a referrer.
