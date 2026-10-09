@@ -113,6 +113,25 @@ describe('Monetization Control Center V2', () => {
     expect(await screen.findByText('Belum ada faktur untuk organisasi ini.')).toBeDefined();
   });
 
+  it('does not misreport an invoice request failure as an empty ledger', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        if (String(input).includes('subscription-state')) {
+          return { ok: true, json: async () => ({ state: 'active' }) };
+        }
+        if (String(input).includes('scope=invoices')) {
+          return { ok: false, status: 503, json: async () => [] };
+        }
+        return { ok: true, json: async () => [] };
+      }),
+    );
+    render(<MonetizationControlCenterV2 organizationId="org-1" permissions={[]} />);
+    expect(await screen.findByText('Gagal memuat data monetisasi.')).toBeDefined();
+    expect(screen.getByText(/Faktur tidak dapat dimuat/)).toBeDefined();
+    expect(screen.queryByText('Belum ada faktur untuk organisasi ini.')).toBeNull();
+  });
+
   it('loads subsequent invoice pages using the last row cursor', async () => {
     const invoice = (index: number) => ({
       id: `invoice-${index}`,
