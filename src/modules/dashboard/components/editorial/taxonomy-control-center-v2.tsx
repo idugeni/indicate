@@ -191,6 +191,22 @@ export function TaxonomyControlCenterV2({
   ).length;
   const totalTagReferences = snapshot.tags.reduce((sum, item) => sum + item.count, 0);
 
+  if (data === null || data === undefined) {
+    return (
+      <div role="status" aria-label="Memuat Taxonomy Studio" aria-busy="true" className="space-y-5">
+        <Skeleton className="h-28 w-full" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+        </div>
+        <Skeleton className="h-72 w-full" />
+        <Skeleton className="h-52 w-full" />
+      </div>
+    );
+  }
+
   if (showAdvanced) {
     return (
       <div className="space-y-4">
