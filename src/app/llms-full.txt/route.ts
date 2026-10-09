@@ -16,7 +16,7 @@ import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
  * @param partners - Active partner organizations.
  * @returns Markdown body following the summary with feed and policy links.
  */
-export function controlPlaneLlmsFull(
+function controlPlaneLlmsFull(
   host: string,
   portals: readonly { readonly name: string; readonly hostname: string }[] = [],
   partners: readonly { readonly name: string }[] = [],
@@ -44,7 +44,7 @@ export function controlPlaneLlmsFull(
  * @param articles - Already-loaded list items; no extra query beyond the page load.
  * @returns Markdown body with extended coverage list and feed links.
  */
-export function tenantLlmsFull(
+function tenantLlmsFull(
   host: string,
   siteName: string,
   description: string,
@@ -125,4 +125,4 @@ async function handleGET() {
  * @remarks Same bounded reads as GET /llms.txt; the full variant only renders
  * more of the already-loaded list, never an extra query.
  */
-export const GET = withApiAccess('GET /llms-full.txt', handleGET, { accessLog: 'errors-only' });
+const GET = withApiAccess('GET /llms-full.txt', handleGET, { accessLog: 'errors-only' });
