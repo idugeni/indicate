@@ -313,6 +313,7 @@ export async function consumeAiOperatorApproval(
         eq(aiOperatorApprovals.requesterActorId, input.command.actorId),
       ),
     });
+    if (!existing) return { ok: false, reason: 'NOT_FOUND' };
     if (existing.commandHash === commandHash && existing.state === 'consumed' && existing.consumedAt !== null) {
       await appendApprovalAudit(transaction, {
         organizationId: input.command.organizationId,
