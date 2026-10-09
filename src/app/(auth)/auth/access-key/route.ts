@@ -43,7 +43,7 @@ const VIEW_DESTINATIONS: ReadonlySet<string> = new Set([
  * The key is still presented in the incoming URL, so callers should prefer
  * short-lived credentials and revoke any key that may have been exposed.
  */
-export function createAccessKeyRedirect(destination: URL): NextResponse {
+function createAccessKeyRedirect(destination: URL): NextResponse {
   const response = NextResponse.redirect(destination, { status: 303 });
   response.headers.set('Cache-Control', 'no-store, max-age=0');
   response.headers.set('Pragma', 'no-cache');
@@ -57,7 +57,7 @@ export function createAccessKeyRedirect(destination: URL): NextResponse {
  * @param to - Optional `?to=` view slug; unknown values fall back to editorial.
  * @returns Internal dashboard path; never an external URL.
  */
-export function resolveAccessKeyDestination(to: string | null): string {
+function resolveAccessKeyDestination(to: string | null): string {
   if (to !== null && VIEW_DESTINATIONS.has(to)) return `/dashboard?view=${to}`;
   return '/dashboard?view=editorial';
 }
@@ -97,4 +97,4 @@ async function handleGET(request: NextRequest) {
   return response;
 }
 
-export const GET = withApiAccess('GET /auth/access-key', handleGET);
+const GET = withApiAccess('GET /auth/access-key', handleGET);
