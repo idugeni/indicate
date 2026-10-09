@@ -65,7 +65,7 @@ async function sendWelcomeEmail(identity: { readonly authUserId: string; readonl
  * @param tokenType - Raw `type` query param from the Supabase email link.
  * @returns Supported verification type; unknown types fall back to email codes.
  */
-function resolveTokenKind(tokenType: string | null): 'email' | 'signup' | 'magiclink' | 'recovery' {
+export function resolveTokenKind(tokenType: string | null): 'email' | 'signup' | 'magiclink' | 'recovery' {
   return tokenType === 'signup' || tokenType === 'magiclink' || tokenType === 'recovery' ? tokenType : 'email';
 }
 
@@ -76,7 +76,7 @@ function resolveTokenKind(tokenType: string | null): 'email' | 'signup' | 'magic
  * @param next - Raw next param, or null when absent.
  * @returns Fallback per flow when next is absent, otherwise the sanitized path.
  */
-function resolveCallbackDestination(authType: string | null, next: string | null): string {
+export function resolveCallbackDestination(authType: string | null, next: string | null): string {
   const fallback = authType === 'recovery' ? '/update-password' : '/dashboard';
   return next === null ? fallback : safeRedirectPath(next);
 }
@@ -91,11 +91,11 @@ function resolveCallbackDestination(authType: string | null, next: string | null
  * and is not an expired link, so labelling it `unavailable` sends operators and
  * users after the wrong cause.
  */
-function resolveCallbackFailureAlert(providerError: string | null): 'provider' | 'unavailable' {
+export function resolveCallbackFailureAlert(providerError: string | null): 'provider' | 'unavailable' {
   return providerError === null ? 'unavailable' : 'provider';
 }
 
-async function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const code = params.get('code') ?? '';
   const tokenHash = params.get('token_hash') ?? '';
