@@ -24,7 +24,7 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 | 4 | Content Library | `editorial/content-library-v2.tsx` | Workspace article listing + archive/restore/delete commands | `editorial/content-library-v2.test.tsx` | **Defects found and fixed:** pager beyond loaded rows and bulk archive refreshing once per item |
 | 5 | Taxonomy Studio | `editorial/taxonomy-control-center-v2.tsx` | Workspace taxonomy projection + taxonomy commands | `editorial/taxonomy-control-center-v2.test.tsx` | Dedicated V2 surface; command contract not live-tested here |
 | 6 | Publisher Network | `editorial/publisher-network-v2.tsx` | Workspace publisher projection + publisher commands | `editorial/publisher-network-v2.test.tsx` | Dedicated V2 surface; command contract not live-tested here |
-| 7 | Media Library | `publishing/media-library-v2.tsx` | Publishing command API: `media.list`, `media.read`; upload subflow | `publishing/media-library-v2.test.tsx` **added on this branch** | **Defect found and fixed:** filtered server results were discarded; stale filter responses could overwrite the latest query |
+| 7 | Media Library | `publishing/media-library-v2.tsx` | Publishing command API: `media.list`, `media.read`; upload subflow | `publishing/media-library-v2.test.tsx` **added on this branch** | **Defects found and fixed:** filtered server results were discarded, the default-query signature was incorrect, and stale filter responses could overwrite the latest query |
 | 8 | Distribution Control | `publishing/distribution-control-v2.tsx` | Publishing command API: publication request/status and site assignment | `publishing/distribution-control-v2.test.tsx` | Dedicated V2 surface; production delivery not exercised by this audit |
 | 9 | Live Results | `publishing/live-results-v2.tsx` | Workspace published-results projection + share-readiness endpoint | `publishing/live-results-v2.test.tsx` | On-demand readiness check is covered; external destination readiness not live-tested |
 | 10 | Ads Control Center | `ads/ads-control-center-v2.tsx` | `/api/dashboard/ads` | `ads/ads-control-center-v2.test.tsx` | Dedicated V2 surface; endpoint performs organization authorization in source |
@@ -47,6 +47,14 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 **Change:** Store the returned `nextPage.items`; render only the server result set for non-default filters; preserve base-page plus cursor-appended items for the default query; cancel state commits from superseded requests.
 
 **Regression tests added:** server-filtered results replace the base page, cursor continuation appends to the filtered result, and an older in-flight query cannot replace a newer query.
+
+### M2 — Media Library V2 default-query signature did not match the filter state
+
+**Evidence:** The component built the query signature as `search|owner|state` (for example, `|all|all`) but checked for `||` to detect the default query. That condition was never true, so the base media page and its initial cursor were not used for the default filter state.
+
+**Change:** Derive the default-query state from the actual filter values (empty search, all owners, all states) and use that state consistently when choosing the base page and cursor.
+
+**Regression tests added:** default media is visible, a non-default server filter replaces the base page, cursor continuation appends results, and a stale response cannot replace the latest query.
 
 ### C1 — Content Library V2 allowed navigation to pages whose rows had not been fetched
 
@@ -91,7 +99,7 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 
 ## Verification status
 
-At the time this report was authored, the previously observed `main` quality gate was green, but that run predates these branch changes. **It does not validate this branch.** The branch's tests, lint, build, performance check, and quality gate must pass on the exact new head SHA before merge. Authenticated browser checks, cross-tenant denial tests, and live external-service checks remain unverified unless separately run and recorded.
+Local verification on the code fix set: `npm run typecheck`, `npm run lint`, `npm run lint:docs`, and `npm run perf` passed; `npm test` passed **546 test files / 3,559 tests**, and the three targeted V2 suites passed **15/15 tests**. A local production build compiled and passed TypeScript, then stopped during static page generation because this isolated environment lacks required production runtime secrets; this is not counted as a full build pass. The CI quality gate for the exact latest branch SHA must pass before merge. Authenticated browser checks, cross-tenant denial tests, and live external-service checks remain unverified unless separately run and recorded.
 
 ## Remaining audit work before calling V2 complete
 
