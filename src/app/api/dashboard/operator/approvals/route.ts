@@ -39,7 +39,9 @@ async function handleGET(request: Request) {
   }
 
   const context = await resolveAiOperatorDashboardContext(organizationId.data, requestId, request.headers);
-  if (context === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  if (context === null || context.actor.actorType !== 'user') {
+    return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  }
 
   const canReview = context.actor.permissionSet.has('ai_operator.approve');
   const rows = await context.db.query.aiOperatorApprovals.findMany({
@@ -86,7 +88,9 @@ async function handlePOST(request: Request) {
   }
 
   const context = await resolveAiOperatorDashboardContext(parsed.data.organizationId, requestId, request.headers);
-  if (context === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  if (context === null || context.actor.actorType !== 'user') {
+    return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  }
 
   if (parsed.data.action === 'request') {
     const definition = getAiOperatorTool(parsed.data.toolId);
