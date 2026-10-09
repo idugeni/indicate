@@ -124,8 +124,8 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     icon: Link2, suppressesRawCollections: true,
   },
   ads: {
-    label: 'Monetization', title: 'Monetization Control', eyebrow: 'Revenue Operations', group: 'publishing',
-    description: 'Kelola inventory iklan dan konfigurasi monetisasi jaringan.',
+    label: 'Monetization', title: 'Ads Control Center', eyebrow: 'Revenue Operations', group: 'publishing',
+    description: 'Pantau kesiapan slot iklan, cakupan kreatif, campaign, dan penempatan jaringan.',
     icon: Megaphone, requiredPermission: DASHBOARD_PERMISSIONS.siteManage, suppressesRawCollections: true,
   },
   configuration: {

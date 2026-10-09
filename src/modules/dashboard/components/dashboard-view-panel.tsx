@@ -135,10 +135,10 @@ const TrustModerationV2 = dynamic(
     })),
   { loading: () => <DashboardViewSkeleton view="moderation" /> },
 );
-const AdsManagementPanel = dynamic(
+const AdsControlCenterV2 = dynamic(
   () =>
-    import('@/modules/dashboard/components/ads/ads-management-panel').then((module) => ({
-      default: module.AdsManagementPanel,
+    import('@/modules/dashboard/components/ads/ads-control-center-v2').then((module) => ({
+      default: module.AdsControlCenterV2,
     })),
   { loading: () => <DashboardViewSkeleton view="ads" /> },
 );
@@ -354,7 +354,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           ) : null}
           {view === 'operations' ? <SystemOperationsV2 data={data} /> : null}
           {view === 'moderation' ? <TrustModerationV2 organizationId={organizationId} /> : null}
-          {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
+          {view === 'ads' ? <AdsControlCenterV2 organizationId={organizationId} /> : null}
           {view === 'ai' ? (
             <AiControlCenterV2 organizationId={organizationId} command={command} />
           ) : null}
