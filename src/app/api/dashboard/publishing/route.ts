@@ -22,6 +22,7 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { logEvent } from '@/core/observability/logger';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
+import { statusFor } from './route-helpers';
 import type { Result } from '@/core/result';
 import type { PublishingRepository } from '@/modules/publishing/ports';
 import type { ObjectStoragePort } from '@/integrations/storage/ports';
@@ -69,7 +70,6 @@ const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' 
  * @param error - Envelope produced by `PublicationService` or denial helpers.
  * @returns Status code honoring 409 for idempotency and lease conflicts.
  */
-export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'UNAUTHENTICATED' ? 401 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'INVALID_INPUT' ? 400 : ['CONFLICT', 'IDEMPOTENCY_CONFLICT', 'INVALID_STATE_TRANSITION'].includes(error.error.code) ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 
 async function contextFor(organizationId: string, requestId: string): Promise<ContextResult> {
   const cookieStore = await cookies();
