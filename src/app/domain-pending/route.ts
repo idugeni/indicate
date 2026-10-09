@@ -12,7 +12,7 @@ const PENDING_ATTEMPT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab
  * @param value - Raw attempt query param.
  * @returns True only for a well-formed UUID.
  */
-export function isPendingAttemptId(value: string | null): boolean {
+function isPendingAttemptId(value: string | null): boolean {
   return value !== null && PENDING_ATTEMPT_PATTERN.test(value);
 }
 
@@ -26,4 +26,4 @@ async function handleGET(request: Request) {
   return new Response('Pending hostname verification', { status: 425, headers: { ...headers, 'X-Indicate-Pending-Attempt': attemptId } });
 }
 
-export const GET = withApiAccess('GET /domain-pending', handleGET);
+const GET = withApiAccess('GET /domain-pending', handleGET);
