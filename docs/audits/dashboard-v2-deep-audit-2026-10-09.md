@@ -30,7 +30,7 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 | 10 | Ads Control Center | `ads/ads-control-center-v2.tsx` | `/api/dashboard/ads` | `ads/ads-control-center-v2.test.tsx` | Dedicated V2 surface; endpoint performs organization authorization in source |
 | 11 | Network Infrastructure | `infrastructure/infrastructure-control-center-v2.tsx` | Workspace configuration view + existing configuration commands | `infrastructure/infrastructure-control-center-v2.test.tsx` | Dedicated V2 shell reuses focused domain forms; those subflows need end-to-end verification |
 | 12 | Access & Integrations | `settings/access-integrations-v2.tsx` | Workspace integration projection + integrations commands | `settings/access-integrations-v2.test.tsx` | Permission-aware UI observed; endpoint/runtime permission matrix not exercised here |
-| 13 | Billing & Plan | `billing/monetization-control-center-v2.tsx` | `/api/dashboard/billing` and integrations customer listing | `billing/monetization-control-center-v2.test.tsx` | **Defect found and fixed:** initial invoice ledger could render an empty state while its request was still pending |
+| 13 | Billing & Plan | `billing/monetization-control-center-v2.tsx` | `/api/dashboard/billing` and integrations customer listing | `billing/monetization-control-center-v2.test.tsx` | **Defects found and fixed:** initial loading/empty ambiguity and missing cursor continuation in the invoice ledger |
 | 14 | Audit & Security | `audit/audit-security-v2.tsx` | Workspace audit projection and cursor-based audit continuation | `audit/audit-security-v2.test.tsx` | Dedicated V2 investigation surface; audit retention/runtime permissions not exercised here |
 | 15 | System Operations | `operations/system-operations-v2.tsx` | Workspace operations projection | `operations/system-operations-v2.test.tsx` | Dedicated V2 control surface; destructive/maintenance operations not exercised here |
 | 16 | Trust & Moderation | `trust/trust-moderation-v2.tsx` | `/api/dashboard/moderation` | `trust/trust-moderation-v2.test.tsx` | Platform-authorized API boundary observed; privileged workflow not live-tested |
@@ -55,6 +55,14 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 **Change:** Initialize the loading state as active, route the initial request through the shared `load()` lifecycle, and render an explicit invoice-loading status until the request settles. Empty-state copy now distinguishes a genuinely empty ledger from a query/filter with no matches.
 
 **Regression test added:** a deferred initial request must show loading and must not declare the ledger empty until the request completes.
+
+### B2 — Billing V2 did not expose the API's cursor-paginated invoice ledger
+
+**Evidence:** `GET /api/dashboard/billing?scope=invoices` accepts `limit` and `cursor`, and the repository calls `invoice_list_for_org` with a bounded limit and last-row cursor. The V2 component fetched only the first page and had no continuation control.
+
+**Change:** Request an explicit page size of 100, derive the next cursor from the final row's `createdAt~id`, append subsequent pages without duplicate invoice IDs, and expose a disabled/loading-aware “Muat faktur berikutnya” action while another page exists.
+
+**Regression test added:** a full first page exposes continuation; the next cursor request appends the next invoice and hides continuation when the response is shorter than the page size.
 
 ## Cross-cutting checks observed in source
 
