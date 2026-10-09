@@ -132,9 +132,9 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-brass" />
           <CardTitle className="text-sm">AI Operator</CardTitle>
-          <span className="rounded border border-hairline px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-paper-dim">Read-only</span>
+          <span className="rounded border border-hairline px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-paper-dim">Governed</span>
         </div>
-        <CardDescription>Susun rencana AI lalu jalankan hanya kemampuan baca yang sudah memiliki handler. Perubahan data belum diaktifkan.</CardDescription>
+        <CardDescription>Susun rencana AI untuk pemeriksaan lintas domain. Distribusi publikasi tersedia melalui alur persetujuan terpisah.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pt-4">
         <label className="block space-y-1.5">
@@ -159,7 +159,7 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
         </div>
         <div className="flex items-start gap-2 rounded-md border border-hairline p-3 text-xs leading-5 text-paper-dim">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brass" />
-          <p className="m-0">Setiap langkah divalidasi ulang di server. Domain tanpa handler ditolak; aksi tulis, kredensial, billing, dan publikasi belum tersedia.</p>
+          <p className="m-0">Setiap langkah baca divalidasi ulang di server. Distribusi publikasi memerlukan persetujuan persisten dari aktor berbeda; perubahan lain, kredensial, dan billing tetap dinonaktifkan.</p>
         </div>
         {error ? <FormNotice tone="error">{error}</FormNotice> : null}
         {plan ? <div className="space-y-2 rounded-md border border-hairline p-3">
