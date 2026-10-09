@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
-  Globe2,
   Layers3,
   RefreshCw,
   Send,
@@ -14,6 +13,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import type { AnalyticsProjection, DashboardProjection, TaskDay } from '@/modules/dashboard/models';
@@ -44,7 +44,7 @@ function Surface({
   return (
     <section
       aria-label={label}
-      className={`min-w-0 rounded-2xl border border-white/[0.07] bg-[#0b1020]/80 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.16)] sm:p-6 ${className}`}
+      className={`min-w-0 rounded-[1.15rem] border border-white/[0.075] bg-[linear-gradient(145deg,rgba(15,22,42,0.94),rgba(9,14,28,0.96))] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.16)] sm:p-5 lg:p-6 ${className}`}
     >
       {children}
     </section>
@@ -106,7 +106,7 @@ function Metric({
   readonly label: string;
   readonly value: string;
   readonly detail: string;
-  readonly icon: typeof Globe2;
+  readonly icon: LucideIcon;
   readonly tone?: 'good' | 'warn' | 'bad' | 'neutral';
 }) {
   const iconTone = {
@@ -353,7 +353,7 @@ export function DashboardV2CommandCenter({
           </div>
           <Sparkles className="h-4 w-4 text-indigo-300" aria-hidden="true" />
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           {([
             ['Write article', 'editorial', FileText],
             ['Publishing queue', 'publishing', Send],
