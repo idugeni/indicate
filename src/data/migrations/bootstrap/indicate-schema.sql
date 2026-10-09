@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (277 migrations):
+-- Reviewed sources, in journal order (278 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -291,6 +291,7 @@
 --   275  20261006090000_cross_org_bridge_urls  ledger sha256:2b926d198c1067803ab6bc114225844bc888abf034586afa5869289537cc8749
 --   276  20261006100000_own_bridge_reads  ledger sha256:7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea
 --   277  20261006110000_articles_tags_gin_single  ledger sha256:ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6
+--   278  20261009120000_ai_operator_approvals  ledger sha256:212c27bf1ee232f47ccfe18ee06780d4866d3899645894b8857fc93aedb3c1aa
 
 BEGIN;
 
@@ -23017,4 +23018,47 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (276, 'articles_tags_gin_single', 'sha256:0558eee2d6ca0947d63127d2ee45260599e0fe811d12930dd79f2d9ae0ef4716');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6', 1791374400000);
+
+-- ----------------------------------------------------------------------
+-- 20261009120000_ai_operator_approvals
+-- ----------------------------------------------------------------------
+-- Persisted AI Operator approvals; approval is bound to an exact command hash.
+CREATE TYPE public.ai_operator_approval_state AS ENUM ('pending', 'approved', 'rejected', 'consumed', 'expired');
+CREATE TABLE public.ai_operator_approvals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE RESTRICT,
+  requester_actor_id text NOT NULL,
+  approver_actor_id text,
+  tool_id text NOT NULL,
+  command_input jsonb NOT NULL,
+  command_hash text NOT NULL,
+  state public.ai_operator_approval_state NOT NULL DEFAULT 'pending',
+  idempotency_key text NOT NULL,
+  decision_note text,
+  expires_at timestamptz NOT NULL,
+  approved_at timestamptz,
+  rejected_at timestamptz,
+  consumed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT ai_operator_approvals_command_hash_check CHECK (length(command_hash) = 64),
+  CONSTRAINT ai_operator_approvals_tool_id_check CHECK (length(tool_id) BETWEEN 1 AND 120),
+  CONSTRAINT ai_operator_approvals_actor_ids_check CHECK (length(requester_actor_id) BETWEEN 1 AND 200 AND (approver_actor_id IS NULL OR length(approver_actor_id) BETWEEN 1 AND 200)),
+  CONSTRAINT ai_operator_approvals_idempotency_check CHECK (length(idempotency_key) BETWEEN 1 AND 200),
+  CONSTRAINT ai_operator_approvals_input_object_check CHECK (jsonb_typeof(command_input) = 'object'),
+  CONSTRAINT ai_operator_approvals_decision_state_check CHECK (
+    (state = 'pending' AND approver_actor_id IS NULL AND approved_at IS NULL AND rejected_at IS NULL AND consumed_at IS NULL)
+    OR (state = 'approved' AND approver_actor_id IS NOT NULL AND approved_at IS NOT NULL AND rejected_at IS NULL AND consumed_at IS NULL)
+    OR (state = 'rejected' AND approver_actor_id IS NOT NULL AND approved_at IS NULL AND rejected_at IS NOT NULL AND consumed_at IS NULL)
+    OR (state = 'consumed' AND approver_actor_id IS NOT NULL AND approved_at IS NOT NULL AND consumed_at IS NOT NULL AND rejected_at IS NULL)
+    OR (state = 'expired' AND consumed_at IS NULL)
+  )
+);
+CREATE UNIQUE INDEX ai_operator_approvals_idempotency_unique ON public.ai_operator_approvals (organization_id, requester_actor_id, idempotency_key);
+CREATE INDEX ai_operator_approvals_org_state_created_idx ON public.ai_operator_approvals (organization_id, state, created_at DESC);
+CREATE INDEX ai_operator_approvals_expiry_idx ON public.ai_operator_approvals (state, expires_at);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (277, 'ai_operator_approvals', 'sha256:e5865bcc83dfd1e06797d7508f54e4398f1689534877138c53105129044873ca');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('212c27bf1ee232f47ccfe18ee06780d4866d3899645894b8857fc93aedb3c1aa', 1791547200000);
 COMMIT;
