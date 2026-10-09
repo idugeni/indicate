@@ -40,6 +40,15 @@ describe('AiOperatorConsole', () => {
     expect((submitted.input as Record<string, unknown>).idempotencyKey).toEqual(submitted.idempotencyKey);
   });
 
+  it('does not offer self-approval controls to the requester', async () => {
+    const ownApproval = { id: '55555555-5555-4555-8555-555555555555', toolId: 'publishing.delivery.request', input: { articleId: '11111111-1111-4111-8111-111111111111' }, state: 'pending', expiresAt: '2026-10-10T00:00:00.000Z', isRequester: true };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ approvals: [ownApproval], canReview: true, canRequest: true }) }));
+    render(<AiOperatorConsole organizationId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" />);
+    expect(await screen.findByText(/Status: pending/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Setujui/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Tolak/i })).toBeNull();
+  });
+
   it('executes an approved publication only as its requester and refreshes the approval state', async () => {
     const approval = { id: '44444444-4444-4444-8444-444444444444', toolId: 'publishing.delivery.request', input: { articleId: '11111111-1111-4111-8111-111111111111', siteIds: ['22222222-2222-4222-8222-222222222222'], idempotencyKey: 'same-key', options: {}, overrides: {} }, state: 'approved', expiresAt: '2026-10-10T00:00:00.000Z', isRequester: true };
     const mockFetch = vi.fn()
