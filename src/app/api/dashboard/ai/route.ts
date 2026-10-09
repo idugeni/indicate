@@ -19,6 +19,7 @@ import { configureAiTts, synthesizeSpeech } from '@/modules/ai/ai-tts';
 import { configureAiTranscribe, transcribeAudio, transcribeToArticle } from '@/modules/ai/ai-transcribe';
 import { configurePublisherVerify, verifyPublisher } from '@/modules/ai/ai-verify';
 import { configureAiAssistant, assistantChat } from '@/modules/ai/ai-assistant';
+import { planOperatorActions } from '@/modules/ai/operator-planner';
 import { ARTICLE_DRAFT_SCHEMA } from '@/modules/ai/ai-response-schemas';
 import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
 import { SEMANTIC_CANDIDATE_LIMIT, embedQueryVector, reindexArticleEmbeddings, toSemanticCandidate, type WorkersAiCredentials } from '@/modules/ai/ai-embeddings';
@@ -67,6 +68,7 @@ const commandSchema = z.object({
     'transcribe-audio',
     'transcribe-to-article',
     'publisher-verify',
+    'operator-plan',
     'assistant-chat',
   ]),
   payload: z.record(z.string(), z.unknown()),
@@ -785,6 +787,10 @@ async function handlePOST(request: Request) {
       case 'publisher-verify': {
         const result = await verifyPublisher({ name: str(payload.name, 300), evidence: str(payload.evidence, 4000), organizationId });
         return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'operator-plan': {
+        const result = await planOperatorActions({ request: str(payload.request, 1200), organizationId, deps });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('INVALID_INPUT', result.error, requestId));
       }
       case 'assistant-chat': {
         const messages = Array.isArray(payload.messages) ? payload.messages : [];
