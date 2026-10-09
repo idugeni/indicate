@@ -326,19 +326,6 @@ export function MonetizationControlCenterV2({
               ))}
             </div>
           )}
-          {hasMoreInvoices ? (
-            <div className="mt-3 flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void loadMoreInvoices()}
-                disabled={loadingMoreInvoices || busy}
-              >
-                {loadingMoreInvoices ? 'Memuat faktur…' : 'Muat faktur berikutnya'}
-              </Button>
-            </div>
-          ) : null}
         </SectionCard>
       </div>
 
@@ -472,6 +459,19 @@ export function MonetizationControlCenterV2({
               ))}
             </div>
           )}
+          {hasMoreInvoices ? (
+            <div className="mt-3 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void loadMoreInvoices()}
+                disabled={loadingMoreInvoices || busy}
+              >
+                {loadingMoreInvoices ? 'Memuat faktur…' : 'Muat faktur berikutnya'}
+              </Button>
+            </div>
+          ) : null}
         </SectionCard>
 
         <div className="space-y-5">
