@@ -28,7 +28,7 @@ export type DecideApprovalResult =
   | { readonly ok: false; readonly reason: 'NOT_FOUND' | 'NOT_PENDING' | 'SELF_APPROVAL' | 'EXPIRED' };
 
 export type ConsumeApprovalResult =
-  | { readonly ok: true; readonly record: ApprovalRow }
+  | { readonly ok: true; readonly record: ApprovalRow; readonly reused?: boolean }
   | { readonly ok: false; readonly reason: 'NOT_FOUND' | 'COMMAND_MISMATCH' | 'NOT_APPROVED' | 'SELF_APPROVAL' | 'EXPIRED' | 'ALREADY_CONSUMED' };
 
 const MAX_TTL_SECONDS = 24 * 60 * 60;
@@ -241,6 +241,28 @@ export async function decideAiOperatorApproval(
   });
 }
 
+/** Read-checks an approval before an idempotent executor call; consumed approvals are allowed only for exact-command replay. */
+export async function getUsableAiOperatorApproval(
+  db: Database,
+  input: { readonly approvalId: string; readonly command: AiOperatorCommand; readonly now?: Date },
+): Promise<{ readonly ok: true; readonly record: ApprovalRow; readonly replay: boolean } | { readonly ok: false; readonly reason: 'NOT_FOUND' | 'COMMAND_MISMATCH' | 'NOT_APPROVED' | 'SELF_APPROVAL' | 'EXPIRED' }> {
+  const now = input.now ?? new Date();
+  const record = await db.query.aiOperatorApprovals.findFirst({
+    where: and(
+      eq(aiOperatorApprovals.id, input.approvalId),
+      eq(aiOperatorApprovals.organizationId, input.command.organizationId),
+      eq(aiOperatorApprovals.requesterActorId, input.command.actorId),
+    ),
+  });
+  if (!record) return { ok: false, reason: 'NOT_FOUND' };
+  if (record.commandHash !== hashAiOperatorCommand(input.command)) return { ok: false, reason: 'COMMAND_MISMATCH' };
+  if (record.approverActorId === input.command.actorId) return { ok: false, reason: 'SELF_APPROVAL' };
+  if (record.state === 'consumed' && record.consumedAt !== null) return { ok: true, record, replay: true };
+  if (record.expiresAt.getTime() <= now.getTime()) return { ok: false, reason: 'EXPIRED' };
+  if (record.state !== 'approved' || record.approverActorId === null) return { ok: false, reason: 'NOT_APPROVED' };
+  return { ok: true, record, replay: false };
+}
+
 /** Atomically consumes an approval for one exact command and writes the audit event in the same transaction. */
 export async function consumeAiOperatorApproval(
   db: Database,
@@ -291,12 +313,26 @@ export async function consumeAiOperatorApproval(
         eq(aiOperatorApprovals.requesterActorId, input.command.actorId),
       ),
     });
-    const reason = !existing ? 'NOT_FOUND'
-      : existing.commandHash !== commandHash ? 'COMMAND_MISMATCH'
-        : existing.state === 'consumed' || existing.consumedAt !== null ? 'ALREADY_CONSUMED'
-          : existing.approverActorId === input.command.actorId ? 'SELF_APPROVAL'
-            : existing.expiresAt.getTime() <= now.getTime() ? 'EXPIRED'
-              : 'NOT_APPROVED';
+    if (existing.commandHash === commandHash && existing.state === 'consumed' && existing.consumedAt !== null) {
+      await appendApprovalAudit(transaction, {
+        organizationId: input.command.organizationId,
+        actorId: input.command.actorId,
+        audit: input.audit,
+        action: 'ai_operator.approval.consumed_replay',
+        targetId: existing.id,
+        outcome: 'succeeded',
+        changedFields: [],
+        before: { state: 'consumed', commandHash },
+        after: { state: 'consumed', replay: true, commandHash },
+        occurredAt: now,
+      });
+      return { ok: true, record: existing, reused: true };
+    }
+    const reason = existing.commandHash !== commandHash ? 'COMMAND_MISMATCH'
+      : existing.state === 'consumed' || existing.consumedAt !== null ? 'ALREADY_CONSUMED'
+        : existing.approverActorId === input.command.actorId ? 'SELF_APPROVAL'
+          : existing.expiresAt.getTime() <= now.getTime() ? 'EXPIRED'
+            : 'NOT_APPROVED';
     await appendApprovalAudit(transaction, {
       organizationId: input.command.organizationId,
       actorId: input.command.actorId,
