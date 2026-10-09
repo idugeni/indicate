@@ -166,6 +166,15 @@ async function handlePOST(request: Request) {
       };
       break;
     }
+    case 'operations.summary.read': {
+      const response = await context.service.operations(context.actor);
+      if (!response.ok) {
+        const status = response.error.error.code === 'FORBIDDEN' ? 403 : 400;
+        return NextResponse.json(response.error, { status });
+      }
+      result = response.value;
+      break;
+    }
     case 'audit.events.read': {
       const auditInput = validated.data as {
         actorId?: string; action?: string; targetType?: string;
