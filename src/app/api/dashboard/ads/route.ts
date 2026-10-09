@@ -15,7 +15,7 @@ import { AdsService } from '@/modules/ads/ads-service';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
-import { resolveAdsAction, statusFor, type AdsUploadDeps } from './route-helpers';
+import { resolveAdsAction, statusFor } from './route-helpers';
 
 const querySchema = z.object({ organizationId: z.uuid(), scope: z.enum(['overview']) });
 const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().min(1).max(100), payload: z.unknown() }).strict();
