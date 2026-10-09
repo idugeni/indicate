@@ -43,7 +43,7 @@ async function handleGET() {
  * @param error - Error thrown by the runtime-config admin repository.
  * @returns Status honoring access denial (404) and version conflict (409).
  */
-function runtimeConfigErrorStatus(error: unknown): number {
+export function runtimeConfigErrorStatus(error: unknown): number {
   if (error instanceof RuntimeConfigAdminAccessDeniedError) return 404;
   if (error instanceof RuntimeConfigAdminConflictError) return 409;
   return 500;
