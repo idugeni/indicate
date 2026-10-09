@@ -7,11 +7,8 @@ import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { fetchCachedAnalytics, fetchCachedDashboard } from '@/modules/dashboard/dashboard-dal';
-import { OPERATOR_CAPABILITIES, type OperatorCapabilityDefinition } from '@/modules/ai/operator-capabilities';
+import { OPERATOR_CAPABILITIES, OPERATOR_READ_EXECUTION_ENABLED, type OperatorCapabilityDefinition } from '@/modules/ai/operator-capabilities';
 import type { OperatorPlan } from '@/modules/ai/operator-plan';
-
-export const OPERATOR_READ_EXECUTION_ENABLED = true;
-export const OPERATOR_WRITE_EXECUTION_ENABLED = false;
 
 const EXECUTABLE_READ_CAPABILITIES = new Set([
   'command-center.overview.read',
