@@ -19,8 +19,9 @@ export interface StatusCheckInput {
   readonly checkedAt: Date;
 }
 
-export interface StatusCheckRow extends StatusCheckInput {
+export interface StatusCheckRow extends Omit<StatusCheckInput, 'health'> {
   readonly id: string;
+  readonly health: ComponentHealth | 'unknown';
 }
 
 export interface StatusIncidentRow {
@@ -85,7 +86,7 @@ export class DrizzleStatusRepository {
       .map((row) => ({
         id: row.id,
         component: row.component,
-        health: row.health === 'ok' || row.health === 'degraded' || row.health === 'down' ? row.health : 'ok',
+        health: row.health === 'ok' || row.health === 'degraded' || row.health === 'down' ? row.health : 'unknown',
         latencyMs: row.latency_ms,
         detail: row.detail,
         checkedAt: row.checked_at,
