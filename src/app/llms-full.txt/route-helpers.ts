@@ -1,4 +1,4 @@
-import { controlPlaneLlms } from '@/app/llms.txt/route';
+import { controlPlaneLlms } from '@/app/llms.txt/route-helpers';
 
 /** Render the control-plane full dump: summary plus machine-surface index. */
 export function controlPlaneLlmsFull(
