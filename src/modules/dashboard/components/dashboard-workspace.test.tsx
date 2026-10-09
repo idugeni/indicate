@@ -107,7 +107,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
-    expect(await screen.findByText('INDICATE / COMMAND CENTER')).toBeDefined();
+    expect(await screen.findByText('INDICATE / EXECUTIVE OVERVIEW')).toBeDefined();
   });
 
   it('collapses and expands the sidebar through the edge rail', () => {
@@ -120,7 +120,7 @@ describe('Dashboard workspace', () => {
 
   it('switches the title when an editorial module is selected', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / COMMAND CENTER');
+    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
     fireEvent.click(screen.getByRole('button', { name: 'Compose' }));
     expect(await screen.findByText('Artikel baru', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
@@ -128,7 +128,7 @@ describe('Dashboard workspace', () => {
 
   it('pins the footer to the bottom with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / COMMAND CENTER');
+    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('sticky');
@@ -195,7 +195,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
       />,
     );
-    await screen.findByText('INDICATE / COMMAND CENTER');
+    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
@@ -216,7 +216,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
       />,
     );
-    await screen.findByText('INDICATE / COMMAND CENTER');
+    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
