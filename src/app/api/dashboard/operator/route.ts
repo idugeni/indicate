@@ -16,7 +16,7 @@ import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/mod
 import { isPlatformOnlyWithoutTicket } from '@/core/routing/platform-guard';
 import { fetchCachedAnalytics, fetchCachedDashboard, NextDashboardCacheInvalidator } from '@/modules/dashboard/dashboard-dal';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
-import { authorizeAiOperatorTool, getAiOperatorTool } from '@/modules/ai-operator/tool-registry';
+import { authorizeAiOperatorTool, getAiOperatorTool, listAiOperatorTools } from '@/modules/ai-operator/tool-registry';
 
 const requestSchema = z.object({
   organizationId: z.uuid(),
@@ -223,4 +223,24 @@ async function handlePOST(request: Request) {
   return NextResponse.json({ toolId, requestId, result });
 }
 
+async function handleGET(request: Request) {
+  const requestId = resolveRequestId(request);
+  const organizationId = new URL(request.url).searchParams.get('organizationId');
+  const parsedOrganization = z.uuid().safeParse(organizationId);
+  if (!parsedOrganization.success) {
+    return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid organization.', requestId), { status: 400 });
+  }
+
+  const context = await resolveContext(parsedOrganization.data, requestId, request.headers);
+  if (context === null) {
+    return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  }
+
+  return NextResponse.json({
+    organizationId: context.actor.organizationId,
+    tools: listAiOperatorTools(context.actor, 'tenant'),
+  });
+}
+
+export const GET = withApiAccess('GET /api/dashboard/operator', handleGET);
 export const POST = withApiAccess('POST /api/dashboard/operator', handlePOST);
