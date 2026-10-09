@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, eq, gt, ne } from 'drizzle-orm';
+import { and, eq, gt, lt, ne } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import type * as schema from '@/data/schema';
@@ -117,7 +117,7 @@ export async function decideAiOperatorApproval(
       eq(aiOperatorApprovals.id, input.approvalId),
       eq(aiOperatorApprovals.organizationId, input.organizationId),
       eq(aiOperatorApprovals.state, 'pending'),
-      gt(now, aiOperatorApprovals.expiresAt),
+      lt(aiOperatorApprovals.expiresAt, now),
     ));
     return { ok: false, reason: 'EXPIRED' };
   }
