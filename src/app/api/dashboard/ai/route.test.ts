@@ -180,6 +180,7 @@ vi.mock('@/modules/ai/operator-planner', () => ({
 
 vi.mock('@/modules/auth/authenticate-dashboard', () => ({
   authenticateDashboardUser: async () => ({ id: 'user-1' }),
+  authorizeDashboardPlatform: async () => ({ actorId: 'platform-1', organizationId: null, actorType: 'user', verifiedAuthUserId: 'auth-1', permissionSet: new Set<string>(), platformPermissionSet: new Set<string>(), entryPoint: 'dashboard', requestId: 'req-test' }),
   authorizeDashboardOrganization: async () => ({
     actorId: 'user-1',
     organizationId: ORG,
