@@ -6,7 +6,7 @@ import { OPERATOR_CAPABILITIES } from '@/modules/ai/operator-capabilities';
 import { validateOperatorPlan, type OperatorPlan } from '@/modules/ai/operator-plan';
 
 export type OperatorPlanningResult =
-  | { readonly ok: true; readonly plan: OperatorPlan; readonly executionEnabled: false }
+  | { readonly ok: true; readonly plan: OperatorPlan; readonly executed: false }
   | { readonly ok: false; readonly error: string };
 
 const PLAN_SYSTEM = [
@@ -43,5 +43,5 @@ export async function planOperatorActions(input: {
   catch { return { ok: false, error: 'AI menghasilkan rencana yang tidak valid.' }; }
   const validated = validateOperatorPlan(decoded);
   if (!validated.ok) return { ok: false, error: validated.message };
-  return { ok: true, plan: validated.plan, executionEnabled: false };
+  return { ok: true, plan: validated.plan, executed: false };
 }
