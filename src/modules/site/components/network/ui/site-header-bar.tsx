@@ -95,6 +95,7 @@ export function SiteHeaderBar({
   sidebar,
   inputId,
   searchSkin,
+  sidebarThemeStyle,
   layout = 'row',
   navStripStyle,
   quickNav,
@@ -105,6 +106,7 @@ export function SiteHeaderBar({
   readonly sidebar: ReactNode;
   readonly inputId: string;
   readonly searchSkin: SiteSearchPanelSkin;
+  readonly sidebarThemeStyle?: React.CSSProperties | undefined;
   readonly layout?: SiteHeaderBarLayout;
   readonly navStripStyle?: React.CSSProperties;
   readonly quickNav?: ReactNode;
@@ -126,22 +128,22 @@ export function SiteHeaderBar({
     <>
       {layout === 'centered' ? (
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
-            <div className="flex flex-none items-center gap-2 justify-self-start">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <div className="col-start-1 row-start-1 w-full min-w-0 justify-self-start lg:col-start-2 lg:w-auto lg:justify-self-center">{brand}</div>
+            <div className="col-start-2 row-start-1 flex flex-none items-center gap-2 justify-self-end lg:col-start-1 lg:justify-self-start">
               <SearchButton searchOpen={searchOpen} onToggle={toggleSearch} buttonRef={searchButtonRef} className={`${SEARCH_BUTTON_CLASS} flex`} />
               <MenuButton sidebarOpen={sidebarOpen} onOpen={openSidebar} buttonRef={menuButtonRef} />
             </div>
-            <div className="min-w-0 justify-self-center">{brand}</div>
-            <div className="w-10 flex-none justify-self-end" aria-hidden="true" />
+            <div className="hidden w-10 flex-none justify-self-end lg:col-start-3 lg:block" aria-hidden="true" />
           </div>
           {nav}
         </div>
       ) : layout === 'masthead' ? (
         <div>
-          <div className="mx-auto grid max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-5 sm:px-6">
-            <div className="w-10 flex-none" aria-hidden="true" />
-            <div className="min-w-0 justify-self-center">{brand}</div>
-            <div className="flex flex-none items-center gap-2 justify-self-end">
+          <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-5 sm:px-6 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <div className="col-start-1 row-start-1 w-full min-w-0 justify-self-start lg:col-start-2 lg:w-auto lg:justify-self-center">{brand}</div>
+            <div className="hidden w-10 flex-none lg:col-start-1 lg:block" aria-hidden="true" />
+            <div className="col-start-2 row-start-1 flex flex-none items-center gap-2 justify-self-end lg:col-start-3">
               <SearchButton searchOpen={searchOpen} onToggle={toggleSearch} buttonRef={searchButtonRef} className={`${SEARCH_BUTTON_CLASS} flex`} />
               <MenuButton sidebarOpen={sidebarOpen} onOpen={openSidebar} buttonRef={menuButtonRef} />
             </div>
@@ -182,6 +184,7 @@ export function SiteHeaderBar({
           onFocusReturn={() => menuButtonRef.current?.focus()}
           closeRef={sidebarCloseRef}
           inputId={inputId}
+          themeStyle={sidebarThemeStyle}
           placement={drawer}
         >
           {sidebar}

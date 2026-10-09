@@ -18,8 +18,13 @@ export async function GreenMinimalHeader({ site, path = '/' }: { readonly site: 
       path={path}
       skin={{
         accent: GREEN_MINIMAL.primary,
+        primaryDark: GREEN_MINIMAL.primaryDark,
+        primarySoft: GREEN_MINIMAL.primarySoft,
         tone: 'light',
+        scheme: GREEN_MINIMAL.scheme,
+        faint: GREEN_MINIMAL.faint,
         card: GREEN_MINIMAL.card,
+        canvas: GREEN_MINIMAL.canvas,
         ring: GREEN_MINIMAL.ring,
         ink: GREEN_MINIMAL.ink,
         muted: GREEN_MINIMAL.muted,

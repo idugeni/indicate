@@ -18,8 +18,13 @@ export async function RedEditorialHeader({ site, path = '/' }: { readonly site: 
       path={path}
       skin={{
         accent: RED_EDITORIAL.primary,
+        primaryDark: RED_EDITORIAL.primaryDark,
+        primarySoft: RED_EDITORIAL.primarySoft,
         tone: 'light',
+        scheme: RED_EDITORIAL.scheme,
+        faint: RED_EDITORIAL.faint,
         card: RED_EDITORIAL.card,
+        canvas: RED_EDITORIAL.canvas,
         ring: RED_EDITORIAL.ring,
         ink: RED_EDITORIAL.ink,
         muted: RED_EDITORIAL.muted,

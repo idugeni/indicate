@@ -18,8 +18,13 @@ export async function DarkNavyHeader({ site, path = '/' }: { readonly site: Netw
       path={path}
       skin={{
         accent: DARK_NAVY.primary,
+        primaryDark: DARK_NAVY.primaryDark,
+        primarySoft: DARK_NAVY.primarySoft,
         tone: 'dark',
+        scheme: DARK_NAVY.scheme,
+        faint: DARK_NAVY.faint,
         card: DARK_NAVY.card,
+        canvas: DARK_NAVY.canvas,
         ring: DARK_NAVY.ring,
         ink: DARK_NAVY.ink,
         muted: DARK_NAVY.muted,

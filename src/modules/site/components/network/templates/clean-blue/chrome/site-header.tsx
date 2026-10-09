@@ -18,8 +18,13 @@ export async function CleanBlueHeader({ site, path = '/' }: { readonly site: Net
       path={path}
       skin={{
         accent: CLEAN_BLUE.primary,
+        primaryDark: CLEAN_BLUE.primaryDark,
+        primarySoft: CLEAN_BLUE.primarySoft,
         tone: 'light',
+        scheme: CLEAN_BLUE.scheme,
+        faint: CLEAN_BLUE.faint,
         card: CLEAN_BLUE.card,
+        canvas: CLEAN_BLUE.canvas,
         ring: CLEAN_BLUE.ring,
         ink: CLEAN_BLUE.ink,
         muted: CLEAN_BLUE.muted,

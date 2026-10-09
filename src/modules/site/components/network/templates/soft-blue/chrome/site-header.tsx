@@ -18,8 +18,13 @@ export async function SoftBlueHeader({ site, path = '/' }: { readonly site: Netw
       path={path}
       skin={{
         accent: SOFT_BLUE.primary,
+        primaryDark: SOFT_BLUE.primaryDark,
+        primarySoft: SOFT_BLUE.primarySoft,
         tone: 'light',
+        scheme: SOFT_BLUE.scheme,
+        faint: SOFT_BLUE.faint,
         card: SOFT_BLUE.card,
+        canvas: SOFT_BLUE.canvas,
         ring: SOFT_BLUE.ring,
         ink: SOFT_BLUE.ink,
         muted: SOFT_BLUE.muted,

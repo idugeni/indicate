@@ -18,8 +18,13 @@ export async function OrangeModernHeader({ site, path = '/' }: { readonly site: 
       path={path}
       skin={{
         accent: ORANGE_MODERN.primary,
+        primaryDark: ORANGE_MODERN.primaryDark,
+        primarySoft: ORANGE_MODERN.primarySoft,
         tone: 'light',
+        scheme: ORANGE_MODERN.scheme,
+        faint: ORANGE_MODERN.faint,
         card: ORANGE_MODERN.card,
+        canvas: ORANGE_MODERN.canvas,
         ring: ORANGE_MODERN.ring,
         ink: ORANGE_MODERN.ink,
         muted: ORANGE_MODERN.muted,
