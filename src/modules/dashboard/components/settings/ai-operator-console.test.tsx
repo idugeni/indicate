@@ -65,6 +65,24 @@ describe('AiOperatorConsole', () => {
     expect(screen.getByText(/Status: consumed/)).toBeTruthy();
   });
 
+  it('submits a basic article create command for approval', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ approvals: [], canReview: false, canRequest: false, canRequestArticleUpdate: true, canRequestArticleCreate: true }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ approval: { id: '77777777-7777-4777-8777-777777777777', state: 'pending' } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ approvals: [{ id: '77777777-7777-4777-8777-777777777777', toolId: 'content.articles.create', input: { regionId: null, slug: 'artikel-baru', title: 'Artikel baru', body: 'Isi artikel', status: 'draft' }, state: 'pending', expiresAt: '2026-10-10T00:00:00.000Z', isRequester: true }], canReview: false, canRequest: false, canRequestArticleUpdate: true, canRequestArticleCreate: true }) });
+    vi.stubGlobal('fetch', mockFetch);
+    render(<AiOperatorConsole organizationId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" />);
+    fireEvent.change(await screen.findByPlaceholderText('Judul artikel'), { target: { value: 'Artikel baru' } });
+    fireEvent.change(screen.getByPlaceholderText('judul-artikel'), { target: { value: 'artikel-baru' } });
+    fireEvent.change(screen.getByPlaceholderText('Isi artikel lengkap'), { target: { value: 'Isi artikel' } });
+    fireEvent.click(screen.getByRole('button', { name: /Ajukan pembuatan untuk disetujui/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText('Permintaan pembuatan artikel dikirim untuk persetujuan.')).toBeTruthy();
+    const submitted = JSON.parse(String(mockFetch.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(submitted).toMatchObject({ organizationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', action: 'request', toolId: 'content.articles.create', input: { regionId: null, slug: 'artikel-baru', title: 'Artikel baru', body: 'Isi artikel', status: 'draft' } });
+    expect(typeof submitted.idempotencyKey).toBe('string');
+  });
+
   it('submits a version-bound article update for separate approval', async () => {
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ approvals: [], canReview: false, canRequest: false, canRequestArticleUpdate: true }) })

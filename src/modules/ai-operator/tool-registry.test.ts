@@ -66,6 +66,24 @@ describe('AI Operator tool registry', () => {
     expect(routing).toEqual({ allowed: true, requiresApproval: true, risk: 'high' });
   });
 
+  it('requires approval for tenant article creation and rejects cross-tenant ownership fields', () => {
+    const editor = actor(['article.manage']);
+    expect(authorizeAiOperatorTool(editor, 'content.articles.create', {
+      regionId: null,
+      slug: 'artikel-baru',
+      title: 'Artikel baru',
+      body: 'Isi artikel',
+      status: 'draft',
+    })).toEqual({ allowed: true, requiresApproval: true, risk: 'write' });
+    expect(authorizeAiOperatorTool(editor, 'content.articles.create', {
+      regionId: null,
+      slug: 'artikel-baru',
+      title: 'Artikel baru',
+      body: 'Isi artikel',
+      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+    })).toEqual({ allowed: false, reason: 'INVALID_INPUT' });
+  });
+
   it('requires version-bound approval for article updates and rejects cross-tenant fields', () => {
     const editor = actor(['article.manage']);
     expect(authorizeAiOperatorTool(editor, 'content.articles.update', {

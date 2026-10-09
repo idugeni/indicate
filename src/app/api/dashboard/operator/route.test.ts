@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   consumeApproval: vi.fn(),
   readArticle: vi.fn(),
   updateArticle: vi.fn(),
+  createArticle: vi.fn(),
 }));
 
 vi.mock('@/core/security/mutation-guard', () => ({ denyCrossSiteMutation: () => false }));
@@ -105,15 +106,52 @@ beforeEach(() => {
     service: {
       readArticleForEdit: mocks.readArticle,
       updateArticle: mocks.updateArticle,
+      createArticleWithId: mocks.createArticle,
     },
   });
   mocks.getUsableApproval.mockResolvedValue({ ok: true, replay: false, record: { id: approvalId } });
   mocks.consumeApproval.mockResolvedValue({ ok: true, record: { id: approvalId } });
   mocks.readArticle.mockResolvedValue({ ok: true, value: { article: article() } });
   mocks.updateArticle.mockResolvedValue({ ok: true, value: article({ title: 'Judul baru', version: 4 }) });
+  mocks.createArticle.mockResolvedValue({ ok: true, value: article({ id: approvalId, version: 1, title: 'Artikel baru', slug: 'artikel-baru', body: 'Isi baru' }) });
 });
 
 afterEach(() => vi.restoreAllMocks());
+
+describe('POST /api/dashboard/operator article create approvals', () => {
+  it('creates an article using the approval UUID as its deterministic article ID', async () => {
+    mocks.readArticle.mockResolvedValue({ ok: false, error: { error: { code: 'FORBIDDEN', message: 'Not found' } } });
+    const response = await POST(new Request('http://localhost/api/dashboard/operator', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'localhost' },
+      body: JSON.stringify({
+        organizationId,
+        toolId: 'content.articles.create',
+        approvalId,
+        input: { regionId: null, slug: 'artikel-baru', title: 'Artikel baru', body: 'Isi baru', status: 'draft' },
+      }),
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.readArticle).toHaveBeenCalledWith(expect.anything(), { id: approvalId, ownerOrganizationId: organizationId });
+    expect(mocks.createArticle).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ slug: 'artikel-baru', title: 'Artikel baru', body: 'Isi baru', status: 'draft' }), approvalId);
+    expect(mocks.consumeApproval).toHaveBeenCalledTimes(1);
+    await expect(response.json()).resolves.toMatchObject({ toolId: 'content.articles.create', result: { replayed: false } });
+  });
+
+  it('replays an existing deterministic article instead of creating a duplicate', async () => {
+    mocks.getUsableApproval.mockResolvedValue({ ok: true, replay: true, record: { id: approvalId } });
+    mocks.readArticle.mockResolvedValue({ ok: true, value: { article: article({ id: approvalId, version: 1, title: 'Artikel baru', slug: 'artikel-baru', body: 'Isi baru', status: 'draft' }) } });
+    const response = await POST(new Request('http://localhost/api/dashboard/operator', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'localhost' },
+      body: JSON.stringify({ organizationId, toolId: 'content.articles.create', approvalId, input: { regionId: null, slug: 'artikel-baru', title: 'Artikel baru', body: 'Isi baru', status: 'draft' } }),
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.createArticle).not.toHaveBeenCalled();
+    expect(mocks.consumeApproval).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({ result: { replayed: true, version: 1 } });
+  });
+});
 
 describe('POST /api/dashboard/operator article update approvals', () => {
   it('updates only the approved tenant article with an optimistic version and consumes approval', async () => {

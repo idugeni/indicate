@@ -80,3 +80,75 @@ describe('TenantBusinessService purgeSiteCache', () => {
     expect(result.error.error.code).toBe('RESOURCE_UNAVAILABLE');
   });
 });
+
+
+describe('TenantBusinessService createArticleWithId', () => {
+  function createHarness() {
+    const state = {
+      articles: [] as Record<string, unknown>[],
+      articleCategories: [] as Record<string, unknown>[],
+      regions: [] as Record<string, unknown>[],
+      publishers: [] as Record<string, unknown>[],
+      categories: [{ id: 'category-1', name: 'Berita', slug: 'berita', status: 'active' }] as Record<string, unknown>[],
+      authors: [] as Record<string, unknown>[],
+      media: [] as Record<string, unknown>[],
+      articleSites: [] as Record<string, unknown>[],
+    };
+    const transaction = {
+      state,
+      appendAudit: vi.fn(),
+      refreshArticleContent: vi.fn(async () => undefined),
+      articleContentTouched: new Set<string>(),
+    };
+    const repository = {
+      execute: vi.fn(async (_actor: unknown, _permission: string, work: (tx: typeof transaction) => unknown) => work(transaction)),
+      enqueueCachePurge: vi.fn(async () => []),
+      recordDenied: vi.fn(async () => undefined),
+    };
+    const service = new TenantBusinessService(
+      repository as never,
+      { create: () => 'generated-id' },
+      { now: () => new Date('2026-10-09T10:00:00.000Z') },
+    );
+    const authorizedActor = {
+      actorType: 'user',
+      actorId: 'user-1',
+      verifiedAuthUserId: 'auth-1',
+      organizationId: 'org-1',
+      permissionSet: new Set<string>(['article.manage']),
+      platformPermissionSet: new Set<string>(),
+      entryPoint: 'dashboard',
+      requestId: 'req-create',
+    } as const;
+    return { state, transaction, repository, service, authorizedActor };
+  }
+
+  it('uses the approval-bound ID and preserves the requested slug exactly', async () => {
+    const { state, service, authorizedActor } = createHarness();
+    const result = await service.createArticleWithId(authorizedActor, {
+      regionId: null,
+      slug: 'artikel-baru',
+      title: 'Artikel baru',
+      body: 'Isi artikel',
+      status: 'draft',
+    }, '11111111-1111-4111-8111-111111111111');
+    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.ok).toBe(true);
+    expect(result.value.id).toBe('11111111-1111-4111-8111-111111111111');
+    expect(result.value.slug).toBe('artikel-baru');
+    expect(state.articles).toHaveLength(1);
+  });
+
+  it('rejects a slug collision instead of silently suffixing it on an approval-backed create', async () => {
+    const { state, service, authorizedActor } = createHarness();
+    const input = { regionId: null, slug: 'artikel-baru', title: 'Artikel baru', body: 'Isi artikel', status: 'draft' as const };
+    const first = await service.createArticleWithId(authorizedActor, input, '11111111-1111-4111-8111-111111111111');
+    expect(first.ok).toBe(true);
+    const second = await service.createArticleWithId(authorizedActor, { ...input, title: 'Artikel berbeda' }, '22222222-2222-4222-8222-222222222222');
+    expect(second.ok).toBe(false);
+    if (second.ok) throw new Error('expected slug collision');
+    expect(second.error.error.code).toBe('CONFLICT');
+    expect(state.articles).toHaveLength(1);
+    expect(state.articles[0]?.slug).toBe('artikel-baru');
+  });
+});

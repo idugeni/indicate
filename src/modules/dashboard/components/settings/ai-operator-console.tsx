@@ -32,6 +32,7 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
   const [canReview, setCanReview] = useState(false);
   const [canRequest, setCanRequest] = useState(false);
   const [canRequestArticleUpdate, setCanRequestArticleUpdate] = useState(false);
+  const [canRequestArticleCreate, setCanRequestArticleCreate] = useState(false);
   const [articleId, setArticleId] = useState('');
   const [siteIds, setSiteIds] = useState('');
   const [updateArticleId, setUpdateArticleId] = useState('');
@@ -39,6 +40,10 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
   const [updateTitle, setUpdateTitle] = useState('');
   const [updateBody, setUpdateBody] = useState('');
   const [updateStatus, setUpdateStatus] = useState('');
+  const [createTitle, setCreateTitle] = useState('');
+  const [createSlug, setCreateSlug] = useState('');
+  const [createRegionId, setCreateRegionId] = useState('');
+  const [createBody, setCreateBody] = useState('');
   const [approvalBusy, setApprovalBusy] = useState(true);
   const [approvalError, setApprovalError] = useState<string | null>(null);
   const [approvalNotice, setApprovalNotice] = useState<string | null>(null);
@@ -55,6 +60,7 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
       setCanReview(record.canReview === true);
       setCanRequest(record.canRequest === true);
       setCanRequestArticleUpdate(record.canRequestArticleUpdate === true);
+      setCanRequestArticleCreate(record.canRequestArticleCreate === true);
     } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : 'Daftar persetujuan gagal dimuat.'); }
     finally { setApprovalBusy(false); }
   }, [organizationId]);
@@ -71,6 +77,28 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
       setApprovalNotice('Permintaan publikasi dikirim untuk persetujuan.');
       await refreshApprovals();
     } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : 'Permintaan persetujuan gagal dibuat.'); }
+    finally { setApprovalBusy(false); }
+  }
+
+  async function requestArticleCreateApproval(): Promise<void> {
+    setApprovalBusy(true); setApprovalError(null); setApprovalNotice(null);
+    try {
+      const input: Record<string, unknown> = {
+        regionId: createRegionId.trim() === '' ? null : createRegionId.trim(),
+        slug: createSlug.trim(),
+        title: createTitle.trim(),
+        body: createBody.trim(),
+        status: 'draft',
+      };
+      const response = await fetch('/api/dashboard/operator/approvals', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ organizationId, action: 'request', toolId: 'content.articles.create', input, idempotencyKey: globalThis.crypto.randomUUID() }),
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(errorMessage(body));
+      setApprovalNotice('Permintaan pembuatan artikel dikirim untuk persetujuan.');
+      await refreshApprovals();
+    } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : 'Permintaan pembuatan artikel gagal dibuat.'); }
     finally { setApprovalBusy(false); }
   }
 
@@ -207,6 +235,15 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
               <textarea value={siteIds} onChange={(event) => setSiteIds(event.currentTarget.value)} placeholder="UUID situs tujuan" rows={2} className="rounded-md border border-hairline bg-bg-raised px-2 py-2 text-sm text-paper" disabled={approvalBusy} />
             </label>
             <div><Button type="button" size="sm" onClick={() => void requestPublicationApproval()} disabled={approvalBusy || articleId.trim().length === 0 || siteIds.trim().length === 0}>Ajukan persetujuan</Button></div>
+          </div> : null}
+          {canRequestArticleCreate ? <div className="grid gap-2 rounded-md bg-bg p-3">
+            <p className="m-0 text-xs font-medium text-paper">Ajukan artikel baru</p>
+            <label className="grid gap-1 text-xs text-paper-dim">Judul artikel<input value={createTitle} onChange={(event) => setCreateTitle(event.currentTarget.value)} maxLength={300} placeholder="Judul artikel" className="rounded-md border border-hairline bg-bg-raised px-2 py-2 text-sm text-paper" disabled={approvalBusy} /></label>
+            <label className="grid gap-1 text-xs text-paper-dim">Slug URL (huruf kecil, angka, tanda hubung)<input value={createSlug} onChange={(event) => setCreateSlug(event.currentTarget.value)} maxLength={160} placeholder="judul-artikel" className="rounded-md border border-hairline bg-bg-raised px-2 py-2 text-sm text-paper" disabled={approvalBusy} /></label>
+            <label className="grid gap-1 text-xs text-paper-dim">ID wilayah (opsional; kosong jika tidak diperlukan)<input value={createRegionId} onChange={(event) => setCreateRegionId(event.currentTarget.value)} placeholder="UUID wilayah atau kosong" className="rounded-md border border-hairline bg-bg-raised px-2 py-2 text-sm text-paper" disabled={approvalBusy} /></label>
+            <label className="grid gap-1 text-xs text-paper-dim">Isi artikel<textarea value={createBody} onChange={(event) => setCreateBody(event.currentTarget.value)} maxLength={200000} rows={4} placeholder="Isi artikel lengkap" className="rounded-md border border-hairline bg-bg-raised px-2 py-2 text-sm text-paper" disabled={approvalBusy} /></label>
+            <div><Button type="button" size="sm" onClick={() => void requestArticleCreateApproval()} disabled={approvalBusy || createTitle.trim().length === 0 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(createSlug.trim()) || createBody.trim().length === 0}>Ajukan pembuatan untuk disetujui</Button></div>
+            <p className="m-0 text-[11px] text-paper-dim">ID artikel diturunkan dari ID persetujuan agar retry tidak membuat duplikat. Artikel baru berstatus draft.</p>
           </div> : null}
           {canRequestArticleUpdate ? <div className="grid gap-2 rounded-md bg-bg p-3">
             <p className="m-0 text-xs font-medium text-paper">Ajukan perubahan artikel</p>

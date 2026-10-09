@@ -21,9 +21,11 @@ const articleSearchInput = z.object({
 }).strict();
 
 const articleCreateInput = z.object({
-  title: z.string().trim().min(1).max(200),
-  body: z.string().trim().min(1).max(50_000),
-  categoryId: uuid.optional(),
+  regionId: uuid.nullable(),
+  slug: z.string().trim().min(1).max(160).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  title: z.string().trim().min(1).max(300),
+  body: z.string().trim().min(1).max(200_000),
+  excerpt: z.string().trim().min(1).max(500).nullish().optional(),
   status: z.enum(['draft', 'in_review']).default('draft'),
 }).strict();
 
@@ -92,10 +94,10 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
   }),
   'content.articles.create': tool({
     id: 'content.articles.create',
-    description: 'Membuat artikel baru sebagai draft atau in-review.',
+    description: 'Create a basic tenant-owned article as a draft or in review. Requires explicit approval; article ID is derived from the approved command to make retries idempotent.',
     scope: 'tenant',
-    risk: 'write',
     requiredPermissions: ['article.manage'],
+    risk: 'write',
     input: articleCreateInput,
   }),
   'content.articles.update': tool({
@@ -190,6 +192,7 @@ export const AI_OPERATOR_EXECUTABLE_TENANT_TOOL_IDS = Object.freeze([
   'content.articles.search',
   'publishing.delivery.read',
   'publishing.delivery.request',
+  'content.articles.create',
   'content.articles.update',
   'media.assets.read',
   'network.sites.read',

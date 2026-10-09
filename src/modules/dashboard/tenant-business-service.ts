@@ -177,8 +177,8 @@ export class TenantBusinessService {
     await this.revalidateCommitted({ actor, action });
   }
 
-  private base(actor: AuthorizedTenantActorContext, now: string) {
-    return { id: this.identifiers.create(), organizationId: actor.organizationId, version: 1, createdAt: now, updatedAt: now } as const;
+  private base(actor: AuthorizedTenantActorContext, now: string, id?: string) {
+    return { id: id ?? this.identifiers.create(), organizationId: actor.organizationId, version: 1, createdAt: now, updatedAt: now } as const;
   }
 
   private audit(transaction: DashboardTransaction, action: string, targetType: string, targetId: string, before: object | null, after: object | null): void {
@@ -948,6 +948,43 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     }
   }
 
+  /**
+   * Create an article with a caller-supplied server-generated ID for an
+   * approval-backed command. The ID is the approval UUID, making retries
+   * discover the original record instead of creating duplicates.
+   *
+   * This entry point deliberately excludes owner-org publishing and accepts
+   * only the already validated tenant-scoped article payload.
+   */
+  async createArticleWithId(actor: AuthorizedTenantActorContext, raw: unknown, articleId: string) {
+    const parsed = articleCreateSchema.safeParse(raw);
+    if (!parsed.success) return this.invalid(actor, parsed.error);
+    if (
+      parsed.data.publisherId !== null
+      || parsed.data.categoryId !== null
+      || parsed.data.authorId !== null
+      || (parsed.data.ownerOrganizationId !== undefined && parsed.data.ownerOrganizationId !== null)
+    ) {
+      return { ok: false as const, error: createPublicError('INVALID_INPUT', 'AI Operator article creation accepts only tenant-owned basic article fields.', actor.requestId) };
+    }
+    const result = await this.mutate({
+      actor,
+      raw: parsed.data,
+      schema: articleCreateSchema,
+      permission: DASHBOARD_PERMISSIONS.articleManage,
+      action: 'article.create',
+      targetType: 'article',
+      scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'],
+      execute: (transaction, value, now) => this.insertArticleRecord(transaction, actor, value, now, articleId, true),
+    });
+    if (result.ok && this.notifier !== null) {
+      try {
+        await this.notifier.notifyArticleCreated({ organizationId: result.value.organizationId, articleId: result.value.id, title: result.value.title });
+      } catch { /* best-effort notification: queue failure does not fail the write */ }
+    }
+    return result;
+  }
+
   async createArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
     const forOrg = await this.tryCreateArticleForOwnerOrg(actor, raw);
     const result = forOrg ?? await this.mutate({ actor, raw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'], execute: (transaction, value, now) => this.insertArticleRecord(transaction, actor, value, now) });
@@ -959,14 +996,16 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     return result;
   }
 
-  private insertArticleRecord(transaction: DashboardTransaction, actor: AuthorizedTenantActorContext, value: ArticleCreateInput, now: string): ArticleRecord {
+  private insertArticleRecord(transaction: DashboardTransaction, actor: AuthorizedTenantActorContext, value: ArticleCreateInput, now: string, articleId?: string, requireExactSlug = false): ArticleRecord {
     this.requireArticleReferences(transaction.state, value);
     requireLockedRegionValue(transaction.state, actor, value.regionId);
-    const slug = allocateUniqueSlug(transaction.state.articles.map(({ slug }) => slug), value.slug);
+    const existingSlugs = transaction.state.articles.map(({ slug }) => slug);
+    if (requireExactSlug && existingSlugs.includes(value.slug)) throw new DashboardConflictError();
+    const slug = requireExactSlug ? value.slug : allocateUniqueSlug(existingSlugs, value.slug);
     const distinctCategoryIds = this.resolveArticleCategoryIds(transaction.state, value.categoryIds ?? []);
     const leadMediaId = this.requireActiveMedia(transaction, value.leadMediaId ?? null, null, 'leadMediaId', 'article-cover');
     const mode = this.requireArticleMode({ ...value, leadMediaId });
-    const record: ArticleRecord = { ...this.base(actor, now), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), source: value.source ?? '', scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null, ...mode };
+    const record: ArticleRecord = { ...this.base(actor, now, articleId), ...value, slug, categoryId: distinctCategoryIds[0] ?? null, categoryIds: distinctCategoryIds, leadMediaId, coverImageUrl: value.coverImageUrl ?? null, excerpt: value.excerpt ?? null, canonicalUrl: value.canonicalUrl ?? null, bodyJson: requireValidBodyJson(value.bodyJson), source: value.source ?? '', scheduledAt: value.scheduledAt ?? null, publishedAt: null, archivedAt: null, ...mode };
     transaction.state.articles.push(record); this.syncArticleCategories(transaction.state, record.id, distinctCategoryIds); this.audit(transaction, 'article.create', 'article', record.id, null, record);
     return record;
   }
