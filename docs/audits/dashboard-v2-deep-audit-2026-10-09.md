@@ -137,6 +137,16 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 - The V2 component test exists for each of the 19 primary views after this branch adds the missing Media Library V2 test. Test presence is not equivalent to complete CRUD, security, mobile, or integration coverage.
 - No production data was seeded or changed as part of this source audit.
 
+### P1 — Platform permission registry omitted declared platform grants
+
+**Evidence:** `INTEGRATIONS_PERMISSIONS` declared `platform.content.manage` and `platform.runtime_config.manage`, but `INTEGRATIONS_PLATFORM_PERMISSION_NAMES` omitted both. Consumers that use this registry as the canonical platform-grant set could silently omit Public Web Content and runtime-configuration permissions from provisioning/validation flows.
+
+**Change:** Include both declared grants in the platform permission registry while keeping tenant grants separate.
+
+**Regression test:** The integrations permission test asserts the complete five-grant platform registry and verifies platform-only grants are absent from the tenant registry.
+
+**Scope note:** This is a source-level registry correction. It does not grant permissions to any production user or role; runtime access for the existing access key remains unverified and must be resolved in an isolated test environment.
+
 ## Verification status
 
 Final verification recorded for branch head `4037bf2921dfb29edd7bf21e559df70375fba54b`:
