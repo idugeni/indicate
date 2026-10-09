@@ -1170,9 +1170,12 @@
    Sengaja TANPA @layer: `body` memakai `bg-bg` (layer utilities) yang mengalahkan
    apa pun di layer base, jadi aturan per-template di base tidak pernah berlaku
    dan kanvas jatuh ke warna kontrol yang gelap. Aturan tanpa layer menang atas
-   semua layer. `html` ikut dicat supaya area yang belum dilukis `body` (mis. saat
-   bilah browser seluler menutup dan viewport membesar) tidak jatuh ke putih.
-   Tanpa DB dan tanpa JS, murni :has progresif. */
+   semua layer. `html` ikut dicat agar area yang belum dilukis `body` tidak jatuh
+   ke warna kontrol saat viewport browser seluler berubah. Root body memakai
+   `min-h-dvh` (dengan `min-h-screen` sebagai fallback) supaya tinggi minimum
+   mengikuti viewport dinamis saat toolbar browser muncul atau menghilang;
+   `svh` sengaja tidak dipakai di sini karena dapat meninggalkan strip kosong
+   setelah toolbar menyusut. Tanpa DB dan tanpa JS, murni :has progresif. */
 html:has([data-template='clean-blue']),
 body:has([data-template='clean-blue']) { background-color: #f5f8fd; }
 html:has([data-template='black-lime']),
