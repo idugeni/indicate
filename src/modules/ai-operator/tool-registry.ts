@@ -186,6 +186,28 @@ export type AiOperatorAuthorization =
   | { readonly allowed: true; readonly requiresApproval: boolean; readonly risk: AiOperatorRisk }
   | { readonly allowed: false; readonly reason: 'UNKNOWN_TOOL' | 'MISSING_PERMISSION' | 'INVALID_INPUT' };
 
+function hasRequiredPermissions(actor: ActorContext, definition: AiOperatorTool): boolean {
+  const permissions = definition.scope === 'platform'
+    ? actor.platformPermissionSet ?? new Set<string>()
+    : actor.permissionSet;
+  return definition.requireAnyPermission === true
+    ? definition.requiredPermissions.some((permission) => permissions.has(permission))
+    : definition.requiredPermissions.every((permission) => permissions.has(permission));
+}
+
+/** Returns safe tool metadata only; schemas and implementation details never leave the server. */
+export function listAiOperatorTools(actor: ActorContext, scope: AiOperatorScope = 'tenant') {
+  return Object.values(AI_OPERATOR_TOOLS)
+    .filter((definition) => definition.scope === scope && hasRequiredPermissions(actor, definition))
+    .map(({ id, description, risk, requiredPermissions, requiresApproval }) => ({
+      id,
+      description,
+      risk,
+      requiredPermissions,
+      requiresApproval,
+    }));
+}
+
 export function authorizeAiOperatorTool(
   actor: ActorContext,
   toolId: string,
@@ -197,15 +219,7 @@ export function authorizeAiOperatorTool(
   const parsed = definition.input.safeParse(input);
   if (!parsed.success) return { allowed: false, reason: 'INVALID_INPUT' };
 
-  const permissions = definition.scope === 'platform'
-    ? actor.platformPermissionSet ?? new Set<string>()
-    : actor.permissionSet;
-
-  const hasPermission = definition.requireAnyPermission === true
-    ? definition.requiredPermissions.some((permission) => permissions.has(permission))
-    : definition.requiredPermissions.every((permission) => permissions.has(permission));
-
-  if (!hasPermission) return { allowed: false, reason: 'MISSING_PERMISSION' };
+  if (!hasRequiredPermissions(actor, definition)) return { allowed: false, reason: 'MISSING_PERMISSION' };
 
   // Approval is intentionally not accepted as a caller-supplied boolean here.
   // A future executor must verify a persisted approval record bound to this exact command.
