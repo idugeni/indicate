@@ -83,7 +83,7 @@ vi.mock('next/headers', () => ({
 vi.mock('@/modules/auth/authenticate-dashboard', () => ({
   authenticateDashboardUser: async () => (shared.loggedIn ? proofUser() : null),
   authorizeDashboardOrganization: async (db: unknown, user: unknown, organizationId: string) =>
-    shared.loggedIn ? proofActor(organizationId) : null,
+    shared.loggedIn && organizationId === shared.orgId ? proofActor(organizationId) : null,
   authorizeDashboardPlatform: async () =>
     shared.loggedIn
       ? { ...proofActor(shared.orgId), organizationId: null, permissionSet: new Set<string>() }
@@ -679,6 +679,17 @@ describe('satu pintu login untuk semua aksi admin dashboard', () => {
     const response = await integrationsGET(
       dashboardRequest(
         `/api/dashboard/integrations?organizationId=${shared.orgId}&view=customers&customerId=${shared.orgId}`,
+      ),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it('integrasi menolak organisasi di luar tenant yang terotorisasi', async () => {
+    const foreignOrganizationId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const response = await integrationsGET(
+      dashboardRequest(
+        `/api/dashboard/integrations?organizationId=${foreignOrganizationId}&view=customers&customerId=${foreignOrganizationId}`,
+        { loggedIn: true },
       ),
     );
     expect(response.status).toBe(404);
