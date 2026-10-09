@@ -13,7 +13,7 @@ import { deliveryComposition } from '@/modules/delivery';
  * @param host - Dashboard hostname for absolute URLs.
  * @returns Sitemap XML covering root and service paths.
  */
-function controlPlaneSitemap(host: string): string {
+export function controlPlaneSitemap(host: string): string {
   const today = new Date().toISOString().slice(0, 10);
   const entries = ['/', ...SERVICE_PATHS.filter((path) => path !== '/status')]
     .map((path) => `  <url><loc>https://${host}${path}</loc><lastmod>${today}</lastmod></url>`)
@@ -50,4 +50,4 @@ async function handleGET() {
  * documentation states it ignores both, so emitting them only implied a crawl
  * control the platform does not have.
  */
-const GET = withApiAccess('GET /sitemap.xml', handleGET, { accessLog: 'errors-only' });
+export const GET = withApiAccess('GET /sitemap.xml', handleGET, { accessLog: 'errors-only' });
