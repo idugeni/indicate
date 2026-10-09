@@ -27,7 +27,7 @@ const commandSchema = z.object({ action: z.string().min(1).max(100), payload: z.
  * @param error - Envelope produced by `BillingService` or denial helpers.
  * @returns Status code honoring 403 for platform-only denials.
  */
-export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 function response(error: PublicErrorEnvelope) {
   const retry = error.error.fields?.retryAfterSeconds?.[0];
   return NextResponse.json(error, { status: statusFor(error), ...(retry === undefined ? {} : { headers: { 'Retry-After': retry } }) });
@@ -109,5 +109,5 @@ async function handlePOST(request: Request) {
   }
 }
 
-export const GET = withApiAccess('GET /api/dashboard/billing', handleGET);
-export const POST = withApiAccess('POST /api/dashboard/billing', handlePOST);
+const GET = withApiAccess('GET /api/dashboard/billing', handleGET);
+const POST = withApiAccess('POST /api/dashboard/billing', handlePOST);
