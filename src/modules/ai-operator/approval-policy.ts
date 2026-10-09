@@ -28,7 +28,9 @@ export type ApprovalDecision =
 
 /** Produces deterministic JSON for validated JSON-compatible tool input. */
 function canonicalize(value: unknown): string {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (value === null) return 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new TypeError('Command input contains a non-finite number.');
     return JSON.stringify(value);
