@@ -30,8 +30,9 @@ describe('runProbes', () => {
   it('melaporkan ok untuk semua komponen yang cepat', async () => {
     const results = await runProbes(deps());
     expect(results.map((result) => result.component)).toEqual([...STATUS_COMPONENTS]);
-    expect(results.every((result) => result.health === 'ok')).toBe(true);
-    expect(results.every((result) => result.component === 'api' ? result.latencyMs === 0 : result.latencyMs === 120)).toBe(true);
+    expect(results.filter((result) => result.component !== 'api').every((result) => result.health === 'ok')).toBe(true);
+    expect(results.find((result) => result.component === 'api')).toMatchObject({ health: 'unknown', latencyMs: null });
+    expect(results.filter((result) => result.component !== 'api').every((result) => result.latencyMs === 120)).toBe(true);
   });
 
   it('menandai lambat sebagai degraded dan gagal sebagai down', async () => {
@@ -124,6 +125,19 @@ describe('summarizeUptime', () => {
 });
 
 describe('overallHealth', () => {
+  it('mengembalikan unknown ketika belum ada data yang dapat dipercaya', () => {
+    expect(overallHealth([])).toBe('unknown');
+    expect(overallHealth([{ component: 'api', health: 'unknown', latencyMs: null, detail: null, checkedAt: '2026-09-30T10:00:00.000Z' }])).toBe('unknown');
+  });
+
+  it('mengabaikan komponen unknown tetapi mempertahankan status terburuk yang terukur', () => {
+    const base = { latencyMs: 100, detail: null, checkedAt: '2026-09-30T10:00:00.000Z' } as const;
+    expect(overallHealth([
+      { ...base, component: 'database', health: 'ok' },
+      { ...base, component: 'api', health: 'unknown' },
+    ])).toBe('ok');
+  });
+
   it('mengambil status terburuk', () => {
     const base = { latencyMs: 100, detail: null, checkedAt: '2026-09-30T10:00:00.000Z' } as const;
     expect(overallHealth([{ ...base, component: 'api', health: 'ok' }])).toBe('ok');
