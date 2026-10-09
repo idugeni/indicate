@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
-import { statusFor } from '@/app/api/dashboard/moderation/route';
+import { statusFor } from '@/app/api/dashboard/moderation/route-helpers';
 
 describe('moderation statusFor', () => {
   it('memetakan konflik dan forbidden moderasi', () => {
