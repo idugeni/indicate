@@ -113,6 +113,51 @@ describe('Monetization Control Center V2', () => {
     expect(await screen.findByText('Belum ada faktur untuk organisasi ini.')).toBeDefined();
   });
 
+  it('loads subsequent invoice pages using the last row cursor', async () => {
+    const invoice = (index: number) => ({
+      id: `invoice-${index}`,
+      organizationId: 'org-1',
+      organizationName: 'Alpha Media',
+      number: `INV-${String(index).padStart(3, '0')}`,
+      amountIdr: 100000,
+      status: 'paid',
+      paidAt: null,
+      dueAt: null,
+      billingNote: null,
+      paymentMethod: 'Transfer',
+      version: 1,
+      createdAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(),
+    });
+    const firstPage = Array.from({ length: 100 }, (_, index) => invoice(index));
+    const nextPage = [invoice(100)];
+    const invoiceRequests: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        const url = String(input);
+        if (url.includes('subscription-state')) return { ok: true, json: async () => ({ state: 'active' }) };
+        if (url.includes('scope=invoices')) {
+          invoiceRequests.push(url);
+          return {
+            ok: true,
+            json: async () => url.includes('cursor=') ? nextPage : firstPage,
+          };
+        }
+        return { ok: true, json: async () => [] };
+      }),
+    );
+
+    render(<MonetizationControlCenterV2 organizationId="org-1" permissions={[]} />);
+    expect(await screen.findByText('INV-099')).toBeDefined();
+    const loadMore = screen.getByRole('button', { name: 'Muat faktur berikutnya' });
+    fireEvent.click(loadMore);
+    expect(await screen.findByText('INV-100')).toBeDefined();
+    expect(invoiceRequests).toHaveLength(2);
+    expect(invoiceRequests[0]).toContain('limit=100');
+    expect(invoiceRequests[1]).toContain('cursor=');
+    expect(screen.queryByRole('button', { name: 'Muat faktur berikutnya' })).toBeNull();
+  });
+
   it('sends existing billing commands without introducing a new API contract', async () => {
     const calls: string[] = [];
     vi.stubGlobal(
