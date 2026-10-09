@@ -30,7 +30,7 @@ vi.mock('@/data/repos/content/admin', () => ({ DrizzleContentAdminRepository: cl
 vi.mock('@/modules/billing/billing-service', () => ({ BillingService: class { subscriptionState = async () => ({ ok: true, value: { state: 'active' } }); } }));
 vi.mock('@/modules/moderation/moderation-service', () => ({ ModerationService: class { listReports = async () => ({ ok: true, value: [] }); } }));
 vi.mock('@/modules/integrations/api-key-service', () => ({ ApiKeyService: class { list = async () => ({ ok: true, value: [] }); } }));
-vi.mock('@/modules/integrations/customer-service', () => ({ CustomerService: class { readSubscription = async () => ({ ok: true, value: null }); } }));
+vi.mock('@/modules/integrations/customer-service', () => ({ CustomerService: class { readSubscription = async () => ({ ok: true, value: null }); list = async () => ({ ok: true, value: [] }); } }));
 vi.mock('@/modules/integrations/ai-service', () => ({ AiService: class { overview = async () => ({ ok: true, value: { configured: true } }); } }));
 vi.mock('@/modules/auth/dashboard-access-keys/access-key-service', () => ({ DashboardAccessKeyService: class { list = async () => ({ ok: true, value: [] }); } }));
 vi.mock('@/modules/dashboard/dashboard-dal', () => ({
