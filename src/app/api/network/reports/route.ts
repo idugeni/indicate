@@ -14,7 +14,7 @@ import { extractPlatformIp } from '@/core/routing/platform-guard';
 import { withApiAccess } from '@/core/observability/api-access';
 import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
-import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
+import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 import { reportChallengeDenial, reportOutcomeStatus } from './route-helpers';
 
 async function handlePOST(request: Request) {
