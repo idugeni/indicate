@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import type { DashboardCommand } from '@/modules/dashboard/command';
 import { MediaLibraryV2 } from './media-library-v2';
 
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
@@ -45,7 +44,7 @@ describe('MediaLibraryV2', () => {
       if (input.cursor === 'cursor-2') return { items: [next], nextCursor: null };
       if (input.search === 'logo') return { items: [filtered], nextCursor: 'cursor-2' };
       return { items: [], nextCursor: null };
-    }) as unknown as DashboardCommand;
+    });
 
     render(
       <MediaLibraryV2
@@ -86,7 +85,7 @@ describe('MediaLibraryV2', () => {
       if (input.search === 'old') return slow;
       if (input.search === 'new') return { items: [newer], nextCursor: null };
       return { items: [], nextCursor: null };
-    }) as unknown as DashboardCommand;
+    });
 
     render(<MediaLibraryV2 data={{ media: [asset('base', 'base.png')] }} command={command} organizationId="org-1" />);
     const search = screen.getByRole('textbox', { name: 'Cari aset' });
