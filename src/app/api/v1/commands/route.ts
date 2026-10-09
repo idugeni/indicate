@@ -18,7 +18,7 @@ const schema = z.object({ action: z.enum(['article.create', 'media.reserve', 'me
  * @param error - Envelope produced by publication or API-key services.
  * @returns Status code defaulting to 409 for command conflicts.
  */
-const status = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 409;
+export const status = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 409;
 const retryHeaders = (error: PublicErrorEnvelope) => ({ 'Retry-After': error.error.fields?.retryAfterSeconds?.[0] ?? '1' });
 
 async function handlePOST(request: Request) {
@@ -65,4 +65,4 @@ async function handlePOST(request: Request) {
  *
  * @remarks Consume the trusted-source bucket before parsing/auth so unauthenticated CPU work stays bounded.
  */
-const POST = withApiAccess('POST /api/v1/commands', handlePOST);
+export const POST = withApiAccess('POST /api/v1/commands', handlePOST);
