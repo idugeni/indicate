@@ -13,7 +13,7 @@ import { resolveRequestId } from '@/core/observability/request-id';
  * @param error - Envelope produced by `WebhookService.process`.
  * @returns Status code defaulting to 404 to avoid leaking source state.
  */
-export const status = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 404;
+const status = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 404;
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request); const context = await getServerRuntimeContext(); const config = context.config;
   const sourceIdentity = trustedCloudflareSource(request, config.hosts.webhook, config.cloudflare.originSecret);
@@ -31,6 +31,6 @@ async function handlePOST(request: Request) {
   return result.ok ? NextResponse.json({ data: result.value, requestId }) : NextResponse.json(result.error, { status: status(result.error) });
 }
 
-export const POST = withApiAccess('POST /api/webhooks/generic', handlePOST);
+const POST = withApiAccess('POST /api/webhooks/generic', handlePOST);
 
-export const maxDuration = 30;
+const maxDuration = 30;
