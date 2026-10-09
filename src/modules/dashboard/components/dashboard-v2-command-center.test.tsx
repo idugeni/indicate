@@ -25,9 +25,11 @@ describe('DashboardV2CommandCenter', () => {
         onSelectView={onSelectView}
       />,
     );
-    expect(screen.getByText('INDICATE / COMMAND CENTER')).toBeTruthy();
-    expect(screen.getByText('Active sites')).toBeTruthy();
-    expect(screen.getByText('Active articles')).toBeTruthy();
+    expect(screen.getByText('INDICATE / EXECUTIVE OVERVIEW')).toBeTruthy();
+    expect(screen.getByText('Active domains')).toBeTruthy();
+    expect(screen.getAllByText('Published').length).toBeGreaterThan(0);
+    expect(screen.getByText('Delivery success')).toBeTruthy();
+    expect(screen.getByText('Total articles')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Quick actions' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Write article/i }));
     expect(onSelectView).toHaveBeenCalledWith('editorial');

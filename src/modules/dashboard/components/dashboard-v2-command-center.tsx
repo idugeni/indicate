@@ -14,6 +14,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import type { AnalyticsProjection, DashboardProjection, TaskDay } from '@/modules/dashboard/models';
@@ -44,7 +45,7 @@ function Surface({
   return (
     <section
       aria-label={label}
-      className={`min-w-0 rounded-2xl border border-white/[0.07] bg-[#0b1020]/80 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.16)] sm:p-6 ${className}`}
+      className={`min-w-0 rounded-[1.15rem] border border-white/[0.075] bg-[linear-gradient(145deg,rgba(15,22,42,0.94),rgba(9,14,28,0.96))] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.16)] sm:p-5 lg:p-6 ${className}`}
     >
       {children}
     </section>
@@ -106,7 +107,7 @@ function Metric({
   readonly label: string;
   readonly value: string;
   readonly detail: string;
-  readonly icon: typeof Globe2;
+  readonly icon: LucideIcon;
   readonly tone?: 'good' | 'warn' | 'bad' | 'neutral';
 }) {
   const iconTone = {
@@ -197,14 +198,14 @@ export function DashboardV2CommandCenter({
 
   return (
     <div className="min-w-0 space-y-5">
-      <header className="relative overflow-visible rounded-3xl border border-white/[0.08] bg-[radial-gradient(circle_at_80%_0%,rgba(99,102,241,0.18),transparent_38%),radial-gradient(circle_at_20%_100%,rgba(45,212,191,0.08),transparent_35%),#080d1a] p-6 sm:p-8">
+      <header className="relative overflow-visible rounded-3xl border border-white/[0.08] bg-[radial-gradient(ellipse_at_78%_18%,rgba(100,116,255,0.27),transparent_34%),radial-gradient(ellipse_at_52%_100%,rgba(201,169,92,0.09),transparent_44%),linear-gradient(115deg,#070b19_0%,#0b1230_56%,#101936_100%)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] sm:p-7 lg:p-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2.5">
               <StatusPill label={posture} tone={postureTone} />
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#68738a]">INDICATE / COMMAND CENTER</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#68738a]">INDICATE / EXECUTIVE OVERVIEW</span>
             </div>
-            <h1 className="m-0 mt-4 max-w-3xl font-sans text-3xl font-semibold tracking-[-0.035em] text-white sm:text-5xl">
+            <h1 className="m-0 mt-4 max-w-3xl font-sans text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl lg:text-[2.75rem]">
               Good morning, {displayName}.
             </h1>
             <p className="m-0 mt-3 max-w-2xl font-sans text-sm leading-6 text-[#8f9ab0]">
@@ -223,15 +224,17 @@ export function DashboardV2CommandCenter({
           </div>
         </div>
 
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <Metric label="Active domains" value={formatNumber(dashboard.activeDomains)} detail="Registered network domains" icon={Layers3} />
           <Metric label="Active sites" value={formatNumber(dashboard.activeSites)} detail={`${formatNumber(dashboard.activeSubdomains)} active subdomains`} icon={Globe2} />
-          <Metric label="Active articles" value={formatNumber(dashboard.activeArticles)} detail={`${formatNumber(dashboard.archivedArticles)} archived`} icon={FileText} />
+          <Metric label="Total articles" value={formatNumber(dashboard.activeArticles)} detail={`${formatNumber(dashboard.archivedArticles)} archived`} icon={FileText} />
+          <Metric label="Published" value={formatNumber(published)} detail="Published queue outcomes" icon={Send} tone="good" />
           <Metric label="Delivery success" value={`${deliveryRate.toLocaleString('id-ID')}%`} detail={`${formatNumber(dashboard.successfulSiteOutcomes)} successful outcomes`} icon={CheckCircle2} tone={deliveryRate >= 95 ? 'good' : deliveryRate > 0 ? 'warn' : 'neutral'} />
           <Metric label="Total views" value={formatNumber(views)} detail={analytics ? 'Current telemetry projection' : 'Waiting for telemetry'} icon={Activity} />
         </div>
       </header>
 
-      <div className="grid gap-5 xl:grid-cols-12">
+      <div className="grid gap-4 xl:grid-cols-12">
         <Surface className="xl:col-span-8" label="Operational pulse">
           <SectionHeading
             eyebrow="01 / Operational pulse"
@@ -351,7 +354,7 @@ export function DashboardV2CommandCenter({
           </div>
           <Sparkles className="h-4 w-4 text-indigo-300" aria-hidden="true" />
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           {([
             ['Write article', 'editorial', FileText],
             ['Publishing queue', 'publishing', Send],

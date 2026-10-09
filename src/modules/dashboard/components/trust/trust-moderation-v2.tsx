@@ -257,8 +257,7 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
             Trust & Moderation
           </h1>
           <p className="m-0 mt-2 max-w-2xl font-sans text-sm leading-6 text-paper-dim">
-            Case queue untuk laporan konten, privacy requests, litigation hold, dan erasure tanpa
-            workflow Tabs V1.
+            Case queue untuk laporan konten, privacy requests, litigation hold, dan erasure.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
