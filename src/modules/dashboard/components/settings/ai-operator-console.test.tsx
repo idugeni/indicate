@@ -14,9 +14,9 @@ describe('AiOperatorConsole', () => {
     render(<AiOperatorConsole organizationId="11111111-1111-4111-8111-111111111111" />);
     fireEvent.change(screen.getByLabelText('Apa yang ingin diperiksa?'), { target: { value: 'Ringkas kondisi dashboard' } });
     fireEvent.click(screen.getByRole('button', { name: /Susun rencana/i }));
-    expect(await screen.findByText('Rencana tervalidasi (1 langkah)')).toBeInTheDocument();
+    expect(await screen.findByText('Rencana tervalidasi (1 langkah)')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Jalankan pemeriksaan/i }));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText(/\"status\": \"ok\"/)).toBeInTheDocument();
+    expect(await screen.findByText(/\"status\": \"ok\"/)).toBeTruthy();
   });
 });
