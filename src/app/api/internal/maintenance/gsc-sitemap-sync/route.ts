@@ -16,7 +16,7 @@ const GSC_SYNC_MAX_LIMIT = 500;
 /** Parallel hosts; sequential per host, bounded across hosts. */
 const GSC_SYNC_CONCURRENCY = 5;
 
-type SitemapSyncAction = 'submit' | 'delete' | 'none';
+export type SitemapSyncAction = 'submit' | 'delete' | 'none';
 
 /**
  * Decide the Search Console submission for one sitemap URL.
@@ -25,7 +25,7 @@ type SitemapSyncAction = 'submit' | 'delete' | 'none';
  * @param liveOk - Whether the live feed answers 200 with entries.
  * @returns Submit when missing but live, delete when submitted but dry, else none.
  */
-function planSitemapSync(submitted: boolean, liveOk: boolean): SitemapSyncAction {
+export function planSitemapSync(submitted: boolean, liveOk: boolean): SitemapSyncAction {
   if (liveOk && !submitted) return 'submit';
   if (!liveOk && submitted) return 'delete';
   return 'none';
@@ -164,6 +164,6 @@ async function handleGET(request: Request) {
  * `?limit=` membatasi apex per run (default 200, maks 500); host diproses
  * paralel terbatas (5) agar satu tick tidak menyerbu API sekaligus.
  */
-const GET = withApiAccess('GET /api/internal/maintenance/gsc-sitemap-sync', handleGET);
+export const GET = withApiAccess('GET /api/internal/maintenance/gsc-sitemap-sync', handleGET);
 
-const maxDuration = 300;
+export const maxDuration = 300;
