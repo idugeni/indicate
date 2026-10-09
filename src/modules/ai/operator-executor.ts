@@ -42,6 +42,7 @@ export async function executeOperatorPlan(input: {
   readonly plan: OperatorPlan;
 }): Promise<{ readonly ok: true; readonly results: readonly OperatorStepResult[] } | { readonly ok: false; readonly error: string }> {
   if (!OPERATOR_READ_EXECUTION_ENABLED) return { ok: false, error: 'Eksekusi baca AI dinonaktifkan.' };
+  if (input.actor.actorType !== 'user') return { ok: false, error: 'Jenis aktor ini tidak didukung untuk eksekusi operator.' };
   const capabilities = input.plan.steps.map((step) => ({ step, capability: catalogCapability(step.capabilityId) }));
   if (capabilities.some(({ capability }) => capability === undefined || !EXECUTABLE_READ_CAPABILITIES.has(capability.id))) {
     return { ok: false, error: 'Rencana memuat kemampuan yang belum memiliki handler terverifikasi.' };
@@ -55,7 +56,7 @@ export async function executeOperatorPlan(input: {
   const service = new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator());
   const results: OperatorStepResult[] = [];
 
-  for (const { step } of input.plan.steps) {
+  for (const step of input.plan.steps) {
     let result: unknown;
     switch (step.capabilityId) {
       case 'command-center.overview.read':
