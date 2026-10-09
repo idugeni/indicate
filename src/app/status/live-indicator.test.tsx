@@ -26,7 +26,7 @@ describe('StatusLiveIndicator', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('/api/status', { cache: 'no-store' });
-    expect(screen.getByText('LIVE 15M CYCLE')).toBeDefined();
+    expect(screen.getByText('STATUS SNAPSHOT')).toBeDefined();
   });
 
   it('tidak polling saat tab disembunyikan', async () => {
@@ -53,6 +53,6 @@ describe('StatusLiveIndicator', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
     });
-    await vi.waitFor(() => expect(screen.getByText('DATA BASI — MENCOBA LAGI')).toBeDefined());
+    await vi.waitFor(() => expect(screen.getByText('DATA TIDAK TERBARUI — MENCOBA LAGI')).toBeDefined());
   });
 });
