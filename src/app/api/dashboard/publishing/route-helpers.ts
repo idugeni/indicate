@@ -1,0 +1,3 @@
+import type { PublicErrorEnvelope } from '@/core/errors';
+
+export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'UNAUTHENTICATED' ? 401 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'INVALID_INPUT' ? 400 : ['CONFLICT', 'IDEMPOTENCY_CONFLICT', 'INVALID_STATE_TRANSITION'].includes(error.error.code) ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
