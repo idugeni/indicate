@@ -123,7 +123,7 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
   }),
   'publishing.delivery.request': tool({
     id: 'publishing.delivery.request',
-    description: 'Meminta distribusi artikel ke daftar publisher yang ditentukan.',
+    description: 'Meminta distribusi artikel ke portal situs yang ditentukan setelah approval.',
     scope: 'tenant',
     risk: 'high',
     requiredPermissions: ['publishing.request'],
