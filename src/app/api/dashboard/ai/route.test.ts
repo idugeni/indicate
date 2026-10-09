@@ -166,6 +166,14 @@ vi.mock('@/core/config/runtime/runtime-context', () => ({
   }),
 }));
 
+vi.mock('@/modules/ai/operator-planner', () => ({
+  planOperatorActions: async () => ({
+    ok: true,
+    plan: { steps: [{ id: 'step_1', capabilityId: 'command-center.overview.read', arguments: {} }] },
+    executionEnabled: false,
+  }),
+}));
+
 vi.mock('@/modules/auth/authenticate-dashboard', () => ({
   authenticateDashboardUser: async () => ({ id: 'user-1' }),
   authorizeDashboardOrganization: async () => ({
@@ -274,5 +282,22 @@ describe('POST draft-article-stream pre-flight parity', () => {
     } finally {
       fetchSpy.mockRestore();
     }
+  });
+});
+
+
+describe('POST operator-plan', () => {
+  it('returns a validated read-only plan without executing it', async () => {
+    const response = await POST(new Request('http://localhost/api/dashboard/ai', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'localhost' },
+      body: JSON.stringify({ organizationId: ORG, action: 'operator-plan', payload: { request: 'Ringkas kondisi dashboard' } }),
+    }));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      executionEnabled: false,
+      plan: { steps: [{ capabilityId: 'command-center.overview.read' }] },
+    });
   });
 });
