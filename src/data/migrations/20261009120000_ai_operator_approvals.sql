@@ -41,4 +41,4 @@ SELECT gen_random_uuid(), o.id, 'ai_operator.approve', 'organization', 'Approve 
 FROM public.organizations AS o
 ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (277, 'ai_operator_approvals', 'sha256:0000000000000000000000000000000000000000000000000000000000000000');
+VALUES (277, 'ai_operator_approvals', 'sha256:447f898ab308a00a1cb1601fe2f807cf7fcf6c99d3e663de3f98e11e5472a967');
