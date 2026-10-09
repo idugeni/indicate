@@ -3,7 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import type { ActorContext } from '@/core/operation-context';
-import { mediaListSchema, publicationStatusSchema } from '@/modules/publishing/schemas';
+import { mediaListSchema, publicationRequestSchema, publicationStatusSchema } from '@/modules/publishing/schemas';
 
 /**
  * AI Operator tool policy. This registry is the allow-list for tools that may
@@ -50,11 +50,6 @@ const auditReadInput = z.object({
   limit: z.number().int().min(1).max(500).optional(),
   cursor: z.string().max(200).optional(),
 }).strict();
-const deliveryRequestInput = z.object({
-  articleId: uuid,
-  publisherIds: z.array(uuid).min(1).max(50),
-}).strict();
-
 const tool = <T extends z.ZodType>(definition: {
   readonly id: string;
   readonly description: string;
@@ -133,7 +128,7 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
     risk: 'high',
     requiredPermissions: ['publishing.request'],
     requiresApproval: true,
-    input: deliveryRequestInput,
+    input: publicationRequestSchema,
   }),
   'media.assets.read': tool({
     id: 'media.assets.read',
