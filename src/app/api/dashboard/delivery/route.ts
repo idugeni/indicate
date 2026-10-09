@@ -8,23 +8,10 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { DeliveryConflictError, DeliveryResourceUnavailableError } from '@/modules/delivery/ports';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
+import { deliveryErrorStatus } from './route-helpers';
 import { deliveryOperationsComposition } from '@/modules/delivery';
 
 const commandSchema = z.object({ organizationId: z.uuid(), siteId: z.uuid(), action: z.enum(['activate', 'deactivate']), hostname: z.string().min(1).max(253), previousHostname: z.string().min(1).max(253).nullable().optional() });
-
-/**
- * Map a delivery failure to its HTTP status.
- *
- * @param error - Error thrown by the provisioning composition.
- * @returns Status honoring pending (503), conflict (409), unavailable (404), and invalid config (400).
- */
-export function deliveryErrorStatus(error: unknown): number {
-  if (error instanceof DeliveryOperationPendingError) return 503;
-  if (error instanceof DeliveryConflictError) return 409;
-  if (error instanceof DeliveryResourceUnavailableError) return 404;
-  if (error instanceof Error && error.message === 'CONFIGURATION_INVALID') return 400;
-  return 503;
-}
 
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
