@@ -86,6 +86,16 @@ describe('evaluateIncidents', () => {
     expect(duplicate.resolveIds).toEqual([]);
   });
 
+  it('tidak membuka atau menutup insiden dari hasil unknown', () => {
+    const evaluation = evaluateIncidents(
+      new Map<StatusComponent, ComponentHealth>([['api', 'ok']]),
+      [{ component: 'api', health: 'unknown', latencyMs: null, detail: 'probe dilewati', checkedAt: '2026-09-30T10:05:00.000Z' }],
+      [{ id: 'inc-api', component: 'api' }],
+    );
+    expect(evaluation.openings).toEqual([]);
+    expect(evaluation.resolveIds).toEqual([]);
+  });
+
   it('menutup insiden saat komponen pulih', () => {
     const evaluation = evaluateIncidents(
       new Map<StatusComponent, ComponentHealth>([['auth', 'down']]),
