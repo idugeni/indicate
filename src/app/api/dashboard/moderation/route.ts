@@ -26,7 +26,7 @@ const commandSchema = z.object({ action: z.string().min(1).max(100), payload: z.
  * @param error - Envelope produced by `ModerationService` or denial helpers.
  * @returns Status code defaulting to 500 for non-disclosing denials.
  */
-export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 function response(error: PublicErrorEnvelope) {
   return NextResponse.json(error, { status: statusFor(error) });
 }
@@ -105,5 +105,5 @@ async function handlePOST(request: Request) {
   }
 }
 
-export const GET = withApiAccess('GET /api/dashboard/moderation', handleGET);
-export const POST = withApiAccess('POST /api/dashboard/moderation', handlePOST);
+const GET = withApiAccess('GET /api/dashboard/moderation', handleGET);
+const POST = withApiAccess('POST /api/dashboard/moderation', handlePOST);
