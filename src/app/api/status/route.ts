@@ -52,7 +52,7 @@ async function loadSnapshot() {
       latencyMs: isFresh ? current?.latencyMs ?? null : null,
       checkedAt,
       days: daily
-        .filter((row) => row.component === component && component !== 'api')
+        .filter((row) => row.component === component && component !== 'api' && row.checks > 0)
         .map((row) => ({ day: row.day, uptimePct: row.uptimePct })),
     };
   });
