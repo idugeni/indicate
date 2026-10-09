@@ -79,7 +79,7 @@ const commandSchema = z.object({
 const str = (value: unknown, max: number): string => typeof value === 'string' ? value.slice(0, max) : '';
 
 function parseOperatorPlanResponse(raw: string): unknown | null {
-  const text = raw.trim().replace(/^\x60{3}(?:json)?\\s*/i, '').replace(/\\s*\x60{3}$/, '');
+  const text = raw.trim().replace(/^\x60{3}(?:json)?\s*/i, '').replace(/\s*\x60{3}$/, '');
   try { return JSON.parse(text) as unknown; } catch { return null; }
 }
 
