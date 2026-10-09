@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { AiServiceDeps } from '@/modules/ai/ai-service';
 import { runTaskQuery } from '@/modules/ai/ai-task-query';
-import { OPERATOR_CAPABILITIES } from '@/modules/ai/operator-capabilities';
+import { OPERATOR_CAPABILITIES, OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS } from '@/modules/ai/operator-capabilities';
 import { validateOperatorPlan, type OperatorPlan } from '@/modules/ai/operator-plan';
 
 export type OperatorPlanningResult =
@@ -27,7 +27,8 @@ export async function planOperatorActions(input: {
   const request = input.request.trim().slice(0, 1200);
   if (request.length < 3) return { ok: false, error: 'Perintah minimal 3 karakter.' };
 
-  const catalog = OPERATOR_CAPABILITIES.map(({ id, domain, risk }) => ({ id, domain, risk }));
+  const executableIds = new Set<string>(OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS);
+  const catalog = OPERATOR_CAPABILITIES.filter(({ id }) => executableIds.has(id)).map(({ id, domain, risk }) => ({ id, domain, risk }));
   const generated = await runTaskQuery(input.deps, 'editor', input.organizationId, {
     prompt: JSON.stringify({ request, allowedCapabilities: catalog, requiredOutput: { steps: [{ id: 'step_1', capabilityId: 'catalog ID', arguments: {} }] } }),
     systemInstruction: PLAN_SYSTEM,
