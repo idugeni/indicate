@@ -33,7 +33,7 @@ import {
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
-import { viewLabel } from '@/modules/dashboard/components/view-registry';
+import { canAccessView, viewLabel } from '@/modules/dashboard/components/view-registry';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   DashboardNavList,
@@ -269,6 +269,14 @@ export function DashboardWorkspace({
   );
 
   useEffect(() => {
+    if (!canAccessView(view, activePermissions)) {
+      void Promise.resolve().then(() => {
+        setPayload(null);
+        setBusy(false);
+        setError(null);
+      });
+      return;
+    }
     if (
       !snapshotConsumedRef.current &&
       initialDashboard !== null &&
@@ -304,7 +312,7 @@ export function DashboardWorkspace({
       fetchData(view, organizationId, filterQuery, controller.signal)
     );
     return () => controller.abort();
-  }, [fetchAnalytics, fetchData, view, organizationId, filterQuery, initialDashboard]);
+  }, [fetchAnalytics, fetchData, view, organizationId, filterQuery, initialDashboard, activePermissions]);
 
   const handleSwitchCommitted = useCallback(
     (nextOrgId: string) => {

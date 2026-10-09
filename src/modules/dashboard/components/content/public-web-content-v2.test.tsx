@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PublicWebContentV2 } from './public-web-content-v2';
 
 vi.mock('@/modules/dashboard/components/content/content-manager', () => ({
@@ -23,6 +23,33 @@ describe('PublicWebContentV2', () => {
       'fetch',
       vi.fn(async () => new Response(JSON.stringify(bundle), { status: 200 })),
     );
+  });
+
+  it('does not present an empty snapshot while the initial request is pending', async () => {
+    let resolveRequest: ((response: Response) => void) | undefined;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { resolveRequest = resolve; })));
+    render(<PublicWebContentV2 />);
+
+    expect(screen.getByText('Blocks').parentElement?.textContent).toContain('—');
+    expect(screen.getByText('Memuat snapshot public content…')).toBeDefined();
+    expect(screen.queryByText('Semua content block aktif pada snapshot ini.')).toBeNull();
+
+    await waitFor(() => expect(resolveRequest).toBeDefined());
+    resolveRequest?.(new Response(JSON.stringify(bundle), { status: 200 }));
+    await waitFor(() => expect(screen.getByText('Blocks').parentElement?.textContent).toContain('5'));
+  });
+
+  it('allows retry after the content snapshot request fails', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(bundle), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<PublicWebContentV2 />);
+
+    expect(await screen.findByRole('alert')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Coba lagi' }));
+    expect(await screen.findByText('FAQ')).toBeDefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('renders public content posture instead of the legacy content tabs', async () => {

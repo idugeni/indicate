@@ -100,14 +100,16 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   const [preview, setPreview] = useState<Record<string, SignedAssetAuthorization>>({});
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [page, setPage] = useState<{ readonly key: string; readonly items: readonly LibraryMedia[]; readonly next: string | null }>({ key: '', items: [], next: null });
+  const isDefaultQuery = search.trim() === '' && owner === 'all' && state === 'all';
   const appended = useMemo(() => (page.key === querySignature ? page.items : []), [page.key, page.items, querySignature]);
   const items = useMemo(() => {
+    if (!isDefaultQuery) return appended;
     const known = new Set(baseItems.map((item) => item.id));
     return [...baseItems, ...appended.filter((item) => !known.has(item.id))];
-  }, [baseItems, appended]);
+  }, [baseItems, appended, isDefaultQuery]);
   const cursor = page.key === querySignature
     ? page.next
-    : querySignature === '||'
+    : isDefaultQuery
       ? model.nextCursor ?? null
       : null;
 
@@ -124,8 +126,15 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   }, [items, owner, state, search, model]);
 
   useEffect(() => {
+    let cancelled = false;
+    if (search.trim() === '' && owner === 'all' && state === 'all') {
+      const resetTimer = window.setTimeout(() => {
+        setLoadingList(false);
+        setListError(null);
+      }, 0);
+      return () => window.clearTimeout(resetTimer);
+    }
     const timer = window.setTimeout(() => {
-      if (search.trim() === '' && owner === 'all' && state === 'all') return;
       setLoadingList(true);
       setListError(null);
       void (async () => {
@@ -137,17 +146,21 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
             ...(state === 'all' ? {} : { state }),
           }));
           if (nextPage === null) throw new Error('Invalid media page');
+          if (cancelled) return;
           const requestKey = `${search.trim()}|${owner}|${state}`;
-          setPage({ key: requestKey, items: [], next: nextPage.next });
+          setPage({ key: requestKey, items: nextPage.items, next: nextPage.next });
           setSelectedId(nextPage.items[0]?.id ?? '');
         } catch {
-          setListError('Gagal memuat scope media. Coba ubah filter atau ulangi.');
+          if (!cancelled) setListError('Gagal memuat scope media. Coba ubah filter atau ulangi.');
         } finally {
-          setLoadingList(false);
+          if (!cancelled) setLoadingList(false);
         }
       })();
     }, 350);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [search, owner, state, command]);
 
   const selected = filtered.find((item) => item.id === selectedId) ?? filtered[0] ?? null;

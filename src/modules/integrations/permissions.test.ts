@@ -27,15 +27,19 @@ describe('INTEGRATIONS_TENANT_PERMISSION_NAMES', () => {
     expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).toContain('api_key.read');
     expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).not.toContain('platform.super_admin');
     expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).not.toContain('platform.customer.admin');
+    expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).not.toContain('platform.content.manage');
+    expect(INTEGRATIONS_TENANT_PERMISSION_NAMES).not.toContain('platform.runtime_config.manage');
   });
 });
 
 describe('INTEGRATIONS_PLATFORM_PERMISSION_NAMES', () => {
-  it('mendaftarkan grant platform aktif dan transisi', () => {
+  it('mendaftarkan semua grant platform, termasuk content dan runtime config', () => {
     expect([...INTEGRATIONS_PLATFORM_PERMISSION_NAMES]).toEqual([
       'platform.super_admin',
       'platform.customer.admin',
+      'platform.content.manage',
       'platform.ai.manage',
+      'platform.runtime_config.manage',
     ]);
   });
 });

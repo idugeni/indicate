@@ -38,6 +38,8 @@ type Invoice = {
 
 type Customer = { readonly id: string; readonly name: string; readonly slug: string };
 
+const INVOICE_PAGE_SIZE = 100;
+
 const money = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
 
 async function getJson(url: string) {
@@ -57,11 +59,13 @@ export function MonetizationControlCenterV2({
     permissions.includes('platform.super_admin') || permissions.includes('platform.customer.admin');
   const [state, setState] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<readonly Invoice[]>([]);
+  const [hasMoreInvoices, setHasMoreInvoices] = useState(false);
+  const [loadingMoreInvoices, setLoadingMoreInvoices] = useState(false);
   const [customers, setCustomers] = useState<readonly Customer[]>([]);
   const [selectedOrg, setSelectedOrg] = useState('');
   const [status, setStatus] = useState('active');
   const [amount, setAmount] = useState(String(SINGLE_INVOICE_AMOUNT_IDR));
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [nowMs] = useState(() => Date.now());
@@ -77,11 +81,12 @@ export function MonetizationControlCenterV2({
           `/api/dashboard/billing?scope=subscription-state&organizationId=${encodeURIComponent(organizationId)}`,
         ) as Promise<{ state: string }>,
         getJson(
-          `/api/dashboard/billing?scope=invoices&organizationId=${encodeURIComponent(organizationId)}`,
+          `/api/dashboard/billing?scope=invoices&organizationId=${encodeURIComponent(organizationId)}&limit=${INVOICE_PAGE_SIZE}`,
         ) as Promise<readonly Invoice[]>,
       ]);
       setState(s.state);
       setInvoices(i);
+      setHasMoreInvoices(i.length >= INVOICE_PAGE_SIZE);
     } catch {
       setError('Gagal memuat data monetisasi.');
     } finally {
@@ -90,29 +95,11 @@ export function MonetizationControlCenterV2({
   }, [organizationId]);
 
   useEffect(() => {
-    let cancelled = false;
-    void Promise.all([
-      getJson(
-        '/api/dashboard/billing?scope=subscription-state&organizationId=' +
-          encodeURIComponent(organizationId),
-      ) as Promise<{ state: string }>,
-      getJson(
-        '/api/dashboard/billing?scope=invoices&organizationId=' +
-          encodeURIComponent(organizationId),
-      ) as Promise<readonly Invoice[]>,
-    ])
-      .then(([subscription, invoiceRows]) => {
-        if (cancelled) return;
-        setState(subscription.state);
-        setInvoices(invoiceRows);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Gagal memuat data monetisasi.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId]);
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   useEffect(() => {
     if (!isPlatform) return;
@@ -140,6 +127,28 @@ export function MonetizationControlCenterV2({
     () => customers.map((c) => ({ value: c.id, label: c.slug ? `${c.name} · ${c.slug}` : c.name })),
     [customers],
   );
+
+  const loadMoreInvoices = async () => {
+    const last = invoices[invoices.length - 1];
+    if (last === undefined || loadingMoreInvoices || !hasMoreInvoices) return;
+    setLoadingMoreInvoices(true);
+    setError(null);
+    try {
+      const cursor = `${last.createdAt}~${last.id}`;
+      const next = (await getJson(
+        `/api/dashboard/billing?scope=invoices&organizationId=${encodeURIComponent(organizationId)}&limit=${INVOICE_PAGE_SIZE}&cursor=${encodeURIComponent(cursor)}`,
+      )) as readonly Invoice[];
+      setInvoices((current) => {
+        const known = new Set(current.map((invoice) => invoice.id));
+        return [...current, ...next.filter((invoice) => !known.has(invoice.id))];
+      });
+      setHasMoreInvoices(next.length >= INVOICE_PAGE_SIZE);
+    } catch {
+      setError('Gagal memuat halaman faktur berikutnya.');
+    } finally {
+      setLoadingMoreInvoices(false);
+    }
+  };
 
   const command = useCallback(async (action: string, payload: Record<string, unknown>) => {
     const r = await fetch('/api/dashboard/billing', {
@@ -355,8 +364,14 @@ export function MonetizationControlCenterV2({
               <option value="voided">Voided</option>
             </select>
           </div>
-          {filteredInvoices.length === 0 ? (
-            <EmptyState compact title="Belum ada faktur untuk organisasi ini." />
+          {busy && invoices.length === 0 ? (
+            <div role="status" aria-live="polite" className="rounded-lg border border-hairline bg-bg p-4 text-xs text-paper-dim">
+              Memuat faktur…
+            </div>
+          ) : error !== null && invoices.length === 0 ? (
+            <EmptyState compact title="Faktur tidak dapat dimuat. Periksa pesan kesalahan lalu coba refresh." />
+          ) : filteredInvoices.length === 0 ? (
+            <EmptyState compact title={query.trim() || ledgerFilter !== 'all' ? 'Tidak ada faktur yang cocok dengan filter.' : 'Belum ada faktur untuk organisasi ini.'} />
           ) : (
             <div className="space-y-2">
               {filteredInvoices.map((invoice) => (
@@ -447,6 +462,19 @@ export function MonetizationControlCenterV2({
               ))}
             </div>
           )}
+          {hasMoreInvoices ? (
+            <div className="mt-3 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void loadMoreInvoices()}
+                disabled={loadingMoreInvoices || busy}
+              >
+                {loadingMoreInvoices ? 'Memuat faktur…' : 'Muat faktur berikutnya'}
+              </Button>
+            </div>
+          ) : null}
         </SectionCard>
 
         <div className="space-y-5">

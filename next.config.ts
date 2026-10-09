@@ -86,6 +86,8 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
+    // Bound worker fan-out so Turbopack does not exhaust thread quotas on constrained CI runners.
+    cpus: 2,
     typedEnv: true,
     optimizePackageImports: [
       '@base-ui/react',

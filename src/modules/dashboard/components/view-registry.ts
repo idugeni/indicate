@@ -60,6 +60,8 @@ export interface ViewMetadata {
   readonly icon: IconComponent;
   /** Permission gating display; never gate on `roles.tier` (display label only). */
   readonly requiredPermission?: string;
+  /** Alternative grants accepted by the underlying capability. */
+  readonly requiredAnyPermission?: readonly string[];
   /** Group heading in the sidebar and category badge in the command palette. */
   readonly group: ViewGroup;
 }
@@ -150,7 +152,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   customers: {
     label: 'Customers', title: 'Customer Operations', eyebrow: 'Platform Control', group: 'system',
     description: 'Kelola akun pelanggan, organisasi, dan status langganan.',
-    icon: Building2, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin,
+    icon: Building2, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
   content: {
     label: 'Web Content', title: 'Public Web Content', eyebrow: 'Brand Surface', group: 'system',
@@ -183,16 +185,22 @@ export function viewLabel(view: View): string {
 }
 
 /** Ordered nav groups; empty groups are dropped so a low-privilege actor never sees a bare heading. */
+export function canAccessView(view: View, permissions: ReadonlySet<string>): boolean {
+  const metadata = VIEW_REGISTRY[view];
+  if (metadata.requiredAnyPermission !== undefined) {
+    return metadata.requiredAnyPermission.some((permission) => permissions.has(permission));
+  }
+  const required = metadata.requiredPermission;
+  return required === undefined || permissions.has(required);
+}
+
 export function visibleNavGroups(permissions: ReadonlySet<string>): readonly { readonly id: ViewGroup; readonly title: string; readonly views: readonly View[] }[] {
   const order: readonly ViewGroup[] = ['overview', 'editorial', 'publishing', 'system'];
   return order
     .map((id) => ({
       id,
       title: GROUP_TITLES[id],
-      views: ALL_VIEWS.filter((view) => {
-        const required = VIEW_REGISTRY[view].requiredPermission;
-        return VIEW_REGISTRY[view].group === id && (required === undefined || permissions.has(required));
-      }),
+      views: ALL_VIEWS.filter((view) => VIEW_REGISTRY[view].group === id && canAccessView(view, permissions)),
     }))
     .filter((group) => group.views.length > 0);
 }

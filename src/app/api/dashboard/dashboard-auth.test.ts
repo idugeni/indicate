@@ -288,6 +288,22 @@ vi.mock('@/modules/integrations/customer-service', async () => {
         ok: true,
         value: { customer: { id: shared.orgId }, subscription: null },
       });
+      list = async () => ({
+        ok: true,
+        value: Array.from({ length: 100 }, (_, index) => ({
+          customer: {
+            id: '11111111-1111-4111-8111-' + String(index + 1).padStart(12, '0'),
+            name: 'Customer ' + String(index + 1),
+            slug: 'customer-' + String(index + 1),
+            status: 'active',
+            customerMetadata: {},
+            version: 1,
+            createdAt: '2026-10-01T00:00:00.000Z',
+            updatedAt: '2026-10-01T00:00:00.000Z',
+          },
+          subscription: null,
+        })),
+      });
     },
   };
 });
@@ -643,6 +659,20 @@ describe('satu pintu login untuk semua aksi admin dashboard', () => {
       ),
     );
     expect(response.status).toBe(200);
+  });
+
+  it('integrasi pelanggan mengembalikan cursor saat halaman customer penuh', async () => {
+    const response = await integrationsGET(
+      dashboardRequest(
+        '/api/dashboard/integrations?organizationId=' + shared.orgId + '&view=customers&limit=100',
+        { loggedIn: true },
+      ),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('X-Next-Cursor')).toBe(
+      '2026-10-01T00:00:00.000Z~11111111-1111-4111-8111-000000000100',
+    );
+    expect(await response.json()).toHaveLength(100);
   });
 
   it('integrasi menolak tanpa kredensial', async () => {

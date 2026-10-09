@@ -1,4 +1,4 @@
-import { pageFromSearchParams } from '@/data/repos/shared/list-page';
+import { encodeCursor, pageFromSearchParams } from '@/data/repos/shared/list-page';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
@@ -116,7 +116,23 @@ async function handleGET(request: Request) {
   const requestId = resolveRequestId(request); const url = new URL(request.url); const parsed = querySchema.safeParse({ organizationId: url.searchParams.get('organizationId'), view: url.searchParams.get('view'), customerId: url.searchParams.get('customerId') ?? undefined }); if (!parsed.success) return response(createNonDisclosingDenial(requestId));
   const context = await contextFor(parsed.data.organizationId, requestId); if (isError(context)) return response(context);
   {
-    if (parsed.data.view === 'customers') { const page = pageFromSearchParams(url); const result = parsed.data.customerId === undefined ? await context.customers.list(context.actor, page) : await context.customers.read(context.actor, parsed.data.customerId); return result.ok ? NextResponse.json(result.value) : response(result.error); }
+    if (parsed.data.view === 'customers') {
+      if (parsed.data.customerId !== undefined) {
+        const result = await context.customers.read(context.actor, parsed.data.customerId);
+        return result.ok ? NextResponse.json(result.value) : response(result.error);
+      }
+      const page = pageFromSearchParams(url);
+      const result = await context.customers.list(context.actor, page);
+      if (!result.ok) return response(result.error);
+      const effectiveLimit = Math.min(Math.max(Math.floor(page.limit ?? 100), 1), 500);
+      const last = result.value[result.value.length - 1];
+      const nextCursor = result.value.length === effectiveLimit && last !== undefined
+        ? encodeCursor(last.customer.createdAt, last.customer.id)
+        : null;
+      return NextResponse.json(result.value, {
+        headers: nextCursor === null ? {} : { 'X-Next-Cursor': nextCursor },
+      });
+    }
     if (parsed.data.view === 'ai') {
       const result = await context.ai.overview(context.actor);
       if (!result.ok) return response(result.error);

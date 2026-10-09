@@ -93,6 +93,54 @@ describe('TrustModerationV2', () => {
     expect(screen.queryByText('Bagian moderasi')).toBeNull();
   });
 
+  it('keeps the initial queue loading until all moderation collections are fetched', async () => {
+    let releaseRequest: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => { releaseRequest = resolve; });
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      await gate;
+      const url = String(input);
+      const payload = url.includes('reports')
+        ? reports
+        : url.includes('privacy-requests')
+          ? privacy
+          : url.includes('holds')
+            ? holds
+            : erasures;
+      return new Response(JSON.stringify(payload), { status: 200 });
+    }));
+    render(<TrustModerationV2 organizationId="org-1" />);
+
+    expect(await screen.findByText('Memuat trust & moderation…')).toBeDefined();
+    expect(screen.queryByText('Tidak ada laporan yang membutuhkan review.')).toBeNull();
+    releaseRequest?.();
+    expect(await screen.findByText('Moderation Queue')).toBeDefined();
+    expect(await screen.findByText('Ada data pribadi pada artikel.')).toBeDefined();
+  });
+
+  it('allows retry after the moderation collections fail to load', async () => {
+    let calls = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      calls += 1;
+      if (calls <= 4) return new Response('{}', { status: 503 });
+      const url = String(input);
+      const payload = url.includes('reports')
+        ? reports
+        : url.includes('privacy-requests')
+          ? privacy
+          : url.includes('holds')
+            ? holds
+            : erasures;
+      return new Response(JSON.stringify(payload), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<TrustModerationV2 organizationId="org-1" />);
+
+    expect(await screen.findByRole('alert')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Coba lagi' }));
+    expect(await screen.findByText('Ada data pribadi pada artikel.')).toBeDefined();
+    expect(fetchMock).toHaveBeenCalledTimes(8);
+  });
+
   it('opens a report review surface with AI assist', async () => {
     render(<TrustModerationV2 organizationId="org-1" />);
     fireEvent.click(await screen.findByRole('button', { name: /privacy/ }));
