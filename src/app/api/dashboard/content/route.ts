@@ -8,6 +8,7 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { ContentAdminAccessDeniedError, DrizzleContentAdminRepository } from '@/data/repos/content/admin';
+import { contentErrorStatus } from './route-helpers';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
@@ -77,16 +78,6 @@ async function handleGET(request: Request) {
       return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     }
   }
-}
-
-/**
- * Map a content-admin failure to its HTTP status.
- *
- * @param error - Error thrown by the content admin repository.
- * @returns 404 for access denial, 500 otherwise.
- */
-export function contentErrorStatus(error: unknown): number {
-  return error instanceof ContentAdminAccessDeniedError ? 404 : 500;
 }
 
 /**
