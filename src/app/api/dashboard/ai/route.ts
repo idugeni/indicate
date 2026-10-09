@@ -821,7 +821,7 @@ async function handlePOST(request: Request) {
         if (prompt.length < 3) return response(createPublicError('INVALID_INPUT', 'Tuliskan permintaan operator yang jelas.', requestId));
         const planningTools = listAiOperatorPlanningTools(session.actor);
         if (planningTools.length === 0) return response(createPublicError('FORBIDDEN', 'Tidak ada tool AI Operator yang diizinkan untuk aktor ini.', requestId));
-        const generated = await assistantOperatorPlan({ request: prompt, tools: planningTools, organizationId });
+        const generated = await assistantOperatorPlan({ request: prompt, tools: planningTools, organizationId, deps });
         if (!generated.ok) return response(createPublicError('DEPENDENCY_UNAVAILABLE', generated.error, requestId));
         const parsedPlan = parseOperatorPlanResponse(generated.response);
         if (parsedPlan === null || typeof parsedPlan !== 'object' || Array.isArray(parsedPlan)) {
