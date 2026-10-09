@@ -136,7 +136,8 @@ async function handlePOST(request: Request) {
         toolId,
         input: validated.data,
       };
-      const usableApproval = await getUsableAiOperatorApproval(context.db, { approvalId, command });
+      const authorizedAt = new Date();
+      const usableApproval = await getUsableAiOperatorApproval(context.db, { approvalId, command, now: authorizedAt });
       if (!usableApproval.ok) {
         const status = usableApproval.reason === 'NOT_FOUND' ? 404
           : usableApproval.reason === 'SELF_APPROVAL' ? 403
@@ -148,7 +149,6 @@ async function handlePOST(request: Request) {
         ), { status });
       }
 
-      const authorizedAt = new Date();
       const services = await publishingServicesFor();
       const response = await services.publication.request(context.actor, validated.data);
       if (!response.ok) {
