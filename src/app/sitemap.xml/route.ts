@@ -4,22 +4,8 @@ import { denied } from '@/core/routing/deny';
 import { serializeSitemap } from '@/modules/site/seo';
 import { getSiteCategoryChannels } from '@/modules/site/components/network/server/site-nav';
 import { withApiAccess } from '@/core/observability/api-access';
-import { SERVICE_PATHS } from '@/core/routing/control-plane-paths';
+import { controlPlaneSitemap } from './route-helpers';
 import { deliveryComposition } from '@/modules/delivery';
-
-/**
- * Render the control-plane sitemap document.
- *
- * @param host - Dashboard hostname for absolute URLs.
- * @returns Sitemap XML covering root and service paths.
- */
-export function controlPlaneSitemap(host: string): string {
-  const today = new Date().toISOString().slice(0, 10);
-  const entries = ['/', ...SERVICE_PATHS.filter((path) => path !== '/status')]
-    .map((path) => `  <url><loc>https://${host}${path}</loc><lastmod>${today}</lastmod></url>`)
-    .join('\n');
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`;
-}
 
 async function handleGET() {
   await connection();
