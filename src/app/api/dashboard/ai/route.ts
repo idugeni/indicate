@@ -1,9 +1,10 @@
 import { cookies } from 'next/headers';
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
+import { authenticateDashboardUser, authorizeDashboardOrganization, authorizeDashboardPlatform } from '@/modules/auth/authenticate-dashboard';
 import type { ActorContext } from '@/core/operation-context';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
@@ -18,7 +19,11 @@ import { configureAiCover, generateCoverImage } from '@/modules/ai/ai-cover';
 import { configureAiTts, synthesizeSpeech } from '@/modules/ai/ai-tts';
 import { configureAiTranscribe, transcribeAudio, transcribeToArticle } from '@/modules/ai/ai-transcribe';
 import { configurePublisherVerify, verifyPublisher } from '@/modules/ai/ai-verify';
-import { configureAiAssistant, assistantChat } from '@/modules/ai/ai-assistant';
+import { configureAiAssistant, assistantChat, assistantOperatorPlan } from '@/modules/ai/ai-assistant';
+import { planOperatorActions } from '@/modules/ai/operator-planner';
+import { executeOperatorPlan } from '@/modules/ai/operator-executor';
+import { validateOperatorPlan } from '@/modules/ai/operator-plan';
+import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { ARTICLE_DRAFT_SCHEMA } from '@/modules/ai/ai-response-schemas';
 import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
 import { SEMANTIC_CANDIDATE_LIMIT, embedQueryVector, reindexArticleEmbeddings, toSemanticCandidate, type WorkersAiCredentials } from '@/modules/ai/ai-embeddings';
@@ -42,6 +47,8 @@ import { rankSemanticCandidates, type SemanticCandidate } from '@/integrations/a
 import { decryptAiKey } from '@/modules/ai/ai-crypto';
 import { AI_BREAKER_ERROR_CLASSES, classifyAiError, getActiveRoutingPolicy, getAvailableCredentials, isModelBreakerTripped, nextChainStartIndex, recordKeyFailure, recordKeySuccess, recordModelInfraFailure, recordModelSuccess, resolveCascadeChain, resolveOrderedAiModelChain } from '@/modules/ai/ai-router';
 import type { AiChatPrompt as AdapterPrompt } from '@/integrations/ai/ai-prompt';
+import { listAiOperatorPlanningTools } from '@/modules/ai-operator/tool-registry';
+import { validateAiOperatorPlan } from '@/modules/ai-operator/plan-validation';
 
 const commandSchema = z.object({
   organizationId: z.uuid(),
@@ -67,12 +74,35 @@ const commandSchema = z.object({
     'transcribe-audio',
     'transcribe-to-article',
     'publisher-verify',
+    'operator-plan',
+    'operator-execute',
     'assistant-chat',
+    'operator-tool-plan',
   ]),
   payload: z.record(z.string(), z.unknown()),
 }).strict();
 
 const str = (value: unknown, max: number): string => typeof value === 'string' ? value.slice(0, max) : '';
+
+function parseOperatorPlanResponse(raw: string): unknown | null {
+  const text = raw.trim().replace(/^\x60{3}(?:json)?\s*/i, '').replace(/\s*\x60{3}$/, '');
+  try { return JSON.parse(text) as unknown; } catch { return null; }
+}
+
+function normalizeOperatorPlanCandidate(candidate: Record<string, unknown>): unknown {
+  const plan: Record<string, unknown> = { ...candidate };
+  delete plan.kind;
+  if (!Array.isArray(plan.steps)) return plan;
+  return {
+    ...plan,
+    steps: plan.steps.map((step) => {
+      if (step === null || typeof step !== 'object' || Array.isArray(step)) return step;
+      const row = step as Record<string, unknown>;
+      if (row.toolId !== 'publishing.delivery.request' || row.input === null || typeof row.input !== 'object' || Array.isArray(row.input)) return row;
+      return { ...row, input: { ...(row.input as Record<string, unknown>), idempotencyKey: randomUUID() } };
+    }),
+  };
+}
 
 function response(error: PublicErrorEnvelope) {
   const status = error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
@@ -182,7 +212,7 @@ async function serviceDeps(organizationId?: string | undefined, context?: Server
   return deps;
 }
 
-async function sessionFor(organizationId: string, requestId: string): Promise<{ readonly actor: ActorContext } | PublicErrorEnvelope> {
+async function sessionFor(organizationId: string, requestId: string): Promise<{ readonly actor: ActorContext; readonly user: NonNullable<Awaited<ReturnType<typeof authenticateDashboardUser>>> } | PublicErrorEnvelope> {
   const cookieStore = await cookies();
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
@@ -190,7 +220,7 @@ async function sessionFor(organizationId: string, requestId: string): Promise<{ 
   if (user === null) return createNonDisclosingDenial(requestId);
   const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
   if (actor === null) return createNonDisclosingDenial(requestId);
-  return { actor };
+  return { actor, user };
 }
 
 async function auditDraftStream(db: AiDb, entry: {
@@ -786,10 +816,49 @@ async function handlePOST(request: Request) {
         const result = await verifyPublisher({ name: str(payload.name, 300), evidence: str(payload.evidence, 4000), organizationId });
         return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
       }
+      case 'operator-plan': {
+        const result = await planOperatorActions({ request: str(payload.request, 1200), organizationId, deps });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('INVALID_INPUT', result.error, requestId));
+      }
+      case 'operator-execute': {
+        const validated = validateOperatorPlan(payload.plan);
+        if (!validated.ok) return response(createPublicError('INVALID_INPUT', validated.message, requestId));
+        const platformContext = await getServerRuntimeContext();
+        const platformRuntime = getSharedRuntimeDatabase(platformContext.bootstrap);
+        const platformActor = await authorizeDashboardPlatform(platformRuntime.db, session.user, requestId, organizationId);
+        const result = await executeOperatorPlan({ actor: session.actor as AuthorizedTenantActorContext, platformActor, plan: validated.plan });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('FORBIDDEN', result.error, requestId));
+      }
       case 'assistant-chat': {
         const messages = Array.isArray(payload.messages) ? payload.messages : [];
         const result = await assistantChat({ messages, organizationId });
         return result.ok ? NextResponse.json(result) : response(createPublicError('DEPENDENCY_UNAVAILABLE', result.error, requestId));
+      }
+      case 'operator-tool-plan': {
+        if (session.actor.actorType !== 'user') return response(createNonDisclosingDenial(requestId));
+        const prompt = str(payload.prompt, 3000).trim();
+        if (prompt.length < 3) return response(createPublicError('INVALID_INPUT', 'Tuliskan permintaan operator yang jelas.', requestId));
+        const planningTools = listAiOperatorPlanningTools(session.actor);
+        if (planningTools.length === 0) return response(createPublicError('FORBIDDEN', 'Tidak ada tool AI Operator yang diizinkan untuk aktor ini.', requestId));
+        const generated = await assistantOperatorPlan({ request: prompt, tools: planningTools, organizationId, deps });
+        if (!generated.ok) return response(createPublicError('DEPENDENCY_UNAVAILABLE', generated.error, requestId));
+        const parsedPlan = parseOperatorPlanResponse(generated.response);
+        if (parsedPlan === null || typeof parsedPlan !== 'object' || Array.isArray(parsedPlan)) {
+          return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'AI menghasilkan rencana yang tidak dapat divalidasi. Coba perjelas permintaan.', requestId));
+        }
+        const envelope = parsedPlan as Record<string, unknown>;
+        if (envelope.kind === 'clarification') {
+          const clarification = z.object({ kind: z.literal('clarification'), question: z.string().trim().min(1).max(1000) }).strict().safeParse(envelope);
+          if (!clarification.success) return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'AI menghasilkan pertanyaan klarifikasi yang tidak valid.', requestId));
+          return NextResponse.json({ kind: 'clarification', question: clarification.data.question, requestId });
+        }
+        if (envelope.kind !== 'plan') return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'AI tidak mengembalikan format rencana yang didukung.', requestId));
+        const candidate = normalizeOperatorPlanCandidate(envelope);
+        const validatedPlan = validateAiOperatorPlan(session.actor, candidate);
+        if (!validatedPlan.ok) {
+          return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Rencana AI ditolak oleh validasi keamanan. Perjelas permintaan dan coba lagi.', requestId));
+        }
+        return NextResponse.json({ kind: 'plan', plan: validatedPlan.plan, requestId });
       }
       default: {
         return response(createPublicError('DEPENDENCY_UNAVAILABLE', 'Aksi AI ini belum tersedia.', requestId));

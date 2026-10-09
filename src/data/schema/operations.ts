@@ -138,6 +138,43 @@ export const webhookReplayClaims = pgTable('webhook_replay_claims', {
   check('webhook_replay_claims_pending_terminal', sql`${table.pendingStatus} IS NULL OR ${table.pendingStatus} IN ('processed', 'rejected')`),
 ]);
 
+export const aiOperatorApprovalState = pgEnum('ai_operator_approval_state', ['pending', 'approved', 'rejected', 'consumed', 'expired']);
+
+/** Durable approval for one exact AI Operator command; never an execution grant by itself. */
+export const aiOperatorApprovals = pgTable('ai_operator_approvals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  requesterActorId: text('requester_actor_id').notNull(),
+  approverActorId: text('approver_actor_id'),
+  toolId: text('tool_id').notNull(),
+  commandInput: jsonb('command_input').$type<Record<string, unknown>>().notNull(),
+  commandHash: text('command_hash').notNull(),
+  state: aiOperatorApprovalState('state').default('pending').notNull(),
+  idempotencyKey: text('idempotency_key').notNull(),
+  decisionNote: text('decision_note'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  rejectedAt: timestamp('rejected_at', { withTimezone: true }),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  ...timestamps,
+}, (table) => [
+  unique('ai_operator_approvals_idempotency_unique').on(table.organizationId, table.requesterActorId, table.idempotencyKey),
+  index('ai_operator_approvals_org_state_created_idx').on(table.organizationId, table.state, table.createdAt.desc()),
+  index('ai_operator_approvals_expiry_idx').on(table.state, table.expiresAt),
+  check('ai_operator_approvals_command_hash_check', sql`length(${table.commandHash}) = 64`),
+  check('ai_operator_approvals_tool_id_check', sql`length(${table.toolId}) BETWEEN 1 AND 120`),
+  check('ai_operator_approvals_actor_ids_check', sql`length(${table.requesterActorId}) BETWEEN 1 AND 200 AND (${table.approverActorId} IS NULL OR length(${table.approverActorId}) BETWEEN 1 AND 200)`),
+  check('ai_operator_approvals_idempotency_check', sql`length(${table.idempotencyKey}) BETWEEN 1 AND 200`),
+  check('ai_operator_approvals_input_object_check', sql`jsonb_typeof(${table.commandInput}) = 'object'`),
+  check('ai_operator_approvals_decision_state_check', sql`(
+    (${table.state} = 'pending' AND ${table.approverActorId} IS NULL AND ${table.approvedAt} IS NULL AND ${table.rejectedAt} IS NULL AND ${table.consumedAt} IS NULL)
+    OR (${table.state} = 'approved' AND ${table.approverActorId} IS NOT NULL AND ${table.approvedAt} IS NOT NULL AND ${table.rejectedAt} IS NULL AND ${table.consumedAt} IS NULL)
+    OR (${table.state} = 'rejected' AND ${table.approverActorId} IS NOT NULL AND ${table.approvedAt} IS NULL AND ${table.rejectedAt} IS NOT NULL AND ${table.consumedAt} IS NULL)
+    OR (${table.state} = 'consumed' AND ${table.approverActorId} IS NOT NULL AND ${table.approvedAt} IS NOT NULL AND ${table.consumedAt} IS NOT NULL AND ${table.rejectedAt} IS NULL)
+    OR (${table.state} = 'expired' AND ${table.consumedAt} IS NULL)
+  )`),
+]);
+
 export const migrationMetadata = pgTable('indicate_schema_migrations', {
   version: integer('version').primaryKey(),
   name: text('name').notNull(),

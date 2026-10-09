@@ -166,8 +166,21 @@ vi.mock('@/core/config/runtime/runtime-context', () => ({
   }),
 }));
 
+vi.mock('@/modules/ai/operator-executor', () => ({
+  executeOperatorPlan: async () => ({ ok: true, results: [{ id: 'step_1', capabilityId: 'command-center.overview.read', ok: true, result: { status: 'ok' } }] }),
+}));
+
+vi.mock('@/modules/ai/operator-planner', () => ({
+  planOperatorActions: async () => ({
+    ok: true,
+    plan: { steps: [{ id: 'step_1', capabilityId: 'command-center.overview.read', arguments: {} }] },
+    executed: false,
+  }),
+}));
+
 vi.mock('@/modules/auth/authenticate-dashboard', () => ({
   authenticateDashboardUser: async () => ({ id: 'user-1' }),
+  authorizeDashboardPlatform: async () => ({ actorId: 'platform-1', organizationId: null, actorType: 'user', verifiedAuthUserId: 'auth-1', permissionSet: new Set<string>(), platformPermissionSet: new Set<string>(), entryPoint: 'dashboard', requestId: 'req-test' }),
   authorizeDashboardOrganization: async () => ({
     actorId: 'user-1',
     organizationId: ORG,
@@ -274,5 +287,44 @@ describe('POST draft-article-stream pre-flight parity', () => {
     } finally {
       fetchSpy.mockRestore();
     }
+  });
+});
+
+
+describe('POST operator-plan', () => {
+  it('returns a validated read-only plan without executing it', async () => {
+    const response = await POST(new Request('http://localhost/api/dashboard/ai', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'localhost' },
+      body: JSON.stringify({ organizationId: ORG, action: 'operator-plan', payload: { request: 'Ringkas kondisi dashboard' } }),
+    }));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      executed: false,
+      plan: { steps: [{ capabilityId: 'command-center.overview.read' }] },
+    });
+  });
+});
+
+
+describe('POST operator-execute', () => {
+  it('dispatches a validated plan to the read-only executor', async () => {
+    const response = await POST(new Request('http://localhost/api/dashboard/ai', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'localhost' },
+      body: JSON.stringify({ organizationId: ORG, action: 'operator-execute', payload: { plan: { steps: [{ id: 'step_1', capabilityId: 'command-center.overview.read', arguments: {} }] } } }),
+    }));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, results: [{ id: 'step_1', ok: true }] });
+  });
+
+  it('rejects an unknown capability before dispatch', async () => {
+    const response = await POST(new Request('http://localhost/api/dashboard/ai', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'localhost' },
+      body: JSON.stringify({ organizationId: ORG, action: 'operator-execute', payload: { plan: { steps: [{ id: 'step_1', capabilityId: 'system.shell.execute', arguments: {} }] } } }),
+    }));
+    expect(response.status).toBe(400);
   });
 });

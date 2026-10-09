@@ -4,6 +4,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 import { AiControlCenterV2 } from './ai-control-center-v2';
 
+vi.mock('@/modules/dashboard/components/settings/ai-operator-console', () => ({
+  AiOperatorConsole: () => <div data-testid="ai-operator-console" />,
+}));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
