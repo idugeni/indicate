@@ -8,21 +8,11 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { matchesSecret } from '@/app/api/internal/auth';
 import type { WorkerRunSummary } from '@/modules/publishing/publication-worker';
+import { isReconcileDue } from './route-helpers';
 
 const IDLE_SUMMARY: WorkerRunSummary = Object.freeze({ claimed: 0, processed: 0, reconciled: 0, cleaned: 0, failed: 0 });
 
-const RECONCILE_EVERY_MINUTES = 5;
 const RECONCILE_BUDGET_BUFFER_MS = 20_000;
-
-/**
- * Decide whether this per-minute work tick also owes a reconcile pass.
- *
- * @param now - Current time.
- * @returns True every fifth UTC minute, matching the retired reconcile schedule.
- */
-export function isReconcileDue(now: Date): boolean {
-  return now.getUTCMinutes() % RECONCILE_EVERY_MINUTES === 0;
-}
 
 async function handleGET(request: Request) {
   const context = await getServerRuntimeContext(); const config = context.config; const requestId = resolveRequestId(request);

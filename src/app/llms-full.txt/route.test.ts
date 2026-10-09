@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { controlPlaneLlmsFull, tenantLlmsFull } from '@/app/llms-full.txt/route';
+import { controlPlaneLlmsFull, tenantLlmsFull } from '@/app/llms-full.txt/route-helpers';
 
 describe('controlPlaneLlmsFull', () => {
   it('memuat ringkasan plus indeks machine-surface', () => {

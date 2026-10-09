@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { adsTxt } from '@/app/ads.txt/route';
+import { adsTxt } from '@/app/ads.txt/route-helpers';
 
 describe('adsTxt', () => {
   it('menandai host tanpa penjual resmi', () => {

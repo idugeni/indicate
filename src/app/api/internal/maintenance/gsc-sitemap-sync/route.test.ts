@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { planSitemapSync } from '@/app/api/internal/maintenance/gsc-sitemap-sync/route';
+import { planSitemapSync } from '@/app/api/internal/maintenance/gsc-sitemap-sync/route-helpers';
 
 describe('planSitemapSync', () => {
   it('submit saat live tapi belum terdaftar', () => {

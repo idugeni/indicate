@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { deliveryErrorStatus } from '@/app/api/dashboard/delivery/route';
+import { deliveryErrorStatus } from '@/app/api/dashboard/delivery/route-helpers';
 import { DeliveryOperationPendingError } from '@/modules/delivery/domain-provisioning-service';
 import { DeliveryConflictError, DeliveryResourceUnavailableError } from '@/modules/delivery/ports';
 

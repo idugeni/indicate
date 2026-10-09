@@ -4,38 +4,10 @@ import { unstable_cache } from 'next/cache';
 import { deniedRobotsTxt } from '@/core/routing/deny';
 import { serializeRobots } from '@/modules/site/seo';
 import { withApiAccess } from '@/core/observability/api-access';
-import { LEGAL_ROUTES, SITE_ROUTES } from '@/ui/site/marketing-content';
 import { deliveryComposition } from '@/modules/delivery';
 import type { ResolvedSiteContext } from '@/modules/delivery/models';
+import { controlPlaneRobots } from './route-helpers';
 
-/**
- * Render the control-plane robots document.
- *
- * @param host - Dashboard hostname for the sitemap line.
- * @returns robots.txt body with public allows and machine-surface denials.
- */
-export const controlPlaneRobots = (host: string) => [
-  'User-agent: *',
-  'Allow: /$',
-  ...[...SITE_ROUTES, ...LEGAL_ROUTES].map((route) => `Allow: ${route.href}`),
-  'Disallow: /dashboard',
-  'Disallow: /sign-in',
-  'Disallow: /auth',
-  'Disallow: /api/',
-  'Disallow: /mcp',
-  'Disallow: /.webmcp/',
-  'Disallow: /cdn-cgi/',
-  'Disallow: /domain-pending',
-  'Disallow: /categories',
-  'Disallow: /kebijakan-privasi',
-  'Disallow: /syarat-ketentuan',
-  'Disallow: /tentang',
-  'Disallow: /kontak',
-  'Disallow: /search',
-  'Disallow: /rss.xml',
-  `Sitemap: https://${host}/sitemap.xml`,
-  '',
-].join('\n');
 async function loadCachedRobots(context: ResolvedSiteContext): Promise<readonly string[] | null> {
   const cached = unstable_cache(
     async () => {

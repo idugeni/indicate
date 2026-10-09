@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
-import { statusFor } from '@/app/api/dashboard/publishing/route';
+import { statusFor } from '@/app/api/dashboard/publishing/route-helpers';
 
 describe('publishing statusFor', () => {
   it('memetakan konflik idempotency dan transisi ke 409', () => {

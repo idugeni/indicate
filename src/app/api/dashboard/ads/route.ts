@@ -10,73 +10,16 @@ import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAdsRepository } from '@/data/repos/ads';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
-import { AD_CREATIVE_UPLOAD_MAX_BYTES, type AdCreativeUploadStorage } from '@/modules/ads/ads-upload';
+import { AD_CREATIVE_UPLOAD_MAX_BYTES } from '@/modules/ads/ads-upload';
 import { AdsService } from '@/modules/ads/ads-service';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
-import type { Result } from '@/core/result';
+import { resolveAdsAction, statusFor } from './route-helpers';
 
 const querySchema = z.object({ organizationId: z.uuid(), scope: z.enum(['overview']) });
 const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().min(1).max(100), payload: z.unknown() }).strict();
 
-/**
- * Storage surface for the multipart creative upload.
- *
- * @remarks Multipart payloads cannot travel the JSON command path, so the
- * upload entry receives its storage dependency here instead.
- */
-export interface AdsUploadDeps {
-  readonly storage: AdCreativeUploadStorage;
-  readonly publicHost: string | null;
-}
-
-/**
- * Resolves a dashboard ads command to its service handler.
- *
- * @param service - Gated ads application service.
- * @param actor - Authorized tenant actor.
- * @param requestId - Request id for error envelopes.
- * @param action - Command action string.
- * @param uploadDeps - Storage surface required only by `ads.creative.upload`.
- * @returns Handler for known actions, `undefined` otherwise.
- */
-export function resolveAdsAction(
-  service: AdsService,
-  actor: AuthorizedTenantActorContext,
-  requestId: string,
-  action: string,
-  uploadDeps?: AdsUploadDeps | undefined,
-): ((payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>) | undefined {
-  const actions: Readonly<Record<string, (payload: unknown) => Promise<Result<unknown, PublicErrorEnvelope>>>> = {
-    'ads.tenant_setting.save': (payload) => service.saveTenantSetting(actor, payload, requestId),
-    'ads.network_setting.save': (payload) => service.saveNetworkSlot(actor, payload, requestId),
-    'ads.advertiser.create': (payload) => service.createAdvertiser(actor, payload, requestId),
-    'ads.advertiser.update': (payload) => service.updateAdvertiser(actor, payload, requestId),
-    'ads.advertiser.delete': (payload) => service.deleteAdvertiser(actor, payload, requestId),
-    'ads.creative.create': (payload) => service.createCreative(actor, payload, requestId),
-    'ads.creative.update': (payload) => service.updateCreative(actor, payload, requestId),
-    'ads.creative.status': (payload) => service.updateCreativeStatus(actor, payload, requestId),
-    'ads.creative.delete': (payload) => service.deleteCreative(actor, payload, requestId),
-    'ads.creative.upload': (payload) => service.uploadCreativeImage(actor, payload, uploadDeps, requestId),
-    'ads.campaign.create': (payload) => service.createCampaign(actor, payload, requestId),
-    'ads.campaign.update': (payload) => service.updateCampaign(actor, payload, requestId),
-    'ads.campaign.status': (payload) => service.updateCampaignStatus(actor, payload, requestId),
-    'ads.campaign.delete': (payload) => service.deleteCampaign(actor, payload, requestId),
-    'ads.placement.create': (payload) => service.createPlacement(actor, payload, requestId),
-    'ads.placement.update': (payload) => service.updatePlacement(actor, payload, requestId),
-    'ads.placement.delete': (payload) => service.deletePlacement(actor, payload, requestId),
-  };
-  return actions[action];
-}
-
-/**
- * Maps an ads envelope to its HTTP status.
- *
- * @param error - Envelope produced by `AdsService` or denial helpers.
- * @returns Status code defaulting to 500 for non-disclosing denials.
- */
-export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
 function response(error: PublicErrorEnvelope) {
   return NextResponse.json(error, { status: statusFor(error) });
 }

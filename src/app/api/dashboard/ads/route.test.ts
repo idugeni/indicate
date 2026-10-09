@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
-import { resolveAdsAction, statusFor } from '@/app/api/dashboard/ads/route';
+import { resolveAdsAction, statusFor } from '@/app/api/dashboard/ads/route-helpers';
 import { AdsService } from '@/modules/ads/ads-service';
 
 const ACTIONS = [

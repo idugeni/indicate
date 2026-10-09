@@ -14,40 +14,8 @@ import { extractPlatformIp } from '@/core/routing/platform-guard';
 import { withApiAccess } from '@/core/observability/api-access';
 import { logEvent } from '@/core/observability/logger';
 import { resolveRequestId } from '@/core/observability/request-id';
-import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
-
-/**
- * Map a report outcome code to its HTTP status.
- *
- * @param code - Error code from the moderation report outcome.
- * @returns 400 for invalid input, 503 for an intake outage, 404 otherwise.
- * @remarks A dependency outage must not be reported as "unknown article": it
- * tells a complainant their report is addressed when it was never stored, and
- * it hides a broken channel from whoever would otherwise notice. The remaining
- * codes stay 404 so tenant content is never disclosed.
- */
-export function reportOutcomeStatus(code: string): number {
-  if (code === 'INVALID_INPUT') return 400;
-  if (code === 'DEPENDENCY_UNAVAILABLE') return 503;
-  return 404;
-}
-
-/**
- * Map a challenge denial to its public error and status.
- *
- * @param outcome - Whether Cloudflare refused the token or could not be reached.
- * @param requestId - Request id carried into the public error envelope.
- * @returns Public error envelope plus status: 403 for a refused token, 503 for a verification outage.
- * @remarks Keeping a Cloudflare-side fault off the 403 path matters: a reader told their submission
- * was refused for bot reasons during an outage stops reporting, and the broken channel stays invisible
- * behind what looks like ordinary bot traffic.
- */
-export function reportChallengeDenial(outcome: 'rejected' | 'unavailable', requestId: string): { readonly error: PublicErrorEnvelope; readonly status: number } {
-  if (outcome === 'rejected') {
-    return { error: createPublicError('FORBIDDEN', 'Security verification failed. Please try again.', requestId), status: 403 };
-  }
-  return { error: createPublicError('DEPENDENCY_UNAVAILABLE', 'Report intake is temporarily unavailable.', requestId), status: 503 };
-}
+import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
+import { reportChallengeDenial, reportOutcomeStatus } from './route-helpers';
 
 async function handlePOST(request: Request) {
   await connection();

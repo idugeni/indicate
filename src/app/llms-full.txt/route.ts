@@ -3,73 +3,10 @@ import { headers } from 'next/headers';
 
 import { denied } from '@/core/routing/deny';
 import { withApiAccess } from '@/core/observability/api-access';
-import { controlPlaneLlms } from '@/app/llms.txt/route';
 import { getNetworkSites, getPartnerOrganizations } from '@/modules/content/site-content';
 import { deliveryComposition } from '@/modules/delivery';
 import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
-
-/**
- * Render the control-plane full dump: summary plus machine-surface index.
- *
- * @param host - Dashboard hostname for absolute URLs.
- * @param portals - Active apex portals for the directory section.
- * @param partners - Active partner organizations.
- * @returns Markdown body following the summary with feed and policy links.
- */
-export function controlPlaneLlmsFull(
-  host: string,
-  portals: readonly { readonly name: string; readonly hostname: string }[] = [],
-  partners: readonly { readonly name: string }[] = [],
-): string {
-  const origin = `https://${host}`;
-  return [
-    controlPlaneLlms(host, portals, partners).trimEnd(),
-    '',
-    '## Full',
-    `- [Peta Berita](${origin}/news-sitemap.xml): artikel 2 hari terakhir untuk Google News.`,
-    `- [Robots](${origin}/robots.txt): aturan perayap dan baris Sitemap.`,
-    `- [Keamanan](${origin}/.well-known/security.txt): kontak pelaporan kerentanan.`,
-    `- [Ads](${origin}/ads.txt): penjual programatik resmi.`,
-    '',
-  ].join('\n');
-}
-
-/**
- * Render the tenant full dump: up to 100 recent articles plus feed index.
- *
- * @param host - Tenant hostname for absolute URLs.
- * @param siteName - Public portal name.
- * @param description - Public portal description.
- * @param categories - Active channel names.
- * @param articles - Already-loaded list items; no extra query beyond the page load.
- * @returns Markdown body with extended coverage list and feed links.
- */
-export function tenantLlmsFull(
-  host: string,
-  siteName: string,
-  description: string,
-  categories: readonly string[],
-  articles: readonly { readonly title: string; readonly slug: string; readonly href: string }[],
-): string {
-  const origin = `https://${host}`;
-  const lines = [
-    `# ${siteName}`,
-    '',
-    `> ${description}`,
-    '',
-    `## Kanal (${origin}/)`,
-    ...categories.map((name) => `- ${name}`),
-    '',
-    '## Liputan lengkap',
-    ...articles.slice(0, 100).map((article) => `- [${article.title}](${article.href.startsWith('https://') ? article.href : `${origin}/${article.slug}`})`),
-    '',
-    `- [RSS](${origin}/rss.xml): 50 artikel terbaru untuk pembaca feed dan arsip.`,
-    `- [Peta Berita](${origin}/news-sitemap.xml): artikel 2 hari terakhir untuk Google News.`,
-    `- [Peta Situs](${origin}/sitemap.xml): daftar URL untuk perayap mesin pencari.`,
-    '',
-  ];
-  return lines.join('\n');
-}
+import { controlPlaneLlmsFull, tenantLlmsFull } from './route-helpers';
 
 async function handleGET() {
   await connection();

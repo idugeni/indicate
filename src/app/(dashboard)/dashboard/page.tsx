@@ -34,7 +34,7 @@ import DashboardLoading from '@/app/(dashboard)/loading';
 export default function DashboardPage({
   searchParams,
 }: {
-  readonly searchParams?: Promise<{ readonly view?: string | readonly string[] | undefined }> | undefined;
+  readonly searchParams: Promise<{ readonly view?: string | readonly string[] | undefined }>;
 }) {
   return (
     <Suspense fallback={<DashboardLoading />}>
@@ -46,7 +46,7 @@ export default function DashboardPage({
 async function DashboardBody({
   searchParams,
 }: {
-  readonly searchParams?: Promise<{ readonly view?: string | readonly string[] | undefined }> | undefined;
+  readonly searchParams: Promise<{ readonly view?: string | readonly string[] | undefined }>;
 }) {
   await connection();
   const cookieStore = await cookies();

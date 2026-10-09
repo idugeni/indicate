@@ -5,7 +5,7 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { ensureRequestId } from '@/core/observability/request-id';
 import { createHardenedSupabaseCookieStore, createSupabaseSsrAuthAdapter } from '@/integrations/supabase/supabase-ssr';
 import { createProductionIntegrationsContext } from '@/modules/integrations';
-import { safeRedirectPath } from '@/core/security/safe-redirect-path';
+import { resolveTokenKind, resolveCallbackDestination, resolveCallbackFailureAlert } from './route-helpers';
 
 /** Reserved Supabase param correlating a PKCE callback with its verifier slot. */
 const PKCE_FLOW_ID_PARAM = 'sb_flow_id';
@@ -65,9 +65,6 @@ async function sendWelcomeEmail(identity: { readonly authUserId: string; readonl
  * @param tokenType - Raw `type` query param from the Supabase email link.
  * @returns Supported verification type; unknown types fall back to email codes.
  */
-export function resolveTokenKind(tokenType: string | null): 'email' | 'signup' | 'magiclink' | 'recovery' {
-  return tokenType === 'signup' || tokenType === 'magiclink' || tokenType === 'recovery' ? tokenType : 'email';
-}
 
 /**
  * Resolve the post-callback redirect target.
@@ -76,10 +73,6 @@ export function resolveTokenKind(tokenType: string | null): 'email' | 'signup' |
  * @param next - Raw next param, or null when absent.
  * @returns Fallback per flow when next is absent, otherwise the sanitized path.
  */
-export function resolveCallbackDestination(authType: string | null, next: string | null): string {
-  const fallback = authType === 'recovery' ? '/update-password' : '/dashboard';
-  return next === null ? fallback : safeRedirectPath(next);
-}
 
 /**
  * Choose the sign-in alert for a failed callback.
@@ -91,9 +84,6 @@ export function resolveCallbackDestination(authType: string | null, next: string
  * and is not an expired link, so labelling it `unavailable` sends operators and
  * users after the wrong cause.
  */
-export function resolveCallbackFailureAlert(providerError: string | null): 'provider' | 'unavailable' {
-  return providerError === null ? 'unavailable' : 'provider';
-}
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;

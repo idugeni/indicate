@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { reportChallengeDenial, reportOutcomeStatus } from '@/app/api/network/reports/route';
+import { reportChallengeDenial, reportOutcomeStatus } from '@/app/api/network/reports/route-helpers';
 
 describe('reportOutcomeStatus', () => {
   it('memetakan input invalid ke 400', () => {

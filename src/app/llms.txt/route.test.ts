@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { controlPlaneLlms, tenantLlms } from '@/app/llms.txt/route';
+import { controlPlaneLlms, tenantLlms } from '@/app/llms.txt/route-helpers';
 
 describe('controlPlaneLlms', () => {
   it('memakai URL absolut dan daftar layanan', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveCallbackDestination, resolveCallbackFailureAlert, resolveTokenKind } from '@/app/(auth)/auth/callback/route';
+import { resolveCallbackDestination, resolveCallbackFailureAlert, resolveTokenKind } from '@/app/(auth)/auth/callback/route-helpers';
 
 describe('resolveCallbackDestination', () => {
   it('memakai dashboard kecuali alur recovery', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { controlPlaneRobots } from '@/app/robots.txt/route';
+import { controlPlaneRobots } from '@/app/robots.txt/route-helpers';
 
 describe('controlPlaneRobots', () => {
   it('mengizinkan layanan publik dan menolak permukaan mesin', () => {

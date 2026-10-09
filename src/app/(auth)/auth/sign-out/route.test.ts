@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveSignOutDestination } from '@/app/(auth)/auth/sign-out/route';
+import { resolveSignOutDestination } from '@/app/(auth)/auth/sign-out/route-helpers';
 
 describe('resolveSignOutDestination', () => {
   it('kembali ke sign-in saat tanpa next', () => {

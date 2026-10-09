@@ -13,6 +13,7 @@ import { ModerationService } from '@/modules/moderation/moderation-service';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
+import { statusFor } from './route-helpers';
 import type { Result } from '@/core/result';
 
 const getSchema = z.object({
@@ -26,7 +27,7 @@ const commandSchema = z.object({ action: z.string().min(1).max(100), payload: z.
  * @param error - Envelope produced by `ModerationService` or denial helpers.
  * @returns Status code defaulting to 500 for non-disclosing denials.
  */
-export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'FORBIDDEN' ? 403 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+
 function response(error: PublicErrorEnvelope) {
   return NextResponse.json(error, { status: statusFor(error) });
 }

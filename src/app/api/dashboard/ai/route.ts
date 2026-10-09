@@ -49,6 +49,7 @@ import { AI_BREAKER_ERROR_CLASSES, classifyAiError, getActiveRoutingPolicy, getA
 import type { AiChatPrompt as AdapterPrompt } from '@/integrations/ai/ai-prompt';
 import { listAiOperatorPlanningTools } from '@/modules/ai-operator/tool-registry';
 import { validateAiOperatorPlan } from '@/modules/ai-operator/plan-validation';
+import { asStreamCapableAdapter } from './route-helpers';
 
 const commandSchema = z.object({
   organizationId: z.uuid(),
@@ -111,27 +112,6 @@ function response(error: PublicErrorEnvelope) {
 
 /** Cloudflare gateway resolved inside `serviceDeps`, forwarded to the stream without re-reading runtime context. */
 const gatewayByDeps = new WeakMap<AiServiceDeps, CloudflareGatewayConfig | null>();
-
-/** Stream-capable adapter shape provided by another stream; probed with a runtime type-guard. */
-interface StreamCapableAdapter {
-  readonly executeStream?: (
-    plainKey: string,
-    modelName: string,
-    promptData: AdapterPrompt,
-    options?: { readonly signal?: AbortSignal | undefined; readonly onChunk?: ((delta: string) => void) | undefined },
-  ) => Promise<AiAdapterResult>;
-}
-
-/**
- * Returns the adapter when it supports streaming, null otherwise.
- *
- * @param adapter - Resolved provider adapter; may predate `executeStream`.
- * @returns Typed streaming view, or null when only single-shot `execute` exists.
- */
-export function asStreamCapableAdapter(adapter: { readonly execute: unknown }): StreamCapableAdapter | null {
-  const candidate = adapter as Partial<StreamCapableAdapter>;
-  return typeof candidate.executeStream === 'function' ? (candidate as StreamCapableAdapter) : null;
-}
 
 async function serviceDeps(organizationId?: string | undefined, context?: ServerRuntimeContext | undefined): Promise<AiServiceDeps> {
   const resolved = context ?? await getServerRuntimeContext();

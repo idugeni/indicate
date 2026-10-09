@@ -10,6 +10,7 @@ import { DrizzleRuntimeConfigAdminRepository, RuntimeConfigAdminAccessDeniedErro
 import { mediaPolicySchema } from '@/core/config/persisted/persisted-schema';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
+import { runtimeConfigErrorStatus } from './route-helpers';
 
 const commandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('media-policy.save'), policy: mediaPolicySchema }),
@@ -35,18 +36,6 @@ async function handleGET() {
       return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'The runtime configuration could not be read.', requestId), { status: runtimeConfigErrorStatus(error) });
     }
   }
-}
-
-/**
- * Map a runtime-config failure to its HTTP status.
- *
- * @param error - Error thrown by the runtime-config admin repository.
- * @returns Status honoring access denial (404) and version conflict (409).
- */
-export function runtimeConfigErrorStatus(error: unknown): number {
-  if (error instanceof RuntimeConfigAdminAccessDeniedError) return 404;
-  if (error instanceof RuntimeConfigAdminConflictError) return 409;
-  return 500;
 }
 
 async function handlePOST(request: Request) {

@@ -27,6 +27,7 @@ import { UpstashRateLimitAdapter } from '@/integrations/redis/upstash-rate-limit
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
+import { statusFor } from './route-helpers';
 import type { Result } from '@/core/result';
 
 const querySchema = z.object({ organizationId: z.uuid(), view: z.enum(['settings', 'customers', 'ai']), customerId: z.uuid().optional() });
@@ -37,7 +38,7 @@ const commandSchema = z.object({ organizationId: z.uuid(), action: z.string().mi
  * @param error - Envelope produced by integration services or denial helpers.
  * @returns Status code honoring 429 for rate-limited webhook traffic.
  */
-export const statusFor = (error: PublicErrorEnvelope) => error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : error.error.code === 'INVALID_INPUT' ? 400 : error.error.code === 'RATE_LIMITED' ? 429 : error.error.code === 'CONFLICT' ? 409 : error.error.code === 'DEPENDENCY_UNAVAILABLE' ? 503 : 500;
+
 interface Context { readonly actor: AuthorizedTenantActorContext; readonly localUserId: string; readonly repository: DrizzleIntegrationsRepository; readonly apiKeys: ApiKeyService; readonly accessKeys: DashboardAccessKeyService; readonly ai: AiService; readonly customers: CustomerService; readonly emailTest: EmailTestService; readonly emailStatus: { readonly configured: boolean; readonly defaultFrom: string | null; readonly webhook: boolean }; readonly rateLimits: RateLimitService; readonly redis: Redis; readonly namespace: string; readonly policy: { allowance: number; windowSeconds: number; failureMode: 'closed' } }
 type ContextResult = Context | PublicErrorEnvelope; const isError = (value: ContextResult): value is PublicErrorEnvelope => 'error' in value;
 

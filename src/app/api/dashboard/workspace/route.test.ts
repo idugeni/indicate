@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
-import { GET, responseStatus } from '@/app/api/dashboard/workspace/route';
+import { GET } from '@/app/api/dashboard/workspace/route';
+import { responseStatus } from '@/app/api/dashboard/workspace/route-helpers';
 
 const shared = vi.hoisted(() => ({
   orgId: '7e27727d-b59f-4d24-998e-1bee6eeb3fa0',

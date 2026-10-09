@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { runtimeConfigErrorStatus } from '@/app/api/dashboard/runtime-config/route';
+import { runtimeConfigErrorStatus } from '@/app/api/dashboard/runtime-config/route-helpers';
 import { RuntimeConfigAdminAccessDeniedError, RuntimeConfigAdminConflictError, RuntimeConfigAdminUnavailableError } from '@/data/repos/runtime-config/admin';
 
 describe('runtimeConfigErrorStatus', () => {

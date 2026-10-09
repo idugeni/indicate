@@ -42,7 +42,8 @@ vi.mock('@/modules/integrations', () => ({
 
 vi.mock('@/modules/site/components/network/network-listing', () => ({ SearchPage: () => null }));
 
-const { generateMetadata, normalizeQuery } = await import('@/app/(network)/search/page');
+const { generateMetadata } = await import('@/app/(network)/search/page');
+const { normalizeQuery } = await import('@/app/(network)/search/route-helpers');
 
 describe('normalizeQuery', () => {
   it('memotong kueri hingga 120 karakter', () => {

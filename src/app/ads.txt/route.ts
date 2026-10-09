@@ -4,22 +4,7 @@ import { headers } from 'next/headers';
 import { denied } from '@/core/routing/deny';
 import { withApiAccess } from '@/core/observability/api-access';
 import { deliveryComposition } from '@/modules/delivery';
-
-/**
- * Render a placeholder ads.txt with no authorized sellers yet.
- *
- * @param host - Request hostname for the header line.
- * @param contactUrl - Absolute partnership contact URL.
- * @returns Valid comment-only ads.txt body per IAB spec.
- */
-export function adsTxt(host: string, contactUrl: string): string {
-  return [
-    `# ads.txt for ${host}`,
-    '# No authorized programmatic sellers yet.',
-    `# Contact ${contactUrl} for partnerships.`,
-    '',
-  ].join('\n');
-}
+import { adsTxt } from './route-helpers';
 
 async function handleGET() {
   await connection();
