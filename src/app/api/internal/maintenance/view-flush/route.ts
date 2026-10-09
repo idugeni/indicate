@@ -6,7 +6,8 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { logEvent } from '@/core/observability/logger';
 import { recordOperation } from '@/core/observability/operation-metrics';
-import { PAGEVIEW_KEY_TTL_SECONDS, parsePageviewKey } from '@/modules/site/pageview-contract';
+import { PAGEVIEW_KEY_TTL_SECONDS } from '@/modules/site/pageview-contract';
+import { collectPoppedDeltas, VIEW_FLUSH_MAX_SCAN_PAGES, type FlushDelta, type FlushEntry } from './route-helpers';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
 import { authorized } from '@/app/api/internal/auth';
@@ -35,14 +36,6 @@ function recordFlushPhase(
   });
 }
 
-interface FlushEntry {
-  readonly organizationId: string;
-  readonly siteId: string;
-  readonly articleSiteId: string;
-  readonly count: number;
-}
-
-type FlushDelta = Map<string, FlushEntry & { count: number }>;
 
 /**
  * Keys pulled per flush iteration.
@@ -54,16 +47,6 @@ type FlushDelta = Map<string, FlushEntry & { count: number }>;
  * unaffected.
  */
 const SCAN_BATCH_SIZE = 1000;
-
-/**
- * Batas halaman SCAN per eksekusi flush.
- *
- * @remarks Satu halaman = 1 SCAN + 1 EVAL, jadi batas ini memagari perintah
- * Redis per flush (500 halaman = maks ~1000 perintah + pipeline restore).
- * Kunci yang belum ter-pop mempertahankan EXPIRE 7-harinya dan ikut flush
- * 3-jam berikutnya — tidak ada pageview yang hilang diam-diam, hanya ditunda.
- */
-export const VIEW_FLUSH_MAX_SCAN_PAGES = 500;
 
 const POP_PAGE_SCRIPT = `
 local out = {}
@@ -78,32 +61,6 @@ return out
 `;
 
 const UPDATE_CHUNK_SIZE = 500;
-
-export function collectPoppedDeltas(pairs: readonly string[]): {
-  readonly deltas: FlushDelta;
-  readonly invalidKeys: readonly string[];
-} {
-  const deltas: FlushDelta = new Map();
-  const invalidKeys: string[] = [];
-  for (let index = 0; index + 1 < pairs.length; index += 2) {
-    const key = pairs[index]!;
-    const count = Number(pairs[index + 1]);
-    const identity = parsePageviewKey(key);
-    if (identity === null || !Number.isFinite(count) || count <= 0) {
-      invalidKeys.push(key);
-      continue;
-    }
-    const { organizationId, siteId, articleSiteId } = identity;
-    const existing = deltas.get(key);
-    deltas.set(key, {
-      organizationId: existing?.organizationId ?? organizationId,
-      siteId: existing?.siteId ?? siteId,
-      articleSiteId: existing?.articleSiteId ?? articleSiteId,
-      count: (existing?.count ?? 0) + count,
-    });
-  }
-  return { deltas, invalidKeys };
-}
 
 async function handleGET(request: Request) {
   const requestId = resolveRequestId(request);
