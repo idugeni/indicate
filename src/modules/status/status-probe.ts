@@ -31,7 +31,7 @@ export const COMPONENT_LABELS: Readonly<Record<StatusComponent, string>> = {
 
 export interface ProbeResult {
   readonly component: StatusComponent;
-  readonly health: ComponentHealth;
+  readonly health: ComponentHealth | 'unknown';
   readonly latencyMs: number | null;
   readonly detail: string | null;
   readonly checkedAt: string;
@@ -93,17 +93,29 @@ async function runOne(
  * @remarks Konkuren: latensi total dibatasi probe terlambat, bukan jumlahnya.
  */
 export async function runProbes(deps: ProbeDeps, timeoutMs = PROBE_TIMEOUT_MS): Promise<readonly ProbeResult[]> {
-  const checks: Record<StatusComponent, () => Promise<number>> = {
+  const checks: Record<Exclude<StatusComponent, 'api'>, () => Promise<number>> = {
     database: deps.checkDatabase,
     redis: deps.checkRedis,
     storage: deps.checkStorage,
     auth: deps.checkAuth,
     delivery: deps.checkDelivery,
     ai: deps.checkAi,
-    api: async () => 0,
   };
   const now = deps.now();
-  return Promise.all(STATUS_COMPONENTS.map((component) => runOne(component, checks[component], now, timeoutMs)));
+  return Promise.all(STATUS_COMPONENTS.map((component) => {
+    if (component === 'api') {
+      // Do not issue an extra same-deployment HTTP request from the existing cron.
+      // An unverified endpoint must never be presented as healthy or as 0 ms.
+      return {
+        component,
+        health: 'unknown' as const,
+        latencyMs: null,
+        detail: 'Endpoint HTTP belum diuji; pemeriksaan terpisah akan menambah invocation.',
+        checkedAt: now.toISOString(),
+      };
+    }
+    return runOne(component, checks[component], now, timeoutMs);
+  }));
 }
 
 export interface OpenIncidentInput {
@@ -147,6 +159,7 @@ export function evaluateIncidents(
   const openings: IncidentOpening[] = [];
   const resolveIds: string[] = [];
   for (const result of current) {
+    if (result.health === 'unknown') continue;
     const openId = openByComponent.get(result.component);
     if (result.health === 'ok') {
       if (openId !== undefined) resolveIds.push(openId);
@@ -219,9 +232,11 @@ export function summarizeUptime(
  * @param results - Hasil terakhir per komponen.
  * @returns `down` bila ada yang mati, `degraded` bila ada yang menurun.
  */
-export function overallHealth(results: readonly ProbeResult[]): ComponentHealth {
+export function overallHealth(results: readonly ProbeResult[]): ComponentHealth | 'unknown' {
+  const known = results.filter((result) => result.health !== 'unknown');
+  if (known.length === 0) return 'unknown';
   let worst: ComponentHealth = 'ok';
-  for (const result of results) {
+  for (const result of known) {
     if (result.health === 'down') return 'down';
     if (result.health === 'degraded') worst = 'degraded';
   }
