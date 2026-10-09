@@ -53,7 +53,7 @@ async function handleGET(request: Request) {
     const list = byComponent.get(row.component as StatusComponent) ?? [];
     list.push({
       component: row.component as StatusComponent,
-      health: row.health as ComponentHealth,
+      health: row.health,
       latencyMs: row.latencyMs,
       detail: row.detail,
       checkedAt: row.checkedAt instanceof Date ? row.checkedAt.toISOString() : String(row.checkedAt),
