@@ -370,10 +370,10 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 font-bold tracking-widest text-paper uppercase">
               <LuActivity className="size-3.5 text-signal" />
-              Indicate Telemetry
+              INDICATE STATUS
             </span>
             <Separator orientation="vertical" className="h-3 bg-hairline" />
-            <span className="tracking-wider">CORE SYSTEM METRICS</span>
+            <span className="tracking-wider">KETERSEDIAAN LAYANAN</span>
           </div>
 
           <StatusLiveIndicator generatedAt={snapshot.generatedAt} />
@@ -392,7 +392,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
                 {overallConfig.label}
               </Badge>
               <Badge variant="outline" className="border-hairline text-paper-dim font-mono text-xs">
-                PROBE COUNT: {snapshot.components.length}
+                KOMPONEN TERDAFTAR: {snapshot.components.length}
               </Badge>
             </div>
 
@@ -438,14 +438,14 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
             <Card className="col-span-2 sm:col-span-1 border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
-                  <LuRadio className="size-3 text-paper-dim" /> Simpul Aktif
+                  <LuRadio className="size-3 text-paper-dim" /> Komponen Normal
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
                   <CountUp value={activeProbes} />/{snapshot.components.length}
                 </div>
-                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Respon Positif</div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Status pemeriksaan terbaru</div>
               </CardContent>
             </Card>
           </div>
@@ -502,12 +502,12 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
             id="matrix-heading"
             className="m-0 font-mono text-xs uppercase tracking-[0.2em] font-semibold text-paper"
           >
-            Matriks Status Komponen
+            Status Layanan
           </h2>
         </div>
         <div className="flex items-center gap-2 font-mono text-xs text-paper-faint">
           <LuActivity className="size-3.5 text-signal" />
-          <span>Riwayat SLA 90 Hari</span>
+          <span>Riwayat 90 Hari</span>
         </div>
       </div>
 
@@ -654,7 +654,7 @@ function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
         <div className="lg:col-span-5 flex flex-col space-y-3">
           <div className="font-mono text-[11px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
             <LuTriangleAlert className="size-3.5 text-error" />
-            <span>Investigasi Aktif</span>
+            <span>Insiden Terbuka</span>
           </div>
 
           {open.length > 0 ? (
