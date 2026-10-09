@@ -12,7 +12,7 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleBillingRepository } from '@/data/repos/billing';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
-import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
+import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { statusFor } from './route-helpers';
 import type { Result } from '@/core/result';
 
