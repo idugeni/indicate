@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { AiOperatorConsole } from '@/modules/dashboard/components/settings/ai-operator-console';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
 type AiStats = {
@@ -329,6 +330,8 @@ export function AiControlCenterV2({
           </div>
         </div>
       </header>
+
+      <AiOperatorConsole organizationId={organizationId} />
 
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {busy && snapshot === null ? (
