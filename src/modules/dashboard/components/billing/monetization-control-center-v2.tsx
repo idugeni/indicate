@@ -61,7 +61,7 @@ export function MonetizationControlCenterV2({
   const [selectedOrg, setSelectedOrg] = useState('');
   const [status, setStatus] = useState('active');
   const [amount, setAmount] = useState(String(SINGLE_INVOICE_AMOUNT_IDR));
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [nowMs] = useState(() => Date.now());
@@ -90,29 +90,8 @@ export function MonetizationControlCenterV2({
   }, [organizationId]);
 
   useEffect(() => {
-    let cancelled = false;
-    void Promise.all([
-      getJson(
-        '/api/dashboard/billing?scope=subscription-state&organizationId=' +
-          encodeURIComponent(organizationId),
-      ) as Promise<{ state: string }>,
-      getJson(
-        '/api/dashboard/billing?scope=invoices&organizationId=' +
-          encodeURIComponent(organizationId),
-      ) as Promise<readonly Invoice[]>,
-    ])
-      .then(([subscription, invoiceRows]) => {
-        if (cancelled) return;
-        setState(subscription.state);
-        setInvoices(invoiceRows);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Gagal memuat data monetisasi.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId]);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     if (!isPlatform) return;
@@ -355,8 +334,12 @@ export function MonetizationControlCenterV2({
               <option value="voided">Voided</option>
             </select>
           </div>
-          {filteredInvoices.length === 0 ? (
-            <EmptyState compact title="Belum ada faktur untuk organisasi ini." />
+          {busy && invoices.length === 0 ? (
+            <div role="status" aria-live="polite" className="rounded-lg border border-hairline bg-bg p-4 text-xs text-paper-dim">
+              Memuat faktur…
+            </div>
+          ) : filteredInvoices.length === 0 ? (
+            <EmptyState compact title={query.trim() || ledgerFilter !== 'all' ? 'Tidak ada faktur yang cocok dengan filter.' : 'Belum ada faktur untuk organisasi ini.'} />
           ) : (
             <div className="space-y-2">
               {filteredInvoices.map((invoice) => (
