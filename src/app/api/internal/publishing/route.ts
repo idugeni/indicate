@@ -20,7 +20,7 @@ const RECONCILE_BUDGET_BUFFER_MS = 20_000;
  * @param now - Current time.
  * @returns True every fifth UTC minute, matching the retired reconcile schedule.
  */
-export function isReconcileDue(now: Date): boolean {
+function isReconcileDue(now: Date): boolean {
   return now.getUTCMinutes() % RECONCILE_EVERY_MINUTES === 0;
 }
 
@@ -63,6 +63,6 @@ async function handleGET(request: Request) {
   }
 }
 
-export const GET = withApiAccess('GET /api/internal/publishing', handleGET);
+const GET = withApiAccess('GET /api/internal/publishing', handleGET);
 
-export const maxDuration = 120;
+const maxDuration = 120;
