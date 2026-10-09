@@ -82,6 +82,27 @@ describe('CustomerOperationsV2', () => {
     expect((await screen.findAllByText('past_due')).length).toBeGreaterThan(0);
   });
 
+  it('loads customer directory cursor pages without duplicating rows', async () => {
+    const calls: string[] = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.includes('cursor=cursor-1')) return new Response(JSON.stringify([customers[1]]), { status: 200 });
+      return new Response(JSON.stringify([customers[0]]), {
+        status: 200,
+        headers: { 'X-Next-Cursor': 'cursor-1' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<CustomerOperationsV2 organizationId="platform" command={vi.fn(async () => null)} />);
+
+    expect(await screen.findByText('Alpha Media')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Muat customer berikutnya' }));
+    expect(await screen.findByText('Beta News')).toBeDefined();
+    expect(calls.some((url) => url.includes('limit=100&cursor=cursor-1'))).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Muat customer berikutnya' })).toBeNull();
+  });
+
   it('keeps account actions as a focused implementation surface', async () => {
     render(<CustomerOperationsV2 organizationId="platform" command={vi.fn(async () => null)} />);
     fireEvent.click(screen.getByRole('button', { name: /Account Actions/ }));

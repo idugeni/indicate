@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, CreditCard, Search, ShieldCheck, Users, UserRoundCog } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
@@ -31,19 +32,36 @@ interface CustomerProjection {
 
 type Focus = 'directory' | 'account' | 'actions';
 
+interface CustomerPage {
+  readonly items: readonly CustomerProjection[];
+  readonly nextCursor: string | null;
+}
+
 async function getCustomers(
   organizationId: string,
   customerId?: string,
-): Promise<readonly CustomerProjection[] | CustomerProjection | null> {
-  const query = customerId === undefined ? '' : '&customerId=' + encodeURIComponent(customerId);
+  cursor?: string | null,
+  signal?: AbortSignal,
+): Promise<CustomerPage | CustomerProjection> {
+  const detailQuery = customerId === undefined ? '' : '&customerId=' + encodeURIComponent(customerId);
+  const pageQuery = customerId === undefined
+    ? '&limit=100' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : '')
+    : '';
   const response = await fetch(
     '/api/dashboard/integrations?organizationId=' +
       encodeURIComponent(organizationId) +
       '&view=customers' +
-      query,
+      detailQuery +
+      pageQuery,
+    signal ? { signal } : undefined,
   );
   if (!response.ok) throw new Error('Customer request failed');
-  return (await response.json()) as readonly CustomerProjection[] | CustomerProjection;
+  const body = await response.json() as unknown;
+  if (customerId !== undefined) return body as CustomerProjection;
+  return {
+    items: Array.isArray(body) ? body as CustomerProjection[] : [],
+    nextCursor: response.headers.get('X-Next-Cursor'),
+  };
 }
 
 export function CustomerOperationsV2({
@@ -55,37 +73,83 @@ export function CustomerOperationsV2({
 }) {
   const [focus, setFocus] = useState<Focus>('directory');
   const [customers, setCustomers] = useState<readonly CustomerProjection[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<CustomerProjection | null>(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const activeOrgRef = useRef(organizationId);
+  const moreInflightRef = useRef(false);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    activeOrgRef.current = organizationId;
+  }, [organizationId]);
+
+  const load = useCallback(async (signal?: AbortSignal) => {
     setBusy(true);
     setError(null);
     try {
-      const result = await getCustomers(organizationId);
-      setCustomers(Array.isArray(result) ? result : result === null ? [] : [result]);
+      const result = await getCustomers(organizationId, undefined, null, signal);
+      if (signal?.aborted || activeOrgRef.current !== organizationId) return;
+      if ('items' in result) {
+        setCustomers(result.items);
+        setNextCursor(result.nextCursor);
+        setLoaded(true);
+      }
     } catch {
-      setError('Gagal memuat customer directory.');
+      if (!signal?.aborted && activeOrgRef.current === organizationId) setError('Gagal memuat customer directory.');
     } finally {
-      setBusy(false);
+      if (!signal?.aborted && activeOrgRef.current === organizationId) setBusy(false);
     }
   }, [organizationId]);
 
   useEffect(() => {
-    void Promise.resolve().then(() => load());
+    const controller = new AbortController();
+    void Promise.resolve().then(() => {
+      if (!controller.signal.aborted) void load(controller.signal);
+    });
+    return () => controller.abort();
   }, [load]);
+
+  const loadMore = useCallback(async () => {
+    const targetOrg = organizationId;
+    const cursor = nextCursor;
+    if (cursor === null || moreInflightRef.current) return;
+    moreInflightRef.current = true;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const result = await getCustomers(targetOrg, undefined, cursor);
+      if (activeOrgRef.current !== targetOrg || !('items' in result)) return;
+      setCustomers((previous) => {
+        const existing = new Set(previous.map((entry) => entry.customer.id));
+        const appended: CustomerProjection[] = [];
+        for (const entry of result.items) {
+          if (existing.has(entry.customer.id)) continue;
+          existing.add(entry.customer.id);
+          appended.push(entry);
+        }
+        return [...previous, ...appended];
+      });
+      setNextCursor(result.nextCursor);
+    } catch {
+      if (activeOrgRef.current === targetOrg) setError('Gagal memuat customer berikutnya. Coba lagi.');
+    } finally {
+      moreInflightRef.current = false;
+      if (activeOrgRef.current === targetOrg) setLoadingMore(false);
+    }
+  }, [organizationId, nextCursor]);
 
   useEffect(() => {
     if (selectedId === null) return;
     let cancelled = false;
     void getCustomers(organizationId, selectedId)
       .then((result) => {
-        if (!cancelled && result !== null && !Array.isArray(result))
-          setSelected(result as CustomerProjection);
+        if (!cancelled && !('items' in result)) setSelected(result);
       })
       .catch(() => {
         if (!cancelled) setError('Gagal memuat customer detail.');
@@ -132,10 +196,10 @@ export function CustomerOperationsV2({
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            ['Customers', String(customers.length), 'Directory'],
-            ['Active', String(active), 'Customer state'],
-            ['Attention', String(suspended), 'Subscription state'],
-            ['Archived', String(archived), 'Historical'],
+            ['Customers', loaded ? String(customers.length) : '—', 'Loaded records'],
+            ['Active', loaded ? String(active) : '—', 'Loaded records'],
+            ['Attention', loaded ? String(suspended) : '—', 'Loaded records'],
+            ['Archived', loaded ? String(archived) : '—', 'Loaded records'],
           ].map(([label, value, note]) => (
             <div key={label} className="rounded-lg border border-hairline bg-bg-raised px-3 py-2.5">
               <p className="m-0 font-mono text-[9px] uppercase tracking-wider text-paper-faint">
@@ -151,12 +215,15 @@ export function CustomerOperationsV2({
       </header>
 
       {error !== null ? (
-        <p
+        <div
           role="alert"
-          className="m-0 rounded-lg border border-danger/30 bg-danger/[0.04] px-3 py-2 text-xs text-danger"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/[0.04] px-3 py-2 text-xs text-danger"
         >
-          {error}
-        </p>
+          <span>{error}</span>
+          <Button type="button" size="sm" variant="outline" disabled={busy || loadingMore} onClick={() => void load()}>
+            Coba lagi
+          </Button>
+        </div>
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
@@ -281,6 +348,13 @@ export function CustomerOperationsV2({
                   ))}
                 </div>
               )}
+              {nextCursor !== null ? (
+                <div className="mt-4 flex justify-center">
+                  <Button type="button" variant="outline" disabled={loadingMore || busy} onClick={() => void loadMore()}>
+                    {loadingMore ? 'Memuat customer…' : 'Muat customer berikutnya'}
+                  </Button>
+                </div>
+              ) : null}
             </SectionCard>
           ) : null}
 

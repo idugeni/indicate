@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
-import { ALL_VIEWS, VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
+import { ALL_VIEWS, canAccessView, VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
 
 describe('Dashboard V2 view registry', () => {
   it('registers all 19 dashboard views with explicit metadata', () => {
@@ -53,5 +53,20 @@ describe('Ads view registry', () => {
     const groups = visibleNavGroups(new Set([DASHBOARD_PERMISSIONS.siteManage]));
     const publishing = groups.find((group) => group.id === 'publishing');
     expect(publishing?.views).toContain('ads');
+  });
+});
+
+
+describe('Dashboard V2 direct view authorization', () => {
+  it('rejects direct navigation when the required permission is missing', () => {
+    expect(canAccessView('customers', new Set([DASHBOARD_PERMISSIONS.auditRead]))).toBe(false);
+    expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.apiKeyRead]))).toBe(false);
+  });
+
+  it('allows direct navigation only when the registered permission is present', () => {
+    expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
+    expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);
+    expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.aiManage]))).toBe(true);
+    expect(canAccessView('dashboard', new Set())).toBe(true);
   });
 });

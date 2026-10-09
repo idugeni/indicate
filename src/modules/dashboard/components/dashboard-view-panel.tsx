@@ -19,7 +19,7 @@ import {
   DashboardSplitFormSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
-import { VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
+import { canAccessView, VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 
 const InfrastructureControlCenterV2 = dynamic(
@@ -154,6 +154,15 @@ const AdsControlCenterV2 = dynamic(
  * around a refresh, the collapsed sidebar, the org switch handshake. Callers
  * so refreshes that already have data leave the expensive V2 surface stable.
  */
+const SELF_FETCHING_V2_VIEWS: ReadonlySet<View> = new Set<View>([
+  'content',
+  'billing',
+  'moderation',
+  'ai',
+  'ads',
+  'customers',
+]);
+
 const DashboardViewPanel = memo(function DashboardViewPanel({
   view,
   displayName,
@@ -213,12 +222,36 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     onSelectView('articles');
   };
 
+  if (!canAccessView(view, permissions)) {
+    return (
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
+        <div className="mx-auto w-full max-w-[1500px]">
+          <EmptyState
+            title="Akses tidak tersedia"
+            description="Akun ini tidak memiliki izin untuk membuka area tersebut. Minta administrator memberikan izin yang sesuai."
+            icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
+            action={<Button type="button" variant="outline" onClick={() => onSelectView('dashboard')}>Kembali ke Command Center</Button>}
+          />
+        </div>
+      </main>
+    );
+  }
+
   if (view === 'dashboard') {
     return (
       <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1500px]">
           <PanelErrorBoundary name="Dashboard V2">
-            {data === null || data === undefined ? <DashboardViewSkeleton view="dashboard" /> : (() => {
+            {data === null || data === undefined ? (
+              error !== null ? (
+                <EmptyState
+                  title="Command Center belum tersedia"
+                  description={error}
+                  icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
+                  action={<Button type="button" variant="outline" onClick={onRefresh}>Coba lagi</Button>}
+                />
+              ) : <DashboardViewSkeleton view="dashboard" />
+            ) : (() => {
               const source = typeof data === 'object' && data !== null
                 ? data as Record<string, unknown>
                 : {};
@@ -286,6 +319,17 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
         ) : null}
 
         <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
+          {!SELF_FETCHING_V2_VIEWS.has(view) && (data === null || data === undefined) ? (
+            error !== null ? (
+              <EmptyState
+                title={metadata.title + ' belum tersedia'}
+                description="Data belum berhasil dimuat. Coba muat ulang sebelum melanjutkan pekerjaan."
+                icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
+                action={<Button type="button" variant="outline" onClick={onRefresh}>Coba lagi</Button>}
+              />
+            ) : <DashboardViewSkeleton view={view} />
+          ) : (
+          <>
           {view === 'analytics' ? (
             isAnalyticsProjection(data) ? (
               <NetworkIntelligenceV2 data={data} onFilterApply={onFilterApply} />
@@ -380,6 +424,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             <CustomerOperationsV2 organizationId={organizationId} command={command} />
           ) : null}
           {view === 'content' ? <PublicWebContentV2 /> : null}
+          </>
+          )}
         </PanelErrorBoundary>
       </div>
     </main>

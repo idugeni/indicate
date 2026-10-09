@@ -88,6 +88,46 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 
 **Regression test added:** a full first page exposes continuation; the next cursor request appends the next invoice and hides continuation when the response is shorter than the page size.
 
+### A1 — Direct URL navigation bypassed view-registry permission visibility
+
+**Evidence:** The sidebar and command palette used visibleNavGroups(permissions), but DashboardWorkspace initialized the selected view from the URL and DashboardViewPanel rendered that view without checking VIEW_REGISTRY[view].requiredPermission. A restricted view could therefore mount its client component when a user manually supplied a gated view query. Server APIs still authorize requests, but the UI did not consistently enforce the same view-level contract.
+
+**Change:** Added one canAccessView predicate and reused it for nav visibility, the workspace data-loading effect, and the view panel. Restricted direct navigation no longer triggers workspace fetching or mounts the restricted component; the user gets a clear denial state and a route back to Command Center.
+
+**Regression tests added:** permission predicates for gated and ungated views, plus a workspace test proving a direct customers view does not mount the customer data-owning panel or issue its request.
+
+### W1 — Workspace-backed V2 panels could render false empty states while their first payload was pending
+
+**Evidence:** After switching views, the current payload is intentionally keyed to the selected view and is null until its request resolves. Several V2 panels interpret absent rows as an empty collection, so the UI could briefly report zero records even though the request had not settled. The Command Center also kept a skeleton indefinitely on a failed initial load without an in-panel retry.
+
+**Change:** The panel now uses the view-specific loading skeleton for every workspace-backed V2 surface while the payload is absent. Failed loads render a retry action; the Command Center gets the same explicit error/retry treatment. Self-fetching panels retain their own loading/error lifecycle.
+
+**Regression test added:** a deferred Publisher Network request keeps the loading skeleton visible and does not expose an empty-state message before the payload arrives.
+
+### C3 — Customer Operations silently stopped at the first customer page
+
+**Evidence:** The integrations customer endpoint already accepted bounded limit and cursor parameters, but CustomerOperationsV2 sent neither. The route default page size is 100, the UI rendered only that response array, and no continuation metadata was returned to the client.
+
+**Change:** The route now preserves its existing array response for compatibility and exposes X-Next-Cursor when a full bounded page was returned. Customer Operations requests 100-row pages, appends cursor pages with ID deduplication, prevents concurrent continuation requests, ignores stale results after organization changes, and exposes retry feedback.
+
+**Regression test added:** the directory follows the cursor, appends a second page, and removes the continuation action when the next page is short.
+
+### W2 — Public Web Content presented zeros as a loaded snapshot and had no retry action
+
+**Evidence:** PublicWebContentV2 initialized busy to false, so its first render showed zero counts and could claim every block was active before the GET request settled. A failed request only displayed a message; no action could retry it. The initial effect also had no abort lifecycle.
+
+**Change:** Initial loading is now explicit; unknown counts render as an em dash; posture/component views expose loading status; request failures provide a retry button; and an abort controller prevents state commits after unmount.
+
+**Regression tests added:** a deferred request does not display a false empty snapshot, and a failed request can be retried successfully.
+
+### T1 — Trust & Moderation reported an empty queue before its initial requests settled
+
+**Evidence:** The component initialized busy to false while its effect fetched four moderation collections. The queue could therefore render the real empty-state copy and zero metrics before the first request completed; failures also had no in-panel retry action.
+
+**Change:** Initial loading is active, metrics remain unknown until the first successful snapshot, the queue has an explicit loading/unknown state, and the error alert exposes a retry action.
+
+**Regression tests added:** a deferred four-collection request stays in loading state, and a failed initial load can be retried.
+
 ## Cross-cutting checks observed in source
 
 - `view-registry.ts` registers 19 views and applies permission-based navigation visibility.
@@ -99,13 +139,24 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 
 ## Verification status
 
-Local verification on the code fix set: `npm run typecheck`, `npm run lint`, `npm run lint:docs`, and `npm run perf` passed; `npm test` passed **546 test files / 3,559 tests**, and the three targeted V2 suites passed **15/15 tests**. A local production build compiled and passed TypeScript, then stopped during static page generation because this isolated environment lacks required production runtime secrets; this is not counted as a full build pass. The CI quality gate for the exact latest branch SHA must pass before merge. Authenticated browser checks, cross-tenant denial tests, and live external-service checks remain unverified unless separately run and recorded.
+Final local verification on the current feature branch:
 
-## Remaining audit work before calling V2 complete
+- npm run typecheck — pass
+- npm run lint — pass
+- npm run lint:docs — pass after the audit updates
+- npm run perf — pass
+- npm test — 546 test files, 3,568 tests passed
+- Post-suite focused regression run after the final loading/deduplication adjustments — 9/9 tests passed
+- npm run build — the optimized production bundle compiled successfully, then static generation stopped on the /indeks route during strict runtime configuration validation. This isolated workspace lacks required production runtime credentials and injects UPSTASH_BOX_* variables that are not application configuration. This is not counted as a full local build pass.
+- The earlier green GitHub Actions run validates the previous branch head, not the new local changes. The full CI gate must pass on the pushed commit before this PR is considered release-ready.
 
-1. Run the full repository quality gate against this branch and fix all failures on the same branch.
-2. Verify every view's primary actions against the actual API/service command map, including success/error recovery and optimistic concurrency behavior.
-3. Run tenant-isolation and permission tests for normal tenant users, organization admins, and platform administrators against the real authorization boundary.
-4. Verify mobile layouts, keyboard operation, and loading/empty/error/success transitions in a browser.
-5. Inspect remaining legacy subcomponents for primary-workflow leakage; reuse is acceptable only where the V2 workflow remains the primary user-facing flow.
-6. Record exact test/check results for this branch. Do not infer production health from a successful build or a prior main-branch deployment.
+## Remaining release verification
+
+The code-level regressions listed above now have targeted tests. These checks remain release verification rather than reasons to substitute a V1 workflow:
+
+1. Push this branch and require the full GitHub Quality Gate to pass on the exact new head SHA.
+2. Exercise the primary flow in all 19 views in an authenticated browser at desktop and mobile widths, including keyboard navigation and recovery from failed requests.
+3. Run the tenant/role denial matrix against the authenticated runtime: ordinary tenant user, organization admin, customer administrator, and platform administrator; include cross-tenant read/write denial.
+4. Verify live external provider and delivery outcomes only in an approved non-production environment with appropriate credentials. No production data writes or external delivery calls are part of this code audit.
+
+Do not call production healthy or merge this draft PR until the applicable release checks are green and the remaining runtime evidence is recorded.

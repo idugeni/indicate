@@ -94,8 +94,9 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
   const [erasureReason, setErasureReason] = useState('');
   const [privacyType, setPrivacyType] = useState('access');
   const [privacyDetails, setPrivacyDetails] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -112,6 +113,7 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
       setPrivacy(privacyRows);
       setHolds(holdRows);
       setErasures(erasureRows);
+      setLoaded(true);
     } catch {
       setError('Gagal memuat trust & moderation.');
     } finally {
@@ -261,10 +263,10 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            ['Reports', String(openReports.length), 'Open cases'],
-            ['Privacy', String(openPrivacy.length), 'Open requests'],
-            ['Holds', String(activeHolds.length), 'Active holds'],
-            ['Attention', String(attention), 'Needs review'],
+            ['Reports', loaded ? String(openReports.length) : '—', 'Open cases'],
+            ['Privacy', loaded ? String(openPrivacy.length) : '—', 'Open requests'],
+            ['Holds', loaded ? String(activeHolds.length) : '—', 'Active holds'],
+            ['Attention', loaded ? String(attention) : '—', 'Needs review'],
           ].map(([label, value, note]) => (
             <div key={label} className="rounded-lg border border-hairline bg-bg-raised px-3 py-2.5">
               <p className="m-0 font-mono text-[9px] uppercase tracking-wider text-paper-faint">
@@ -280,12 +282,15 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
       </header>
 
       {error !== null ? (
-        <p
+        <div
           role="alert"
-          className="m-0 rounded-lg border border-danger/30 bg-danger/[0.04] px-3 py-2 text-xs text-danger"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/[0.04] px-3 py-2 text-xs text-danger"
         >
-          {error}
-        </p>
+          <span>{error}</span>
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void reload()}>
+            Coba lagi
+          </Button>
+        </div>
       ) : null}
       {notice !== null ? (
         <p
@@ -293,6 +298,11 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
           className="m-0 rounded-lg border border-signal/30 bg-signal/[0.04] px-3 py-2 text-xs text-signal"
         >
           {notice}
+        </p>
+      ) : null}
+      {busy && !loaded ? (
+        <p role="status" className="m-0 rounded-lg border border-hairline bg-bg-raised px-3 py-2 text-xs text-paper-dim">
+          Memuat trust & moderation…
         </p>
       ) : null}
 
@@ -361,7 +371,9 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
                 title="Moderation Queue"
                 eyebrow={String(openReports.length) + ' open cases'}
               >
-                {openReports.length === 0 ? (
+                {!loaded && busy ? null : !loaded ? (
+                  <p className="m-0 py-6 text-center text-xs text-paper-faint">Snapshot belum tersedia. Coba muat ulang.</p>
+                ) : openReports.length === 0 ? (
                   <p className="m-0 py-6 text-center text-xs text-signal">
                     Tidak ada laporan yang membutuhkan review.
                   </p>

@@ -92,6 +92,17 @@ afterEach(() => {
 });
 
 describe('Dashboard workspace', () => {
+  it('blocks direct URL access to a restricted V2 view before mounting its data-owning panel', async () => {
+    initialView = 'customers';
+    const fetchMock = vi.fn(async (url: unknown) => { void url; return { ok: true, json: async () => [] }; });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+
+    expect(await screen.findByRole('heading', { name: 'Akses tidak tersedia' })).toBeDefined();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=customers'))).toBe(false);
+    expect(screen.getByRole('button', { name: 'Kembali ke Command Center' })).toBeDefined();
+  });
+
   it('renders the brand, owner name, and initial summary', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
@@ -163,6 +174,8 @@ describe('Dashboard workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Network Infrastructure', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     act(() => setViewExternal?.('publishers'));
     expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
+    expect(await screen.findByRole('status', { name: 'Memuat data modul' })).toBeDefined();
+    expect(screen.queryByText(/Belum ada penerbit/i)).toBeNull();
     releasePublishers();
     expect((await screen.findAllByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).length).toBeGreaterThan(0);
     expect(screen.queryByRole('table')).toBeNull();

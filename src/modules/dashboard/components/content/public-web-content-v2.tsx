@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FileText,
   ImageIcon,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { ContentManager } from '@/modules/dashboard/components/content/content-manager';
@@ -44,26 +45,31 @@ export function PublicWebContentV2() {
   const [focus, setFocus] = useState<Focus>('posture');
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [query, setQuery] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch('/api/dashboard/content');
+      const response = await fetch('/api/dashboard/content', signal ? { signal } : undefined);
       if (!response.ok) throw new Error('Content request failed');
-      setBundle((await response.json()) as Bundle);
+      const nextBundle = (await response.json()) as Bundle;
+      if (!signal?.aborted) setBundle(nextBundle);
     } catch {
-      setError('Gagal memuat public web content.');
+      if (!signal?.aborted) setError('Gagal memuat public web content.');
     } finally {
-      setBusy(false);
+      if (!signal?.aborted) setBusy(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    void Promise.resolve().then(() => load());
-  }, []);
+    const controller = new AbortController();
+    void Promise.resolve().then(() => {
+      if (!controller.signal.aborted) void load(controller.signal);
+    });
+    return () => controller.abort();
+  }, [load]);
 
   const total = GROUPS.reduce((sum, group) => sum + (bundle?.[group.id]?.length ?? 0), 0);
   const active = GROUPS.reduce((sum, group) => sum + activeCount(bundle?.[group.id] ?? []), 0);
@@ -101,9 +107,9 @@ export function PublicWebContentV2() {
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            ['Blocks', String(total), 'All content'],
-            ['Active', String(active), 'Published state'],
-            ['Inactive', String(inactive), 'Needs review'],
+            ['Blocks', bundle === null ? '—' : String(total), 'All content'],
+            ['Active', bundle === null ? '—' : String(active), 'Published state'],
+            ['Inactive', bundle === null ? '—' : String(inactive), 'Needs review'],
             ['Types', String(GROUPS.length), 'Public surfaces'],
           ].map(([label, value, note]) => (
             <div key={label} className="rounded-lg border border-hairline bg-bg-raised px-3 py-2.5">
@@ -120,12 +126,15 @@ export function PublicWebContentV2() {
       </header>
 
       {error !== null ? (
-        <p
+        <div
           role="alert"
-          className="m-0 rounded-lg border border-danger/30 bg-danger/[0.04] px-3 py-2 text-xs text-danger"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/[0.04] px-3 py-2 text-xs text-danger"
         >
-          {error}
-        </p>
+          <span>{error}</span>
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void load()}>
+            Coba lagi
+          </Button>
+        </div>
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
@@ -217,7 +226,11 @@ export function PublicWebContentV2() {
                 </div>
               </SectionCard>
               <SectionCard icon={Search} title="Content Quality Queue" eyebrow="Actionable review">
-                {inactive === 0 ? (
+                {bundle === null && busy ? (
+                  <p role="status" className="m-0 py-5 text-xs text-paper-dim">Memuat status public content…</p>
+                ) : bundle === null ? (
+                  <p className="m-0 py-5 text-xs text-paper-dim">Snapshot belum tersedia. Coba muat ulang.</p>
+                ) : inactive === 0 ? (
                   <p className="m-0 py-5 text-xs text-signal">
                     Semua content block aktif pada snapshot ini.
                   </p>
@@ -261,7 +274,11 @@ export function PublicWebContentV2() {
                   className="text-xs"
                 />
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              {bundle === null ? (
+                <p role="status" className="m-0 py-5 text-xs text-paper-dim">
+                  {busy ? 'Memuat public component map…' : 'Belum ada snapshot untuk ditampilkan.'}
+                </p>
+              ) : <div className="grid gap-3 md:grid-cols-2">
                 {filteredGroups.map((group) => {
                   const rows = bundle?.[group.id] ?? [];
                   return (
@@ -289,7 +306,7 @@ export function PublicWebContentV2() {
                     </div>
                   );
                 })}
-              </div>
+              </div>}
             </SectionCard>
           ) : null}
 
@@ -297,9 +314,9 @@ export function PublicWebContentV2() {
         </div>
       </div>
 
-      <p className="m-0 font-mono text-[9px] uppercase tracking-wider text-paper-faint">
+      <p role={busy ? 'status' : undefined} aria-live="polite" className="m-0 font-mono text-[9px] uppercase tracking-wider text-paper-faint">
         {busy
-          ? 'Refreshing public content snapshot…'
+          ? 'Memuat snapshot public content…'
           : 'Public content changes continue through the existing content command boundary.'}
       </p>
     </div>
