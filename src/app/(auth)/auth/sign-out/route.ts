@@ -9,7 +9,6 @@ import { renderClearedAccessKeyCookie } from '@/modules/auth/dashboard-access-ke
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { resolveSignOutDestination } from './route-helpers';
-import { resolveSignOutDestination } from './route-helpers';
 
 function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createHardenedSupabaseCookieStore({
