@@ -79,11 +79,13 @@ const PublisherNetworkV2 = dynamic(
     })),
   { loading: () => <DashboardViewSkeleton view="publishers" /> },
 );
-const TaxonomyManager = dynamic(
+const TaxonomyControlCenterV2 = dynamic(
   () =>
-    import('@/modules/dashboard/components/editorial/taxonomy-manager').then((module) => ({
-      default: module.TaxonomyManager,
-    })),
+    import('@/modules/dashboard/components/editorial/taxonomy-control-center-v2').then(
+      (module) => ({
+        default: module.TaxonomyControlCenterV2,
+      }),
+    ),
   { loading: () => <DashboardViewSkeleton view="taxonomy" /> },
 );
 const ContentLibraryV2 = dynamic(
@@ -305,7 +307,11 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             />
           ) : null}
           {view === 'taxonomy' ? (
-            <TaxonomyManager data={data} command={command} organizationId={organizationId} />
+            <TaxonomyControlCenterV2
+              data={data}
+              command={command}
+              organizationId={organizationId}
+            />
           ) : null}
           {view === 'articles' ? (
             <ContentLibraryV2

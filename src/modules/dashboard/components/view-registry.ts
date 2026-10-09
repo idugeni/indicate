@@ -99,8 +99,8 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     icon: Newspaper, suppressesRawCollections: true,
   },
   taxonomy: {
-    label: 'Taxonomy', title: 'Taxonomy Studio', eyebrow: 'Editorial Structure', group: 'editorial',
-    description: 'Bangun struktur kategori dan tag yang konsisten di seluruh jaringan.',
+    label: 'Taxonomy', title: 'Taxonomy Studio', eyebrow: 'Editorial Intelligence', group: 'editorial',
+    description: 'Pantau konsistensi kategori, cakupan artikel, dan kosakata tag di seluruh jaringan.',
     icon: Tags, suppressesRawCollections: true,
   },
   publishers: {
