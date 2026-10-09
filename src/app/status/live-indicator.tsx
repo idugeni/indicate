@@ -67,7 +67,7 @@ export function StatusLiveIndicator({ generatedAt }: { readonly generatedAt: str
         />
         <span className={`relative inline-flex size-2 rounded-full ${stale ? 'bg-error' : 'bg-signal'}`} />
       </span>
-      <span className="tracking-wider">{stale ? 'DATA BASI — MENCOBA LAGI' : 'LIVE 15M CYCLE'}</span>
+      <span className="tracking-wider">{stale ? 'DATA BASI — MENCOBA LAGI' : 'STATUS SNAPSHOT'}</span>
       <span className="tabular-nums text-paper-faint">{formatMoment(displayedAt)}</span>
     </div>
   );
