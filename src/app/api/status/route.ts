@@ -14,6 +14,8 @@ import {
 
 /** Hari uptime yang disajikan; selaras retensi agregat harian. */
 const HISTORY_DAYS = 90;
+/** Existing probe runs every 30 minutes; never expose older observations as current. */
+const STATUS_STALE_AFTER_MS = 60 * 60 * 1000;
 
 async function handleGET() {
   const snapshot = await loadCachedSnapshot();
@@ -40,14 +42,17 @@ async function loadSnapshot() {
   }
   const components = STATUS_COMPONENTS.map((component: StatusComponent) => {
     const current = newest.get(component);
+    const checkedAt = current?.checkedAt ?? null;
+    const checkedAtMs = checkedAt === null ? Number.NaN : Date.parse(checkedAt);
+    const isFresh = Number.isFinite(checkedAtMs) && Date.now() - checkedAtMs <= STATUS_STALE_AFTER_MS;
     return {
       component,
       label: COMPONENT_LABELS[component],
-      health: current?.health ?? 'unknown',
-      latencyMs: current?.latencyMs ?? null,
-      checkedAt: current?.checkedAt ?? null,
+      health: isFresh ? current?.health ?? 'unknown' : 'unknown',
+      latencyMs: isFresh ? current?.latencyMs ?? null : null,
+      checkedAt,
       days: daily
-        .filter((row) => row.component === component)
+        .filter((row) => row.component === component && component !== 'api' && row.checks > 0)
         .map((row) => ({ day: row.day, uptimePct: row.uptimePct })),
     };
   });

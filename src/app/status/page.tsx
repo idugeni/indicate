@@ -123,19 +123,23 @@ const HEALTH_CONFIG: Readonly<
 };
 
 const OVERALL_SYSTEM_COPY: Readonly<
-  Record<ComponentHealth, { readonly headline: string; readonly description: string }>
+  Record<ComponentHealth | 'unknown', { readonly headline: string; readonly description: string }>
 > = {
   ok: {
-    headline: 'Seluruh Layanan Beroperasi Normal',
-    description: 'Semua simpul backend, cache terdistribusi, API publik, dan inferensi AI merespons probe telemetri tanpa anomali.',
+    headline: 'Komponen Terpantau Beroperasi Normal',
+    description: 'Semua komponen dengan pemeriksaan terbaru yang valid merespons normal. Komponen tanpa bukti pemeriksaan terbaru ditandai terpisah.',
   },
   degraded: {
-    headline: 'Penurunan Latensi Terdeteksi',
-    description: 'Satu atau lebih komponen merespons di luar ambang batas standar latensi. Tindakan mitigasi beban sedang berjalan.',
+    headline: 'Sebagian Layanan Mengalami Penurunan Performa',
+    description: 'Satu atau lebih komponen merespons di luar ambang latensi yang ditetapkan. Lihat matriks layanan untuk detail yang terukur.',
   },
   down: {
-    headline: 'Interupsi Kritis Berlangsung',
-    description: 'Kegagalan respons terdeteksi pada simpul utama. Tim teknis sedang mengisolasi sumber masalah.',
+    headline: 'Gangguan Layanan Terdeteksi',
+    description: 'Satu atau lebih komponen gagal dalam pemeriksaan terakhir. Lihat detail komponen dan insiden yang tercatat.',
+  },
+  unknown: {
+    headline: 'Status Layanan Belum Dapat Dipastikan',
+    description: 'Belum ada hasil pemeriksaan yang cukup untuk menyatakan layanan normal atau terganggu. Data akan ditampilkan setelah pemeriksaan tersedia.',
   },
 };
 
@@ -184,6 +188,7 @@ function formatMoment(value: string): string {
   const time = new Date(value).getTime();
   if (Number.isNaN(time)) return value;
   return new Date(time).toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -223,7 +228,7 @@ interface IncidentView {
 }
 
 interface StatusSnapshot {
-  readonly overall: ComponentHealth;
+  readonly overall: ComponentHealth | 'unknown';
   readonly components: readonly ComponentView[];
   readonly incidents: readonly IncidentView[];
   readonly generatedAt: string;
@@ -231,6 +236,8 @@ interface StatusSnapshot {
 
 /** Jendela riwayat yang dirender: 90 hari terakhir. */
 const STATUS_HISTORY_DAYS = 90;
+/** Probe runs every 30 minutes; older observations are not presented as current. */
+const STATUS_STALE_AFTER_MS = 60 * 60 * 1000;
 
 async function loadSnapshot(): Promise<StatusSnapshot> {
   const context = await getServerRuntimeContext();
@@ -269,12 +276,15 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
 
   const components = STATUS_COMPONENTS.map((component) => {
     const current = newest.get(component);
-    const health = (current?.health ?? 'unknown') as ComponentHealth | 'unknown';
+    const checkedAt = current?.checkedAt ?? null;
+    const checkedAtMs = checkedAt === null ? Number.NaN : Date.parse(checkedAt);
+    const isFresh = Number.isFinite(checkedAtMs) && Date.now() - checkedAtMs <= STATUS_STALE_AFTER_MS;
+    const health = isFresh ? (current?.health ?? 'unknown') as ComponentHealth | 'unknown' : 'unknown';
     const byDay = new Map(
-      daily.filter((row) => row.component === component).map((row) => [row.day, row.uptimePct] as const)
+      daily.filter((row) => row.component === component && component !== 'api' && row.checks > 0).map((row) => [row.day, row.uptimePct] as const)
     );
     const latencyByDay = new Map(
-      daily.filter((row) => row.component === component).map((row) => [row.day, row.avgLatencyMs] as const)
+      daily.filter((row) => row.component === component && component !== 'api' && row.checks > 0).map((row) => [row.day, row.avgLatencyMs] as const)
     );
     const cells = days.map((day) => ({ day, uptimePct: byDay.get(day) ?? null }));
     const known = cells.filter((cell) => cell.uptimePct !== null);
@@ -282,8 +292,8 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
     return {
       component,
       health,
-      latencyMs: current?.latencyMs ?? null,
-      checkedAt: current?.checkedAt ?? null,
+      latencyMs: isFresh ? current?.latencyMs ?? null : null,
+      checkedAt,
       uptime90:
         known.length === 0
           ? null
@@ -361,10 +371,10 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 font-bold tracking-widest text-paper uppercase">
               <LuActivity className="size-3.5 text-signal" />
-              Indicate Telemetry
+              INDICATE STATUS
             </span>
             <Separator orientation="vertical" className="h-3 bg-hairline" />
-            <span className="tracking-wider">CORE SYSTEM METRICS</span>
+            <span className="tracking-wider">KETERSEDIAAN LAYANAN</span>
           </div>
 
           <StatusLiveIndicator generatedAt={snapshot.generatedAt} />
@@ -383,7 +393,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
                 {overallConfig.label}
               </Badge>
               <Badge variant="outline" className="border-hairline text-paper-dim font-mono text-xs">
-                PROBE COUNT: {snapshot.components.length}
+                KOMPONEN TERDAFTAR: {snapshot.components.length}
               </Badge>
             </div>
 
@@ -401,14 +411,14 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
             <Card className="border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
-                  <LuShieldCheck className="size-3 text-signal" /> SLA 90 Hari
+                  <LuShieldCheck className="size-3 text-signal" /> Availability 90 Hari
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
                   {aggregateUptime !== null ? <CountUp value={aggregateUptime} decimals={2} suffix="%" /> : '---'}
                 </div>
-                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Seluruh Layer</div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Komponen dengan data</div>
               </CardContent>
             </Card>
 
@@ -429,14 +439,14 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
             <Card className="col-span-2 sm:col-span-1 border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
-                  <LuRadio className="size-3 text-paper-dim" /> Simpul Aktif
+                  <LuRadio className="size-3 text-paper-dim" /> Komponen Normal
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
                   <CountUp value={activeProbes} />/{snapshot.components.length}
                 </div>
-                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Respon Positif</div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Status pemeriksaan terbaru</div>
               </CardContent>
             </Card>
           </div>
@@ -493,12 +503,12 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
             id="matrix-heading"
             className="m-0 font-mono text-xs uppercase tracking-[0.2em] font-semibold text-paper"
           >
-            Matriks Status Komponen
+            Status Layanan
           </h2>
         </div>
         <div className="flex items-center gap-2 font-mono text-xs text-paper-faint">
           <LuActivity className="size-3.5 text-signal" />
-          <span>Riwayat SLA 90 Hari</span>
+          <span>Riwayat 90 Hari</span>
         </div>
       </div>
 
@@ -587,6 +597,9 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
                     <span>SLI AKTIVITAS</span>
                     <span>SEKARANG</span>
                   </div>
+                  <p className="mt-2 mb-0 font-sans text-xs text-paper-faint">
+                    Pemeriksaan terakhir: {item.checkedAt !== null ? formatMoment(item.checkedAt) : 'Belum tersedia'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -645,7 +658,7 @@ function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
         <div className="lg:col-span-5 flex flex-col space-y-3">
           <div className="font-mono text-[11px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
             <LuTriangleAlert className="size-3.5 text-error" />
-            <span>Investigasi Aktif</span>
+            <span>Insiden Terbuka</span>
           </div>
 
           {open.length > 0 ? (
@@ -679,9 +692,9 @@ function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
                 <div className="mx-auto flex size-9 items-center justify-center rounded-full border border-signal/30 bg-signal/10 text-signal mb-3">
                   <LuCircleCheck className="size-5" />
                 </div>
-                <CardTitle className="font-sans text-sm font-medium text-paper">Semua Subsistem Bersih</CardTitle>
+                <CardTitle className="font-sans text-sm font-medium text-paper">Tidak Ada Insiden Terbuka</CardTitle>
                 <CardDescription className="font-sans text-xs text-paper-dim">
-                  Tidak ada tiket insiden atau gangguan aktif yang memerlukan mitigasi.
+                  Tidak ada insiden terbuka yang tercatat pada snapshot ini. Status komponen tetap perlu diperiksa secara terpisah.
                 </CardDescription>
               </CardHeader>
             </Card>

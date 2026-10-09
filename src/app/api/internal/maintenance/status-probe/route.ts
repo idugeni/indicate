@@ -53,7 +53,7 @@ async function handleGET(request: Request) {
     const list = byComponent.get(row.component as StatusComponent) ?? [];
     list.push({
       component: row.component as StatusComponent,
-      health: row.health as ComponentHealth,
+      health: row.health,
       latencyMs: row.latencyMs,
       detail: row.detail,
       checkedAt: row.checkedAt instanceof Date ? row.checkedAt.toISOString() : String(row.checkedAt),
@@ -64,7 +64,7 @@ async function handleGET(request: Request) {
   for (const [component, list] of byComponent) {
     list.sort((left, right) => (right.checkedAt < left.checkedAt ? -1 : 1));
     const prior = list[1] ?? list[0];
-    if (prior !== undefined) previous.set(component, prior.health);
+    if (prior !== undefined && prior.health !== 'unknown') previous.set(component, prior.health);
   }
 
   const storage = new R2ObjectStorageAdapter({
@@ -118,13 +118,13 @@ async function handleGET(request: Request) {
     }),
     now: () => new Date(),
   });
-  await repository.writeChecks(results.map((result) => ({
+  await repository.writeChecks(results.flatMap((result) => result.health === 'unknown' ? [] : [{
     component: result.component,
     health: result.health,
     latencyMs: result.latencyMs,
     detail: result.detail,
     checkedAt: new Date(result.checkedAt),
-  })));
+  }]));
 
   const open = await repository.openIncidents();
   const evaluation = evaluateIncidents(
@@ -164,16 +164,20 @@ async function handleGET(request: Request) {
     }
   }
   await repository.upsertDaily(
-    STATUS_COMPONENTS.map((component) => {
+    STATUS_COMPONENTS.flatMap((component) => {
+      const checkCount = counts.get(component) ?? 0;
+      // No probe data is not 100% uptime; omit this component/day instead.
+      if (checkCount === 0) return [];
       const summary = summarizeUptime(typedChecks, component, 1, new Date())[0];
       const samples = latencyCounts.get(component) ?? 0;
-      return {
+      if (summary?.uptimePct == null) return [];
+      return [{
         component,
         day: today,
-        uptimePct: summary?.uptimePct ?? 100,
-        checks: counts.get(component) ?? 0,
+        uptimePct: summary.uptimePct,
+        checks: checkCount,
         avgLatencyMs: samples === 0 ? null : Math.round((latencySums.get(component) ?? 0) / samples),
-      };
+      }];
     }),
   );
   const pruned = await repository.pruneChecks(new Date(Date.now() - RAW_RETENTION_DAYS * 86_400_000));
