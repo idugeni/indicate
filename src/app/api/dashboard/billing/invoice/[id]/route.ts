@@ -16,7 +16,7 @@ const paramsSchema = z.object({ organizationId: z.uuid().optional() });
 
 const MATERAI_THRESHOLD_IDR = 5_000_000;
 
-interface InvoiceSeals {
+export interface InvoiceSeals {
   readonly signUrl: string;
   readonly stampUrl: string;
 }
@@ -27,7 +27,7 @@ interface InvoiceSeals {
  * @param value - Raw text to embed in markup.
  * @returns Escaped text safe for HTML interpolation.
  */
-function esc(value: string): string {
+export function esc(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -41,7 +41,7 @@ function esc(value: string): string {
  * @param value - Amount in rupiah.
  * @returns Grouped amount prefixed with Rp.
  */
-function formatIdr(value: number): string {
+export function formatIdr(value: number): string {
   return `Rp${new Intl.NumberFormat('id-ID').format(value)}`;
 }
 
@@ -51,7 +51,7 @@ function formatIdr(value: number): string {
  * @param iso - ISO timestamp; returned unchanged when unparseable.
  * @returns Long id-ID date or the original input.
  */
-function formatDate(iso: string): string {
+export function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(d);
@@ -70,7 +70,7 @@ function formatMonthYear(iso: string): string {
  * @param seals - Authed seal image URLs for the signature block.
  * @returns Complete HTML document with paid or void totals.
  */
-function invoiceDocument(invoice: InvoiceRecord, seals: InvoiceSeals): string {
+export function invoiceDocument(invoice: InvoiceRecord, seals: InvoiceSeals): string {
   const voided = invoice.status === 'voided';
   const unpaid = invoice.status === 'unpaid';
   const badge = voided
@@ -350,4 +350,4 @@ async function handleGET(request: Request, context: { readonly params: Promise<{
   }
 }
 
-const GET = withApiAccess('GET /api/dashboard/billing/invoice/[id]', handleGET);
+export const GET = withApiAccess('GET /api/dashboard/billing/invoice/[id]', handleGET);
