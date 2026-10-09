@@ -15,7 +15,7 @@ function actor(overrides: Record<string, unknown> = {}) {
     entryPoint: 'dashboard',
     requestId: 'cross-org-test',
     ...overrides,
-  };
+  } as const;
 }
 
 function serviceWithRepository(repository: Record<string, unknown>) {
