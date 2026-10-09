@@ -4,7 +4,6 @@ import { unstable_cache } from 'next/cache';
 import { deniedRobotsTxt } from '@/core/routing/deny';
 import { serializeRobots } from '@/modules/site/seo';
 import { withApiAccess } from '@/core/observability/api-access';
-import { LEGAL_ROUTES, SITE_ROUTES } from '@/ui/site/marketing-content';
 import { deliveryComposition } from '@/modules/delivery';
 import type { ResolvedSiteContext } from '@/modules/delivery/models';
 import { controlPlaneRobots } from './route-helpers';
