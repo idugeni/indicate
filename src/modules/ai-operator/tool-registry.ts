@@ -37,6 +37,8 @@ const articleUpdateInput = z.object({
 });
 
 const emptyInput = z.object({}).strict();
+// The tenant Operator must not accept the publishing service's platform-only cross-org override.
+const tenantMediaListInput = mediaListSchema.omit({ ownerOrganizationId: true });
 const siteSearchInput = z.object({ query: searchText }).strict();
 const auditReadInput = z.object({
   actorId: z.string().max(200).optional(),
@@ -139,7 +141,7 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
     scope: 'tenant',
     risk: 'read',
     requiredPermissions: ['media.read'],
-    input: mediaListSchema,
+    input: tenantMediaListInput,
   }),
   'network.sites.read': tool({
     id: 'network.sites.read',
