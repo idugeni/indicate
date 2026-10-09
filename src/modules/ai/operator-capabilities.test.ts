@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OPERATOR_CAPABILITIES, OPERATOR_EXECUTION_ENABLED } from '@/modules/ai/operator-capabilities';
+import { OPERATOR_CAPABILITIES, OPERATOR_READ_EXECUTION_ENABLED, OPERATOR_WRITE_EXECUTION_ENABLED } from '@/modules/ai/operator-capabilities';
 
 describe('operator capability catalog', () => {
   it('keeps execution disabled until an executor is verified', () => {
