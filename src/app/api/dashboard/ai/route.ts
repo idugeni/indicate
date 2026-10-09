@@ -84,7 +84,8 @@ function parseOperatorPlanResponse(raw: string): unknown | null {
 }
 
 function normalizeOperatorPlanCandidate(candidate: Record<string, unknown>): unknown {
-  const { kind: _kind, ...plan } = candidate;
+  const plan: Record<string, unknown> = { ...candidate };
+  delete plan.kind;
   if (!Array.isArray(plan.steps)) return plan;
   return {
     ...plan,
