@@ -15,6 +15,13 @@ describe('validateOperatorPlan', () => {
     ] })).toMatchObject({ ok: false, code: 'DUPLICATE_STEP' });
   });
 
+  it('rejects repeated capabilities in one plan', () => {
+    expect(validateOperatorPlan({ steps: [
+      { id: 'step_1', capabilityId: 'command-center.overview.read', arguments: {} },
+      { id: 'step_2', capabilityId: 'command-center.overview.read', arguments: {} },
+    ] })).toMatchObject({ ok: false, code: 'DUPLICATE_STEP' });
+  });
+
   it('rejects unknown capability identifiers', () => {
     expect(validateOperatorPlan({ steps: [{ id: 'step_1', capabilityId: 'system.shell.execute', arguments: {} }] }))
       .toMatchObject({ ok: false, code: 'UNKNOWN_CAPABILITY' });
