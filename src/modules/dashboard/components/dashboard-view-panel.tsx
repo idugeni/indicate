@@ -35,11 +35,8 @@ const CustomerOperationsV2 = dynamic(
   () => import('@/modules/dashboard/components/customers/customer-operations-v2').then((module) => ({ default: module.CustomerOperationsV2 })),
   { loading: () => <DashboardViewSkeleton view="customers" /> },
 );
-const ContentManager = dynamic(
-  () =>
-    import('@/modules/dashboard/components/content/content-manager').then((module) => ({
-      default: module.ContentManager,
-    })),
+const PublicWebContentV2 = dynamic(
+  () => import('@/modules/dashboard/components/content/public-web-content-v2').then((module) => ({ default: module.PublicWebContentV2 })),
   { loading: () => <DashboardViewSkeleton view="content" /> },
 );
 const EditorialWorkspaceV2 = dynamic(
@@ -358,7 +355,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             <AiManagementPanel organizationId={organizationId} command={command} />
           ) : null}
           {view === 'customers' ? <CustomerOperationsV2 organizationId={organizationId} command={command} /> : null}
-          {view === 'content' ? <ContentManager /> : null}
+          {view === 'content' ? <PublicWebContentV2 /> : null}
         </PanelErrorBoundary>
 
         {VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) ? null : showSkeleton ? (
