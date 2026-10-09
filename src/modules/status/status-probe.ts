@@ -26,7 +26,7 @@ export const COMPONENT_LABELS: Readonly<Record<StatusComponent, string>> = {
   auth: 'Autentikasi',
   delivery: 'Penerbitan',
   ai: 'Layanan AI',
-  api: 'API',
+  api: 'API (belum diverifikasi)',
 };
 
 export interface ProbeResult {
