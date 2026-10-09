@@ -7,20 +7,10 @@ import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { fetchCachedAnalytics, fetchCachedDashboard } from '@/modules/dashboard/dashboard-dal';
-import { OPERATOR_CAPABILITIES, OPERATOR_READ_EXECUTION_ENABLED, type OperatorCapabilityDefinition } from '@/modules/ai/operator-capabilities';
+import { OPERATOR_CAPABILITIES, OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS, OPERATOR_READ_EXECUTION_ENABLED, type OperatorCapabilityDefinition } from '@/modules/ai/operator-capabilities';
 import type { OperatorPlan } from '@/modules/ai/operator-plan';
 
-const EXECUTABLE_READ_CAPABILITIES = new Set([
-  'command-center.overview.read',
-  'network-intelligence.health.read',
-  'editorial-workspace.articles.read',
-  'content-library.articles.read',
-  'taxonomy-studio.taxonomy.read',
-  'publisher-network.publishers.read',
-  'network-infrastructure.sites.read',
-  'audit-security.audit.read',
-  'system-operations.status.read',
-]);
+const EXECUTABLE_READ_CAPABILITIES = new Set<string>(OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS);
 
 export type OperatorStepResult =
   | { readonly id: string; readonly capabilityId: string; readonly ok: true; readonly result: unknown }
