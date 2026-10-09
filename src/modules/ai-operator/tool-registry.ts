@@ -196,7 +196,9 @@ export function authorizeAiOperatorTool(
 
   if (!hasPermission) return { allowed: false, reason: 'MISSING_PERMISSION' };
 
-  // Approval is intentionally not accepted as a caller-supplied boolean here.\n  // A future executor must verify a persisted approval record bound to this exact command.\n  if (definition.requiresApproval) {
+  // Approval is intentionally not accepted as a caller-supplied boolean here.
+  // A future executor must verify a persisted approval record bound to this exact command.
+  if (definition.requiresApproval) {
     return { allowed: true, requiresApproval: true, risk: definition.risk };
   }
 
