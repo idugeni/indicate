@@ -5,6 +5,7 @@ import { readPublicNetworkSites } from '@/data/repos/content/queries';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { withApiAccess } from '@/core/observability/api-access';
 import { authorized } from '@/app/api/internal/auth';
+import { planSitemapSync } from './route-helpers';
 
 const WEBMASTERS = 'https://www.googleapis.com/webmasters/v3';
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
