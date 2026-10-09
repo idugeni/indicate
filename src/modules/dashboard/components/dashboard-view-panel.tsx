@@ -15,7 +15,6 @@ import {
   DashboardFormsGridSkeleton,
   DashboardMediaSkeleton,
   DashboardSplitFormSkeleton,
-  DashboardStatsSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import {
@@ -32,11 +31,17 @@ const InfrastructureControlCenterV2 = dynamic(
   { loading: () => <DashboardViewSkeleton view="configuration" /> },
 );
 const CustomerOperationsV2 = dynamic(
-  () => import('@/modules/dashboard/components/customers/customer-operations-v2').then((module) => ({ default: module.CustomerOperationsV2 })),
+  () =>
+    import('@/modules/dashboard/components/customers/customer-operations-v2').then((module) => ({
+      default: module.CustomerOperationsV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="customers" /> },
 );
 const PublicWebContentV2 = dynamic(
-  () => import('@/modules/dashboard/components/content/public-web-content-v2').then((module) => ({ default: module.PublicWebContentV2 })),
+  () =>
+    import('@/modules/dashboard/components/content/public-web-content-v2').then((module) => ({
+      default: module.PublicWebContentV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="content" /> },
 );
 const EditorialWorkspaceV2 = dynamic(
@@ -53,19 +58,12 @@ const AccessIntegrationsV2 = dynamic(
     })),
   { loading: () => <DashboardViewSkeleton view="settings" /> },
 );
-const AiManagementPanel = dynamic(
+const AiControlCenterV2 = dynamic(
   () =>
-    import('@/modules/dashboard/components/settings/ai-management-panel').then((module) => ({
-      default: module.AiManagementPanel,
+    import('@/modules/dashboard/components/settings/ai-control-center-v2').then((module) => ({
+      default: module.AiControlCenterV2,
     })),
-  {
-    loading: () => (
-      <div className="space-y-4">
-        <DashboardStatsSkeleton count={5} />
-        <DashboardFormsGridSkeleton columns={2} />
-      </div>
-    ),
-  },
+  { loading: () => <DashboardViewSkeleton view="ai" /> },
 );
 const MediaLibraryV2 = dynamic(
   () =>
@@ -110,7 +108,10 @@ const LiveResultsV2 = dynamic(
   { loading: () => <DashboardViewSkeleton view="published" /> },
 );
 const SystemOperationsV2 = dynamic(
-  () => import('@/modules/dashboard/components/operations/system-operations-v2').then((module) => ({ default: module.SystemOperationsV2 })),
+  () =>
+    import('@/modules/dashboard/components/operations/system-operations-v2').then((module) => ({
+      default: module.SystemOperationsV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="operations" /> },
 );
 const AuditSecurityV2 = dynamic(
@@ -128,7 +129,10 @@ const MonetizationControlCenterV2 = dynamic(
   { loading: () => <DashboardViewSkeleton view="billing" /> },
 );
 const TrustModerationV2 = dynamic(
-  () => import('@/modules/dashboard/components/trust/trust-moderation-v2').then((module) => ({ default: module.TrustModerationV2 })),
+  () =>
+    import('@/modules/dashboard/components/trust/trust-moderation-v2').then((module) => ({
+      default: module.TrustModerationV2,
+    })),
   { loading: () => <DashboardViewSkeleton view="moderation" /> },
 );
 const AdsManagementPanel = dynamic(
@@ -352,9 +356,11 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           {view === 'moderation' ? <TrustModerationV2 organizationId={organizationId} /> : null}
           {view === 'ads' ? <AdsManagementPanel organizationId={organizationId} /> : null}
           {view === 'ai' ? (
-            <AiManagementPanel organizationId={organizationId} command={command} />
+            <AiControlCenterV2 organizationId={organizationId} command={command} />
           ) : null}
-          {view === 'customers' ? <CustomerOperationsV2 organizationId={organizationId} command={command} /> : null}
+          {view === 'customers' ? (
+            <CustomerOperationsV2 organizationId={organizationId} command={command} />
+          ) : null}
           {view === 'content' ? <PublicWebContentV2 /> : null}
         </PanelErrorBoundary>
 
