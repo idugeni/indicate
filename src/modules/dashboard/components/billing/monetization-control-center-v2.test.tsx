@@ -84,6 +84,35 @@ describe('Monetization Control Center V2', () => {
     expect(screen.getByRole('button', { name: 'Terapkan status' })).toBeDefined();
   });
 
+  it('shows an explicit loading state before declaring the invoice ledger empty', async () => {
+    let resolveSubscription: ((value: { ok: true; json: () => Promise<unknown> }) => void) | undefined;
+    let resolveInvoices: ((value: { ok: true; json: () => Promise<unknown> }) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) => {
+        if (input.includes('subscription-state')) {
+          return new Promise<{ ok: true; json: () => Promise<unknown> }>((resolve) => {
+            resolveSubscription = resolve;
+          });
+        }
+        if (input.includes('scope=invoices')) {
+          return new Promise<{ ok: true; json: () => Promise<unknown> }>((resolve) => {
+            resolveInvoices = resolve;
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => [] });
+      }),
+    );
+
+    render(<MonetizationControlCenterV2 organizationId="org-1" permissions={[]} />);
+    expect(screen.getByRole('status').textContent).toContain('Memuat faktur');
+    expect(screen.queryByText('Belum ada faktur untuk organisasi ini.')).toBeNull();
+
+    resolveSubscription?.({ ok: true, json: async () => ({ state: 'active' }) });
+    resolveInvoices?.({ ok: true, json: async () => [] });
+    expect(await screen.findByText('Belum ada faktur untuk organisasi ini.')).toBeDefined();
+  });
+
   it('sends existing billing commands without introducing a new API contract', async () => {
     const calls: string[] = [];
     vi.stubGlobal(
