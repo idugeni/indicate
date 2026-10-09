@@ -12,7 +12,7 @@ import { deliveryComposition } from '@/modules/delivery';
  * @param contactUrl - Absolute partnership contact URL.
  * @returns Valid comment-only ads.txt body per IAB spec.
  */
-export function adsTxt(host: string, contactUrl: string): string {
+function adsTxt(host: string, contactUrl: string): string {
   return [
     `# ads.txt for ${host}`,
     '# No authorized programmatic sellers yet.',
@@ -44,4 +44,4 @@ async function handleGET() {
  *
  * @remarks Static body, no database read; replace with real seller lines on ads onboarding.
  */
-export const GET = withApiAccess('GET /ads.txt', handleGET, { accessLog: 'errors-only' });
+const GET = withApiAccess('GET /ads.txt', handleGET, { accessLog: 'errors-only' });
