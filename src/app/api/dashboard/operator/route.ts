@@ -24,6 +24,7 @@ const EXECUTABLE_TENANT_TOOL_IDS = new Set([
   'analytics.overview.read',
   'content.articles.search',
   'publishing.delivery.read',
+  'publishing.delivery.request',
   'media.assets.read',
   'network.sites.read',
   'audit.events.read',
