@@ -191,7 +191,8 @@ vi.mock('@/modules/auth/authenticate-dashboard', () => ({
   }),
 }));
 
-import { POST, asStreamCapableAdapter } from '@/app/api/dashboard/ai/route';
+import { POST } from '@/app/api/dashboard/ai/route';
+import { asStreamCapableAdapter } from '@/app/api/dashboard/ai/route-helpers';
 
 function streamRequest(): Request {
   return new Request('http://localhost/api/dashboard/ai', {
