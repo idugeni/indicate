@@ -118,7 +118,7 @@ async function handleGET(request: Request) {
     }),
     now: () => new Date(),
   });
-  await repository.writeChecks(results.map((result) => ({
+  await repository.writeChecks(results.filter((result) => result.health !== 'unknown').map((result) => ({
     component: result.component,
     health: result.health,
     latencyMs: result.latencyMs,
@@ -164,16 +164,20 @@ async function handleGET(request: Request) {
     }
   }
   await repository.upsertDaily(
-    STATUS_COMPONENTS.map((component) => {
+    STATUS_COMPONENTS.flatMap((component) => {
+      const checkCount = counts.get(component) ?? 0;
+      // No probe data is not 100% uptime; omit this component/day instead.
+      if (checkCount === 0) return [];
       const summary = summarizeUptime(typedChecks, component, 1, new Date())[0];
       const samples = latencyCounts.get(component) ?? 0;
-      return {
+      if (summary?.uptimePct == null) return [];
+      return [{
         component,
         day: today,
-        uptimePct: summary?.uptimePct ?? 100,
-        checks: counts.get(component) ?? 0,
+        uptimePct: summary.uptimePct,
+        checks: checkCount,
         avgLatencyMs: samples === 0 ? null : Math.round((latencySums.get(component) ?? 0) / samples),
-      };
+      }];
     }),
   );
   const pruned = await repository.pruneChecks(new Date(Date.now() - RAW_RETENTION_DAYS * 86_400_000));
