@@ -36,6 +36,17 @@ const articleUpdateInput = z.object({
 });
 
 const emptyInput = z.object({}).strict();
+const siteSearchInput = z.object({ query: searchText }).strict();
+const auditReadInput = z.object({
+  actorId: z.string().max(200).optional(),
+  action: z.string().max(200).optional(),
+  targetType: z.string().max(100).optional(),
+  outcome: z.enum(['succeeded', 'denied', 'failed']).optional(),
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+  limit: z.number().int().min(1).max(500).optional(),
+  cursor: z.string().max(200).optional(),
+}).strict();
 const deliveryRequestInput = z.object({
   articleId: uuid,
   publisherIds: z.array(uuid).min(1).max(50),
@@ -127,7 +138,7 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
     scope: 'tenant',
     risk: 'read',
     requiredPermissions: ['site.read'],
-    input: emptyInput,
+    input: siteSearchInput,
   }),
   'audit.events.read': tool({
     id: 'audit.events.read',
@@ -135,7 +146,7 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
     scope: 'tenant',
     risk: 'read',
     requiredPermissions: ['audit.read'],
-    input: emptyInput,
+    input: auditReadInput,
   }),
   'customers.list.read': tool({
     id: 'customers.list.read',
