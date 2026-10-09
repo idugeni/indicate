@@ -93,6 +93,9 @@ async function handlePOST(request: Request) {
     if (definition === null || definition.scope !== 'tenant') {
       return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown tenant operator tool.', requestId), { status: 400 });
     }
+    if (parsed.data.toolId !== 'publishing.delivery.request') {
+      return NextResponse.json(createPublicError('CONFLICT', 'This tool does not yet have a transactional executor and cannot be approved.', requestId), { status: 409 });
+    }
     const authorization = authorizeAiOperatorTool(context.actor, parsed.data.toolId, parsed.data.input);
     if (!authorization.allowed) {
       const status = authorization.reason === 'INVALID_INPUT' ? 400 : 403;
