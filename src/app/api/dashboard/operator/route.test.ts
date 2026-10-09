@@ -24,7 +24,7 @@ vi.mock('@/modules/dashboard/dashboard-dal', () => ({ fetchCachedAnalytics: vi.f
 vi.mock('@/modules/ai-operator/tool-registry', () => ({
   getAiOperatorTool: (id: string) => ({
     id,
-    scope: 'tenant',
+    scope: id === 'ai.routing.update' ? 'platform' : 'tenant',
     input: { safeParse: (data: unknown) => ({ success: true, data }) },
   }),
   authorizeAiOperatorTool: () => ({ allowed: true, requiresApproval: true, risk: 'write' }),
@@ -216,6 +216,27 @@ describe('POST /api/dashboard/operator article update approvals', () => {
     const response = await POST(request({ articleId, expectedVersion: 3, title: 'Judul baru' }));
     expect(response.status).toBe(409);
     expect(mocks.updateArticle).not.toHaveBeenCalled();
+    expect(mocks.consumeApproval).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('POST /api/dashboard/operator platform scope isolation', () => {
+  it('fails closed for platform routing mutations on the tenant operator endpoint', async () => {
+    const response = await POST(new Request('http://localhost/api/dashboard/operator', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'localhost' },
+      body: JSON.stringify({
+        organizationId,
+        toolId: 'ai.routing.update',
+        input: { primaryProviderId: 'gemini', defaultModel: 'model-x' },
+        approvalId,
+      }),
+    }));
+
+    expect(response.status).toBe(404);
+    expect(mocks.resolveContext).not.toHaveBeenCalled();
+    expect(mocks.getUsableApproval).not.toHaveBeenCalled();
     expect(mocks.consumeApproval).not.toHaveBeenCalled();
   });
 });

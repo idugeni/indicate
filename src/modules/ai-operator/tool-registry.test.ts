@@ -5,6 +5,7 @@ import {
   AI_OPERATOR_TOOLS,
   authorizeAiOperatorTool,
   getAiOperatorTool,
+  isAiOperatorToolExecutable,
   listAiOperatorTools,
 } from '@/modules/ai-operator/tool-registry';
 
@@ -64,6 +65,8 @@ describe('AI Operator tool registry', () => {
       defaultModel: 'model-x',
     });
     expect(routing).toEqual({ allowed: true, requiresApproval: true, risk: 'high' });
+    // Registration and authorization are not proof of an implemented executor.
+    expect(isAiOperatorToolExecutable('ai.routing.update')).toBe(false);
   });
 
   it('requires approval for tenant article creation and rejects cross-tenant ownership fields', () => {
