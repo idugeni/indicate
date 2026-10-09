@@ -128,6 +128,9 @@ async function handlePOST(request: Request) {
   let result: unknown;
   switch (toolId) {
     case 'publishing.delivery.request': {
+      if (context.actor.actorType !== 'user') {
+        return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+      }
       const approvalId = parsedRequest.data.approvalId;
       if (approvalId === undefined) {
         return NextResponse.json(createPublicError('CONFLICT', 'A persisted approval ID is required for this command.', requestId), { status: 409 });
