@@ -32,14 +32,14 @@ import {
 } from '@/modules/dashboard/components/dashboard-types';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
-import { useDashboardPage, useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
+import { useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
 import { viewLabel } from '@/modules/dashboard/components/view-registry';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   DashboardNavList,
   DashboardSidebar,
 } from '@/modules/dashboard/components/dashboard-sidebar';
-import { DashboardViewPanel, VIEWS_WITHOUT_RAW_COLLECTIONS } from '@/modules/dashboard/components/dashboard-view-panel';
+import { DashboardViewPanel } from '@/modules/dashboard/components/dashboard-view-panel';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 import { AppTooltip } from '@/ui/app-tooltip';
 
@@ -146,7 +146,6 @@ export function DashboardWorkspace({
   const [filterQuery, setFilterQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [currentPage, setCurrentPage] = useDashboardPage();
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [crossOrg, setCrossOrg] = useState(() => (organizations[0]?.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin));
@@ -316,11 +315,10 @@ export function DashboardWorkspace({
       activeOrgRef.current = nextOrgId;
       setOrganizationId(nextOrgId);
       setGeneration((prev) => prev + 1);
-      setCurrentPage(1);
       setCrossOrg((target?.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin));
       toast.success(`Organisasi aktif beralih ke: ${target?.name ?? nextOrgId}`);
     },
-    [organizations, setCurrentPage]
+    [organizations]
   );
 
   const handleSwitchFailed = useCallback((message: string) => {
@@ -393,16 +391,14 @@ export function DashboardWorkspace({
 
   const selectView = useCallback((next: View) => {
     setView(next);
-    setCurrentPage(1);
     setFilterQuery('');
-  }, [setView, setCurrentPage]);
+  }, [setView]);
 
   const selectMobileNavView = useCallback((next: View) => {
     setView(next);
-    setCurrentPage(1);
     setFilterQuery('');
     setNavOpen(false);
-  }, [setView, setCurrentPage]);
+  }, [setView]);
 
   const refreshActiveView = useCallback(() => {
     if (SELF_FETCHING_VIEWS.has(view)) return;
@@ -675,12 +671,9 @@ export function DashboardWorkspace({
           organizationId={organizationId}
           permissions={activePermissions}
           error={error}
-          showSkeleton={!VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) && busy && !data}
-          currentPage={currentPage}
           command={command}
           onDismissError={dismissError}
           onFilterApply={setFilterQuery}
-          onPageChange={setCurrentPage}
           onRefresh={refreshActiveView}
           onSelectView={selectView}
           auditNextCursor={auditNextCursor}

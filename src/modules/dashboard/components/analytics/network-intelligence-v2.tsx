@@ -5,6 +5,7 @@ import { Activity, BarChart3, Globe2, Radio, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { AnalyticsProjection } from '@/modules/dashboard/models';
+import { DashboardV2FilterBar } from '@/modules/dashboard/components/dashboard-v2-filter-bar';
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { SankeyFlow } from '@/modules/dashboard/components/analytics/sankey';
 import { SiteBubbles } from '@/modules/dashboard/components/analytics/bubbles';
@@ -19,7 +20,7 @@ import { hasAnalyticsSignal, labelFlows, labelOutcomes, withLabels } from '@/mod
 
 function sum(values: readonly number[]): number { return values.reduce((total, value) => total + value, 0); }
 
-export function NetworkIntelligenceV2({ data }: { readonly data: AnalyticsProjection }) {
+export function NetworkIntelligenceV2({ data, onFilterApply }: { readonly data: AnalyticsProjection; readonly onFilterApply?: (query: string) => void }) {
   const publication = data.penyaluranHarian ?? data.tugasHarian ?? [];
   const views = data.viewsHarian ?? [];
   const published = sum(publication.map((point) => point.diterbitkan));
@@ -39,6 +40,7 @@ export function NetworkIntelligenceV2({ data }: { readonly data: AnalyticsProjec
           <h1 className="m-0 mt-1 text-xl font-semibold tracking-tight text-paper sm:text-2xl">Network Intelligence</h1>
           <p className="m-0 mt-1 max-w-2xl text-sm leading-relaxed text-paper-faint">Decision support untuk memahami coverage, delivery, audience, dan hubungan publisher–portal.</p>
         </header>
+        {onFilterApply ? <DashboardV2FilterBar view="analytics" data={data} onApply={onFilterApply} /> : null}
         <EmptyState title="Belum ada telemetry jaringan." description="Network Intelligence akan terisi dari aktivitas publikasi dan pembaca yang tercatat di server." />
       </section>
     );
@@ -62,6 +64,8 @@ export function NetworkIntelligenceV2({ data }: { readonly data: AnalyticsProjec
           <Metric icon={Globe2} label="Reader views" value={totalViews} tone="text-brass" />
         </div>
       </header>
+
+      {onFilterApply ? <DashboardV2FilterBar view="analytics" data={data} onApply={onFilterApply} /> : null}
 
       <Tabs defaultValue="network" className="w-full">
         <TabsList aria-label="Network Intelligence sections" className="w-full max-w-full overflow-x-auto overflow-y-clip">

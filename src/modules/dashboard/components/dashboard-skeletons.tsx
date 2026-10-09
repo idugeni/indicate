@@ -221,7 +221,7 @@ function TablesGridBare({ columns, count }: { readonly columns: 1 | 2 | 3; reado
   );
 }
 
-/** Table-grid fallback mirroring DataView multi-collection grids (gap-6, 2–3 columns on lg). */
+/** Table-grid skeleton for multi-section operational workspaces (gap-6, 2–3 columns on lg). */
 export function DashboardTablesGridSkeleton({
   columns,
   count,

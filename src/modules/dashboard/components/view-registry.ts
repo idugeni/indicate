@@ -62,17 +62,6 @@ export interface ViewMetadata {
   readonly requiredPermission?: string;
   /** Group heading in the sidebar and category badge in the command palette. */
   readonly group: ViewGroup;
-  /**
-   * Views whose own panel already presents every collection the payload carries.
-   *
-   * @remarks Rendering the generic `DataView` underneath them only repeats the
-   * same rows in a generic table, so they stay single-surface. `published` is
-   * here for a second reason: its payload is `editorial.list`, whose domain
-   * projection carries only `{ id, normalizedHostname }` and whose `articleSites`
-   * rows carry only ids, so the generic table showed `UNKNOWN` for every domain
-   * and a raw UUID for every assignment — broken data, not a thin projection.
-   */
-  readonly suppressesRawCollections: boolean;
 }
 
 export type ViewGroup = 'overview' | 'editorial' | 'publishing' | 'system';
@@ -81,105 +70,102 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   dashboard: {
     label: 'Command Center', title: 'Command Center', eyebrow: 'Operational Intelligence', group: 'overview',
     description: 'Kesehatan jaringan, workload distribusi, exception, dan aktivitas terbaru.',
-    icon: LayoutDashboard, suppressesRawCollections: false,
+    icon: LayoutDashboard,
   },
   analytics: {
     label: 'Intelligence', title: 'Network Intelligence', eyebrow: 'Decision Support', group: 'overview',
     description: 'Analisis pembaca, distribusi, situs, penerbit, dan tren jaringan.',
-    icon: BarChart3, suppressesRawCollections: false,
+    icon: BarChart3,
   },
   editorial: {
     label: 'Compose', title: 'Editorial Workspace', eyebrow: 'Content Operations', group: 'editorial',
     description: 'Susun, review, dan siapkan artikel untuk distribusi jaringan.',
-    icon: FileText, suppressesRawCollections: true,
+    icon: FileText,
   },
   articles: {
     label: 'Content Library', title: 'Content Library', eyebrow: 'Editorial Inventory', group: 'editorial',
     description: 'Cari, filter, edit, dan arsipkan seluruh artikel jaringan.',
-    icon: Newspaper, suppressesRawCollections: true,
+    icon: Newspaper,
   },
   taxonomy: {
     label: 'Taxonomy', title: 'Taxonomy Studio', eyebrow: 'Editorial Intelligence', group: 'editorial',
     description: 'Pantau konsistensi kategori, cakupan artikel, dan kosakata tag di seluruh jaringan.',
-    icon: Tags, suppressesRawCollections: true,
+    icon: Tags,
   },
   publishers: {
     label: 'Publishers', title: 'Publisher Network', eyebrow: 'Source Network', group: 'editorial',
     description: 'Kelola lembaga penerbit, afiliasi, dan status verifikasi.',
-    icon: Users, suppressesRawCollections: false,
+    icon: Users,
   },
   media: {
     label: 'Media Library', title: 'Media Library', eyebrow: 'Asset Operations', group: 'editorial',
     description: 'Kelola aset visual yang dipakai oleh workflow editorial.',
-    icon: FolderKanban, suppressesRawCollections: true,
+    icon: FolderKanban,
   },
   publishing: {
     label: 'Delivery', title: 'Distribution Control', eyebrow: 'Syndication Operations', group: 'publishing',
     description: 'Pantau queue, delivery, retry, dan hasil distribusi artikel.',
-    icon: Share2, suppressesRawCollections: true,
+    icon: Share2,
   },
   published: {
     label: 'Live Results', title: 'Live Results', eyebrow: 'Published Network', group: 'publishing',
     description: 'Lacak URL hasil distribusi yang sudah tayang dan siap dibagikan.',
-    icon: Link2, suppressesRawCollections: true,
+    icon: Link2,
   },
   ads: {
     label: 'Monetization', title: 'Ads Control Center', eyebrow: 'Revenue Operations', group: 'publishing',
     description: 'Pantau kesiapan slot iklan, cakupan kreatif, campaign, dan penempatan jaringan.',
-    icon: Megaphone, requiredPermission: DASHBOARD_PERMISSIONS.siteManage, suppressesRawCollections: true,
+    icon: Megaphone, requiredPermission: DASHBOARD_PERMISSIONS.siteManage,
   },
   configuration: {
     label: 'Network', title: 'Network Infrastructure', eyebrow: 'Tenant Infrastructure', group: 'system',
     description: 'Kelola domain, wilayah, site, branding, dan infrastruktur tenant.',
-    icon: Globe, suppressesRawCollections: true,
+    icon: Globe,
   },
   settings: {
     label: 'Access', title: 'Access & Integrations', eyebrow: 'Identity & Integrations', group: 'system',
     description: 'Kelola API keys, access keys, koneksi, dan profil akses.',
-    icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead, suppressesRawCollections: true,
+    icon: KeyRound, requiredPermission: INTEGRATIONS_PERMISSIONS.apiKeyRead,
   },
   billing: {
     label: 'Billing', title: 'Billing & Plan', eyebrow: 'Commercial Control', group: 'system',
     description: 'Status paket, aktivasi, dan kontrol langganan organisasi.',
-    icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead, suppressesRawCollections: true,
+    icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead,
   },
   audit: {
     label: 'Audit', title: 'Audit & Security', eyebrow: 'Governance', group: 'system',
     description: 'Jejak perubahan, aktor, dan event keamanan yang tidak dapat dihapus.',
-    icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: true,
+    icon: ShieldAlert, requiredPermission: DASHBOARD_PERMISSIONS.auditRead,
   },
   operations: {
     label: 'Operations', title: 'System Operations', eyebrow: 'Runtime Workloads', group: 'system',
     description: 'Pantau pekerjaan background, cleanup, retry, dan workload sistem.',
-    icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: true,
+    icon: RefreshCw, requiredPermission: DASHBOARD_PERMISSIONS.auditRead,
   },
   moderation: {
     label: 'Moderation', title: 'Trust & Moderation', eyebrow: 'Safety Operations', group: 'system',
     description: 'Tangani laporan konten dan permintaan data pengguna.',
-    icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead, suppressesRawCollections: true,
+    icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead,
   },
   customers: {
     label: 'Customers', title: 'Customer Operations', eyebrow: 'Platform Control', group: 'system',
     description: 'Kelola akun pelanggan, organisasi, dan status langganan.',
-    icon: Building2, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin, suppressesRawCollections: true,
+    icon: Building2, requiredPermission: INTEGRATIONS_PERMISSIONS.superAdmin,
   },
   content: {
     label: 'Web Content', title: 'Public Web Content', eyebrow: 'Brand Surface', group: 'system',
     description: 'Kelola konten publik seperti FAQ, testimoni, dan kontak.',
-    icon: LayoutTemplate, requiredPermission: INTEGRATIONS_PERMISSIONS.contentManage, suppressesRawCollections: true,
+    icon: LayoutTemplate, requiredPermission: INTEGRATIONS_PERMISSIONS.contentManage,
   },
   ai: {
     label: 'AI Control', title: 'AI Control Center', eyebrow: 'Intelligence Layer', group: 'system',
     description: 'Kelola kredensial, routing, dan konfigurasi asisten AI.',
-    icon: Bot, requiredPermission: INTEGRATIONS_PERMISSIONS.aiManage, suppressesRawCollections: true,
+    icon: Bot, requiredPermission: INTEGRATIONS_PERMISSIONS.aiManage,
   },
 };
 
 export const ALL_VIEWS = Object.keys(VIEW_REGISTRY) as readonly View[];
 
-export const VIEWS_WITHOUT_RAW_COLLECTIONS: ReadonlySet<View> = new Set<View>(
-  ALL_VIEWS.filter((view) => VIEW_REGISTRY[view].suppressesRawCollections),
-);
 
 const GROUP_TITLES: Readonly<Record<ViewGroup, string>> = {
   overview: 'Command Center',

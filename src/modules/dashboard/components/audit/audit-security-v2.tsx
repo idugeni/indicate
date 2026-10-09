@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
 import type { AuditRecord, RetentionRunRecord } from '@/modules/dashboard/models';
+import { DashboardV2FilterBar } from '@/modules/dashboard/components/dashboard-v2-filter-bar';
 
 type AuditFocus = 'timeline' | 'risk' | 'retention';
 
@@ -49,10 +50,12 @@ export function AuditSecurityV2({
   data,
   auditNextCursor,
   onLoadMoreAudit,
+  onFilterApply,
 }: {
   readonly data: unknown;
   readonly auditNextCursor?: string | null | undefined;
   readonly onLoadMoreAudit?: (() => void) | undefined;
+  readonly onFilterApply?: (query: string) => void;
 }) {
   const [focus, setFocus] = useState<AuditFocus>('timeline');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -128,6 +131,8 @@ export function AuditSecurityV2({
           ))}
         </div>
       </header>
+
+      {onFilterApply ? <DashboardV2FilterBar view="audit" data={data} onApply={onFilterApply} /> : null}
 
       <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
         <nav

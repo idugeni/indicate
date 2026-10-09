@@ -124,7 +124,8 @@ export function PublisherNetworkV2({
 
   const applySearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onFilterApply(query.trim());
+    const cleanQuery = query.trim();
+    onFilterApply(cleanQuery === '' ? '' : `&search=${encodeURIComponent(cleanQuery)}`);
   };
 
   const runDecision = (action: 'publisher.submit' | 'publisher.approve' | 'publisher.reject' | 'publisher.archive') => {

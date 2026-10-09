@@ -54,7 +54,7 @@ describe('Skeleton dashboard', () => {
     expect(shell.className).toContain('space-y-6');
   });
 
-  it('menyusun dua tabel dengan ritme yang sama seperti DataView', () => {
+  it('menyusun dua panel data dengan ritme grid yang konsisten', () => {
     render(<DashboardCollectionsSkeleton />);
     const shell = screen.getByRole('status');
     expect(shell.getAttribute('aria-label')).toBe('Memuat data modul');
