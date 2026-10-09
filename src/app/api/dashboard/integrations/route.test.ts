@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
-import { statusFor } from '@/app/api/dashboard/integrations/route';
+import { statusFor } from '@/app/api/dashboard/integrations/route-helpers';
 
 describe('integrations statusFor', () => {
   it('memetakan rate limit webhook ke 429', () => {
