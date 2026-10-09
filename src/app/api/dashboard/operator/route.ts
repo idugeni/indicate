@@ -39,10 +39,11 @@ const requestSchema = z.object({
 }).strict();
 
 /**
- * Execute a narrowly allow-listed set of read-only tools using existing dashboard
- * services. This route intentionally does not implement mutations or platform
- * control-plane operations; those require persisted approvals and their own
- * service-level authorization before they can be exposed.
+ * Execute narrowly allow-listed tenant tools using existing services. Read tools
+ * dispatch directly; publication requests require an exact-command persisted
+ * approval and reuse the publishing service's idempotency key on retries.
+ * Other mutations and platform control-plane operations remain disabled until
+ * their transactional execution boundary is implemented.
  */
 async function publishingServicesFor() {
   const runtimeContext = await getServerRuntimeContext();
