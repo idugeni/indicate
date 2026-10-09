@@ -158,7 +158,6 @@ export const aiOperatorApprovals = pgTable('ai_operator_approvals', {
   consumedAt: timestamp('consumed_at', { withTimezone: true }),
   ...timestamps,
 }, (table) => [
-  unique('ai_operator_approvals_id_unique').on(table.id),
   unique('ai_operator_approvals_idempotency_unique').on(table.organizationId, table.requesterActorId, table.idempotencyKey),
   index('ai_operator_approvals_org_state_created_idx').on(table.organizationId, table.state, table.createdAt.desc()),
   index('ai_operator_approvals_expiry_idx').on(table.state, table.expiresAt),
