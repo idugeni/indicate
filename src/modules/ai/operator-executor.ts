@@ -7,6 +7,20 @@ import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { fetchCachedAnalytics, fetchCachedDashboard } from '@/modules/dashboard/dashboard-dal';
+import { DrizzleAdsRepository } from '@/data/repos/ads';
+import { AdsService } from '@/modules/ads/ads-service';
+import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
+import { MediaService } from '@/modules/publishing/media-service';
+import { PublicationService } from '@/modules/publishing/publication-service';
+import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
+import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
+import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
+import { DrizzleAiRepository } from '@/data/repos/ai';
+import { DrizzleDashboardAccessKeyRepository } from '@/data/repos/dashboard-access-keys';
+import { ApiKeyService } from '@/modules/integrations/api-key-service';
+import { CustomerService } from '@/modules/integrations/customer-service';
+import { AiService } from '@/modules/integrations/ai-service';
+import { DashboardAccessKeyService } from '@/modules/auth/dashboard-access-keys/access-key-service';
 import { OPERATOR_CAPABILITIES, OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS, OPERATOR_READ_EXECUTION_ENABLED, type OperatorCapabilityDefinition } from '@/modules/ai/operator-capabilities';
 import type { OperatorPlan } from '@/modules/ai/operator-plan';
 
@@ -74,6 +88,38 @@ export async function executeOperatorPlan(input: {
         break;
       case 'system-operations.status.read':
         result = await service.operations(input.actor);
+        break;
+      case 'ads-control-center.ads.read':
+        result = await new AdsService(new DrizzleAdsRepository(runtime.db)).overview(input.actor);
+        break;
+      case 'media-library.assets.read': {
+        const repository = new DrizzlePublishingRepository(runtime.db);
+        const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, publicBucketName: context.config.r2.publicBucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
+        const media = new MediaService(repository, storage, new UuidGenerator(), { maxBytes: context.config.r2.maxBytes, allowedTypes: context.config.r2.allowedTypes, uploadTtlSeconds: context.config.r2.uploadTtlSeconds, readTtlSeconds: context.config.r2.readTtlSeconds });
+        result = await media.list(input.actor, { limit: '20' });
+        break;
+      }
+      case 'distribution-control.deliveries.read':
+      case 'live-results.deliveries.read': {
+        const repository = new DrizzlePublishingRepository(runtime.db);
+        const queue = new UpstashPublicationQueueAdapter({ url: context.config.redis.url, token: context.config.redis.token, namespace: context.config.redis.namespace, resourceId: context.config.redis.resourceId });
+        const publication = new PublicationService(repository, queue, new UuidGenerator(), { maxAttempts: context.config.publishing.maxAttempts, delaysSeconds: context.config.publishing.retryDelaysSeconds });
+        result = await publication.listJobs(input.actor);
+        break;
+      }
+      case 'access-integrations.integrations.read': {
+        const repository = new DrizzleIntegrationsRepository(runtime.db);
+        const identifiers = new UuidGenerator();
+        const apiKeys = await new ApiKeyService(repository, identifiers).list(input.actor);
+        const accessKeys = await new DashboardAccessKeyService(new DrizzleDashboardAccessKeyRepository(runtime.db), identifiers).list(input.actor);
+        const subscription = await new CustomerService(repository, identifiers).readSubscription(input.actor);
+        result = apiKeys.ok && accessKeys.ok && subscription.ok
+          ? { ok: true, value: { apiKeys: apiKeys.value, accessKeys: accessKeys.value, subscription: subscription.value } }
+          : { ok: false };
+        break;
+      }
+      case 'ai-control-center.ai-status.read':
+        result = await new AiService(new DrizzleAiRepository(runtime.db)).overview(input.actor);
         break;
       default:
         return { ok: false, error: 'Kemampuan tidak tersedia untuk eksekusi.' };
