@@ -101,7 +101,7 @@ async function handlePOST(request: Request) {
     ), { status });
   }
 
-  if (authorization.requiresApproval && toolId !== 'publishing.delivery.request') {
+  if (authorization.requiresApproval && toolId !== 'publishing.delivery.request' && toolId !== 'content.articles.update') {
     return NextResponse.json(createPublicError('CONFLICT', 'This approval-required tool does not yet have a transactional executor.', requestId), { status: 409 });
   }
   if (!authorization.requiresApproval && parsedRequest.data.approvalId !== undefined) {
@@ -165,6 +165,101 @@ async function handlePOST(request: Request) {
         return NextResponse.json(createPublicError('CONFLICT', 'The publication request was accepted, but its approval receipt could not be finalized. Retry the exact same command and approval ID.', requestId), { status: 409 });
       }
       result = response.value;
+      break;
+    }
+    case 'content.articles.update': {
+      if (context.actor.actorType !== 'user') {
+        return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+      }
+      const approvalId = parsedRequest.data.approvalId;
+      if (approvalId === undefined) {
+        return NextResponse.json(createPublicError('CONFLICT', 'A persisted approval ID is required for this command.', requestId), { status: 409 });
+      }
+      const updateInput = validated.data as { articleId: string; expectedVersion: number; title?: string; body?: string; status?: 'draft' | 'in_review' | 'scheduled' | 'active' };
+      const command = { organizationId, actorId: context.actor.actorId, toolId, input: validated.data };
+      const authorizedAt = new Date();
+      const usableApproval = await getUsableAiOperatorApproval(context.db, { approvalId, command, now: authorizedAt });
+      if (!usableApproval.ok) {
+        const status = usableApproval.reason === 'NOT_FOUND' ? 404 : usableApproval.reason === 'SELF_APPROVAL' ? 403 : 409;
+        return NextResponse.json(createPublicError(
+          usableApproval.reason === 'NOT_FOUND' ? 'RESOURCE_UNAVAILABLE' : usableApproval.reason === 'SELF_APPROVAL' ? 'FORBIDDEN' : 'CONFLICT',
+          'The approval is missing, expired, or does not authorize this exact command.',
+          requestId,
+        ), { status });
+      }
+
+      const currentResponse = await context.service.readArticleForEdit(context.actor, { id: updateInput.articleId, ownerOrganizationId: organizationId });
+      if (!currentResponse.ok) {
+        const status = currentResponse.error.error.code === 'FORBIDDEN' ? 403 : currentResponse.error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : 400;
+        return NextResponse.json(currentResponse.error, { status });
+      }
+      const current = currentResponse.value.article;
+      if (current.status === 'archived') {
+        return NextResponse.json(createPublicError('CONFLICT', 'Archived articles must be restored before they can be updated.', requestId), { status: 409 });
+      }
+      const requestedStateMatches = (updateInput.title === undefined || current.title === updateInput.title)
+        && (updateInput.body === undefined || current.body === updateInput.body)
+        && (updateInput.status === undefined || current.status === updateInput.status);
+      const replayedWrite = current.version === updateInput.expectedVersion + 1 && requestedStateMatches;
+      if (usableApproval.replay || replayedWrite) {
+        if (!requestedStateMatches) {
+          return NextResponse.json(createPublicError('CONFLICT', 'The approved update was already consumed but the current article does not match the requested state.', requestId), { status: 409 });
+        }
+        if (!usableApproval.replay) {
+          const consumed = await consumeAiOperatorApproval(context.db, {
+            approvalId, command,
+            audit: { actorType: context.actor.actorType, entryPoint: context.actor.entryPoint, requestId },
+            authorizedAt,
+          });
+          if (!consumed.ok) return NextResponse.json(createPublicError('CONFLICT', 'The article matches the approved update, but its approval receipt could not be finalized. Retry the exact same command.', requestId), { status: 409 });
+        }
+        result = { articleId: current.id, version: current.version, replayed: true };
+        break;
+      }
+      if (current.version !== updateInput.expectedVersion) {
+        return NextResponse.json(createPublicError('CONFLICT', 'The article changed after the approval request was created. Request a new approval for the latest version.', requestId), { status: 409 });
+      }
+
+      const mutation = {
+        id: current.id,
+        expectedVersion: updateInput.expectedVersion,
+        regionId: current.regionId,
+        slug: current.slug,
+        title: updateInput.title ?? current.title,
+        publisherId: current.publisherId ?? null,
+        categoryId: current.categoryId ?? null,
+        authorId: current.authorId ?? null,
+        leadMediaId: current.leadMediaId ?? null,
+        coverImageUrl: current.coverImageUrl ?? null,
+        excerpt: current.excerpt ?? null,
+        canonicalUrl: current.canonicalUrl ?? null,
+        body: updateInput.body ?? current.body,
+        bodyJson: current.bodyJson ?? null,
+        source: current.source ?? '',
+        tags: current.tags ?? [],
+        status: updateInput.status ?? current.status,
+        scheduledAt: current.scheduledAt ?? null,
+        type: current.type,
+        isSponsored: current.isSponsored,
+        videoUrl: current.videoUrl ?? null,
+        audioUrl: current.audioUrl ?? null,
+        durationSeconds: current.durationSeconds ?? null,
+      };
+      const updated = await context.service.updateArticle(context.actor, mutation);
+      if (!updated.ok) {
+        const code = updated.error.error.code;
+        const status = code === 'FORBIDDEN' ? 403 : code === 'RESOURCE_UNAVAILABLE' ? 404 : code === 'CONFLICT' ? 409 : 400;
+        return NextResponse.json(updated.error, { status });
+      }
+      const consumed = await consumeAiOperatorApproval(context.db, {
+        approvalId, command,
+        audit: { actorType: context.actor.actorType, entryPoint: context.actor.entryPoint, requestId },
+        authorizedAt,
+      });
+      if (!consumed.ok) {
+        return NextResponse.json(createPublicError('CONFLICT', 'The article update succeeded, but its approval receipt could not be finalized. Retry the exact same command.', requestId), { status: 409 });
+      }
+      result = { article: updated.value, replayed: false };
       break;
     }
     case 'dashboard.overview.read': {

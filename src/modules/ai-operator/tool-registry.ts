@@ -29,9 +29,10 @@ const articleCreateInput = z.object({
 
 const articleUpdateInput = z.object({
   articleId: uuid,
+  expectedVersion: z.number().int().positive(),
   title: z.string().trim().min(1).max(200).optional(),
-  body: z.string().trim().min(1).max(50_000).optional(),
-  status: z.enum(['draft', 'in_review', 'scheduled', 'archived']).optional(),
+  body: z.string().trim().min(1).max(200_000).optional(),
+  status: z.enum(['draft', 'in_review', 'scheduled', 'active']).optional(),
 }).strict().refine((value) => value.title !== undefined || value.body !== undefined || value.status !== undefined, {
   message: 'Minimal satu field perubahan harus diisi.',
 });
@@ -189,6 +190,7 @@ export const AI_OPERATOR_EXECUTABLE_TENANT_TOOL_IDS = Object.freeze([
   'content.articles.search',
   'publishing.delivery.read',
   'publishing.delivery.request',
+  'content.articles.update',
   'media.assets.read',
   'network.sites.read',
   'audit.events.read',

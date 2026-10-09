@@ -65,6 +65,24 @@ describe('AiOperatorConsole', () => {
     expect(screen.getByText(/Status: consumed/)).toBeTruthy();
   });
 
+  it('submits a version-bound article update for separate approval', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ approvals: [], canReview: false, canRequest: false, canRequestArticleUpdate: true }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ approval: { id: '66666666-6666-4666-8666-666666666666', state: 'pending' } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ approvals: [{ id: '66666666-6666-4666-8666-666666666666', toolId: 'content.articles.update', input: { articleId: '11111111-1111-4111-8111-111111111111', expectedVersion: 3, title: 'Judul baru' }, state: 'pending', expiresAt: '2026-10-10T00:00:00.000Z', isRequester: true }], canReview: false, canRequest: false, canRequestArticleUpdate: true }) });
+    vi.stubGlobal('fetch', mockFetch);
+    render(<AiOperatorConsole organizationId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" />);
+    fireEvent.change(await screen.findByPlaceholderText('UUID artikel'), { target: { value: '11111111-1111-4111-8111-111111111111' } });
+    fireEvent.change(screen.getByPlaceholderText('Contoh: 3'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Judul baru (opsional)'), { target: { value: 'Judul baru' } });
+    fireEvent.click(screen.getByRole('button', { name: /Ajukan perubahan untuk disetujui/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText('Permintaan perubahan artikel dikirim untuk persetujuan.')).toBeTruthy();
+    const submitted = JSON.parse(String(mockFetch.mock.calls[1]?.[1]?.body)) as Record<string, unknown>;
+    expect(submitted).toMatchObject({ organizationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', action: 'request', toolId: 'content.articles.update', input: { articleId: '11111111-1111-4111-8111-111111111111', expectedVersion: 3, title: 'Judul baru' } });
+    expect(typeof submitted.idempotencyKey).toBe('string');
+  });
+
   it('shows review controls only when the server grants review permission and refreshes after a decision', async () => {
     const approval = { id: '22222222-2222-4222-8222-222222222222', toolId: 'publishing.delivery.request', input: { articleId: 'article-1' }, state: 'pending', expiresAt: '2026-10-10T00:00:00.000Z' };
     const mockFetch = vi.fn()

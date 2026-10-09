@@ -59,6 +59,7 @@ async function handleGET(request: Request) {
     organizationId: organizationId.data,
     canReview,
     canRequest: context.actor.permissionSet.has('publishing.request'),
+    canRequestArticleUpdate: context.actor.permissionSet.has('article.manage'),
     approvals: rows.map((row) => ({
       id: row.id,
       isRequester: row.requesterActorId === context.actor.actorId,
@@ -100,8 +101,8 @@ async function handlePOST(request: Request) {
     if (definition === null || definition.scope !== 'tenant') {
       return NextResponse.json(createPublicError('INVALID_INPUT', 'Unknown tenant operator tool.', requestId), { status: 400 });
     }
-    if (parsed.data.toolId !== 'publishing.delivery.request') {
-      return NextResponse.json(createPublicError('CONFLICT', 'This tool does not yet have a transactional executor and cannot be approved.', requestId), { status: 409 });
+    if (parsed.data.toolId !== 'publishing.delivery.request' && parsed.data.toolId !== 'content.articles.update') {
+      return NextResponse.json(createPublicError('CONFLICT', 'This tool does not yet have an approval-backed executor and cannot be approved.', requestId), { status: 409 });
     }
     const authorization = authorizeAiOperatorTool(context.actor, parsed.data.toolId, parsed.data.input);
     if (!authorization.allowed) {

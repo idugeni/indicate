@@ -66,6 +66,30 @@ describe('AI Operator tool registry', () => {
     expect(routing).toEqual({ allowed: true, requiresApproval: true, risk: 'high' });
   });
 
+  it('requires version-bound approval for article updates and rejects cross-tenant fields', () => {
+    const editor = actor(['article.manage']);
+    expect(authorizeAiOperatorTool(editor, 'content.articles.update', {
+      articleId: '11111111-1111-4111-8111-111111111111',
+      expectedVersion: 2,
+      title: 'Judul baru',
+    })).toEqual({ allowed: true, requiresApproval: true, risk: 'write' });
+    expect(authorizeAiOperatorTool(editor, 'content.articles.update', {
+      articleId: '11111111-1111-4111-8111-111111111111',
+      title: 'Judul baru',
+    })).toEqual({ allowed: false, reason: 'INVALID_INPUT' });
+    expect(authorizeAiOperatorTool(editor, 'content.articles.update', {
+      articleId: '11111111-1111-4111-8111-111111111111',
+      expectedVersion: 2,
+      title: 'Judul baru',
+      ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+    })).toEqual({ allowed: false, reason: 'INVALID_INPUT' });
+    expect(authorizeAiOperatorTool(actor([]), 'content.articles.update', {
+      articleId: '11111111-1111-4111-8111-111111111111',
+      expectedVersion: 2,
+      title: 'Judul baru',
+    })).toEqual({ allowed: false, reason: 'MISSING_PERMISSION' });
+  });
+
   it('validates bounded filters for site and audit read tools', () => {
     expect(authorizeAiOperatorTool(actor(['media.read']), 'media.assets.read', {}))
       .toEqual({ allowed: true, requiresApproval: false, risk: 'read' });
