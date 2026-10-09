@@ -174,7 +174,7 @@ vi.mock('@/modules/ai/operator-planner', () => ({
   planOperatorActions: async () => ({
     ok: true,
     plan: { steps: [{ id: 'step_1', capabilityId: 'command-center.overview.read', arguments: {} }] },
-    executionEnabled: false,
+    executed: false,
   }),
 }));
 
@@ -300,7 +300,7 @@ describe('POST operator-plan', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      executionEnabled: false,
+      executed: false,
       plan: { steps: [{ capabilityId: 'command-center.overview.read' }] },
     });
   });
