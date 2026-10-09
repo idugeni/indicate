@@ -270,10 +270,13 @@ export async function consumeAiOperatorApproval(
     readonly approvalId: string;
     readonly command: AiOperatorCommand;
     readonly audit: ApprovalAuditContext;
+    /** Time at which the caller verified the approval before starting an idempotent side effect. */
+    readonly authorizedAt?: Date;
     readonly now?: Date;
   },
 ): Promise<ConsumeApprovalResult> {
   const now = input.now ?? new Date();
+  const authorizedAt = input.authorizedAt ?? now;
   const commandHash = hashAiOperatorCommand(input.command);
   return db.transaction(async (transaction) => {
     const updated = await transaction.update(aiOperatorApprovals).set({
@@ -286,7 +289,7 @@ export async function consumeAiOperatorApproval(
       eq(aiOperatorApprovals.requesterActorId, input.command.actorId),
       eq(aiOperatorApprovals.commandHash, commandHash),
       eq(aiOperatorApprovals.state, 'approved'),
-      gt(aiOperatorApprovals.expiresAt, now),
+      gt(aiOperatorApprovals.expiresAt, authorizedAt),
       ne(aiOperatorApprovals.requesterActorId, aiOperatorApprovals.approverActorId),
     )).returning();
 
