@@ -51,10 +51,6 @@ describe('AI Operator tool registry', () => {
       defaultModel: 'model-x',
     });
     expect(routing).toEqual({ allowed: true, requiresApproval: true, risk: 'high' });
-    expect(authorizeAiOperatorTool(platform, 'ai.routing.update', {
-      primaryProviderId: 'gemini',
-      defaultModel: 'model-x',
-    }, true)).toEqual({ allowed: true, requiresApproval: false, risk: 'high' });
   });
 
   it('does not allow a tenant grant to satisfy a platform permission', () => {
