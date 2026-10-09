@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
+import { authenticateDashboardUser, authorizeDashboardOrganization, authorizeDashboardPlatform } from '@/modules/auth/authenticate-dashboard';
 import type { ActorContext } from '@/core/operation-context';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
@@ -188,7 +188,7 @@ async function serviceDeps(organizationId?: string | undefined, context?: Server
   return deps;
 }
 
-async function sessionFor(organizationId: string, requestId: string): Promise<{ readonly actor: ActorContext } | PublicErrorEnvelope> {
+async function sessionFor(organizationId: string, requestId: string): Promise<{ readonly actor: ActorContext; readonly user: NonNullable<Awaited<ReturnType<typeof authenticateDashboardUser>>> } | PublicErrorEnvelope> {
   const cookieStore = await cookies();
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
@@ -196,7 +196,7 @@ async function sessionFor(organizationId: string, requestId: string): Promise<{ 
   if (user === null) return createNonDisclosingDenial(requestId);
   const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
   if (actor === null) return createNonDisclosingDenial(requestId);
-  return { actor };
+  return { actor, user };
 }
 
 async function auditDraftStream(db: AiDb, entry: {
@@ -799,7 +799,10 @@ async function handlePOST(request: Request) {
       case 'operator-execute': {
         const validated = validateOperatorPlan(payload.plan);
         if (!validated.ok) return response(createPublicError('INVALID_INPUT', validated.message, requestId));
-        const result = await executeOperatorPlan({ actor: session.actor as AuthorizedTenantActorContext, plan: validated.plan });
+        const platformContext = await getServerRuntimeContext();
+        const platformRuntime = getSharedRuntimeDatabase(platformContext.bootstrap);
+        const platformActor = await authorizeDashboardPlatform(platformRuntime.db, session.user, requestId, organizationId);
+        const result = await executeOperatorPlan({ actor: session.actor as AuthorizedTenantActorContext, platformActor, plan: validated.plan });
         return result.ok ? NextResponse.json(result) : response(createPublicError('FORBIDDEN', result.error, requestId));
       }
       case 'assistant-chat': {
