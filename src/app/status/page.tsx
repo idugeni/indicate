@@ -188,6 +188,7 @@ function formatMoment(value: string): string {
   const time = new Date(value).getTime();
   if (Number.isNaN(time)) return value;
   return new Date(time).toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -596,6 +597,9 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
                     <span>SLI AKTIVITAS</span>
                     <span>SEKARANG</span>
                   </div>
+                  <p className="mt-2 mb-0 font-sans text-xs text-paper-faint">
+                    Pemeriksaan terakhir: {item.checkedAt !== null ? formatMoment(item.checkedAt) : 'Belum tersedia'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
