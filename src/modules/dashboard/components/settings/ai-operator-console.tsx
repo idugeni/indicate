@@ -14,6 +14,10 @@ function errorMessage(value: unknown): string {
   const row = value as Record<string, unknown>;
   if (typeof row.error === 'string') return row.error;
   if (typeof row.message === 'string') return row.message;
+  const nested = typeof row.error === 'object' && row.error !== null ? row.error as Record<string, unknown> : null;
+  if (nested !== null && typeof nested.message === 'string') return nested.message;
+  const envelope = nested !== null && typeof nested.error === 'object' && nested.error !== null ? nested.error as Record<string, unknown> : null;
+  if (envelope !== null && typeof envelope.message === 'string') return envelope.message;
   return 'Permintaan operator gagal.';
 }
 
