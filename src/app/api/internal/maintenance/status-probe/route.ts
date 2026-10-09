@@ -64,7 +64,7 @@ async function handleGET(request: Request) {
   for (const [component, list] of byComponent) {
     list.sort((left, right) => (right.checkedAt < left.checkedAt ? -1 : 1));
     const prior = list[1] ?? list[0];
-    if (prior !== undefined) previous.set(component, prior.health);
+    if (prior !== undefined && prior.health !== 'unknown') previous.set(component, prior.health);
   }
 
   const storage = new R2ObjectStorageAdapter({
@@ -118,13 +118,13 @@ async function handleGET(request: Request) {
     }),
     now: () => new Date(),
   });
-  await repository.writeChecks(results.filter((result) => result.health !== 'unknown').map((result) => ({
+  await repository.writeChecks(results.flatMap((result) => result.health === 'unknown' ? [] : [{
     component: result.component,
     health: result.health,
     latencyMs: result.latencyMs,
     detail: result.detail,
     checkedAt: new Date(result.checkedAt),
-  })));
+  }]));
 
   const open = await repository.openIncidents();
   const evaluation = evaluateIncidents(
