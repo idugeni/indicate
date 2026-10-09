@@ -26,7 +26,7 @@ import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope 
  * it hides a broken channel from whoever would otherwise notice. The remaining
  * codes stay 404 so tenant content is never disclosed.
  */
-export function reportOutcomeStatus(code: string): number {
+function reportOutcomeStatus(code: string): number {
   if (code === 'INVALID_INPUT') return 400;
   if (code === 'DEPENDENCY_UNAVAILABLE') return 503;
   return 404;
@@ -42,7 +42,7 @@ export function reportOutcomeStatus(code: string): number {
  * was refused for bot reasons during an outage stops reporting, and the broken channel stays invisible
  * behind what looks like ordinary bot traffic.
  */
-export function reportChallengeDenial(outcome: 'rejected' | 'unavailable', requestId: string): { readonly error: PublicErrorEnvelope; readonly status: number } {
+function reportChallengeDenial(outcome: 'rejected' | 'unavailable', requestId: string): { readonly error: PublicErrorEnvelope; readonly status: number } {
   if (outcome === 'rejected') {
     return { error: createPublicError('FORBIDDEN', 'Security verification failed. Please try again.', requestId), status: 403 };
   }
@@ -124,7 +124,7 @@ async function handlePOST(request: Request) {
  *
  * @remarks Stays dynamic per request because of the per-host public report intake.
  */
-export const POST = withApiAccess('POST /api/network/reports', handlePOST);
-export async function GET(request: Request) {
+const POST = withApiAccess('POST /api/network/reports', handlePOST);
+async function GET(request: Request) {
   return NextResponse.json(createNonDisclosingDenial(resolveRequestId(request)), { status: 404, headers: { 'Cache-Control': 'no-store' } });
 }
