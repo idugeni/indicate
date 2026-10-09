@@ -128,7 +128,7 @@ interface StreamCapableAdapter {
  * @param adapter - Resolved provider adapter; may predate `executeStream`.
  * @returns Typed streaming view, or null when only single-shot `execute` exists.
  */
-export function asStreamCapableAdapter(adapter: { readonly execute: unknown }): StreamCapableAdapter | null {
+function asStreamCapableAdapter(adapter: { readonly execute: unknown }): StreamCapableAdapter | null {
   const candidate = adapter as Partial<StreamCapableAdapter>;
   return typeof candidate.executeStream === 'function' ? (candidate as StreamCapableAdapter) : null;
 }
@@ -874,4 +874,4 @@ async function handlePOST(request: Request) {
  *
  * @returns Respons JSON hasil AI atau envelope error publik; audit dicatat control plane.
  */
-export const POST = withApiAccess('POST /api/dashboard/ai', handlePOST);
+const POST = withApiAccess('POST /api/dashboard/ai', handlePOST);
