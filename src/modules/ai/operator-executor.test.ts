@@ -14,6 +14,20 @@ vi.mock('@/modules/dashboard/tenant-business-service', () => ({
     operations = async () => ({ ok: true, value: { health: 'ok' } });
   },
 }));
+vi.mock('@/data/repos/ads', () => ({ DrizzleAdsRepository: class {} }));
+vi.mock('@/modules/ads/ads-service', () => ({ AdsService: class { overview = async () => ({ ok: true, value: { campaigns: [] } }); } }));
+vi.mock('@/data/repos/publishing/repository', () => ({ DrizzlePublishingRepository: class {} }));
+vi.mock('@/modules/publishing/media-service', () => ({ MediaService: class { list = async () => ({ ok: true, value: { items: [] } }); } }));
+vi.mock('@/modules/publishing/publication-service', () => ({ PublicationService: class { listJobs = async () => ({ ok: true, value: [] }); } }));
+vi.mock('@/integrations/storage/r2-object-storage', () => ({ R2ObjectStorageAdapter: class {} }));
+vi.mock('@/integrations/redis/upstash-publication-queue', () => ({ UpstashPublicationQueueAdapter: class {} }));
+vi.mock('@/data/repos/integrations', () => ({ DrizzleIntegrationsRepository: class {} }));
+vi.mock('@/data/repos/ai', () => ({ DrizzleAiRepository: class {} }));
+vi.mock('@/data/repos/dashboard-access-keys', () => ({ DrizzleDashboardAccessKeyRepository: class {} }));
+vi.mock('@/modules/integrations/api-key-service', () => ({ ApiKeyService: class { list = async () => ({ ok: true, value: [] }); } }));
+vi.mock('@/modules/integrations/customer-service', () => ({ CustomerService: class { readSubscription = async () => ({ ok: true, value: null }); } }));
+vi.mock('@/modules/integrations/ai-service', () => ({ AiService: class { overview = async () => ({ ok: true, value: { configured: true } }); } }));
+vi.mock('@/modules/auth/dashboard-access-keys/access-key-service', () => ({ DashboardAccessKeyService: class { list = async () => ({ ok: true, value: [] }); } }));
 vi.mock('@/modules/dashboard/dashboard-dal', () => ({
   fetchCachedDashboard: async () => ({ ok: true, value: { totals: { articles: 3 } } }),
   fetchCachedAnalytics: async () => ({ ok: true, value: { totals: { views: 10 } } }),
@@ -45,6 +59,13 @@ describe('executeOperatorPlan', () => {
   it('executes additional tenant-scoped read handlers', async () => {
     const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'taxonomy-studio.taxonomy.read', arguments: {} }] } });
     expect(result).toMatchObject({ ok: true, results: [{ capabilityId: 'taxonomy-studio.taxonomy.read', ok: true }] });
+  });
+
+  it('executes additional tenant-scoped read capabilities', async () => {
+    for (const capabilityId of ['ads-control-center.ads.read', 'media-library.assets.read', 'distribution-control.deliveries.read', 'live-results.deliveries.read', 'access-integrations.integrations.read', 'ai-control-center.ai-status.read']) {
+      const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId, arguments: {} }] } });
+      expect(result).toMatchObject({ ok: true, results: [{ capabilityId, ok: true }] });
+    }
   });
 
   it('rejects non-user actors before dispatch', async () => {
