@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+
 const VIEW_DESTINATIONS: ReadonlySet<string> = new Set([
   'dashboard','configuration','publishers','editorial','taxonomy','articles','media','publishing','published','ads','analytics','audit','operations','settings','customers','content','billing','moderation','ai',
 ]);
