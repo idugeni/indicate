@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import type { ActorContext } from '@/core/operation-context';
+import { mediaListSchema, publicationStatusSchema } from '@/modules/publishing/schemas';
 
 /**
  * AI Operator tool policy. This registry is the allow-list for tools that may
@@ -115,6 +116,14 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
     requiredPermissions: ['audit.read'],
     input: emptyInput,
   }),
+  'publishing.delivery.read': tool({
+    id: 'publishing.delivery.read',
+    description: 'Membaca status satu pekerjaan distribusi artikel.',
+    scope: 'tenant',
+    risk: 'read',
+    requiredPermissions: ['publishing.read'],
+    input: publicationStatusSchema,
+  }),
   'publishing.delivery.request': tool({
     id: 'publishing.delivery.request',
     description: 'Meminta distribusi artikel ke daftar publisher yang ditentukan.',
@@ -126,11 +135,11 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
   }),
   'media.assets.read': tool({
     id: 'media.assets.read',
-    description: 'Membaca daftar aset media organisasi aktif.',
+    description: 'Membaca daftar aset media organisasi aktif dengan filter dan paginasi.',
     scope: 'tenant',
     risk: 'read',
     requiredPermissions: ['media.read'],
-    input: emptyInput,
+    input: mediaListSchema,
   }),
   'network.sites.read': tool({
     id: 'network.sites.read',
