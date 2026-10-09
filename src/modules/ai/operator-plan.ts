@@ -23,9 +23,12 @@ export function validateOperatorPlan(input: unknown): OperatorPlanValidation {
   if (!parsed.success) return { ok: false, code: 'INVALID_PLAN', message: 'Rencana AI tidak sesuai skema.' };
 
   const ids = new Set<string>();
+  const capabilityIds = new Set<string>();
   for (const step of parsed.data.steps) {
     if (ids.has(step.id)) return { ok: false, code: 'DUPLICATE_STEP', message: 'ID langkah harus unik.' };
     ids.add(step.id);
+    if (capabilityIds.has(step.capabilityId)) return { ok: false, code: 'DUPLICATE_STEP', message: 'Setiap kemampuan hanya boleh dipanggil sekali per rencana.' };
+    capabilityIds.add(step.capabilityId);
     const capability = findOperatorCapability(step.capabilityId);
     if (capability === null) return { ok: false, code: 'UNKNOWN_CAPABILITY', message: 'Kemampuan tidak terdaftar.' };
     if (capability.risk !== 'read') return { ok: false, code: 'WRITE_NOT_SUPPORTED', message: 'Kemampuan tulis belum didukung.' };
