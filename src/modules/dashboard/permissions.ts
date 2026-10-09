@@ -7,6 +7,7 @@ export const DASHBOARD_PERMISSIONS = Object.freeze({
   membershipRead: 'membership.read', membershipManage: 'membership.manage', roleManage: 'role.manage',
   publisherRead: 'publisher.read', publisherManage: 'publisher.manage', publisherVerify: 'publisher.verify',
   articleRead: 'article.read', articleManage: 'article.manage', analyticsRead: 'analytics.read', auditRead: 'audit.read',
+  aiOperatorApprove: 'ai_operator.approve',
 } as const);
 
 export const DASHBOARD_PERMISSION_NAMES = Object.freeze(Object.values(DASHBOARD_PERMISSIONS));
