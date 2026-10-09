@@ -17,6 +17,11 @@ import { isPlatformOnlyWithoutTicket } from '@/core/routing/platform-guard';
 import { fetchCachedAnalytics, fetchCachedDashboard, NextDashboardCacheInvalidator } from '@/modules/dashboard/dashboard-dal';
 import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
 import { authorizeAiOperatorTool, getAiOperatorTool, listAiOperatorTools } from '@/modules/ai-operator/tool-registry';
+import { MediaService } from '@/modules/publishing/media-service';
+import { PublicationService } from '@/modules/publishing/publication-service';
+import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
+import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
+import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
 
 const requestSchema = z.object({
   organizationId: z.uuid(),
@@ -81,6 +86,38 @@ async function resolveContext(organizationId: string, requestId: string, headers
  * control-plane operations; those require persisted approvals and their own
  * service-level authorization before they can be exposed.
  */
+async function publishingServicesFor(actor: AuthorizedTenantActorContext) {
+  const runtimeContext = await getServerRuntimeContext();
+  const config = runtimeContext.config;
+  const runtime = getSharedRuntimeDatabase(runtimeContext.bootstrap);
+  const repository = new DrizzlePublishingRepository(runtime.db);
+  const storage = new R2ObjectStorageAdapter({
+    accountId: config.r2.accountId,
+    bucketName: config.r2.bucketName,
+    publicBucketName: config.r2.publicBucketName,
+    accessKeyId: config.r2.accessKeyId,
+    secretAccessKey: config.r2.secretAccessKey,
+  });
+  const queue = new UpstashPublicationQueueAdapter({
+    url: config.redis.url,
+    token: config.redis.token,
+    namespace: config.redis.namespace,
+    resourceId: config.redis.resourceId,
+  });
+  return {
+    media: new MediaService(repository, storage, new UuidGenerator(), {
+      maxBytes: config.r2.maxBytes,
+      allowedTypes: config.r2.allowedTypes,
+      uploadTtlSeconds: config.r2.uploadTtlSeconds,
+      readTtlSeconds: config.r2.readTtlSeconds,
+    }),
+    publication: new PublicationService(repository, queue, new UuidGenerator(), {
+      maxAttempts: config.publishing.maxAttempts,
+      delaysSeconds: config.publishing.retryDelaysSeconds,
+    }),
+  };
+}
+
 async function handlePOST(request: Request) {
   const requestId = resolveRequestId(request);
   if (denyCrossSiteMutation(request)) {
@@ -143,6 +180,26 @@ async function handlePOST(request: Request) {
       }
       const response = await fetchCachedAnalytics(context.actor, {});
       if (!response.ok) return NextResponse.json(response.error, { status: 403 });
+      result = response.value;
+      break;
+    }
+    case 'media.assets.read': {
+      const services = await publishingServicesFor(context.actor);
+      const response = await services.media.list(context.actor, validated.data);
+      if (!response.ok) {
+        const status = response.error.error.code === 'FORBIDDEN' ? 403 : response.error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : 400;
+        return NextResponse.json(response.error, { status });
+      }
+      result = response.value;
+      break;
+    }
+    case 'publishing.delivery.read': {
+      const services = await publishingServicesFor(context.actor);
+      const response = await services.publication.status(context.actor, validated.data);
+      if (!response.ok) {
+        const status = response.error.error.code === 'FORBIDDEN' ? 403 : response.error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : response.error.error.code === 'CONFLICT' ? 409 : 400;
+        return NextResponse.json(response.error, { status });
+      }
       result = response.value;
       break;
     }
