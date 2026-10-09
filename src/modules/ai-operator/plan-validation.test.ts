@@ -46,11 +46,16 @@ describe('AI Operator plan validation', () => {
     if (result.ok) expect(result.plan.steps[0]?.requiresApproval).toBe(true);
   });
 
-  it('does not plan tools whose executor is not connected', () => {
-    expect(validateAiOperatorPlan(actor(['article.manage']), {
+  it('plans article creation only as an approval-gated write', () => {
+    const result = validateAiOperatorPlan(actor(['article.manage']), {
       summary: 'Buat draf artikel.',
-      steps: [{ toolId: 'content.articles.create', input: { title: 'Judul', body: 'Isi' }, rationale: 'Permintaan pengguna.' }],
-    })).toEqual({ ok: false, reason: 'TOOL_NOT_EXECUTABLE' });
+      steps: [{ toolId: 'content.articles.create', input: { regionId: null, slug: 'judul', title: 'Judul', body: 'Isi', status: 'draft' }, rationale: 'Permintaan pengguna.' }],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.steps[0]?.requiresApproval).toBe(true);
+      expect(result.plan.steps[0]?.risk).toBe('write');
+    }
   });
 
   it('provides JSON Schema only for authorized executable tools', () => {
