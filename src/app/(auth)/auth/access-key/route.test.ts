@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { ALL_VIEWS } from '@/modules/dashboard/components/view-registry';
 
-import { createAccessKeyRedirect, resolveAccessKeyDestination } from './route';
+import { createAccessKeyRedirect } from './route';
+import { resolveAccessKeyDestination } from './route-helpers';
 
 describe('resolveAccessKeyDestination', () => {
   it('mendarat di ruang tulis tanpa parameter', () => {
