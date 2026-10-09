@@ -1,5 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiOperatorConsole } from '@/modules/dashboard/components/settings/ai-operator-console';
 
