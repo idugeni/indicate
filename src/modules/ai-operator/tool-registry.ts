@@ -179,7 +179,6 @@ export function authorizeAiOperatorTool(
   actor: ActorContext,
   toolId: string,
   input: unknown,
-  approved = false,
 ): AiOperatorAuthorization {
   const definition = getAiOperatorTool(toolId);
   if (definition === null) return { allowed: false, reason: 'UNKNOWN_TOOL' };
@@ -197,7 +196,7 @@ export function authorizeAiOperatorTool(
 
   if (!hasPermission) return { allowed: false, reason: 'MISSING_PERMISSION' };
 
-  if (definition.requiresApproval && !approved) {
+  // Approval is intentionally not accepted as a caller-supplied boolean here.\n  // A future executor must verify a persisted approval record bound to this exact command.\n  if (definition.requiresApproval) {
     return { allowed: true, requiresApproval: true, risk: definition.risk };
   }
 
