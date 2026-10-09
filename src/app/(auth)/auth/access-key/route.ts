@@ -6,24 +6,11 @@ import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/reso
 import { renderAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
-import { resolveAccessKeyDestination } from './route-helpers';
+import { createAccessKeyRedirect, resolveAccessKeyDestination } from './route-helpers';
 
 const MAX_COOKIE_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 
-/**
- * Redirect without caching or forwarding the bearer URL as a referrer.
- *
- * The key is still presented in the incoming URL, so callers should prefer
- * short-lived credentials and revoke any key that may have been exposed.
- */
-export function createAccessKeyRedirect(destination: URL): NextResponse {
-  const response = NextResponse.redirect(destination, { status: 303 });
-  response.headers.set('Cache-Control', 'no-store, max-age=0');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Referrer-Policy', 'no-referrer');
-  return response;
-}
 
 /**
  * Resolve the post-redeem landing page for a dashboard access key.
