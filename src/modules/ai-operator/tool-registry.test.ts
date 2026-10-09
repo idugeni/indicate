@@ -52,7 +52,9 @@ describe('AI Operator tool registry', () => {
     const publisher = actor(['publishing.request']);
     const delivery = authorizeAiOperatorTool(publisher, 'publishing.delivery.request', {
       articleId: '11111111-1111-4111-8111-111111111111',
-      publisherIds: ['22222222-2222-4222-8222-222222222222'],
+      siteIds: ['22222222-2222-4222-8222-222222222222'],
+      idempotencyKey: 'operator-delivery-1',
+      options: {},
     });
     expect(delivery).toEqual({ allowed: true, requiresApproval: true, risk: 'high' });
 
