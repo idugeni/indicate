@@ -21,7 +21,7 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 | 1 | Command Center | `dashboard-v2-command-center.tsx` | Workspace dashboard snapshot; analytics projection | `dashboard-v2-command-center.test.tsx` | Dedicated V2 surface; runtime behavior not independently verified |
 | 2 | Network Intelligence | `analytics/network-intelligence-v2.tsx` | Workspace analytics projection | `analytics/network-intelligence-v2.test.tsx` | Dedicated V2 surface; runtime behavior not independently verified |
 | 3 | Editorial Workspace | `editorial/editorial-workspace-v2.tsx` | Workspace view + article commands | `editorial/editorial-workspace-v2.test.tsx` | Dedicated V2 shell; editor subcomponents still need workflow-level review |
-| 4 | Content Library | `editorial/content-library-v2.tsx` | Workspace article listing + archive/restore/delete commands | `editorial/content-library-v2.test.tsx` | **Defect found and fixed:** pager previously exposed pages beyond the currently loaded cursor rows, producing empty future pages |
+| 4 | Content Library | `editorial/content-library-v2.tsx` | Workspace article listing + archive/restore/delete commands | `editorial/content-library-v2.test.tsx` | **Defects found and fixed:** pager beyond loaded rows and bulk archive refreshing once per item |
 | 5 | Taxonomy Studio | `editorial/taxonomy-control-center-v2.tsx` | Workspace taxonomy projection + taxonomy commands | `editorial/taxonomy-control-center-v2.test.tsx` | Dedicated V2 surface; command contract not live-tested here |
 | 6 | Publisher Network | `editorial/publisher-network-v2.tsx` | Workspace publisher projection + publisher commands | `editorial/publisher-network-v2.test.tsx` | Dedicated V2 surface; command contract not live-tested here |
 | 7 | Media Library | `publishing/media-library-v2.tsx` | Publishing command API: `media.list`, `media.read`; upload subflow | `publishing/media-library-v2.test.tsx` **added on this branch** | **Defect found and fixed:** filtered server results were discarded; stale filter responses could overwrite the latest query |
@@ -63,6 +63,14 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 **Change:** Initialize the loading state as active, route the initial request through the shared `load()` lifecycle, and render an explicit invoice-loading status until the request settles. Empty-state copy now distinguishes a genuinely empty ledger from a query/filter with no matches, and a failed initial fetch is not represented as an empty ledger.
 
 **Regression tests added:** a deferred initial request must show loading and must not declare the ledger empty until the request completes; a failed invoice request must surface the error state instead of an empty-ledger message.
+
+### C2 — Content Library bulk archive refreshed the workspace once per selected row
+
+**Evidence:** The shared `DashboardCommandOptions` contract documents `refresh: false` as the default and requires multi-command user actions to request refresh only on the final command. The bulk archive handler called the row action for every selected article in parallel, and each row action passed `{ refresh: true }`. That could cause repeated workspace refetches for one user action.
+
+**Change:** Execute the bounded selected-row archive actions sequentially, disable the bulk action while any selected row is already busy, and request refresh only on the final selected action.
+
+**Regression test added:** a two-row bulk archive asserts that the first command uses `refresh: false` and the final command uses `refresh: true`.
 
 ### B2 — Billing V2 did not expose the API's cursor-paginated invoice ledger
 
