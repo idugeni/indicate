@@ -107,12 +107,12 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
     requiredPermissions: ['article.manage'],
     input: articleUpdateInput,
   }),
-  'publishing.delivery.read': tool({
-    id: 'publishing.delivery.read',
-    description: 'Membaca status distribusi organisasi aktif.',
+  'operations.summary.read': tool({
+    id: 'operations.summary.read',
+    description: 'Membaca ringkasan operasi dan antrean pemeliharaan organisasi aktif.',
     scope: 'tenant',
     risk: 'read',
-    requiredPermissions: ['publishing.read'],
+    requiredPermissions: ['audit.read'],
     input: emptyInput,
   }),
   'publishing.delivery.request': tool({
