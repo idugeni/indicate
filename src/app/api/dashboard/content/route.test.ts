@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { contentErrorStatus } from '@/app/api/dashboard/content/route';
+import { contentErrorStatus } from '@/app/api/dashboard/content/route-helpers';
 import { ContentAdminAccessDeniedError } from '@/data/repos/content/admin';
 
 describe('contentErrorStatus', () => {
