@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
+  Globe2,
   Layers3,
   RefreshCw,
   Send,
