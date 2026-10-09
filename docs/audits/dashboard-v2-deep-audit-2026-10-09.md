@@ -9,6 +9,7 @@
 ## Audit standard
 
 V2 is treated as replacement of the primary user workflow, not a visual restyle. A source file or test name containing `v2` is not sufficient proof of functional completeness. This audit distinguishes:
+
 - **Observed in source:** render wiring, request contracts, state handling, and test presence.
 - **Automated verification:** must be established by checks running against this branch's exact head SHA.
 - **Runtime verification:** authenticated tenant/role scenarios and browser behavior; not claimed by this source-only audit.
