@@ -182,6 +182,39 @@ export const AI_OPERATOR_TOOLS = Object.freeze({
 export type AiOperatorToolId = keyof typeof AI_OPERATOR_TOOLS;
 export type AiOperatorTool = (typeof AI_OPERATOR_TOOLS)[AiOperatorToolId];
 
+/** Tool IDs whose server executors are wired and available for safe planning. */
+export const AI_OPERATOR_EXECUTABLE_TENANT_TOOL_IDS = Object.freeze([
+  'dashboard.overview.read',
+  'analytics.overview.read',
+  'content.articles.search',
+  'publishing.delivery.read',
+  'publishing.delivery.request',
+  'media.assets.read',
+  'network.sites.read',
+  'audit.events.read',
+  'operations.summary.read',
+] as const satisfies readonly AiOperatorToolId[]);
+
+export function isAiOperatorToolExecutable(toolId: string): boolean {
+  return (AI_OPERATOR_EXECUTABLE_TENANT_TOOL_IDS as readonly string[]).includes(toolId);
+}
+
+/** Server-only planner metadata includes input JSON Schema; it is never returned by the public discovery endpoint. */
+export function listAiOperatorPlanningTools(actor: ActorContext) {
+  const allowedIds = new Set(listAiOperatorTools(actor, 'tenant')
+    .map((item) => item.id)
+    .filter(isAiOperatorToolExecutable));
+  return Object.values(AI_OPERATOR_TOOLS)
+    .filter((definition) => allowedIds.has(definition.id))
+    .map((definition) => ({
+      id: definition.id,
+      description: definition.description,
+      risk: definition.risk,
+      requiresApproval: definition.requiresApproval,
+      inputSchema: z.toJSONSchema(definition.input),
+    }));
+}
+
 export function getAiOperatorTool(id: string): AiOperatorTool | null {
   return Object.prototype.hasOwnProperty.call(AI_OPERATOR_TOOLS, id)
     ? AI_OPERATOR_TOOLS[id as AiOperatorToolId]
