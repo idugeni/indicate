@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/core/config/runtime/runtime-context', () => ({ getServerRuntimeContext: async () => ({ bootstrap: {} }) }));
+vi.mock('@/core/config/runtime/runtime-context', () => ({ getServerRuntimeContext: async () => ({ bootstrap: {}, config: { r2: { accountId: 'account', bucketName: 'bucket', publicBucketName: 'public', accessKeyId: 'key', secretAccessKey: 'secret', maxBytes: 1000, allowedTypes: ['image/webp'], uploadTtlSeconds: 60, readTtlSeconds: 60 }, redis: { url: 'https://redis.example', token: 'token', namespace: 'test', resourceId: 'resource' }, publishing: { maxAttempts: 3, retryDelaysSeconds: [1, 2, 3] } } }) }));
 vi.mock('@/data/client', () => ({ getSharedRuntimeDatabase: () => ({ db: {} }) }));
 vi.mock('@/data/repos/dashboard', () => ({ DrizzleDashboardRepository: class {} }));
 vi.mock('@/core/system/uuid-generator', () => ({ UuidGenerator: class {} }));
@@ -52,7 +52,7 @@ describe('executeOperatorPlan', () => {
   });
 
   it('fails closed when a catalog item has no verified handler', async () => {
-    const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'ai-control-center.ai-status.read', arguments: {} }] } });
+    const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'billing-plan.billing.read', arguments: {} }] } });
     expect(result).toMatchObject({ ok: false });
   });
 
