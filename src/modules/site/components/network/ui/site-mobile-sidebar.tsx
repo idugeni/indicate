@@ -32,6 +32,7 @@ export function SiteMobileSidebar({
   children,
   inputId,
   placement = 'right',
+  themeStyle,
 }: {
   readonly open: boolean;
   readonly onClose: () => void;
@@ -40,6 +41,7 @@ export function SiteMobileSidebar({
   readonly children: ReactNode;
   readonly inputId: string;
   readonly placement?: SiteDrawerPlacement;
+  readonly themeStyle?: React.CSSProperties | undefined;
 }) {
   const router = useRouter();
   const [sidebarQuery, setSidebarQuery] = useState('');
@@ -98,7 +100,12 @@ export function SiteMobileSidebar({
           : 'translate-x-full';
 
   return createPortal(
-    <div aria-hidden={!open} inert={!open} className={cn('fixed inset-0 z-[60] lg:hidden', open ? 'pointer-events-auto' : 'pointer-events-none')}>
+    <div
+      aria-hidden={!open}
+      inert={!open}
+      className={cn('fixed inset-0 z-[60] lg:hidden', open ? 'pointer-events-auto' : 'pointer-events-none')}
+      style={themeStyle}
+    >
       <div
         aria-hidden="true"
         onClick={onClose}

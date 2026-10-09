@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 
 import type { NetworkSiteData } from '@/modules/delivery/models';
 import { SiteHeaderBar } from '@/modules/site/components/network/ui/site-header-bar';
@@ -22,9 +23,15 @@ export type SiteDrawerVariant = 'right' | 'left' | 'bottom' | 'full' | 'grid';
 /** Skin minimal agar 10 template berbagi 1 mode tanpa cabang warna per template. */
 export interface SiteHeaderSkin {
   readonly accent: string;
+  readonly primaryDark: string;
+  readonly primarySoft: string;
   readonly tone: 'light' | 'dark';
+  readonly scheme: 'light' | 'dark';
+  readonly faint: string;
   readonly card: string;
+  readonly canvas: string;
   readonly ring: string;
+  readonly onPrimary?: string | undefined;
   readonly ink: string;
   readonly muted: string;
   readonly searchPanel: SiteHeaderSearchSkin;
@@ -59,6 +66,23 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
     !site.settings.name.toLowerCase().includes(site.regionName.toLowerCase());
   const brand = <Brand site={site} showRegion={showRegion} skin={skin} large={variant === 'masthead'} />;
   const sidebarId = `${templateId}-sidebar-search`;
+  // The drawer is portaled to document.body, outside the template shell that
+  // normally provides these inherited CSS variables. Re-apply the active
+  // template palette at the portal boundary so all 10 skins remain intact.
+  const sidebarThemeStyle = {
+    '--tpl-primary': skin.accent,
+    '--tpl-primary-dark': skin.primaryDark,
+    '--tpl-primary-soft': skin.primarySoft,
+    '--tpl-ink': skin.ink,
+    '--tpl-muted': skin.muted,
+    '--tpl-faint': skin.faint,
+    '--tpl-card': skin.card,
+    '--tpl-canvas': skin.canvas,
+    '--tpl-ring': skin.ring,
+    '--tpl-on-primary': skin.onPrimary ?? (skin.tone === 'dark' ? skin.ink : '#ffffff'),
+    '--tpl-scheme': skin.scheme,
+    colorScheme: skin.scheme,
+  } as CSSProperties;
   const sidebar =
     drawer === 'full' ? (
       <SiteMobileNavLarge categories={nav} path={path} skin={skin} />
@@ -80,6 +104,7 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
               sidebar={sidebar}
               inputId={sidebarId}
               searchSkin={skin.searchPanel}
+              sidebarThemeStyle={sidebarThemeStyle}
               drawer={placement}
               layout="row"
             />
@@ -95,6 +120,7 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
             sidebar={sidebar}
             inputId={sidebarId}
             searchSkin={skin.searchPanel}
+            sidebarThemeStyle={sidebarThemeStyle}
             drawer={placement}
             layout="centered"
           />
@@ -109,6 +135,7 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
             sidebar={sidebar}
             inputId={sidebarId}
             searchSkin={skin.searchPanel}
+            sidebarThemeStyle={sidebarThemeStyle}
             drawer={placement}
             layout="masthead"
             navStripStyle={{ backgroundColor: skin.card, borderTop: `1px solid ${skin.ring}` }}
@@ -129,6 +156,7 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
               sidebar={sidebar}
               inputId={sidebarId}
               searchSkin={skin.searchPanel}
+              sidebarThemeStyle={sidebarThemeStyle}
               drawer={placement}
               layout="row"
             />
@@ -144,6 +172,7 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
             sidebar={sidebar}
             inputId={sidebarId}
             searchSkin={skin.searchPanel}
+            sidebarThemeStyle={sidebarThemeStyle}
             drawer={placement}
             layout="row"
           />
@@ -159,6 +188,7 @@ export async function SiteHeader({ variant, drawer, site, path = '/', skin, temp
             sidebar={sidebar}
             inputId={sidebarId}
             searchSkin={skin.searchPanel}
+            sidebarThemeStyle={sidebarThemeStyle}
             drawer={placement}
             layout="row"
           />
@@ -179,7 +209,7 @@ function Brand({
   readonly large: boolean;
 }) {
   return (
-    <Link href="/" className="flex min-w-0 items-center gap-2.5 leading-none no-underline">
+    <Link href="/" className="flex min-w-0 max-w-full items-center gap-2.5 leading-none no-underline">
       <Image
         unoptimized
         src={site.settings.logoUrl}

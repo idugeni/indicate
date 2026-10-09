@@ -18,8 +18,14 @@ export async function BlackLimeHeader({ site, path = '/' }: { readonly site: Net
       path={path}
       skin={{
         accent: BLACK_LIME.primary,
+        primaryDark: BLACK_LIME.primaryDark,
+        primarySoft: BLACK_LIME.primarySoft,
         tone: 'dark',
+        scheme: BLACK_LIME.scheme,
+        faint: BLACK_LIME.faint,
         card: BLACK_LIME.card,
+        canvas: BLACK_LIME.canvas,
+        onPrimary: BLACK_LIME.onPrimary,
         ring: BLACK_LIME.ring,
         ink: BLACK_LIME.ink,
         muted: BLACK_LIME.muted,

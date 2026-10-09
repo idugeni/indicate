@@ -34,6 +34,7 @@ export interface SiteNavSkin {
   readonly muted?: string | undefined;
   /** Panel border color; falls back to slate. */
   readonly ring?: string | undefined;
+  readonly onPrimary?: string | undefined;
 }
 
 const INFO_LINKS = [
@@ -438,7 +439,10 @@ export function SiteMobileNavLarge({
         })}
       </ul>
       <div>
-        <p className="m-0 px-0 font-sans text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+        <p
+          className="m-0 px-0 font-sans text-xs font-bold uppercase tracking-[0.2em]"
+          style={{ color: skin.muted ?? 'var(--tpl-muted,#94a3b8)' }}
+        >
           Informasi
         </p>
         <ul className="m-0 mt-3 flex list-none flex-wrap gap-x-6 gap-y-2 p-0">
@@ -497,8 +501,11 @@ export function SiteMobileNavGrid({
               >
                 <span
                   aria-hidden="true"
-                  className="flex h-9 w-9 items-center justify-center rounded-full font-sans text-sm font-extrabold text-white"
-                  style={{ backgroundColor: skin.accent }}
+                  className="flex h-9 w-9 items-center justify-center rounded-full font-sans text-sm font-extrabold"
+                  style={{
+                    backgroundColor: skin.accent,
+                    color: skin.onPrimary ?? (skin.tone === 'dark' ? (skin.ink ?? '#ffffff') : '#ffffff'),
+                  }}
                 >
                   {item.label.trim().slice(0, 1).toUpperCase()}
                 </span>

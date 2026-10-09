@@ -18,8 +18,13 @@ export async function WarmEditorialHeader({ site, path = '/' }: { readonly site:
       path={path}
       skin={{
         accent: WARM_EDITORIAL.primary,
+        primaryDark: WARM_EDITORIAL.primaryDark,
+        primarySoft: WARM_EDITORIAL.primarySoft,
         tone: 'light',
+        scheme: WARM_EDITORIAL.scheme,
+        faint: WARM_EDITORIAL.faint,
         card: WARM_EDITORIAL.card,
+        canvas: WARM_EDITORIAL.canvas,
         ring: WARM_EDITORIAL.ring,
         ink: WARM_EDITORIAL.ink,
         muted: WARM_EDITORIAL.muted,

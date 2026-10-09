@@ -18,8 +18,13 @@ export async function GlassyBlueHeader({ site, path = '/' }: { readonly site: Ne
       path={path}
       skin={{
         accent: GLASSY_BLUE.primary,
+        primaryDark: GLASSY_BLUE.primaryDark,
+        primarySoft: GLASSY_BLUE.primarySoft,
         tone: 'light',
+        scheme: GLASSY_BLUE.scheme,
+        faint: GLASSY_BLUE.faint,
         card: GLASSY_BLUE.card,
+        canvas: GLASSY_BLUE.canvas,
         ring: GLASSY_BLUE.ring,
         ink: GLASSY_BLUE.ink,
         muted: GLASSY_BLUE.muted,
