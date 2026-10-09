@@ -9,28 +9,6 @@ import { authorized } from '@/app/api/internal/auth';
 const WEBMASTERS = 'https://www.googleapis.com/webmasters/v3';
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
-/** Default apex budget per run; covers the live fleet with headroom. */
-const GSC_SYNC_DEFAULT_LIMIT = 200;
-/** Hard ceiling so one tick cannot fan out without bound. */
-const GSC_SYNC_MAX_LIMIT = 500;
-/** Parallel hosts; sequential per host, bounded across hosts. */
-const GSC_SYNC_CONCURRENCY = 5;
-
-export type SitemapSyncAction = 'submit' | 'delete' | 'none';
-
-/**
- * Decide the Search Console submission for one sitemap URL.
- *
- * @param submitted - Whether the URL is currently submitted.
- * @param liveOk - Whether the live feed answers 200 with entries.
- * @returns Submit when missing but live, delete when submitted but dry, else none.
- */
-export function planSitemapSync(submitted: boolean, liveOk: boolean): SitemapSyncAction {
-  if (liveOk && !submitted) return 'submit';
-  if (!liveOk && submitted) return 'delete';
-  return 'none';
-}
-
 async function googleAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string | null> {
   try {
     const res = await fetch(OAUTH_TOKEN_URL, {
