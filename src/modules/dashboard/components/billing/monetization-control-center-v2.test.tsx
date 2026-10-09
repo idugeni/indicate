@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MonetizationControlCenterV2 } from './monetization-control-center-v2';
 
 afterEach(() => {
@@ -108,6 +108,10 @@ describe('Monetization Control Center V2', () => {
     expect(screen.getByRole('status').textContent).toContain('Memuat faktur');
     expect(screen.queryByText('Belum ada faktur untuk organisasi ini.')).toBeNull();
 
+    await waitFor(() => {
+      expect(resolveSubscription).toBeDefined();
+      expect(resolveInvoices).toBeDefined();
+    });
     resolveSubscription?.({ ok: true, json: async () => ({ state: 'active' }) });
     resolveInvoices?.({ ok: true, json: async () => [] });
     expect(await screen.findByText('Belum ada faktur untuk organisasi ini.')).toBeDefined();

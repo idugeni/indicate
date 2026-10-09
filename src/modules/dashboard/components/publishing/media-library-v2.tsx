@@ -100,7 +100,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   const [preview, setPreview] = useState<Record<string, SignedAssetAuthorization>>({});
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [page, setPage] = useState<{ readonly key: string; readonly items: readonly LibraryMedia[]; readonly next: string | null }>({ key: '', items: [], next: null });
-  const isDefaultQuery = querySignature === '||';
+  const isDefaultQuery = search.trim() === '' && owner === 'all' && state === 'all';
   const appended = useMemo(() => (page.key === querySignature ? page.items : []), [page.key, page.items, querySignature]);
   const items = useMemo(() => {
     if (!isDefaultQuery) return appended;
@@ -109,7 +109,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   }, [baseItems, appended, isDefaultQuery]);
   const cursor = page.key === querySignature
     ? page.next
-    : querySignature === '||'
+    : isDefaultQuery
       ? model.nextCursor ?? null
       : null;
 
@@ -128,9 +128,11 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   useEffect(() => {
     let cancelled = false;
     if (search.trim() === '' && owner === 'all' && state === 'all') {
-      setLoadingList(false);
-      setListError(null);
-      return;
+      const resetTimer = window.setTimeout(() => {
+        setLoadingList(false);
+        setListError(null);
+      }, 0);
+      return () => window.clearTimeout(resetTimer);
     }
     const timer = window.setTimeout(() => {
       setLoadingList(true);

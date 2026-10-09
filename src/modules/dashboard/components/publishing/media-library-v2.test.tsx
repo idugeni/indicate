@@ -54,20 +54,20 @@ describe('MediaLibraryV2', () => {
       />,
     );
 
-    expect(screen.getByText('initial.png')).toBeDefined();
+    expect(screen.getAllByText('initial.png').length).toBeGreaterThan(0);
     fireEvent.change(screen.getByRole('textbox', { name: 'Cari aset' }), {
       target: { value: 'logo' },
     });
 
-    expect(await screen.findByText('brand-logo.png', {}, { timeout: 2000 })).toBeDefined();
-    expect(screen.queryByText('initial.png')).toBeNull();
+    expect((await screen.findAllByText('brand-logo.png', {}, { timeout: 2000 })).length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('initial.png')).toHaveLength(0);
     expect(command).toHaveBeenCalledWith('media.list', {
       limit: 24,
       search: 'logo',
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Muat halaman berikutnya' }));
-    expect(await screen.findByText('brand-logo-dark.png')).toBeDefined();
+    expect((await screen.findAllByText('brand-logo-dark.png')).length).toBeGreaterThan(0);
     expect(screen.queryByText('initial.png')).toBeNull();
     expect(command).toHaveBeenCalledWith('media.list', {
       limit: 24,
@@ -92,7 +92,7 @@ describe('MediaLibraryV2', () => {
     fireEvent.change(search, { target: { value: 'old' } });
     await waitFor(() => expect(command).toHaveBeenCalledWith('media.list', { limit: 24, search: 'old' }), { timeout: 2000 });
     fireEvent.change(search, { target: { value: 'new' } });
-    expect(await screen.findByText('newer-logo.png', {}, { timeout: 2000 })).toBeDefined();
+    expect((await screen.findAllByText('newer-logo.png', {}, { timeout: 2000 })).length).toBeGreaterThan(0);
     resolveFirst?.({ items: [asset('stale', 'stale-old.png')], nextCursor: null });
     await waitFor(() => expect(screen.queryByText('stale-old.png')).toBeNull());
     expect(screen.queryByText('base.png')).toBeNull();
