@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActorContext } from '@/core/operation-context';
 import { validateAiOperatorPlan } from '@/modules/ai-operator/plan-validation';
+import { listAiOperatorPlanningTools } from '@/modules/ai-operator/tool-registry';
 
 const actor = (permissions: string[], platformPermissions: string[] = []): ActorContext => ({
   actorType: 'user',
@@ -27,13 +28,37 @@ describe('AI Operator plan validation', () => {
     }
   });
 
-  it('marks write steps as requiring approval without authorizing execution', () => {
-    const result = validateAiOperatorPlan(actor(['article.manage']), {
-      summary: 'Buat draf artikel.',
-      steps: [{ toolId: 'content.articles.create', input: { title: 'Judul', body: 'Isi' }, rationale: 'Permintaan pengguna.' }],
+  it('marks executable publication writes as requiring approval without authorizing execution', () => {
+    const result = validateAiOperatorPlan(actor(['publishing.request']), {
+      summary: 'Distribusikan artikel ke portal yang dipilih.',
+      steps: [{
+        toolId: 'publishing.delivery.request',
+        input: {
+          articleId: '11111111-1111-4111-8111-111111111111',
+          siteIds: ['22222222-2222-4222-8222-222222222222'],
+          idempotencyKey: 'plan-request-1',
+          options: {},
+        },
+        rationale: 'Pengguna meminta distribusi ke portal tertentu.',
+      }],
     });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.plan.steps[0]?.requiresApproval).toBe(true);
+  });
+
+  it('does not plan tools whose executor is not connected', () => {
+    expect(validateAiOperatorPlan(actor(['article.manage']), {
+      summary: 'Buat draf artikel.',
+      steps: [{ toolId: 'content.articles.create', input: { title: 'Judul', body: 'Isi' }, rationale: 'Permintaan pengguna.' }],
+    })).toEqual({ ok: false, reason: 'TOOL_NOT_EXECUTABLE' });
+  });
+
+  it('provides JSON Schema only for authorized executable tools', () => {
+    const tools = listAiOperatorPlanningTools(actor(['dashboard.read', 'publishing.request']));
+    expect(tools.map((item) => item.id)).toContain('dashboard.overview.read');
+    expect(tools.map((item) => item.id)).toContain('publishing.delivery.request');
+    expect(tools.map((item) => item.id)).not.toContain('content.articles.create');
+    expect(tools.find((item) => item.id === 'publishing.delivery.request')?.inputSchema).toBeDefined();
   });
 
   it('rejects arbitrary tool names, platform tools, invalid inputs and missing permissions', () => {
