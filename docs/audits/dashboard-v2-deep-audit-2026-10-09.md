@@ -21,7 +21,7 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 | 1 | Command Center | `dashboard-v2-command-center.tsx` | Workspace dashboard snapshot; analytics projection | `dashboard-v2-command-center.test.tsx` | Dedicated V2 surface; runtime behavior not independently verified |
 | 2 | Network Intelligence | `analytics/network-intelligence-v2.tsx` | Workspace analytics projection | `analytics/network-intelligence-v2.test.tsx` | Dedicated V2 surface; runtime behavior not independently verified |
 | 3 | Editorial Workspace | `editorial/editorial-workspace-v2.tsx` | Workspace view + article commands | `editorial/editorial-workspace-v2.test.tsx` | Dedicated V2 shell; editor subcomponents still need workflow-level review |
-| 4 | Content Library | `editorial/content-library-v2.tsx` | Workspace article listing + archive/restore/delete commands | `editorial/content-library-v2.test.tsx` | Search/filter and mutation paths have focused tests; pagination integration merits further runtime verification |
+| 4 | Content Library | `editorial/content-library-v2.tsx` | Workspace article listing + archive/restore/delete commands | `editorial/content-library-v2.test.tsx` | **Defect found and fixed:** pager previously exposed pages beyond the currently loaded cursor rows, producing empty future pages |
 | 5 | Taxonomy Studio | `editorial/taxonomy-control-center-v2.tsx` | Workspace taxonomy projection + taxonomy commands | `editorial/taxonomy-control-center-v2.test.tsx` | Dedicated V2 surface; command contract not live-tested here |
 | 6 | Publisher Network | `editorial/publisher-network-v2.tsx` | Workspace publisher projection + publisher commands | `editorial/publisher-network-v2.test.tsx` | Dedicated V2 surface; command contract not live-tested here |
 | 7 | Media Library | `publishing/media-library-v2.tsx` | Publishing command API: `media.list`, `media.read`; upload subflow | `publishing/media-library-v2.test.tsx` **added on this branch** | **Defect found and fixed:** filtered server results were discarded; stale filter responses could overwrite the latest query |
@@ -47,6 +47,14 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 **Change:** Store the returned `nextPage.items`; render only the server result set for non-default filters; preserve base-page plus cursor-appended items for the default query; cancel state commits from superseded requests.
 
 **Regression tests added:** server-filtered results replace the base page, cursor continuation appends to the filtered result, and an older in-flight query cannot replace a newer query.
+
+### C1 — Content Library V2 allowed navigation to pages whose rows had not been fetched
+
+**Evidence:** The workspace returns article rows in bounded cursor pages and exposes a separate “Muat artikel lebih lama” action. The V2 component calculated the pager's page count from the server-wide `total`, while rendering only the rows already loaded into the current payload. A user could navigate to a page number beyond the loaded row array and see an empty table even though the server reported more matching articles.
+
+**Change:** Calculate the pager's currently navigable page count from the loaded row array. The cursor continuation remains the way to fetch more rows; as rows are appended, the pager naturally exposes the additional loaded pages.
+
+**Regression test added:** with 50 loaded rows and 100 total matches, the pager exposes three loaded pages rather than five pages, preventing navigation into rows that have not been fetched.
 
 ### B1 — Billing V2 showed a false empty state during initial loading
 
