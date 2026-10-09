@@ -38,3 +38,16 @@ export const OPERATOR_CAPABILITIES: readonly OperatorCapabilityDefinition[] = Ob
 export function findOperatorCapability(id: string): OperatorCapabilityDefinition | null {
   return OPERATOR_CAPABILITIES.find((item) => item.id === id) ?? null;
 }
+
+/** IDs with implemented, tested read handlers. All other catalog entries are planning metadata only. */
+export const OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS = Object.freeze([
+  'command-center.overview.read',
+  'network-intelligence.health.read',
+  'editorial-workspace.articles.read',
+  'content-library.articles.read',
+  'taxonomy-studio.taxonomy.read',
+  'publisher-network.publishers.read',
+  'network-infrastructure.sites.read',
+  'audit-security.audit.read',
+  'system-operations.status.read',
+] as const);
