@@ -1,0 +1,118 @@
+/* Scoped visual redesign for the public status page. No global resets or layout side effects. */
+.status-page {
+  --status-ink: #f3f4ff;
+  --status-muted: #a4a6c4;
+  --status-line: rgba(177, 180, 220, 0.15);
+  --status-panel: rgba(17, 19, 42, 0.84);
+  --status-panel-strong: rgba(22, 24, 52, 0.96);
+  --status-violet: #9d8cff;
+  --status-cyan: #75e4d1;
+  color: var(--status-ink);
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(99, 76, 214, 0.15), transparent 38rem),
+    radial-gradient(ellipse at 94% 18%, rgba(48, 167, 173, 0.08), transparent 30rem),
+    #080a17;
+}
+.status-page .status-header {
+  background: rgba(9, 11, 27, 0.78);
+  border-color: var(--status-line);
+}
+.status-page .status-topbar-inner { border-color: var(--status-line); }
+.status-page .status-topbar-row { min-width: 0; gap: 0.75rem 1.25rem; }
+.status-page .status-live-indicator {
+  min-width: 0;
+  flex-wrap: wrap;
+  row-gap: 0.35rem;
+  color: var(--status-muted);
+}
+.status-page .status-hero-wrap {
+  padding-top: clamp(1.25rem, 4vw, 3.25rem);
+  padding-bottom: clamp(1.25rem, 4vw, 3.25rem);
+}
+.status-page .status-hero {
+  position: relative;
+  isolation: isolate;
+  align-items: stretch;
+  gap: clamp(1.5rem, 3vw, 2.75rem);
+  padding: clamp(1.25rem, 3.5vw, 3rem);
+  border: 1px solid rgba(160, 151, 255, 0.22);
+  border-radius: clamp(1.25rem, 2.5vw, 2rem);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(122, 103, 255, 0.18), transparent 50%),
+    linear-gradient(135deg, rgba(23, 25, 56, 0.98), rgba(12, 17, 35, 0.96) 58%, rgba(13, 32, 43, 0.92));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24), inset 0 1px rgba(255, 255, 255, 0.045);
+}
+.status-page .status-hero > div:first-child { align-self: center; }
+.status-page .status-hero h1 {
+  max-width: 15ch;
+  font-size: clamp(1.8rem, 3.5vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.status-page .status-hero p { max-width: 58ch; color: #b7bad5; line-height: 1.75; }
+.status-page .status-hero .font-mono { letter-spacing: 0.015em; }
+.status-page .status-metric-card {
+  min-width: 0;
+  border: 1px solid rgba(178, 182, 225, 0.14);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(28, 31, 67, 0.88), rgba(13, 16, 37, 0.92));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+  transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+.status-page .status-metric-card:hover {
+  border-color: rgba(157, 140, 255, 0.42);
+  background: linear-gradient(145deg, rgba(34, 36, 78, 0.92), rgba(14, 19, 42, 0.96));
+}
+.status-page .status-metric-card [data-slot="card-description"] { line-height: 1.5; }
+.status-page .status-metric-card .text-xl,
+.status-page .status-metric-card .text-2xl { font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
+.status-page .status-content { max-width: 1760px; margin-inline: auto; }
+.status-page .status-section-heading { gap: 0.75rem; margin-bottom: 0.25rem; }
+.status-page .status-section-heading h2 { font-size: clamp(0.75rem, 1vw, 0.875rem); letter-spacing: 0.14em; }
+.status-page .status-service-grid { align-items: stretch; gap: clamp(0.75rem, 1.5vw, 1.25rem); }
+.status-page .status-component-card {
+  min-width: 0;
+  border-radius: 1.1rem;
+  background: linear-gradient(150deg, rgba(24, 26, 56, 0.92), rgba(12, 14, 32, 0.96));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12), inset 0 1px rgba(255, 255, 255, 0.035);
+}
+.status-page .status-component-card:hover { transform: translateY(-2px); }
+.status-page .status-component-card [data-slot="card-header"] { min-width: 0; }
+.status-page .status-component-card [data-slot="card-title"] { overflow-wrap: anywhere; }
+.status-page .status-uptime-bars { min-width: 0; gap: 3px; }
+.status-page .status-uptime-bars > * { min-height: 0.45rem; border-radius: 3px; opacity: 0.92; }
+.status-page .status-section [data-slot="card"] { min-width: 0; }
+.status-page .status-incidents [data-slot="card"] { border-radius: 1rem; }
+.status-page .status-footer {
+  margin-top: 1rem;
+  border-color: var(--status-line);
+  background: rgba(8, 10, 23, 0.8);
+}
+.status-page a { text-underline-offset: 3px; }
+@media (max-width: 639px) {
+  .status-page .status-topbar-inner { padding-top: 0.85rem; padding-bottom: 0.85rem; }
+  .status-page .status-topbar-row { align-items: flex-start; }
+  .status-page .status-live-indicator { width: 100%; font-size: 10px; }
+  .status-page .status-hero-wrap { padding-inline: 0.875rem; }
+  .status-page .status-hero { border-radius: 1.25rem; padding: 1.2rem; }
+  .status-page .status-hero h1 { font-size: clamp(1.75rem, 8vw, 2.4rem); }
+  .status-page .status-hero > div:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .status-page .status-metric-card { border-radius: 0.85rem; }
+  .status-page .status-metric-card:last-child { grid-column: 1 / -1; }
+  .status-page .status-content { padding-inline: 0.875rem; padding-top: 1.5rem; gap: 2.5rem; }
+  .status-page .status-component-card { grid-column: auto !important; }
+  .status-page .status-component-card [data-slot="card-content"] { gap: 1rem; }
+  .status-page .status-footer { padding-inline: 0.875rem; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .status-page .status-hero { gap: 1.5rem; }
+  .status-page .status-hero > div:last-child { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .status-page .status-metric-card { grid-column: auto; }
+}
+@media (min-width: 1280px) { .status-page .status-content { padding-inline: 3rem; } }
+@media (prefers-reduced-motion: reduce) {
+  .status-page .status-metric-card,
+  .status-page .status-component-card { transition: none; }
+  .status-page .status-component-card:hover { transform: none; }
+}

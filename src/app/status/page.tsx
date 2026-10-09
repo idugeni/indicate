@@ -40,6 +40,7 @@ import { CountUp } from '@/app/status/count-up';
 import { LatencySparkline } from '@/app/status/latency-sparkline';
 import { StatusLiveIndicator } from '@/app/status/live-indicator';
 import { getControlHosts } from '@/core/config/edge-hosts';
+import './status-redesign.css';
 
 import {
   Card,
@@ -365,9 +366,9 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
   const activeProbes = snapshot.components.filter((c) => c.health === 'ok').length;
 
   return (
-    <div className="w-full border-b border-hairline bg-bg-raised/60 backdrop-blur-md">
-      <div className="w-full px-4 sm:px-8 lg:px-12 py-3 border-b border-hairline">
-        <div className="flex flex-wrap items-center justify-between gap-4 font-mono text-[11px] text-paper-faint">
+    <div className="status-header w-full border-b border-hairline bg-bg-raised/60 backdrop-blur-md">
+      <div className="status-topbar-inner w-full px-4 sm:px-8 lg:px-12 py-3 border-b border-hairline">
+        <div className="status-topbar-row flex flex-wrap items-center justify-between gap-4 font-mono text-[11px] text-paper-faint">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 font-bold tracking-widest text-paper uppercase">
               <LuActivity className="size-3.5 text-signal" />
@@ -381,8 +382,8 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
         </div>
       </div>
 
-      <div className="w-full px-4 sm:px-8 lg:px-12 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      <div className="status-hero-wrap w-full px-4 sm:px-8 lg:px-12 py-8">
+        <div className="status-hero grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           <div className="lg:col-span-7 space-y-4">
             <div className="flex flex-wrap items-center gap-2.5">
               <Badge
@@ -408,7 +409,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
           </div>
 
           <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <Card className="border-hairline bg-bg shadow-none rounded-lg">
+            <Card className="status-metric-card border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
                   <LuShieldCheck className="size-3 text-signal" /> Availability 90 Hari
@@ -422,7 +423,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
               </CardContent>
             </Card>
 
-            <Card className="border-hairline bg-bg shadow-none rounded-lg">
+            <Card className="status-metric-card border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
                   <LuZap className="size-3 text-brass" /> Latensi Rerata
@@ -436,7 +437,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
               </CardContent>
             </Card>
 
-            <Card className="col-span-2 sm:col-span-1 border-hairline bg-bg shadow-none rounded-lg">
+            <Card className="status-metric-card col-span-2 sm:col-span-1 border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
                   <LuRadio className="size-3 text-paper-dim" /> Komponen Normal
@@ -469,7 +470,7 @@ function BarsStrip({
 }) {
   return (
     <div
-      className="grid h-8 items-end gap-[2px] overflow-hidden"
+      className="status-uptime-bars grid h-8 items-end gap-[2px]"
       style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
       aria-label={`Uptime 90 hari untuk ${componentLabel}`}
     >
@@ -495,8 +496,8 @@ function BarsStrip({
 
 function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapshot }) {
   return (
-    <section aria-labelledby="matrix-heading" className="w-full">
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+    <section aria-labelledby="matrix-heading" className="status-section status-services w-full">
+      <div className="status-section-heading flex flex-wrap items-center justify-between gap-3 pb-4">
         <div className="flex items-center gap-2">
           <LuServer className="size-4 text-paper-dim" />
           <h2
@@ -512,7 +513,7 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 grid-flow-dense">
+      <div className="status-service-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 grid-flow-dense">
         {snapshot.components.map((item, index) => {
           const config = HEALTH_CONFIG[item.health];
           const CompIcon = getComponentIcon(item.component);
@@ -526,7 +527,7 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
           return (
             <Card
               key={item.component}
-              className={`border ${config.borderClass} bg-bg-raised shadow-none transition-all duration-200 hover:border-paper-faint/60 flex flex-col justify-between ${featured ? 'md:col-span-2' : ''}`}
+              className={`status-component-card border ${config.borderClass} bg-bg-raised shadow-none transition-all duration-200 hover:border-paper-faint/60 flex flex-col justify-between ${featured ? 'sm:col-span-2 xl:col-span-2' : ''}`}
             >
               <CardHeader className="p-5 pb-3">
                 <div className="flex items-start justify-between gap-3">
@@ -640,8 +641,8 @@ function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
   const resolved = snapshot.incidents.filter((incident) => incident.status !== 'open');
 
   return (
-    <section aria-labelledby="incidents-heading" className="w-full">
-      <div className="flex items-center justify-between pb-4">
+    <section aria-labelledby="incidents-heading" className="status-section status-incidents w-full">
+      <div className="status-section-heading flex items-center justify-between pb-4">
         <div className="flex items-center gap-2">
           <LuTerminal className="size-4 text-paper-dim" />
           <h2
@@ -777,15 +778,15 @@ export default async function StatusPage() {
   const snapshot = await loadCachedSnapshot();
 
   return (
-    <div className="status-scroll min-h-screen w-full bg-bg font-sans text-paper antialiased">
+    <div className="status-page status-scroll min-h-screen w-full bg-bg font-sans text-paper antialiased">
       <ObservabilityHeader snapshot={snapshot} />
 
-      <main className="w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-10 space-y-12">
+      <main className="status-content w-full px-4 sm:px-8 lg:px-12 py-8 sm:py-10 space-y-12">
         <ComponentTelemetryGrid snapshot={snapshot} />
         <IncidentSection snapshot={snapshot} />
       </main>
 
-      <footer className="w-full border-t border-hairline bg-bg px-4 sm:px-8 lg:px-12 py-6">
+      <footer className="status-footer w-full border-t border-hairline bg-bg px-4 sm:px-8 lg:px-12 py-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between font-mono text-xs text-paper-faint">
           <div className="flex items-center gap-4">
             <Link

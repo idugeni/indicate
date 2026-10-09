@@ -59,7 +59,7 @@ export function StatusLiveIndicator({ generatedAt }: { readonly generatedAt: str
     };
   }, []);
   return (
-    <div className="flex items-center gap-2" role="status" aria-live="polite">
+    <div className="status-live-indicator flex items-center gap-2" role="status" aria-live="polite">
       <span className="relative flex size-2" aria-hidden="true">
         <span
           key={pulse}
