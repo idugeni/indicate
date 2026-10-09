@@ -378,6 +378,8 @@ export function MonetizationControlCenterV2({
             <div role="status" aria-live="polite" className="rounded-lg border border-hairline bg-bg p-4 text-xs text-paper-dim">
               Memuat faktur…
             </div>
+          ) : error !== null && invoices.length === 0 ? (
+            <EmptyState compact title="Faktur tidak dapat dimuat. Periksa pesan kesalahan lalu coba refresh." />
           ) : filteredInvoices.length === 0 ? (
             <EmptyState compact title={query.trim() || ledgerFilter !== 'all' ? 'Tidak ada faktur yang cocok dengan filter.' : 'Belum ada faktur untuk organisasi ini.'} />
           ) : (
