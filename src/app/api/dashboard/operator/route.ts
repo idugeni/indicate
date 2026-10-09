@@ -23,6 +23,17 @@ import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository'
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
 
+const EXECUTABLE_TENANT_TOOL_IDS = new Set([
+  'dashboard.overview.read',
+  'analytics.overview.read',
+  'content.articles.search',
+  'publishing.delivery.read',
+  'media.assets.read',
+  'network.sites.read',
+  'audit.events.read',
+  'operations.summary.read',
+]);
+
 const requestSchema = z.object({
   organizationId: z.uuid(),
   toolId: z.string().trim().min(1).max(120),
@@ -295,7 +306,8 @@ async function handleGET(request: Request) {
 
   return NextResponse.json({
     organizationId: context.actor.organizationId,
-    tools: listAiOperatorTools(context.actor, 'tenant'),
+    tools: listAiOperatorTools(context.actor, 'tenant')
+      .filter((tool) => EXECUTABLE_TENANT_TOOL_IDS.has(tool.id)),
   });
 }
 
