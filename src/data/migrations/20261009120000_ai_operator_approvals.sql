@@ -33,5 +33,12 @@ CREATE TABLE public.ai_operator_approvals (
 CREATE UNIQUE INDEX ai_operator_approvals_idempotency_unique ON public.ai_operator_approvals (organization_id, requester_actor_id, idempotency_key);--> statement-breakpoint
 CREATE INDEX ai_operator_approvals_org_state_created_idx ON public.ai_operator_approvals (organization_id, state, created_at DESC);--> statement-breakpoint
 CREATE INDEX ai_operator_approvals_expiry_idx ON public.ai_operator_approvals (state, expires_at);--> statement-breakpoint
+INSERT INTO public.permission_definitions(scope, name, description, sort_order)
+VALUES ('organization', 'ai_operator.approve', 'Approve or reject AI Operator commands for this organization.', 900)
+ON CONFLICT (scope, name) DO UPDATE SET description = EXCLUDED.description;--> statement-breakpoint
+INSERT INTO public.permissions(id, organization_id, name, scope, description)
+SELECT gen_random_uuid(), o.id, 'ai_operator.approve', 'organization', 'Approve or reject AI Operator commands for this organization.'
+FROM public.organizations AS o
+ON CONFLICT DO NOTHING;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (277, 'ai_operator_approvals', 'sha256:e5865bcc83dfd1e06797d7508f54e4398f1689534877138c53105129044873ca');
+VALUES (277, 'ai_operator_approvals', 'sha256:0000000000000000000000000000000000000000000000000000000000000000');
