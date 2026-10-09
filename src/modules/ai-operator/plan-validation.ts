@@ -3,7 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import type { ActorContext } from '@/core/operation-context';
-import { authorizeAiOperatorTool, getAiOperatorTool } from '@/modules/ai-operator/tool-registry';
+import { authorizeAiOperatorTool, getAiOperatorTool, isAiOperatorToolExecutable } from '@/modules/ai-operator/tool-registry';
 
 const proposedStepSchema = z.object({
   toolId: z.string().trim().min(1).max(120),
@@ -31,7 +31,7 @@ export type ValidatedAiOperatorPlan = {
 
 export type AiOperatorPlanValidation =
   | { readonly ok: true; readonly plan: ValidatedAiOperatorPlan }
-  | { readonly ok: false; readonly reason: 'INVALID_PLAN' | 'UNKNOWN_TOOL' | 'INVALID_TOOL_INPUT' | 'MISSING_PERMISSION' | 'PLATFORM_TOOL_NOT_SUPPORTED' };
+  | { readonly ok: false; readonly reason: 'INVALID_PLAN' | 'UNKNOWN_TOOL' | 'INVALID_TOOL_INPUT' | 'MISSING_PERMISSION' | 'PLATFORM_TOOL_NOT_SUPPORTED' | 'TOOL_NOT_EXECUTABLE' };
 
 /**
  * Validates model-proposed plans against the same allow-list and actor grants
@@ -46,6 +46,7 @@ export function validateAiOperatorPlan(actor: ActorContext, candidate: unknown):
     const definition = getAiOperatorTool(proposed.toolId);
     if (definition === null) return { ok: false, reason: 'UNKNOWN_TOOL' };
     if (definition.scope !== 'tenant') return { ok: false, reason: 'PLATFORM_TOOL_NOT_SUPPORTED' };
+    if (!isAiOperatorToolExecutable(proposed.toolId)) return { ok: false, reason: 'TOOL_NOT_EXECUTABLE' };
 
     const authorization = authorizeAiOperatorTool(actor, proposed.toolId, proposed.input);
     if (!authorization.allowed) {
