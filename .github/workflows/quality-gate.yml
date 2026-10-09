@@ -84,6 +84,10 @@ jobs:
       - run: npm test -- --shard=${{ matrix.shard }}
 
   build:
+    # Production prerender reads the shared pooled database. Wait for all test
+    # shards to finish before opening build-time read pools, avoiding connection
+    # exhaustion when the four test jobs and static generation overlap.
+    needs: [test]
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     concurrency:

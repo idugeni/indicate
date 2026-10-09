@@ -148,7 +148,7 @@ Final local verification on the current feature branch:
 - npm test — 546 test files, 3,568 tests passed
 - Post-suite focused regression run after the final loading/deduplication adjustments — 9/9 tests passed
 - npm run build — the optimized production bundle compiled successfully, then static generation stopped on the /indeks route during strict runtime configuration validation. This isolated workspace lacks required production runtime credentials and injects UPSTASH_BOX_* variables that are not application configuration. This is not counted as a full local build pass.
-- The earlier green GitHub Actions run validates the previous branch head, not the new local changes. The full CI gate must pass on the pushed commit before this PR is considered release-ready.
+- Release Quality Gate #777 initially failed during static generation with Postgres EMAXCONN (200 client connections) while test shards were running concurrently. The isolated build retry passed after the test shards completed, confirming shared-database contention rather than a deterministic code/build failure. The workflow now serializes production-backed static generation after the test matrix instead of reducing the runtime pool size; this ordering still requires CI confirmation on the next commit.
 
 ## Remaining release verification
 
