@@ -17,10 +17,16 @@ import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-pub
 import { DrizzleIntegrationsRepository } from '@/data/repos/integrations';
 import { DrizzleAiRepository } from '@/data/repos/ai';
 import { DrizzleDashboardAccessKeyRepository } from '@/data/repos/dashboard-access-keys';
+import { DrizzleBillingRepository } from '@/data/repos/billing';
+import { DrizzleModerationRepository } from '@/data/repos/moderation';
+import { DrizzleContentAdminRepository } from '@/data/repos/content/admin';
 import { ApiKeyService } from '@/modules/integrations/api-key-service';
 import { CustomerService } from '@/modules/integrations/customer-service';
 import { AiService } from '@/modules/integrations/ai-service';
 import { DashboardAccessKeyService } from '@/modules/auth/dashboard-access-keys/access-key-service';
+import { BillingService } from '@/modules/billing/billing-service';
+import { ModerationService } from '@/modules/moderation/moderation-service';
+import type { ActorContext } from '@/core/operation-context';
 import { OPERATOR_CAPABILITIES, OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS, OPERATOR_READ_EXECUTION_ENABLED, type OperatorCapabilityDefinition } from '@/modules/ai/operator-capabilities';
 import type { OperatorPlan } from '@/modules/ai/operator-plan';
 
@@ -45,6 +51,7 @@ function catalogCapability(id: string): OperatorCapabilityDefinition | undefined
 /** Execute only explicitly implemented read handlers; authorization remains enforced by the existing domain services. */
 export async function executeOperatorPlan(input: {
   readonly actor: AuthorizedTenantActorContext;
+  readonly platformActor?: ActorContext | null;
   readonly plan: OperatorPlan;
 }): Promise<{ readonly ok: true; readonly results: readonly OperatorStepResult[] } | { readonly ok: false; readonly error: string }> {
   if (!OPERATOR_READ_EXECUTION_ENABLED) return { ok: false, error: 'Eksekusi baca AI dinonaktifkan.' };
@@ -120,6 +127,22 @@ export async function executeOperatorPlan(input: {
       }
       case 'ai-control-center.ai-status.read':
         result = await new AiService(new DrizzleAiRepository(runtime.db)).overview(input.actor);
+        break;
+      case 'billing-plan.billing.read':
+        result = input.platformActor === null || input.platformActor === undefined
+          ? { ok: false }
+          : await new BillingService(new DrizzleBillingRepository(runtime.db)).subscriptionState(input.platformActor, input.actor.organizationId);
+        break;
+      case 'trust-moderation.cases.read':
+        result = input.platformActor === null || input.platformActor === undefined
+          ? { ok: false }
+          : await new ModerationService(new DrizzleModerationRepository(runtime.db)).listReports(input.platformActor, { limit: 20 });
+        break;
+      case 'customer-operations.customers.read':
+        result = await new CustomerService(new DrizzleIntegrationsRepository(runtime.db), new UuidGenerator()).list(input.actor, { limit: 20 });
+        break;
+      case 'public-web-content.content.read':
+        result = await new DrizzleContentAdminRepository(runtime.db).listContent(input.actor.verifiedAuthUserId, input.actor.actorId);
         break;
       default:
         return { ok: false, error: 'Kemampuan tidak tersedia untuk eksekusi.' };
