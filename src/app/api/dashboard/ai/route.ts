@@ -20,6 +20,9 @@ import { configureAiTranscribe, transcribeAudio, transcribeToArticle } from '@/m
 import { configurePublisherVerify, verifyPublisher } from '@/modules/ai/ai-verify';
 import { configureAiAssistant, assistantChat } from '@/modules/ai/ai-assistant';
 import { planOperatorActions } from '@/modules/ai/operator-planner';
+import { executeOperatorPlan } from '@/modules/ai/operator-executor';
+import { validateOperatorPlan } from '@/modules/ai/operator-plan';
+import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import { ARTICLE_DRAFT_SCHEMA } from '@/modules/ai/ai-response-schemas';
 import { createAiSemanticCache } from '@/modules/ai/ai-semantic-cache';
 import { SEMANTIC_CANDIDATE_LIMIT, embedQueryVector, reindexArticleEmbeddings, toSemanticCandidate, type WorkersAiCredentials } from '@/modules/ai/ai-embeddings';
@@ -69,6 +72,7 @@ const commandSchema = z.object({
     'transcribe-to-article',
     'publisher-verify',
     'operator-plan',
+    'operator-execute',
     'assistant-chat',
   ]),
   payload: z.record(z.string(), z.unknown()),
@@ -791,6 +795,12 @@ async function handlePOST(request: Request) {
       case 'operator-plan': {
         const result = await planOperatorActions({ request: str(payload.request, 1200), organizationId, deps });
         return result.ok ? NextResponse.json(result) : response(createPublicError('INVALID_INPUT', result.error, requestId));
+      }
+      case 'operator-execute': {
+        const validated = validateOperatorPlan(payload.plan);
+        if (!validated.ok) return response(createPublicError('INVALID_INPUT', validated.message, requestId));
+        const result = await executeOperatorPlan({ actor: session.actor as AuthorizedTenantActorContext, plan: validated.plan });
+        return result.ok ? NextResponse.json(result) : response(createPublicError('FORBIDDEN', result.error, requestId));
       }
       case 'assistant-chat': {
         const messages = Array.isArray(payload.messages) ? payload.messages : [];
