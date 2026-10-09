@@ -281,10 +281,10 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
     const isFresh = Number.isFinite(checkedAtMs) && Date.now() - checkedAtMs <= STATUS_STALE_AFTER_MS;
     const health = isFresh ? (current?.health ?? 'unknown') as ComponentHealth | 'unknown' : 'unknown';
     const byDay = new Map(
-      daily.filter((row) => row.component === component && component !== 'api').map((row) => [row.day, row.uptimePct] as const)
+      daily.filter((row) => row.component === component && component !== 'api' && row.checks > 0).map((row) => [row.day, row.uptimePct] as const)
     );
     const latencyByDay = new Map(
-      daily.filter((row) => row.component === component && component !== 'api').map((row) => [row.day, row.avgLatencyMs] as const)
+      daily.filter((row) => row.component === component && component !== 'api' && row.checks > 0).map((row) => [row.day, row.avgLatencyMs] as const)
     );
     const cells = days.map((day) => ({ day, uptimePct: byDay.get(day) ?? null }));
     const known = cells.filter((cell) => cell.uptimePct !== null);
