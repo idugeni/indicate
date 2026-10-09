@@ -1,7 +1,8 @@
 export const OPERATOR_CAPABILITY_CATALOG_VERSION = 1;
 
-/** Hard safety gate: AI action execution stays disabled until the executor, approvals, and runtime tests are complete. */
-export const OPERATOR_EXECUTION_ENABLED = false;
+/** Read-only tools may run through explicit handlers; writes remain disabled until approvals and verification are complete. */
+export const OPERATOR_READ_EXECUTION_ENABLED = true;
+export const OPERATOR_WRITE_EXECUTION_ENABLED = false;
 
 export type OperatorRisk = 'read' | 'write' | 'high';
 export interface OperatorCapabilityDefinition {
