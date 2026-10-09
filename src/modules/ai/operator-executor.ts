@@ -14,6 +14,11 @@ const EXECUTABLE_READ_CAPABILITIES = new Set([
   'command-center.overview.read',
   'network-intelligence.health.read',
   'editorial-workspace.articles.read',
+  'content-library.articles.read',
+  'taxonomy-studio.taxonomy.read',
+  'publisher-network.publishers.read',
+  'network-infrastructure.sites.read',
+  'audit-security.audit.read',
   'system-operations.status.read',
 ]);
 
@@ -63,7 +68,20 @@ export async function executeOperatorPlan(input: {
         result = await fetchCachedAnalytics(input.actor, {});
         break;
       case 'editorial-workspace.articles.read':
+      case 'content-library.articles.read':
         result = await service.listEditorial(input.actor, { limit: '20' });
+        break;
+      case 'taxonomy-studio.taxonomy.read':
+        result = await service.listTaxonomy(input.actor);
+        break;
+      case 'publisher-network.publishers.read':
+        result = await service.listPublishers(input.actor, {});
+        break;
+      case 'network-infrastructure.sites.read':
+        result = await service.listConfiguration(input.actor, {});
+        break;
+      case 'audit-security.audit.read':
+        result = await service.auditLogs(input.actor, { limit: '20' });
         break;
       case 'system-operations.status.read':
         result = await service.operations(input.actor);
