@@ -7,3 +7,11 @@ export function resolveAccessKeyDestination(to: string | null): string {
   return '/dashboard?view=editorial';
 }
 
+
+export function createAccessKeyRedirect(destination: URL): NextResponse {
+  const response = NextResponse.redirect(destination, { status: 303 });
+  response.headers.set('Cache-Control', 'no-store, max-age=0');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Referrer-Policy', 'no-referrer');
+  return response;
+}
