@@ -6,6 +6,7 @@ import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/reso
 import { renderAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
+import { resolveAccessKeyDestination } from './route-helpers';
 
 const MAX_COOKIE_AGE_SECONDS = 30 * 24 * 60 * 60;
 
@@ -57,10 +58,6 @@ export function createAccessKeyRedirect(destination: URL): NextResponse {
  * @param to - Optional `?to=` view slug; unknown values fall back to editorial.
  * @returns Internal dashboard path; never an external URL.
  */
-export function resolveAccessKeyDestination(to: string | null): string {
-  if (to !== null && VIEW_DESTINATIONS.has(to)) return `/dashboard?view=${to}`;
-  return '/dashboard?view=editorial';
-}
 
 /**
  * Redeem a dashboard access key into a bearer cookie, then enter the editorial workspace.
