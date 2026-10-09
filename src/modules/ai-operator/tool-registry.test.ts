@@ -53,6 +53,22 @@ describe('AI Operator tool registry', () => {
     expect(routing).toEqual({ allowed: true, requiresApproval: true, risk: 'high' });
   });
 
+  it('validates bounded filters for site and audit read tools', () => {
+    expect(authorizeAiOperatorTool(actor(['site.read']), 'network.sites.read', { query: 'portal' }))
+      .toEqual({ allowed: true, requiresApproval: false, risk: 'read' });
+    expect(authorizeAiOperatorTool(actor(['site.read']), 'network.sites.read', { query: 'x'.repeat(201) }))
+      .toEqual({ allowed: false, reason: 'INVALID_INPUT' });
+
+    expect(authorizeAiOperatorTool(actor(['audit.read']), 'audit.events.read', {
+      action: 'article.create',
+      outcome: 'succeeded',
+      limit: 100,
+    })).toEqual({ allowed: true, requiresApproval: false, risk: 'read' });
+    expect(authorizeAiOperatorTool(actor(['audit.read']), 'audit.events.read', {
+      limit: 501,
+    })).toEqual({ allowed: false, reason: 'INVALID_INPUT' });
+  });
+
   it('does not allow a tenant grant to satisfy a platform permission', () => {
     const tenantAdmin = actor(['platform.ai.manage', 'publishing.request'], []);
     expect(authorizeAiOperatorTool(tenantAdmin, 'ai.routing.update', {
