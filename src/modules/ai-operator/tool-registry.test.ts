@@ -59,6 +59,8 @@ describe('AI Operator tool registry', () => {
     expect(authorizeAiOperatorTool(actor(['site.read']), 'network.sites.read', { query: 'x'.repeat(201) }))
       .toEqual({ allowed: false, reason: 'INVALID_INPUT' });
 
+    expect(authorizeAiOperatorTool(actor(['audit.read']), 'operations.summary.read', {}))
+      .toEqual({ allowed: true, requiresApproval: false, risk: 'read' });
     expect(authorizeAiOperatorTool(actor(['audit.read']), 'audit.events.read', {
       action: 'article.create',
       outcome: 'succeeded',
