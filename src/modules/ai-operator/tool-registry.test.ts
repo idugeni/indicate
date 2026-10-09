@@ -34,7 +34,7 @@ describe('AI Operator tool registry', () => {
   it('checks tenant permissions independently of platform permissions', () => {
     const platformOnly = actor([], ['platform.super_admin']);
     expect(authorizeAiOperatorTool(platformOnly, 'content.articles.search', {}).allowed).toBe(false);
-    expect(authorizeAiOperatorTool(platformOnly, 'customers.list.read', {}).allowed).toEqual(true);
+    expect(authorizeAiOperatorTool(platformOnly, 'customers.list.read', {})).toEqual({ allowed: true, requiresApproval: false, risk: 'read' });
   });
 
   it('requires explicit approval for distribution and routing mutations', () => {
