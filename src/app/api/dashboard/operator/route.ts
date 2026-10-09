@@ -17,6 +17,7 @@ import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository'
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
 import { resolveAiOperatorDashboardContext } from '@/modules/ai-operator/dashboard-context';
+import { consumeAiOperatorApproval, getUsableAiOperatorApproval } from '@/modules/ai-operator/approval-store';
 
 const EXECUTABLE_TENANT_TOOL_IDS = new Set([
   'dashboard.overview.read',
@@ -33,6 +34,7 @@ const requestSchema = z.object({
   organizationId: z.uuid(),
   toolId: z.string().trim().min(1).max(120),
   input: z.unknown(),
+  approvalId: z.uuid().optional(),
 }).strict();
 
 /**
@@ -109,8 +111,11 @@ async function handlePOST(request: Request) {
     ), { status });
   }
 
-  if (authorization.requiresApproval) {
-    return NextResponse.json(createPublicError('CONFLICT', 'This action requires a persisted approval workflow and is not executable yet.', requestId), { status: 409 });
+  if (authorization.requiresApproval && toolId !== 'publishing.delivery.request') {
+    return NextResponse.json(createPublicError('CONFLICT', 'This approval-required tool does not yet have a transactional executor.', requestId), { status: 409 });
+  }
+  if (!authorization.requiresApproval && parsedRequest.data.approvalId !== undefined) {
+    return NextResponse.json(createPublicError('INVALID_INPUT', 'An approval ID is only valid for approval-required commands.', requestId), { status: 400 });
   }
 
   const validated = definition.input.safeParse(input);
@@ -120,6 +125,55 @@ async function handlePOST(request: Request) {
 
   let result: unknown;
   switch (toolId) {
+    case 'publishing.delivery.request': {
+      const approvalId = parsedRequest.data.approvalId;
+      if (approvalId === undefined) {
+        return NextResponse.json(createPublicError('CONFLICT', 'A persisted approval ID is required for this command.', requestId), { status: 409 });
+      }
+      const command = {
+        organizationId,
+        actorId: context.actor.actorId,
+        toolId,
+        input: validated.data,
+      };
+      const usableApproval = await getUsableAiOperatorApproval(context.db, { approvalId, command });
+      if (!usableApproval.ok) {
+        const status = usableApproval.reason === 'NOT_FOUND' ? 404
+          : usableApproval.reason === 'SELF_APPROVAL' ? 403
+            : 409;
+        return NextResponse.json(createPublicError(
+          usableApproval.reason === 'NOT_FOUND' ? 'RESOURCE_UNAVAILABLE' : usableApproval.reason === 'SELF_APPROVAL' ? 'FORBIDDEN' : 'CONFLICT',
+          'The approval is missing, expired, or does not authorize this exact command.',
+          requestId,
+        ), { status });
+      }
+
+      const authorizedAt = new Date();
+      const services = await publishingServicesFor();
+      const response = await services.publication.request(context.actor, validated.data);
+      if (!response.ok) {
+        const code = response.error.error.code;
+        const status = code === 'FORBIDDEN' ? 403 : code === 'RESOURCE_UNAVAILABLE' ? 404 : code === 'CONFLICT' || code === 'IDEMPOTENCY_CONFLICT' ? 409 : 400;
+        return NextResponse.json(response.error, { status });
+      }
+
+      const consumed = await consumeAiOperatorApproval(context.db, {
+        approvalId,
+        command,
+        audit: {
+          actorType: context.actor.actorType,
+          entryPoint: context.actor.entryPoint,
+          requestId,
+        },
+        authorizedAt,
+      });
+      if (!consumed.ok) {
+        // The publication request uses the same idempotency key on retries. Never retry with a new key.
+        return NextResponse.json(createPublicError('CONFLICT', 'The publication request was accepted, but its approval receipt could not be finalized. Retry the exact same command and approval ID.', requestId), { status: 409 });
+      }
+      result = response.value;
+      break;
+    }
     case 'dashboard.overview.read': {
       if (context.actor.actorType !== 'user') {
         return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
