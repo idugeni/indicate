@@ -194,7 +194,7 @@ async function handlePOST(request: Request) {
       break;
     }
     case 'publishing.delivery.read': {
-      const services = await publishingServicesFor(context.actor);
+      const services = await publishingServicesFor();
       const response = await services.publication.status(context.actor, validated.data);
       if (!response.ok) {
         const status = response.error.error.code === 'FORBIDDEN' ? 403 : response.error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : response.error.error.code === 'CONFLICT' ? 409 : 400;
