@@ -56,8 +56,8 @@ describe('executeOperatorPlan', () => {
     expect(result).toMatchObject({ ok: true, results: [{ id: 'step_1', ok: true, result: { ok: true, value: { totals: { articles: 3 } } } }] });
   });
 
-  it('fails closed when a catalog item has no verified handler', async () => {
-    const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'billing-plan.billing.read', arguments: {} }] } });
+  it('fails closed for an unknown capability', async () => {
+    const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'system.shell.execute', arguments: {} }] } });
     expect(result).toMatchObject({ ok: false });
   });
 
