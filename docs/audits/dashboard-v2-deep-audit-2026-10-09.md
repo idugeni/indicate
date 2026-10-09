@@ -139,24 +139,26 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 
 ## Verification status
 
-Final local verification on the current feature branch:
+Final verification recorded for branch head `4037bf2921dfb29edd7bf21e559df70375fba54b`:
 
-- npm run typecheck — pass
-- npm run lint — pass
-- npm run lint:docs — pass after the audit updates
-- npm run perf — pass
-- npm test — 546 test files, 3,568 tests passed
-- Post-suite focused regression run after the final loading/deduplication adjustments — 9/9 tests passed
-- npm run build — the optimized production bundle compiled successfully, then static generation stopped on the /indeks route during strict runtime configuration validation. This isolated workspace lacks required production runtime credentials and injects UPSTASH_BOX_* variables that are not application configuration. This is not counted as a full local build pass.
-- Release Quality Gate #777 initially failed during static generation with Postgres EMAXCONN (200 client connections) while test shards were running concurrently. The isolated build retry passed after the test shards completed, confirming shared-database contention rather than a deterministic code/build failure. The workflow now serializes production-backed static generation after the test matrix instead of reducing the runtime pool size. Release Quality Gate #778 passed with this ordering on code/workflow SHA a7eef02d3dcc9a76ba52578dc4d7f99998642a70; Docs Gate #56 also passed.
+- `npm run typecheck` — pass.
+- `npm run lint` — pass.
+- `npm run lint:docs` — pass.
+- `npm run perf` — pass.
+- `npm test` — 546 test files, 3,568 tests passed.
+- Final focused regression run after the last customer/moderation changes — 9/9 passed.
+- Release Quality Gate run `37888294055` — completed successfully on this exact head SHA, including all four test shards, build, static, lint, performance, docs, and aggregate checks.
+- Docs Gate run `37888293972` — completed successfully on this exact head SHA.
+- The local production build compiled successfully but static generation could not complete in this isolated workspace because required production runtime credentials are unavailable. This is not counted as a local build pass; the configured GitHub build passed.
+- An earlier gate hit Postgres `EMAXCONN` because build-time prerender and four test shards used the shared pool concurrently. The workflow now makes the production-backed build depend on the test matrix; the new ordering passed the full gate.
 
 ## Remaining release verification
 
-The code-level regressions listed above now have targeted tests. These checks remain release verification rather than reasons to substitute a V1 workflow:
+Automated code and CI gates are green. The remaining evidence is specifically runtime verification, not an unresolved claim that the dashboard has passed all scenarios:
 
-1. Push this branch and require the full GitHub Quality Gate to pass on the exact new head SHA.
-2. Exercise the primary flow in all 19 views in an authenticated browser at desktop and mobile widths, including keyboard navigation and recovery from failed requests.
-3. Run the tenant/role denial matrix against the authenticated runtime: ordinary tenant user, organization admin, customer administrator, and platform administrator; include cross-tenant read/write denial.
-4. Verify live external provider and delivery outcomes only in an approved non-production environment with appropriate credentials. No production data writes or external delivery calls are part of this code audit.
+1. Exercise all 19 primary flows in an authenticated browser at desktop and mobile widths, including keyboard operation and request-failure recovery.
+2. Run the tenant/role matrix against the authenticated runtime: ordinary tenant user, organization admin, customer administrator, and platform administrator, including cross-tenant read/write denial.
+3. Exercise external provider and publication delivery outcomes only in an approved non-production environment with valid credentials.
+4. Record screenshots/results and any defects from those scenarios; add regression tests and rerun the full gate for any fixes.
 
-Do not call production healthy or merge this draft PR until the applicable release checks are green and the remaining runtime evidence is recorded.
+No production data writes, schema migrations, production deployment, or merge to `main` were performed. PR #53 remains open and draft until the remaining runtime evidence is recorded. Do not describe browser, tenant-isolation, or live external-provider verification as passed based on unit tests or CI alone.
