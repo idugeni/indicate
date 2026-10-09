@@ -3,7 +3,6 @@
 import dynamic from 'next/dynamic';
 import { useMemo, useState } from 'react';
 import {
-  ArrowLeft,
   BookOpen,
   FolderTree,
   Hash,
@@ -209,22 +208,37 @@ export function TaxonomyControlCenterV2({
 
   if (showAdvanced) {
     return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-5">
+        <header className="grid gap-4 border-b border-hairline pb-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-brass">
-              Advanced controls
+            <p className="m-0 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-brass">
+              Editorial Intelligence · Metadata Quality
             </p>
-            <h2 className="m-0 mt-1 font-serif text-xl font-semibold text-paper">
-              Pengelolaan taksonomi lengkap
-            </h2>
+            <h1 className="m-0 mt-1 font-serif text-2xl font-semibold tracking-tight text-paper sm:text-3xl">
+              Taxonomy Studio
+            </h1>
+            <p className="m-0 mt-2 max-w-2xl text-sm leading-6 text-paper-dim">
+              Buat, perbarui, arsipkan kategori, dan rapikan kosakata tag dalam workspace yang sama.
+            </p>
           </div>
-          <Button type="button" variant="outline" onClick={() => setShowAdvanced(false)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Kembali ke Taxonomy Studio
-          </Button>
-        </div>
-        <TaxonomyManager data={data} command={command} organizationId={organizationId} />
+          <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-hairline bg-bg-raised p-1" aria-label="Workspace taksonomi">
+            <Button type="button" size="sm" variant="ghost" aria-pressed={!showAdvanced} onClick={() => setShowAdvanced(false)}>
+              Ringkasan
+            </Button>
+            <Button type="button" size="sm" aria-pressed={showAdvanced} onClick={() => setShowAdvanced(true)}>
+              Kelola kategori & tag
+            </Button>
+          </div>
+        </header>
+        <Card className="rounded-lg border-hairline bg-bg-raised shadow-none">
+          <CardHeader className="border-b border-hairline pb-3">
+            <CardTitle className="text-sm">Workflow CRUD taksonomi</CardTitle>
+            <CardDescription>Perubahan kategori menggunakan versi data; penghapusan dan penggabungan tag tetap melalui aksi eksplisit.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <TaxonomyManager data={data} command={command} organizationId={organizationId} />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -245,10 +259,14 @@ export function TaxonomyControlCenterV2({
             muncul.
           </p>
         </div>
-        <Button type="button" onClick={() => setShowAdvanced(true)}>
-          <SlidersHorizontal className="mr-2 h-4 w-4" />
-          Kelola taksonomi
-        </Button>
+        <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-hairline bg-bg-raised p-1" aria-label="Workspace taksonomi">
+          <Button type="button" size="sm" aria-pressed={!showAdvanced} onClick={() => setShowAdvanced(false)}>
+            Ringkasan
+          </Button>
+          <Button type="button" size="sm" variant="ghost" aria-pressed={showAdvanced} onClick={() => setShowAdvanced(true)}>
+            Kelola kategori & tag
+          </Button>
+        </div>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

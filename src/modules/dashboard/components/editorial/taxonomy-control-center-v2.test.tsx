@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
 vi.mock('nuqs', async () => (await import('@/test/stubs/nuqs')).nuqsStub());
@@ -67,11 +67,13 @@ describe('Taxonomy Control Center V2', () => {
     expect(screen.queryByRole('article', { name: 'Politik' })).toBeNull();
   });
 
-  it('opens the existing mutation manager only on explicit action', async () => {
+  it('opens the CRUD workspace through the persistent V2 navigation', async () => {
     render(<TaxonomyControlCenterV2 data={data} command={command} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Kelola taksonomi' }));
+    fireEvent.click(within(screen.getByLabelText('Workspace taksonomi')).getByRole('button', { name: 'Kelola kategori & tag' }));
+    expect(await screen.findByText('Workflow CRUD taksonomi')).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Daftarkan Kategori' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Kembali ke Taxonomy Studio' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ringkasan' })).toBeDefined();
+    expect(within(screen.getByLabelText('Workspace taksonomi')).getByRole('button', { name: 'Kelola kategori & tag' }).getAttribute('aria-pressed')).toBe('true');
     expect(command).not.toHaveBeenCalled();
   });
 

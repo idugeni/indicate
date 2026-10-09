@@ -77,12 +77,13 @@ describe('Ads Control Center V2', () => {
     expect(screen.getByRole('button', { name: /Muat ulang/ })).toBeDefined();
   });
 
-  it('keeps full mutation controls behind an explicit action', async () => {
+  it('opens the CRUD workspace through the persistent V2 navigation', async () => {
     stubFetch();
     render(<AdsControlCenterV2 organizationId="org-1" />);
-    fireEvent.click(await screen.findByRole('button', { name: /Konfigurasi lanjutan/ }));
-    expect(await screen.findByRole('heading', { name: 'Konfigurasi iklan lengkap' })).toBeDefined();
-    expect(screen.getByRole('button', { name: /Kembali ke Control Center/ })).toBeDefined();
+    fireEvent.click(await screen.findByRole('button', { name: 'Kelola iklan' }));
+    expect(await screen.findByText('Workflow CRUD iklan')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ringkasan' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Kelola iklan' }).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('does not invent coverage when no sites exist', async () => {
