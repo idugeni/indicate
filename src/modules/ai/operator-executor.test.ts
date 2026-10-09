@@ -7,6 +7,10 @@ vi.mock('@/core/system/uuid-generator', () => ({ UuidGenerator: class {} }));
 vi.mock('@/modules/dashboard/tenant-business-service', () => ({
   TenantBusinessService: class {
     listEditorial = async () => ({ ok: true, value: { articles: [] } });
+    listTaxonomy = async () => ({ ok: true, value: { categories: [] } });
+    listPublishers = async () => ({ ok: true, value: { publishers: [] } });
+    listConfiguration = async () => ({ ok: true, value: { sites: [] } });
+    auditLogs = async () => ({ ok: true, value: { entries: [] } });
     operations = async () => ({ ok: true, value: { health: 'ok' } });
   },
 }));
@@ -34,8 +38,13 @@ describe('executeOperatorPlan', () => {
   });
 
   it('fails closed when a catalog item has no verified handler', async () => {
-    const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'taxonomy-studio.taxonomy.read', arguments: {} }] } });
+    const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'ai-control-center.ai-status.read', arguments: {} }] } });
     expect(result).toMatchObject({ ok: false });
+  });
+
+  it('executes additional tenant-scoped read handlers', async () => {
+    const result = await executeOperatorPlan({ actor, plan: { steps: [{ id: 'step_1', capabilityId: 'taxonomy-studio.taxonomy.read', arguments: {} }] } });
+    expect(result).toMatchObject({ ok: true, results: [{ capabilityId: 'taxonomy-studio.taxonomy.read', ok: true }] });
   });
 
   it('rejects non-user actors before dispatch', async () => {
