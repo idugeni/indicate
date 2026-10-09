@@ -7,6 +7,7 @@ import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
+import { logEvent } from '@/core/observability/logger';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -145,6 +146,43 @@ async function handlePOST(request: Request) {
       result = response.value;
       break;
     }
+    case 'network.sites.read': {
+      const siteInput = validated.data as { query?: string };
+      const response = await context.service.listConfiguration(context.actor, {
+        ...(siteInput.query === undefined ? {} : { search: siteInput.query }),
+      });
+      if (!response.ok) {
+        const status = response.error.error.code === 'FORBIDDEN' ? 403 : 400;
+        return NextResponse.json(response.error, { status });
+      }
+      result = {
+        sites: response.value.sites,
+        siteSettings: response.value.siteSettings,
+        siteTotal: response.value.siteTotal,
+        siteTotalInScope: response.value.siteTotalInScope,
+        siteLimit: response.value.siteLimit,
+        siteSearch: response.value.siteSearch,
+        regionScope: response.value.regionScope,
+      };
+      break;
+    }
+    case 'audit.events.read': {
+      const auditInput = validated.data as {
+        actorId?: string; action?: string; targetType?: string;
+        outcome?: 'succeeded' | 'denied' | 'failed'; from?: string; to?: string;
+        limit?: number; cursor?: string;
+      };
+      const response = await context.service.auditLogs(context.actor, auditInput);
+      if (!response.ok) {
+        const status = response.error.error.code === 'FORBIDDEN' ? 403 : 400;
+        return NextResponse.json(response.error, { status });
+      }
+      result = {
+        auditLogs: response.value.auditLogs,
+        auditNextCursor: response.value.auditNextCursor,
+      };
+      break;
+    }
     case 'content.articles.search': {
       const searchInput = validated.data as { query?: string; limit?: number };
       const response = await context.service.listEditorial(context.actor, {
@@ -162,6 +200,17 @@ async function handlePOST(request: Request) {
       return NextResponse.json(createPublicError('RESOURCE_UNAVAILABLE', 'This operator tool has not been connected to an executor yet.', requestId), { status: 501 });
   }
 
+  logEvent('info', {
+    event: 'ai_operator.tool.executed',
+    requestId,
+    context: {
+      toolId,
+      organizationId,
+      actorId: context.actor.actorId,
+      risk: authorization.risk,
+      outcome: 'succeeded',
+    },
+  });
   return NextResponse.json({ toolId, requestId, result });
 }
 
