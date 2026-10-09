@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MonetizationControlCenterV2 } from './monetization-control-center-v2';
 
 afterEach(() => {
@@ -168,7 +168,9 @@ describe('Monetization Control Center V2', () => {
 
     render(<MonetizationControlCenterV2 organizationId="org-1" permissions={[]} />);
     expect(await screen.findByText('INV-099')).toBeDefined();
-    const loadMore = screen.getByRole('button', { name: 'Muat faktur berikutnya' });
+    const ledger = within(screen.getByRole('region', { name: 'Invoice Ledger' }));
+    const loadMore = ledger.getByRole('button', { name: 'Muat faktur berikutnya' });
+    expect(within(screen.getByRole('region', { name: 'Attention Queue' })).queryByRole('button', { name: 'Muat faktur berikutnya' })).toBeNull();
     fireEvent.click(loadMore);
     expect(await screen.findByText('INV-100')).toBeDefined();
     expect(invoiceRequests).toHaveLength(2);
