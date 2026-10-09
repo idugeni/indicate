@@ -10,13 +10,12 @@ describe('AiOperatorConsole', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, executed: false, plan: { steps: [{ id: 'step_1', capabilityId: 'command-center.overview.read', arguments: {} }] } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, results: [{ id: 'step_1', ok: true, result: { status: 'ok' } }] }) });
     vi.stubGlobal('fetch', mockFetch);
-    const user = userEvent.setup();
     render(<AiOperatorConsole organizationId="11111111-1111-4111-8111-111111111111" />);
-    await user.type(screen.getByLabelText('Apa yang ingin diperiksa?'), 'Ringkas kondisi dashboard');
-    await user.click(screen.getByRole('button', { name: /Susun rencana/i }));
+    fireEvent.change(screen.getByLabelText('Apa yang ingin diperiksa?'), { target: { value: 'Ringkas kondisi dashboard' } });
+    fireEvent.click(screen.getByRole('button', { name: /Susun rencana/i }));
     expect(await screen.findByText('Rencana tervalidasi (1 langkah)')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Jalankan pemeriksaan/i }));
-    expect(await screen.findByText(/"status": "ok"/)).toBeInTheDocument();
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole('button', { name: /Jalankan pemeriksaan/i }));
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/\"status\": \"ok\"/)).toBeInTheDocument();
   });
 });
