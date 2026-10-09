@@ -107,13 +107,14 @@ export async function assistantOperatorPlan(input: {
     readonly inputSchema: unknown;
   }[];
   readonly organizationId: string;
+  readonly deps: AiServiceDeps;
 }): Promise<{ readonly ok: true; readonly response: string } | { readonly ok: false; readonly error: string }> {
   const request = truncateInput(input.request.trim(), 3000);
   if (request.length < 3) return { ok: false, error: 'Permintaan operator terlalu singkat.' };
   if (input.tools.length === 0) return { ok: false, error: 'Tidak ada tool AI Operator yang diizinkan untuk aktor ini.' };
 
   const prompt = JSON.stringify({ request, availableTools: input.tools });
-  const result = await runTaskQuery(configured, 'editor', input.organizationId, {
+  const result = await runTaskQuery(input.deps, 'editor', input.organizationId, {
     prompt,
     systemInstruction: OPERATOR_PLANNER_SYSTEM,
     temperature: 0.1,
