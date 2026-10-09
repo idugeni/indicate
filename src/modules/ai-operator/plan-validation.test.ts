@@ -70,7 +70,7 @@ describe('AI Operator plan validation', () => {
       .toEqual({ ok: false, reason: 'UNKNOWN_TOOL' });
     expect(validateAiOperatorPlan(actor([], ['platform.super_admin']), plan('customers.list.read', {})))
       .toEqual({ ok: false, reason: 'PLATFORM_TOOL_NOT_SUPPORTED' });
-    expect(validateAiOperatorPlan(actor(['dashboard.read']), plan('content.articles.create', { title: '', body: '' })))
+    expect(validateAiOperatorPlan(actor(['dashboard.read']), plan('publishing.delivery.request', { articleId: 'not-a-uuid' })))
       .toEqual({ ok: false, reason: 'INVALID_TOOL_INPUT' });
     expect(validateAiOperatorPlan(actor([]), plan('dashboard.overview.read', {})))
       .toEqual({ ok: false, reason: 'MISSING_PERMISSION' });
