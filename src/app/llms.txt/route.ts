@@ -6,7 +6,7 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { getNetworkSites, getPartnerOrganizations } from '@/modules/content/site-content';
 import { deliveryComposition } from '@/modules/delivery';
 import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
-import { controlPlaneLlms } from './route-helpers';
+import { controlPlaneLlms, tenantLlms } from './route-helpers';
 
 async function handleGET() {
   await connection();
