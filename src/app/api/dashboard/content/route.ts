@@ -85,7 +85,7 @@ async function handleGET(request: Request) {
  * @param error - Error thrown by the content admin repository.
  * @returns 404 for access denial, 500 otherwise.
  */
-function contentErrorStatus(error: unknown): number {
+export function contentErrorStatus(error: unknown): number {
   return error instanceof ContentAdminAccessDeniedError ? 404 : 500;
 }
 
@@ -129,5 +129,5 @@ async function handlePOST(request: Request) {
   }
 }
 
-const GET = withApiAccess('GET /api/dashboard/content', handleGET);
-const POST = withApiAccess('POST /api/dashboard/content', handlePOST);
+export const GET = withApiAccess('GET /api/dashboard/content', handleGET);
+export const POST = withApiAccess('POST /api/dashboard/content', handlePOST);
