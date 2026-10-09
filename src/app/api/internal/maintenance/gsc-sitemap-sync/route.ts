@@ -7,6 +7,13 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { authorized } from '@/app/api/internal/auth';
 import { planSitemapSync } from './route-helpers';
 
+/** Default apex budget per run; covers the live fleet with headroom. */
+const GSC_SYNC_DEFAULT_LIMIT = 200;
+/** Hard ceiling so one tick cannot fan out without bound. */
+const GSC_SYNC_MAX_LIMIT = 500;
+/** Parallel hosts; sequential per host, bounded across hosts. */
+const GSC_SYNC_CONCURRENCY = 5;
+
 const WEBMASTERS = 'https://www.googleapis.com/webmasters/v3';
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
