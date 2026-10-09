@@ -377,6 +377,7 @@ describe('model cascade sekatalog', () => {
     { model_name: 'gemini-3.8-flash-tts', task_recommendation: 'speech synthesis' },
     { model_name: 'gemini-3.6-flash', task_recommendation: 'general chat' },
     { model_name: 'gemini-embedding-2', task_recommendation: 'embeddings' },
+    { model_name: 'google/gemini-3.5-flash-lite', task_recommendation: 'seo descriptions and taxonomy tags' },
   ];
   const db = { execute: async () => rows };
 

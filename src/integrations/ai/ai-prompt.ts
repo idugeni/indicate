@@ -62,6 +62,8 @@ export interface AiChatPrompt {
   readonly responseModalities?: readonly AiResponseModality[] | undefined;
   readonly speechVoiceName?: string | undefined;
   readonly costMode?: 'throughput' | 'price' | undefined;
+  /** Optional hard provider allowlist for Vercel AI Gateway requests. */
+  readonly gatewayOnlyProviders?: readonly string[] | undefined;
 }
 
 export interface AiTokensUsage {

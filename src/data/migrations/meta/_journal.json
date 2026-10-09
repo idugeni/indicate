@@ -1947,6 +1947,13 @@
       "when": 1791547200000,
       "tag": "20261009120000_ai_operator_approvals",
       "breakpoints": true
+    },
+    {
+      "idx": 278,
+      "version": "7",
+      "when": 1791586717648,
+      "tag": "20261010000000_seo_vercel_gateway_model",
+      "breakpoints": true
     }
   ]
 }

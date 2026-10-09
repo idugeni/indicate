@@ -9,6 +9,7 @@ import {
 } from '@/modules/ai/ai-response-schemas';
 import { runTaskQuery } from '@/modules/ai/ai-task-query';
 import { AI_LIMITS, stripCodeFence, truncateInput } from '@/modules/ai/ai-usage';
+import { SEO_METADATA_GATEWAY_PROVIDER, SEO_METADATA_MODEL } from '@/modules/ai/ai-task-models';
 
 const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
@@ -298,6 +299,8 @@ export async function suggestMetaDescription(input: { readonly title: string; re
     prompt: `Susun satu deskripsi meta untuk artikel berikut:\n\nJudul: ${base.title}\n\nIsi:\n${base.body}${current === '' ? '' : `\n\nDeskripsi saat ini (sempurnakan tanpa mengubah makna menjadi 150-160 karakter, sedekat mungkin ke 160):\n${current}`}`,
     systemInstruction: SEO_META_SYSTEM, temperature: 0.5, maxOutputTokens: 256, responseMimeType: 'application/json',
     responseSchema: SEO_META_SCHEMA, thinkingTask: 'seo',
+    modelOverride: SEO_METADATA_MODEL, requireModelOwner: true, skipSemanticCache: true,
+    gatewayOnlyProviders: [SEO_METADATA_GATEWAY_PROVIDER],
   });
   if (!result.ok) return result;
   const metaDescription = parseMetaDescription(result.text);
@@ -345,6 +348,8 @@ export async function suggestSeoBundle(input: SeoBundleInput): Promise<{ readonl
     prompt: `Susun paket SEO gabungan (3 judul, 1 kutipan, 1 deskripsi meta) untuk artikel berikut. Setiap klaim harus tertelusur ke teks yang diberi.\n\n${sections.join('\n\n')}`,
     systemInstruction: SEO_BUNDLE_SYSTEM, temperature: 0.6, maxOutputTokens: 768, responseMimeType: 'application/json',
     responseSchema: SEO_BUNDLE_SCHEMA, thinkingTask: 'seo',
+    modelOverride: SEO_METADATA_MODEL, requireModelOwner: true, skipSemanticCache: true,
+    gatewayOnlyProviders: [SEO_METADATA_GATEWAY_PROVIDER],
   });
   if (!result.ok) return result;
   const bundle = parseSeoBundle(result.text);

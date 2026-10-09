@@ -195,6 +195,10 @@ export type AiExecutionMode = 'interactive' | 'background';
 export interface AiServicePrompt extends AiChatPrompt {
   readonly mode?: AiExecutionMode | undefined;
   readonly redactor?: ((text: string) => string) | undefined;
+  /** Bypass semantic-cache reads/writes when a task requires a live pinned provider. */
+  readonly skipSemanticCache?: boolean | undefined;
+  /** Fail closed if an explicit model override has no catalog owner. */
+  readonly requireModelOwner?: boolean | undefined;
 }
 
 /**
@@ -539,6 +543,7 @@ export async function executeAiQuery(
   const wantsMedia = (promptData.responseModalities?.length ?? 0) > 0;
   const cacheKey = normalizeCachePrompt(promptData.prompt);
   const cacheApplies =
+    promptData.skipSemanticCache !== true &&
     !hasImages && !wantsMedia && historyLength <= 2 && promptData.prompt.length >= 6;
   const serveCacheHit = async (hit: { readonly responseText: string; readonly modelName: string }) => {
     await log({
@@ -623,6 +628,33 @@ export async function executeAiQuery(
   const breakerStore = deps.rateLimit?.store;
   const overrideProvider =
     promptData.modelOverride === undefined ? undefined : await getModelOwnerProvider(deps.db, promptData.modelOverride);
+  if (promptData.requireModelOwner === true && promptData.modelOverride !== undefined && overrideProvider === null) {
+    const message = `Pinned AI model ${promptData.modelOverride} is not registered in ai_models.`;
+    await log({
+      correlationId,
+      channel,
+      providerId: 'model-catalog-guardrail',
+      modelName: promptData.modelOverride,
+      credentialId: null,
+      organizationId,
+      status: 'failed',
+      retryCount: 0,
+      latencyMs: 0,
+      errorClass: 'model_unavailable',
+      errorMessage: message,
+    });
+    return {
+      text: 'Maaf, model AI yang dikonfigurasi untuk tugas ini belum tersedia.',
+      providerId: 'model-catalog-guardrail',
+      modelName: promptData.modelOverride,
+      credentialId: '',
+      credentialMasked: '',
+      latencyMs: 0,
+      retryCount: 0,
+      toolCallsExecuted: [],
+      error: 'PINNED_MODEL_NOT_REGISTERED',
+    };
+  }
   const chainStartIndex = policy.chainStrategy === 'round_robin' ? await nextChainStartIndex(breakerStore) : 0;
   const configuredChain = resolveOrderedAiModelChain(policy, chainStartIndex, promptData.modelOverride, overrideProvider ?? undefined);
   const fullChain = await resolveCascadeChain(deps.db, configuredChain, promptData.modelOverride);
@@ -747,7 +779,7 @@ export async function executeAiQuery(
             toolsExecuted: [...result.toolCallsExecuted],
           });
 
-          if (deps.cache !== undefined && !hasImages && !wantsMedia && result.text.length > 20) {
+          if (deps.cache !== undefined && promptData.skipSemanticCache !== true && !hasImages && !wantsMedia && result.text.length > 20) {
             deps.cache
               .store(cacheKey, result.text, modelName, 86400)
               .catch(() => undefined);

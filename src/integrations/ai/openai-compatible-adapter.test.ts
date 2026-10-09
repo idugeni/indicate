@@ -39,6 +39,23 @@ describe('OpenAiCompatibleAdapter', () => {
     expect(last.some((part) => part.type === 'image_url')).toBe(true);
   });
 
+  it('mengunci Vercel AI Gateway ke provider allowlist tanpa opsi fallback', async () => {
+    const adapter = new OpenAiCompatibleAdapter('vercel-gateway', 'https://ai-gateway.vercel.sh/v1');
+    await adapter.execute('router-key', 'google/gemini-3.5-flash-lite', {
+      prompt: 'Buat deskripsi meta SEO.',
+      gatewayOnlyProviders: ['google'],
+    });
+    const body = lastBody();
+    expect(body.providerOptions).toEqual({ gateway: { only: ['google'] } });
+    expect(body).not.toHaveProperty('providerOptions.gateway.models');
+  });
+
+  it('tidak mengirim filter provider Gateway ke adapter provider lain', async () => {
+    const adapter = new OpenAiCompatibleAdapter('openrouter', 'https://openrouter.ai/api/v1');
+    await adapter.execute('router-key', 'model', { prompt: 'hai', gatewayOnlyProviders: ['google'] });
+    expect(lastBody()).not.toHaveProperty('providerOptions');
+  });
+
   it('meminta json_object saat responseMimeType json', async () => {
     const adapter = new OpenAiCompatibleAdapter();
     await adapter.execute('router-key', 'model', { prompt: 'hai', responseMimeType: 'application/json' });

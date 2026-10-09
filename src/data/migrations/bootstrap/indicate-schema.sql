@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (278 migrations):
+-- Reviewed sources, in journal order (279 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -292,6 +292,7 @@
 --   276  20261006100000_own_bridge_reads  ledger sha256:7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea
 --   277  20261006110000_articles_tags_gin_single  ledger sha256:ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6
 --   278  20261009120000_ai_operator_approvals  ledger sha256:cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1
+--   279  20261010000000_seo_vercel_gateway_model  ledger sha256:e2670840a4db727a1319b144c0471a11906bdd1ebf69e8e77e1222b80c2f895b
 
 BEGIN;
 
@@ -23068,4 +23069,47 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (277, 'ai_operator_approvals', 'sha256:447f898ab308a00a1cb1601fe2f807cf7fcf6c99d3e663de3f98e11e5472a967');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1', 1791547200000);
+
+-- ----------------------------------------------------------------------
+-- 20261010000000_seo_vercel_gateway_model
+-- ----------------------------------------------------------------------
+-- Register the low-cost, structured-output-capable Vercel AI Gateway model used only by SEO metadata and taxonomy tasks.
+-- Provider routing is pinned per request to Google AI Studio; application and gateway model/provider fallback are disabled for these tasks.
+INSERT INTO public.ai_models (
+  id, provider_id, model_name, display_name, description,
+  context_window, input_token_limit, output_token_limit, supported_modalities,
+  release_stage, rpm_limit, tpm_limit, rpd_limit, task_recommendation,
+  supports_tools, supports_vision, is_default, is_active, priority
+)
+VALUES (
+  'vercel-google-gemini-3-5-flash-lite',
+  'vercel-gateway',
+  'google/gemini-3.5-flash-lite',
+  'Gemini 3.5 Flash-Lite via Vercel AI Gateway',
+  'Low-cost structured-output model pinned to Google AI Studio for SEO meta descriptions and category/tag suggestions.',
+  1000000, 1000000, 65000, ARRAY['text','image','video'],
+  'stable', NULL, NULL, NULL, 'seo descriptions and taxonomy tags',
+  true, true, false, true, 5
+)
+ON CONFLICT (id) DO UPDATE SET
+  provider_id = EXCLUDED.provider_id,
+  model_name = EXCLUDED.model_name,
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  context_window = EXCLUDED.context_window,
+  input_token_limit = EXCLUDED.input_token_limit,
+  output_token_limit = EXCLUDED.output_token_limit,
+  supported_modalities = EXCLUDED.supported_modalities,
+  release_stage = EXCLUDED.release_stage,
+  task_recommendation = EXCLUDED.task_recommendation,
+  supports_tools = EXCLUDED.supports_tools,
+  supports_vision = EXCLUDED.supports_vision,
+  is_default = false,
+  is_active = true,
+  priority = EXCLUDED.priority,
+  updated_at = now();
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (278, 'seo_vercel_gateway_model', 'sha256:44b70b329c4cc52bdf05beac3397c081a7af2d98e03803fec9c58ad6fb99f756);
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e2670840a4db727a1319b144c0471a11906bdd1ebf69e8e77e1222b80c2f895b', 1791586717648);
 COMMIT;

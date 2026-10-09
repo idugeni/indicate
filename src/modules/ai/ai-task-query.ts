@@ -22,6 +22,9 @@ export interface AiTaskQuery {
   readonly modelOverride?: string | undefined;
   readonly responseModalities?: readonly ('TEXT' | 'IMAGE' | 'AUDIO')[] | undefined;
   readonly speechVoiceName?: string | undefined;
+  readonly skipSemanticCache?: boolean | undefined;
+  readonly requireModelOwner?: boolean | undefined;
+  readonly gatewayOnlyProviders?: readonly string[] | undefined;
 }
 
 /**
@@ -62,6 +65,9 @@ export async function runTaskQuery(
     ...(query.images === undefined ? {} : { images: [...query.images] }),
     ...(query.audio === undefined ? {} : { audio: [...query.audio] }),
     ...(query.modelOverride === undefined ? {} : { modelOverride: query.modelOverride }),
+    ...(query.skipSemanticCache === undefined ? {} : { skipSemanticCache: query.skipSemanticCache }),
+    ...(query.requireModelOwner === undefined ? {} : { requireModelOwner: query.requireModelOwner }),
+    ...(query.gatewayOnlyProviders === undefined ? {} : { gatewayOnlyProviders: [...query.gatewayOnlyProviders] }),
     ...(query.responseModalities === undefined ? {} : { responseModalities: [...query.responseModalities] }),
     ...(query.speechVoiceName === undefined ? {} : { speechVoiceName: query.speechVoiceName }),
   });

@@ -178,10 +178,15 @@ function buildRequestBody(
   promptData: AiChatPrompt,
   stream: boolean,
   routing: OpenAiCompatibleRouting = {},
+  providerId = '',
 ): Record<string, unknown> {
   const effort = resolveReasoningEffort(promptData.thinkingConfig?.thinkingBudget);
   const responseFormat = buildResponseFormat(promptData);
   const provider = buildProviderRouting(routing, responseFormat, promptData.costMode);
+  const gatewayProviderOptions =
+    providerId === 'vercel-gateway' && promptData.gatewayOnlyProviders !== undefined
+      ? { gateway: { only: [...promptData.gatewayOnlyProviders] } }
+      : undefined;
   return {
     model: modelName,
     messages: buildMessages(promptData),
@@ -195,6 +200,7 @@ function buildRequestBody(
     ...(effort === undefined ? {} : { reasoning: { effort } }),
     ...(promptData.thinkingConfig?.includeThoughts === true ? { include_reasoning: true } : {}),
     ...(provider === undefined ? {} : { provider }),
+    ...(gatewayProviderOptions === undefined ? {} : { providerOptions: gatewayProviderOptions }),
     ...(stream ? { stream: true } : {}),
   };
 }
@@ -395,7 +401,7 @@ export class OpenAiCompatibleAdapter implements AiProviderAdapter {
       res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${plainKey}`, ...this.extraHeaders },
-        body: JSON.stringify(buildRequestBody(modelName, promptData, false, this.routing)),
+        body: JSON.stringify(buildRequestBody(modelName, promptData, false, this.routing, this.providerId)),
       });
     } catch {
       throw new Error('OpenAI-compatible request failed.');
@@ -441,7 +447,7 @@ export class OpenAiCompatibleAdapter implements AiProviderAdapter {
       res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${plainKey}`, ...this.extraHeaders },
-        body: JSON.stringify(buildRequestBody(modelName, promptData, true, this.routing)),
+        body: JSON.stringify(buildRequestBody(modelName, promptData, true, this.routing, this.providerId)),
         ...(opts?.signal === undefined ? {} : { signal: opts.signal }),
       });
     } catch (error) {

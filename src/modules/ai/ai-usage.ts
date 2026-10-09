@@ -11,6 +11,7 @@ import {
 import { taskThinkingOverride, type AiTaskKind } from '@/modules/ai/ai-task-profiles';
 import type { AiCallerRole, AiChatImage, AiThinkingConfig } from '@/modules/ai/ai-types';
 import { slugify } from '@/modules/site/slugify';
+import { SEO_METADATA_GATEWAY_PROVIDER, SEO_METADATA_MODEL } from '@/modules/ai/ai-task-models';
 
 export const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
@@ -208,6 +209,9 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
   readonly modelOverride?: string | undefined;
   readonly responseModalities?: readonly ('TEXT' | 'IMAGE' | 'AUDIO')[] | undefined;
   readonly speechVoiceName?: string | undefined;
+  readonly skipSemanticCache?: boolean | undefined;
+  readonly requireModelOwner?: boolean | undefined;
+  readonly gatewayOnlyProviders?: readonly string[] | undefined;
 }): Promise<{ readonly ok: true; readonly text: string; readonly inlineData?: readonly { readonly mimeType: string; readonly base64: string }[] } | { readonly ok: false; readonly error: string }> {
   const scanned = scanPrompt(query.prompt);
   if (!scanned.ok) return { ok: false, error: scanned.reason };
@@ -229,6 +233,9 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
     ...(query.images === undefined ? {} : { images: [...query.images] }),
     ...(query.audio === undefined ? {} : { audio: [...query.audio] }),
     ...(query.modelOverride === undefined ? {} : { modelOverride: query.modelOverride }),
+    ...(query.skipSemanticCache === undefined ? {} : { skipSemanticCache: query.skipSemanticCache }),
+    ...(query.requireModelOwner === undefined ? {} : { requireModelOwner: query.requireModelOwner }),
+    ...(query.gatewayOnlyProviders === undefined ? {} : { gatewayOnlyProviders: [...query.gatewayOnlyProviders] }),
     ...(query.responseModalities === undefined ? {} : { responseModalities: [...query.responseModalities] }),
     ...(query.speechVoiceName === undefined ? {} : { speechVoiceName: query.speechVoiceName }),
   });
@@ -250,7 +257,8 @@ const DRAFT_SYSTEM = [
 
 const TAG_SYSTEM = [
   'Kamu adalah editor taksonomi jaringan media Indonesia.',
-  'Sarankan tag slug kecil bertanda hubung dan satu kategori yang sudah umum.',
+  'Sarankan satu kategori yang paling sesuai dan 5-8 kata kunci yang relevan untuk dijadikan hashtag redaksi.',
+  'Nilai tags harus berupa slug lowercase dengan tanda hubung, tanpa karakter #; pilih kata kunci faktual yang spesifik, bukan kata umum atau berulang.',
   'Jangan mengarang portal atau angka. Keluarkan JSON murni:',
   '{"tags":["..."],"category":"..."}',
 ].join('\n');
@@ -350,6 +358,8 @@ export async function suggestTags(input: { readonly title: string; readonly body
     prompt: `Sarankan tag dan kategori untuk artikel berikut:\n\nJudul: ${title}\n\nIsi:\n${body}`,
     systemInstruction: TAG_SYSTEM, temperature: 0.3, maxOutputTokens: 512, responseMimeType: 'application/json',
     responseSchema: TAG_SUGGESTION_SCHEMA, thinkingTask: 'seo',
+    modelOverride: SEO_METADATA_MODEL, requireModelOwner: true, skipSemanticCache: true,
+    gatewayOnlyProviders: [SEO_METADATA_GATEWAY_PROVIDER],
   });
   if (!result.ok) return result;
   const suggestion = parseTagSuggestion(result.text);
