@@ -116,7 +116,11 @@ async function handlePOST(request: Request) {
       actorId: context.actor.actorId,
       toolId: parsed.data.toolId,
       input: validated.data,
-    }, parsed.data.idempotencyKey);
+    }, parsed.data.idempotencyKey, {
+      actorType: context.actor.actorType,
+      entryPoint: context.actor.entryPoint,
+      requestId,
+    });
     if (!result.ok) {
       return NextResponse.json(createPublicError('CONFLICT', 'Idempotency key was already used for a different command.', requestId), { status: 409 });
     }
@@ -138,6 +142,11 @@ async function handlePOST(request: Request) {
     organizationId: context.actor.organizationId,
     approverActorId: context.actor.actorId,
     decision: parsed.data.decision,
+    audit: {
+      actorType: context.actor.actorType,
+      entryPoint: context.actor.entryPoint,
+      requestId,
+    },
     ...(parsed.data.note === undefined ? {} : { note: parsed.data.note }),
   });
   if (!result.ok) {
