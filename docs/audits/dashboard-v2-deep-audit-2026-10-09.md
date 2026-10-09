@@ -52,9 +52,9 @@ V2 is treated as replacement of the primary user workflow, not a visual restyle.
 
 **Evidence:** The initial billing effect fetched subscription state and invoices directly, while `busy` started as `false`. The invoice ledger rendered “Belum ada faktur” whenever the current invoice array was empty, including before the initial request completed.
 
-**Change:** Initialize the loading state as active, route the initial request through the shared `load()` lifecycle, and render an explicit invoice-loading status until the request settles. Empty-state copy now distinguishes a genuinely empty ledger from a query/filter with no matches.
+**Change:** Initialize the loading state as active, route the initial request through the shared `load()` lifecycle, and render an explicit invoice-loading status until the request settles. Empty-state copy now distinguishes a genuinely empty ledger from a query/filter with no matches, and a failed initial fetch is not represented as an empty ledger.
 
-**Regression test added:** a deferred initial request must show loading and must not declare the ledger empty until the request completes.
+**Regression tests added:** a deferred initial request must show loading and must not declare the ledger empty until the request completes; a failed invoice request must surface the error state instead of an empty-ledger message.
 
 ### B2 — Billing V2 did not expose the API's cursor-paginated invoice ledger
 
