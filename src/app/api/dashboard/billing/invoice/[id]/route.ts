@@ -12,7 +12,6 @@ import { invoiceDocument, type InvoiceSeals } from './route-helpers';
 
 const paramsSchema = z.object({ organizationId: z.uuid().optional() });
 
-const MATERAI_THRESHOLD_IDR = 5_000_000;
 
 async function handleGET(request: Request, context: { readonly params: Promise<{ readonly id: string }> }) {
   const requestId = resolveRequestId(request);
