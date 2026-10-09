@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { InvoiceRecord } from '@/modules/billing/models';
-import type { InvoiceSeals } from '@/app/api/dashboard/billing/invoice/[id]/route';
-import { esc, formatDate, formatIdr, invoiceDocument } from '@/app/api/dashboard/billing/invoice/[id]/route';
+import type { InvoiceSeals } from '@/app/api/dashboard/billing/invoice/[id]/route-helpers';
+import { esc, formatDate, formatIdr, invoiceDocument } from '@/app/api/dashboard/billing/invoice/[id]/route-helpers';
 
 const BASE: InvoiceRecord = {
   id: 'inv-1',
