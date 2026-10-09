@@ -56,4 +56,8 @@ export const OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS = Object.freeze([
   'ads-control-center.ads.read',
   'access-integrations.integrations.read',
   'ai-control-center.ai-status.read',
+  'billing-plan.billing.read',
+  'trust-moderation.cases.read',
+  'customer-operations.customers.read',
+  'public-web-content.content.read',
 ] as const);
