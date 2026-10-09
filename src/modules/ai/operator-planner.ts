@@ -28,7 +28,10 @@ export async function planOperatorActions(input: {
   if (request.length < 3) return { ok: false, error: 'Perintah minimal 3 karakter.' };
 
   const executableIds = new Set<string>(OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS);
-  const catalog = OPERATOR_CAPABILITIES.filter(({ id }) => executableIds.has(id)).map(({ id, domain, risk }) => ({ id, domain, risk }));
+  const catalog = OPERATOR_CAPABILITIES.filter(({ id }) => executableIds.has(id)).map(({ id, domain, risk }) => ({
+    id, domain, risk,
+    argumentContract: id === 'editorial-workspace.articles.read' || id === 'content-library.articles.read' ? 'optional search string (max 100) and limit integer (1-20)' : id === 'publisher-network.publishers.read' || id === 'network-infrastructure.sites.read' ? 'optional search string (max 100)' : id === 'audit-security.audit.read' ? 'optional limit integer (1-20)' : 'no arguments',
+  }));
   const generated = await runTaskQuery(input.deps, 'editor', input.organizationId, {
     prompt: JSON.stringify({ request, allowedCapabilities: catalog, requiredOutput: { steps: [{ id: 'step_1', capabilityId: 'catalog ID', arguments: {} }] } }),
     systemInstruction: PLAN_SYSTEM,
