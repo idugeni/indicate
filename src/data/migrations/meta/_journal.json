@@ -1940,6 +1940,13 @@
       "when": 1791374400000,
       "tag": "20261006110000_articles_tags_gin_single",
       "breakpoints": true
+    },
+    {
+      "idx": 277,
+      "version": "7",
+      "when": 1791547200000,
+      "tag": "20261009120000_ai_operator_approvals",
+      "breakpoints": true
     }
   ]
 }
