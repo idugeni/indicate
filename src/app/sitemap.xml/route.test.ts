@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SERVICE_PATHS } from '@/core/routing/control-plane-paths';
-import { controlPlaneSitemap } from '@/app/sitemap.xml/route';
+import { controlPlaneSitemap } from '@/app/sitemap.xml/route-helpers';
 
 describe('controlPlaneSitemap', () => {
   it('memuat root dan seluruh service path sebagai URL absolut', () => {
