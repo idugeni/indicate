@@ -5,6 +5,7 @@ import {
   AI_OPERATOR_TOOLS,
   authorizeAiOperatorTool,
   getAiOperatorTool,
+  listAiOperatorTools,
 } from '@/modules/ai-operator/tool-registry';
 
 const actor = (permissions: string[], platformPermissions: string[] = []): ActorContext => ({
@@ -23,6 +24,16 @@ describe('AI Operator tool registry', () => {
     expect(Object.keys(AI_OPERATOR_TOOLS).length).toBeGreaterThanOrEqual(10);
     expect(getAiOperatorTool('system.execute_sql')).toBeNull();
     expect(getAiOperatorTool('https://example.com')).toBeNull();
+  });
+
+  it('lists only tools authorized for the actor and requested scope', () => {
+    const tenantReader = actor(['dashboard.read', 'article.read'], ['platform.super_admin']);
+    const tenantTools = listAiOperatorTools(tenantReader, 'tenant');
+    expect(tenantTools.map((item) => item.id)).toContain('dashboard.overview.read');
+    expect(tenantTools.map((item) => item.id)).toContain('content.articles.search');
+    expect(tenantTools.map((item) => item.id)).not.toContain('customers.list.read');
+    expect(listAiOperatorTools(tenantReader, 'platform').map((item) => item.id)).toContain('customers.list.read');
+    expect(tenantTools.every((item) => !('input' in item))).toBe(true);
   });
 
   it('rejects unknown tools and malformed input', () => {
