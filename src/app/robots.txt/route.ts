@@ -14,7 +14,7 @@ import type { ResolvedSiteContext } from '@/modules/delivery/models';
  * @param host - Dashboard hostname for the sitemap line.
  * @returns robots.txt body with public allows and machine-surface denials.
  */
-export const controlPlaneRobots = (host: string) => [
+const controlPlaneRobots = (host: string) => [
   'User-agent: *',
   'Allow: /$',
   ...[...SITE_ROUTES, ...LEGAL_ROUTES].map((route) => `Allow: ${route.href}`),
@@ -75,4 +75,4 @@ async function handleGET() {
  *
  * @remarks Advertise public service paths while keeping auth and machine surfaces out of the index. Tenant surfaces use an explicit denylist without a catch-all so they stay out of the control-plane index.
  */
-export const GET = withApiAccess('GET /robots.txt', handleGET, { accessLog: 'errors-only' });
+const GET = withApiAccess('GET /robots.txt', handleGET, { accessLog: 'errors-only' });
