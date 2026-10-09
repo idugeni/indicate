@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { trustedCloudflareSource } from '@/modules/integrations/trusted-request-boundary';
 import { createProductionIntegrationsContext } from '@/modules/integrations';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createNonDisclosingDenial, type PublicErrorEnvelope } from '@/core/errors';
+import { createNonDisclosingDenial } from '@/core/errors';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 
