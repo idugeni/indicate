@@ -25,7 +25,7 @@ function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
  * @param rawNext - Raw next param, or null when absent.
  * @returns Sanitized path, defaulting to sign-in.
  */
-export function resolveSignOutDestination(rawNext: string | null): string {
+function resolveSignOutDestination(rawNext: string | null): string {
   return rawNext === null ? '/sign-in' : safeRedirectPath(rawNext);
 }
 
@@ -54,4 +54,4 @@ async function handlePOST(request: NextRequest) {
   return response;
 }
 
-export const POST = withApiAccess('POST /auth/sign-out', handlePOST);
+const POST = withApiAccess('POST /auth/sign-out', handlePOST);
