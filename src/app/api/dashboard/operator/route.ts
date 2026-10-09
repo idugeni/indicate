@@ -86,7 +86,7 @@ async function resolveContext(organizationId: string, requestId: string, headers
  * control-plane operations; those require persisted approvals and their own
  * service-level authorization before they can be exposed.
  */
-async function publishingServicesFor(actor: AuthorizedTenantActorContext) {
+async function publishingServicesFor() {
   const runtimeContext = await getServerRuntimeContext();
   const config = runtimeContext.config;
   const runtime = getSharedRuntimeDatabase(runtimeContext.bootstrap);
@@ -184,7 +184,7 @@ async function handlePOST(request: Request) {
       break;
     }
     case 'media.assets.read': {
-      const services = await publishingServicesFor(context.actor);
+      const services = await publishingServicesFor();
       const response = await services.media.list(context.actor, validated.data);
       if (!response.ok) {
         const status = response.error.error.code === 'FORBIDDEN' ? 403 : response.error.error.code === 'RESOURCE_UNAVAILABLE' ? 404 : 400;
