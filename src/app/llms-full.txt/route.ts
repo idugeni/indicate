@@ -3,7 +3,6 @@ import { headers } from 'next/headers';
 
 import { denied } from '@/core/routing/deny';
 import { withApiAccess } from '@/core/observability/api-access';
-import { controlPlaneLlms } from '@/app/llms.txt/route';
 import { getNetworkSites, getPartnerOrganizations } from '@/modules/content/site-content';
 import { deliveryComposition } from '@/modules/delivery';
 import { resolveNetworkSite } from '@/modules/delivery/network-runtime';
