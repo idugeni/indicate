@@ -6,7 +6,7 @@ import { authenticateDashboardUser } from '@/modules/auth/authenticate-dashboard
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getServerRuntimeContext, invalidateServerRuntimeConfig } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleRuntimeConfigAdminRepository } from '@/data/repos/runtime-config/admin';
+import { DrizzleRuntimeConfigAdminRepository, RuntimeConfigAdminAccessDeniedError, RuntimeConfigAdminConflictError } from '@/data/repos/runtime-config/admin';
 import { mediaPolicySchema } from '@/core/config/persisted/persisted-schema';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
