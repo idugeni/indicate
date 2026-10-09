@@ -63,7 +63,7 @@ const SCAN_BATCH_SIZE = 1000;
  * Kunci yang belum ter-pop mempertahankan EXPIRE 7-harinya dan ikut flush
  * 3-jam berikutnya — tidak ada pageview yang hilang diam-diam, hanya ditunda.
  */
-const VIEW_FLUSH_MAX_SCAN_PAGES = 500;
+export const VIEW_FLUSH_MAX_SCAN_PAGES = 500;
 
 const POP_PAGE_SCRIPT = `
 local out = {}
@@ -79,7 +79,7 @@ return out
 
 const UPDATE_CHUNK_SIZE = 500;
 
-function collectPoppedDeltas(pairs: readonly string[]): {
+export function collectPoppedDeltas(pairs: readonly string[]): {
   readonly deltas: FlushDelta;
   readonly invalidKeys: readonly string[];
 } {
@@ -288,6 +288,6 @@ async function handleGET(request: Request) {
  *
  * @remarks Pooled sessions carry the previous request's tenant/region GUCs: set_tenant_context rejects a different org (conflict) and a stale region filters rows out, both silently dropping the flush. RESET first per org inside one transaction (one pinned connection), then enforce a clean flush context. Each chunk writes lifetime view_count to `article_sites` (plus today's `article_site_view_days` upsert for RETURNING rows) and falls through to `portal_assignments` for bridge beacons; orphans missing from both skip the daily bucket. INCRBY restore is safe from partial duplication because the per-org transaction is atomic: a throw anywhere rolls back that org's whole chunk so the refund equals exactly what was popped; the restore key gets a 7-day EXPIRE.
  */
-const GET = withApiAccess('GET /api/internal/maintenance/view-flush', handleGET);
+export const GET = withApiAccess('GET /api/internal/maintenance/view-flush', handleGET);
 
-const maxDuration = 300;
+export const maxDuration = 300;
