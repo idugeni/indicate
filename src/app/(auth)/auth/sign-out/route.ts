@@ -9,6 +9,7 @@ import { createNonDisclosingDenial } from '@/core/errors';
 import { renderClearedAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
+import { resolveSignOutDestination } from './route-helpers';
 
 function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createHardenedSupabaseCookieStore({
@@ -25,9 +26,6 @@ function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
  * @param rawNext - Raw next param, or null when absent.
  * @returns Sanitized path, defaulting to sign-in.
  */
-export function resolveSignOutDestination(rawNext: string | null): string {
-  return rawNext === null ? '/sign-in' : safeRedirectPath(rawNext);
-}
 
 async function handlePOST(request: NextRequest) {
   const requestId = resolveRequestId(request);
