@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPendingAttemptId } from '@/app/domain-pending/route';
+import { isPendingAttemptId } from '@/app/domain-pending/route-helpers';
 
 describe('isPendingAttemptId', () => {
   it('menerima UUID valid', () => {
