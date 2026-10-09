@@ -5,7 +5,6 @@ import { getPublicConfig } from '@/core/config/public-config';
 import { ensureRequestId } from '@/core/observability/request-id';
 import { createHardenedSupabaseCookieStore, createSupabaseSsrAuthAdapter } from '@/integrations/supabase/supabase-ssr';
 import { createProductionIntegrationsContext } from '@/modules/integrations';
-import { safeRedirectPath } from '@/core/security/safe-redirect-path';
 import { resolveTokenKind, resolveCallbackDestination, resolveCallbackFailureAlert } from './route-helpers';
 
 /** Reserved Supabase param correlating a PKCE callback with its verifier slot. */
