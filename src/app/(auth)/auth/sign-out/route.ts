@@ -4,11 +4,11 @@ import { cookies } from 'next/headers';
 import { getPublicConfig } from '@/core/config/public-config';
 import { createHardenedSupabaseCookieStore, createSupabaseSsrAuthAdapter } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
-import { safeRedirectPath } from '@/core/security/safe-redirect-path';
 import { createNonDisclosingDenial } from '@/core/errors';
 import { renderClearedAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
+import { resolveSignOutDestination } from './route-helpers';
 import { resolveSignOutDestination } from './route-helpers';
 
 function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
