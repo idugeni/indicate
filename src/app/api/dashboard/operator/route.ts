@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -9,19 +8,15 @@ import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
 import { logEvent } from '@/core/observability/logger';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
-import type { AuthorizedTenantActorContext } from '@/core/operation-context';
-import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
-import { isPlatformOnlyWithoutTicket } from '@/core/routing/platform-guard';
-import { fetchCachedAnalytics, fetchCachedDashboard, NextDashboardCacheInvalidator } from '@/modules/dashboard/dashboard-dal';
-import { TenantBusinessService } from '@/modules/dashboard/tenant-business-service';
+import { fetchCachedAnalytics, fetchCachedDashboard } from '@/modules/dashboard/dashboard-dal';
 import { authorizeAiOperatorTool, getAiOperatorTool, listAiOperatorTools } from '@/modules/ai-operator/tool-registry';
 import { MediaService } from '@/modules/publishing/media-service';
 import { PublicationService } from '@/modules/publishing/publication-service';
 import { DrizzlePublishingRepository } from '@/data/repos/publishing/repository';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
 import { UpstashPublicationQueueAdapter } from '@/integrations/redis/upstash-publication-queue';
+import { resolveAiOperatorDashboardContext } from '@/modules/ai-operator/dashboard-context';
 
 const EXECUTABLE_TENANT_TOOL_IDS = new Set([
   'dashboard.overview.read',
@@ -39,57 +34,6 @@ const requestSchema = z.object({
   toolId: z.string().trim().min(1).max(120),
   input: z.unknown(),
 }).strict();
-
-type OperatorContext = {
-  readonly actor: AuthorizedTenantActorContext;
-  readonly service: TenantBusinessService;
-};
-
-async function resolveContext(organizationId: string, requestId: string, headers: Headers): Promise<OperatorContext | null> {
-  const cookieStore = await cookies();
-  const runtimeContext = await getServerRuntimeContext();
-  const runtime = getSharedRuntimeDatabase(runtimeContext.bootstrap);
-  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
-  if (user === null) return null;
-
-  if (user.accessKey !== null) {
-    const actor = user.accessKey.actor;
-    if (actor.organizationId !== organizationId) return null;
-    if (isPlatformOnlyWithoutTicket({
-      orgPermissionCount: actor.permissionSet.size,
-      platformPermissionCount: actor.platformPermissionSet?.size ?? 0,
-      headers,
-    })) return null;
-    return {
-      actor,
-      service: new TenantBusinessService(
-        new DrizzleDashboardRepository(runtime.db),
-        new UuidGenerator(),
-        undefined,
-        undefined,
-        new NextDashboardCacheInvalidator(),
-      ),
-    };
-  }
-
-  const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
-  if (actor === null || isPlatformOnlyWithoutTicket({
-    orgPermissionCount: actor.permissionSet.size,
-    platformPermissionCount: actor.platformPermissionSet?.size ?? 0,
-    headers,
-  })) return null;
-
-  return {
-    actor,
-    service: new TenantBusinessService(
-      new DrizzleDashboardRepository(runtime.db),
-      new UuidGenerator(),
-      undefined,
-      undefined,
-      new NextDashboardCacheInvalidator(),
-    ),
-  };
-}
 
 /**
  * Execute a narrowly allow-listed set of read-only tools using existing dashboard
@@ -150,7 +94,7 @@ async function handlePOST(request: Request) {
     return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   }
 
-  const context = await resolveContext(organizationId, requestId, request.headers);
+  const context = await resolveAiOperatorDashboardContext(organizationId, requestId, request.headers);
   if (context === null) {
     return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   }
@@ -299,7 +243,7 @@ async function handleGET(request: Request) {
     return NextResponse.json(createPublicError('INVALID_INPUT', 'Invalid organization.', requestId), { status: 400 });
   }
 
-  const context = await resolveContext(parsedOrganization.data, requestId, request.headers);
+  const context = await resolveAiOperatorDashboardContext(parsedOrganization.data, requestId, request.headers);
   if (context === null) {
     return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   }
