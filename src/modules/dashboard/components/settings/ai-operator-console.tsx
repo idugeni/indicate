@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { Bot, Play, ShieldCheck } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Bot, Check, Play, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 
 type OperatorStep = { readonly id: string; readonly capabilityId: string; readonly arguments: Record<string, unknown> };
 type OperatorPlan = { readonly steps: readonly OperatorStep[] };
+type ApprovalRecord = { readonly id: string; readonly toolId: string; readonly input: Record<string, unknown>; readonly state: string; readonly expiresAt: string; readonly isRequester: boolean; };
 
 function errorMessage(value: unknown): string {
   if (typeof value !== 'object' || value === null) return 'Permintaan operator gagal.';
@@ -27,6 +28,69 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
   const [results, setResults] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [approvals, setApprovals] = useState<readonly ApprovalRecord[]>([]);
+  const [canReview, setCanReview] = useState(false);
+  const [canRequest, setCanRequest] = useState(false);
+  const [articleId, setArticleId] = useState('');
+  const [siteIds, setSiteIds] = useState('');
+  const [approvalBusy, setApprovalBusy] = useState(true);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const [approvalNotice, setApprovalNotice] = useState<string | null>(null);
+
+  const refreshApprovals = useCallback(async (): Promise<void> => {
+    setApprovalBusy(true); setApprovalError(null);
+    try {
+      const response = await fetch('/api/dashboard/operator/approvals?organizationId=' + encodeURIComponent(organizationId), { cache: 'no-store' });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok || typeof body !== 'object' || body === null) throw new Error(errorMessage(body));
+      const record = body as Record<string, unknown>;
+      if (!Array.isArray(record.approvals)) throw new Error('Respons daftar persetujuan tidak valid.');
+      setApprovals(record.approvals.filter((item): item is ApprovalRecord => typeof item === 'object' && item !== null && typeof (item as Record<string, unknown>).id === 'string') as ApprovalRecord[]);
+      setCanReview(record.canReview === true);
+      setCanRequest(record.canRequest === true);
+    } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : 'Daftar persetujuan gagal dimuat.'); }
+    finally { setApprovalBusy(false); }
+  }, [organizationId]);
+
+  useEffect(() => { void Promise.resolve().then(refreshApprovals); }, [refreshApprovals]);
+
+  async function requestPublicationApproval(): Promise<void> {
+    setApprovalBusy(true); setApprovalError(null); setApprovalNotice(null);
+    try {
+      const input = { articleId: articleId.trim(), siteIds: siteIds.split(/[\n,;]+/).map((value) => value.trim()).filter(Boolean), idempotencyKey: globalThis.crypto.randomUUID(), options: {}, overrides: {} };
+      const response = await fetch('/api/dashboard/operator/approvals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ organizationId, action: 'request', toolId: 'publishing.delivery.request', input, idempotencyKey: input.idempotencyKey }) });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(errorMessage(body));
+      setApprovalNotice('Permintaan publikasi dikirim untuk persetujuan.');
+      await refreshApprovals();
+    } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : 'Permintaan persetujuan gagal dibuat.'); }
+    finally { setApprovalBusy(false); }
+  }
+
+  async function executeApproved(approval: ApprovalRecord): Promise<void> {
+    setApprovalBusy(true); setApprovalError(null); setApprovalNotice(null);
+    try {
+      const response = await fetch('/api/dashboard/operator', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ organizationId, toolId: approval.toolId, input: approval.input, approvalId: approval.id }) });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(errorMessage(body));
+      setApprovalNotice('Permintaan publikasi diterima oleh executor.');
+      setResults(body);
+      await refreshApprovals();
+    } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : 'Eksekusi publikasi gagal.'); }
+    finally { setApprovalBusy(false); }
+  }
+
+  async function decideApproval(approvalId: string, decision: 'approved' | 'rejected'): Promise<void> {
+    setApprovalBusy(true); setApprovalError(null); setApprovalNotice(null);
+    try {
+      const response = await fetch('/api/dashboard/operator/approvals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ organizationId, action: 'decide', approvalId, decision }) });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(errorMessage(body));
+      setApprovalNotice(decision === 'approved' ? 'Permintaan disetujui. Perintah tidak dijalankan otomatis.' : 'Permintaan ditolak.');
+      await refreshApprovals();
+    } catch (cause) { setApprovalError(cause instanceof Error ? cause.message : 'Keputusan persetujuan gagal disimpan.'); }
+    finally { setApprovalBusy(false); }
+  }
 
   async function submit(action: 'operator-plan' | 'operator-execute'): Promise<void> {
     setBusy(true);
@@ -104,6 +168,23 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
             {plan.steps.map((step) => <li key={step.id}><code>{step.capabilityId}</code></li>)}
           </ol>
         </div> : null}
+        <div className="space-y-3 rounded-md border border-hairline p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="m-0 text-sm font-medium text-paper">Persetujuan AI Operator</p><p className="m-0 text-xs text-paper-dim">Persetujuan dicatat terpisah dan tidak menjalankan perintah otomatis.</p></div><Button type="button" size="sm" variant="outline" onClick={() => void refreshApprovals()} disabled={approvalBusy}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Muat ulang</Button></div>
+          {approvalError ? <FormNotice tone="error">{approvalError}</FormNotice> : null}
+          {approvalNotice ? <FormNotice tone="success">{approvalNotice}</FormNotice> : null}
+          {canRequest ? <div className="grid gap-2 rounded-md bg-bg p-3">
+            <p className="m-0 text-xs font-medium text-paper">Ajukan distribusi artikel</p>
+            <label className="grid gap-1 text-xs text-paper-dim">ID artikel
+              <input value={articleId} onChange={(event) => setArticleId(event.currentTarget.value)} placeholder="UUID artikel" className="rounded-md border border-hairline bg-bg-raised px-2 py-2 text-sm text-paper" disabled={approvalBusy} />
+            </label>
+            <label className="grid gap-1 text-xs text-paper-dim">ID situs tujuan (pisahkan dengan koma atau baris baru)
+              <textarea value={siteIds} onChange={(event) => setSiteIds(event.currentTarget.value)} placeholder="UUID situs tujuan" rows={2} className="rounded-md border border-hairline bg-bg-raised px-2 py-2 text-sm text-paper" disabled={approvalBusy} />
+            </label>
+            <div><Button type="button" size="sm" onClick={() => void requestPublicationApproval()} disabled={approvalBusy || articleId.trim().length === 0 || siteIds.trim().length === 0}>Ajukan persetujuan</Button></div>
+          </div> : null}
+          {approvals.length === 0 && !approvalBusy ? <p className="m-0 text-xs text-paper-dim">Belum ada permintaan persetujuan yang dapat ditampilkan.</p> : null}
+          <ul className="m-0 space-y-2 p-0">{approvals.map((approval) => <li key={approval.id} className="list-none rounded-md border border-hairline p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 space-y-1"><code className="break-all text-xs text-paper">{approval.toolId}</code><p className="m-0 text-xs text-paper-dim">Status: {approval.state} · Kedaluwarsa: {new Date(approval.expiresAt).toLocaleString()}</p><pre className="max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-bg p-2 text-[11px] text-paper-dim">{JSON.stringify(approval.input, null, 2)}</pre></div><div className="flex shrink-0 flex-wrap gap-2">{canReview && approval.state === 'pending' ? <><Button type="button" size="sm" onClick={() => void decideApproval(approval.id, 'approved')} disabled={approvalBusy}><Check className="mr-1 h-3.5 w-3.5" /> Setujui</Button><Button type="button" size="sm" variant="destructive" onClick={() => void decideApproval(approval.id, 'rejected')} disabled={approvalBusy}><X className="mr-1 h-3.5 w-3.5" /> Tolak</Button></> : null}{approval.isRequester && approval.toolId === 'publishing.delivery.request' && approval.state === 'approved' ? <Button type="button" size="sm" onClick={() => void executeApproved(approval)} disabled={approvalBusy}>Jalankan yang disetujui</Button> : null}</div></div></li>)}</ul>
+        </div>
         {results !== null ? <pre className="max-h-80 overflow-auto rounded-md border border-hairline bg-bg p-3 text-xs text-paper-dim">{JSON.stringify(results, null, 2)}</pre> : null}
         {busy ? <p role="status" className="m-0 text-xs text-paper-dim">Memproses permintaan…</p> : null}
       </CardContent>

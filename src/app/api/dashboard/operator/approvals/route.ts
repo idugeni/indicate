@@ -57,8 +57,11 @@ async function handleGET(request: Request) {
 
   return NextResponse.json({
     organizationId: organizationId.data,
+    canReview,
+    canRequest: context.actor.permissionSet.has('publishing.request'),
     approvals: rows.map((row) => ({
       id: row.id,
+      isRequester: row.requesterActorId === context.actor.actorId,
       requesterActorId: row.requesterActorId,
       approverActorId: row.approverActorId,
       toolId: row.toolId,
