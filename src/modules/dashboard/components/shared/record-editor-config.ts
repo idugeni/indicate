@@ -7,7 +7,7 @@ import { SOCIAL_FIELD_DEFS, SOCIAL_ORDER } from '@/modules/site/company-contact'
 import { ARTICLE_TYPES, articleTypeLabel } from '@/modules/site/article-type';
 
 /**
- * Generic record-editor configuration registry for DataView.
+ * Shared field and lookup configuration for domain-specific dashboard editors.
  *
  * Each entry maps one collection key from the workspace API response
  * (`GET /api/dashboard/workspace`) to the already-available update action in
@@ -20,7 +20,7 @@ import { ARTICLE_TYPES, articleTypeLabel } from '@/modules/site/article-type';
  * - `articleSites`, `media`, `jobs`, `targets`, `auditLogs` — read-only or
  *   managed by dedicated forms (ArticleCreateForm/ArticleDistributeForm/PublishingForm/MediaForm).
  * - Integrations endpoint collections (`apiKeys`, `subscription`)
- *   use a different command path, not yet covered by workspace commands in DataView.
+ *   use a different command path, not yet covered by the shared workspace command contract.
  */
 
 export type EditorFieldKind = 'text' | 'textarea' | 'select' | 'checkbox' | 'checklist' | 'static';

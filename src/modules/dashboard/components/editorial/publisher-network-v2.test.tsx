@@ -42,7 +42,7 @@ describe('PublisherNetworkV2', () => {
     setup(undefined, onFilterApply);
     fireEvent.change(screen.getByRole('textbox', { name: /Cari publisher/i }), { target: { value: ' Radar ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cari' }));
-    expect(onFilterApply).toHaveBeenCalledWith('Radar');
+    expect(onFilterApply).toHaveBeenCalledWith('&search=Radar');
   });
 
   it('menggunakan command production untuk approval dengan optimistic version', async () => {

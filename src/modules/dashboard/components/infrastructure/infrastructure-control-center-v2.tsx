@@ -11,6 +11,7 @@ import { SiteSettingsForm } from '@/modules/dashboard/components/infrastructure/
 import { CachePurgeForm } from '@/modules/dashboard/components/infrastructure/cache-purge-form';
 import { AccessManagementForm } from '@/modules/dashboard/components/infrastructure/access-management-form';
 import type { DashboardCommand } from '@/modules/dashboard/command';
+import { DashboardV2FilterBar } from '@/modules/dashboard/components/dashboard-v2-filter-bar';
 
 type InfrastructureData = {
   readonly domains?: readonly unknown[];
@@ -34,10 +35,12 @@ export function InfrastructureControlCenterV2({
   data,
   command,
   organizationId,
+  onFilterApply,
 }: {
   readonly data: unknown;
   readonly command: DashboardCommand;
   readonly organizationId: string;
+  readonly onFilterApply?: (query: string) => void;
 }) {
   const [focus, setFocus] = useState<(typeof areas)[number]['id']>('topology');
 
@@ -68,6 +71,8 @@ export function InfrastructureControlCenterV2({
           <ShieldCheck className="h-3 w-3" aria-hidden="true" /> Existing command contracts
         </Badge>
       </header>
+
+      {onFilterApply ? <DashboardV2FilterBar view="configuration" data={data} onApply={onFilterApply} /> : null}
 
       <section aria-label="Ringkasan infrastruktur" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[

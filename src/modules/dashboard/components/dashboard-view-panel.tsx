@@ -3,13 +3,15 @@
 import { memo } from 'react';
 import dynamic from 'next/dynamic';
 import { parseAsString, useQueryState } from 'nuqs';
-import { X } from 'lucide-react';
+import { SearchX, X } from 'lucide-react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { DataView } from '@/modules/dashboard/components/data-view';
-import { FilterControls } from '@/modules/dashboard/components/filter-controls';
+import { DashboardV2CommandCenter } from '@/modules/dashboard/components/dashboard-v2-command-center';
+import { NetworkIntelligenceV2 } from '@/modules/dashboard/components/analytics/network-intelligence-v2';
+import { isAnalyticsProjection } from '@/modules/dashboard/components/data-view-format';
+import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import {
   DashboardFormsGridSkeleton,
@@ -17,10 +19,7 @@ import {
   DashboardSplitFormSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
-import {
-  VIEW_REGISTRY,
-  VIEWS_WITHOUT_RAW_COLLECTIONS,
-} from '@/modules/dashboard/components/view-registry';
+import { VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 
 const InfrastructureControlCenterV2 = dynamic(
@@ -144,29 +143,16 @@ const AdsControlCenterV2 = dynamic(
     })),
   { loading: () => <DashboardViewSkeleton view="ads" /> },
 );
-/** Views whose payload the server filters from the query string, so `FilterControls` owns real inputs there. */
-const SERVER_FILTER_VIEWS: ReadonlySet<View> = new Set<View>([
-  'analytics',
-  'audit',
-  'configuration',
-  'publishers',
-]);
-
-function hasServerFilters(view: View): boolean {
-  return SERVER_FILTER_VIEWS.has(view);
-}
-
 /**
- * Render the active dashboard view: page header, error notice, filters, the
- * view's own panel, and its raw collections.
+ * Render the active dashboard view through its dedicated V2 surface, with
+ * shared error handling and server-filter callbacks.
  *
  * @remarks
  * Memoized on purpose. The active view is by far the largest subtree in the
  * dashboard (roughly 1,500 DOM nodes of charts and tables once data lands), and
  * the workspace re-renders on every unrelated state change: the busy flag
  * around a refresh, the collapsed sidebar, the org switch handshake. Callers
- * therefore pass `showSkeleton` instead of `busy`, so a refresh that already has
- * data leaves every prop identical and this subtree bails out entirely.
+ * so refreshes that already have data leave the expensive V2 surface stable.
  */
 const DashboardViewPanel = memo(function DashboardViewPanel({
   view,
@@ -175,12 +161,9 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   organizationId,
   permissions,
   error,
-  showSkeleton,
-  currentPage,
   command,
   onDismissError,
   onFilterApply,
-  onPageChange,
   onRefresh,
   onSelectView,
   auditNextCursor,
@@ -196,13 +179,9 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly organizationId: string;
   readonly permissions: ReadonlySet<string>;
   readonly error: string | null;
-  /** True only while the first payload for this scope is still in flight. */
-  readonly showSkeleton: boolean;
-  readonly currentPage: number;
   readonly command: DashboardCommand;
   readonly onDismissError: () => void;
   readonly onFilterApply: (query: string) => void;
-  readonly onPageChange: (page: number) => void;
   readonly onRefresh: () => void;
   readonly onSelectView: (view: View) => void;
   readonly auditNextCursor?: string | null | undefined;
@@ -239,16 +218,39 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
       <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1500px]">
           <PanelErrorBoundary name="Dashboard V2">
-            <DataView
-              view={view}
-              displayName={displayName}
-              data={data}
-              currentPage={currentPage}
-              onPageChange={onPageChange}
-              onRefresh={onRefresh}
-              command={command}
-              onSelectView={onSelectView}
-            />
+            {data === null || data === undefined ? <DashboardViewSkeleton view="dashboard" /> : (() => {
+              const source = typeof data === 'object' && data !== null
+                ? data as Record<string, unknown>
+                : {};
+              const jobs = typeof source.jobsByState === 'object' && source.jobsByState !== null
+                ? source.jobsByState as Record<string, unknown>
+                : {};
+              const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0;
+              return (
+                <DashboardV2CommandCenter
+                  displayName={displayName}
+                  dashboard={{
+                    activeDomains: number(source.activeDomains),
+                    activeSubdomains: number(source.activeSubdomains),
+                    activeSites: number(source.activeSites),
+                    activeArticles: number(source.activeArticles),
+                    archivedArticles: number(source.archivedArticles),
+                    jobsByState: {
+                      queued: number(jobs.queued),
+                      processing: number(jobs.processing),
+                      published: number(jobs.published),
+                      failed: number(jobs.failed),
+                      retrying: number(jobs.retrying),
+                      unpublished: number(jobs.unpublished),
+                    },
+                    successfulSiteOutcomes: number(source.successfulSiteOutcomes),
+                    failedSiteOutcomes: number(source.failedSiteOutcomes),
+                  }}
+                  analytics={isAnalyticsProjection(source.analytics) ? source.analytics : null}
+                  onSelectView={onSelectView}
+                />
+              );
+            })()}
           </PanelErrorBoundary>
         </div>
       </main>
@@ -283,11 +285,19 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           </Alert>
         ) : null}
 
-        {hasServerFilters(view) ? (
-          <FilterControls view={view} data={data} onApply={onFilterApply} />
-        ) : null}
-
         <PanelErrorBoundary key={`forms:${organizationId}:${view}`} name={metadata.title}>
+          {view === 'analytics' ? (
+            isAnalyticsProjection(data) ? (
+              <NetworkIntelligenceV2 data={data} onFilterApply={onFilterApply} />
+            ) : (
+              <EmptyState
+                title="Telemetry belum siap ditampilkan"
+                description="Respons analitik belum memenuhi kontrak data V2. Muat ulang untuk mengambil proyeksi yang valid; data mentah tidak ditampilkan sebagai pengganti."
+                icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
+                action={<Button type="button" variant="outline" onClick={onRefresh}>Muat ulang analitik</Button>}
+              />
+            )
+          ) : null}
           {view === 'publishers' ? (
             <PublisherNetworkV2
               data={data}
@@ -333,6 +343,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               data={data}
               command={command}
               organizationId={organizationId}
+              onFilterApply={onFilterApply}
             />
           ) : null}
           {view === 'media' ? (
@@ -356,6 +367,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               data={data}
               auditNextCursor={auditNextCursor}
               onLoadMoreAudit={onLoadMoreAudit}
+              onFilterApply={onFilterApply}
             />
           ) : null}
           {view === 'operations' ? <SystemOperationsV2 data={data} /> : null}
@@ -369,32 +381,9 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           ) : null}
           {view === 'content' ? <PublicWebContentV2 /> : null}
         </PanelErrorBoundary>
-
-        {VIEWS_WITHOUT_RAW_COLLECTIONS.has(view) ? null : showSkeleton ? (
-          <DashboardViewSkeleton view={view} />
-        ) : (
-          <PanelErrorBoundary
-            key={`data:${organizationId}:${view}`}
-            name={`${metadata.title} — data`}
-          >
-            <DataView
-              view={view}
-              displayName={displayName}
-              data={data}
-              currentPage={currentPage}
-              onPageChange={onPageChange}
-              onRefresh={onRefresh}
-              command={command}
-              onSelectView={onSelectView}
-              organizationId={organizationId}
-              auditNextCursor={auditNextCursor}
-              onLoadMoreAudit={onLoadMoreAudit}
-            />
-          </PanelErrorBoundary>
-        )}
       </div>
     </main>
   );
 });
 
-export { DashboardViewPanel, VIEWS_WITHOUT_RAW_COLLECTIONS };
+export { DashboardViewPanel };

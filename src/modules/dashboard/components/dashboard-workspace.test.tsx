@@ -164,7 +164,8 @@ describe('Dashboard workspace', () => {
     act(() => setViewExternal?.('publishers'));
     expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
     releasePublishers();
-    expect(await screen.findByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    expect((await screen.findAllByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('table')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
   });
 

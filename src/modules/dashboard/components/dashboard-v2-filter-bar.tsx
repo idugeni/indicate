@@ -22,7 +22,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { View } from '@/modules/dashboard/components/dashboard-types';
 import { presetRange, type RangePreset } from '@/modules/dashboard/components/shared/dashboard-dates';
 
-export interface FilterControlsProps {
+export interface DashboardV2FilterBarProps {
   readonly view: View;
   readonly data: unknown;
   readonly onApply: (query: string) => void;
@@ -32,16 +32,10 @@ interface ReferenceModel {
   readonly regions?: readonly { readonly id: string; readonly name: string }[];
   readonly sites?: readonly { readonly id: string; readonly normalizedHostname: string }[];
   readonly categories?: readonly { readonly id: string; readonly name: string }[];
-  readonly publishers?: readonly { readonly id: string; readonly name: string }[];
   readonly authors?: readonly { readonly id: string; readonly displayName: string }[];
-  readonly affiliations?: readonly { readonly id: string; readonly institutionName: string }[];
   readonly siteTotal?: number;
   readonly siteTotalInScope?: number;
   readonly siteSearch?: string | null;
-  readonly affiliationTotal?: number;
-  readonly affiliationTotalInScope?: number;
-  readonly affiliationRowTotal?: number;
-  readonly affiliationSearch?: string | null;
 }
 
 function configurationCountNote(model: ReferenceModel | null): string | null {
@@ -55,26 +49,6 @@ function configurationCountNote(model: ReferenceModel | null): string | null {
       ? `Menampilkan ${listed.toLocaleString('id-ID')} dari ${inScope.toLocaleString('id-ID')} portal`
       : `Pencarian “${search}” · ${matched.toLocaleString('id-ID')} dari ${inScope.toLocaleString('id-ID')} portal`;
   return matched > listed ? `${head} · gunakan pencarian untuk membuka sisanya.` : head;
-}
-
-function publisherCountNote(model: ReferenceModel | null): string | null {
-  if (model === null || model.affiliations === undefined) return null;
-  const listed = model.affiliations.length;
-  const matched = model.affiliationTotal ?? listed;
-  const total = model.affiliationTotalInScope ?? matched;
-  const rows = model.affiliationRowTotal;
-  const search = model.affiliationSearch ?? null;
-  const head =
-    search === null
-      ? `${total.toLocaleString('id-ID')} klaim institusi, satu baris per klaim`
-      : `Pencarian “${search}” · ${matched.toLocaleString('id-ID')} dari ${total.toLocaleString('id-ID')} klaim`;
-  const portals =
-    rows === undefined
-      ? null
-      : `Setiap klaim disimpan sekali per portal, jadi ${rows.toLocaleString('id-ID')} baris di database.`;
-  return matched > listed
-    ? `${head} · gunakan pencarian untuk membuka sisanya.`
-    : [head, portals].filter((part) => part !== null).join(' · ');
 }
 
 function isoDayStart(date: Date): string {
@@ -139,7 +113,7 @@ const PRESET_OPTIONS: readonly { readonly key: RangePreset; readonly label: stri
   { key: '30-days', label: '30 Hari Terakhir' },
 ];
 
-export function FilterControls({ view, data, onApply }: FilterControlsProps) {
+export function DashboardV2FilterBar({ view, data, onApply }: DashboardV2FilterBarProps) {
   const portalInputId = useId();
   const actorInputId = useId();
   const actionInputId = useId();
@@ -156,14 +130,13 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
 
   const model = data as ReferenceModel | null;
   const portalCount = view === 'configuration' ? configurationCountNote(model) : null;
-  const publisherCount = view === 'publishers' ? publisherCountNote(model) : null;
-  const countNote = publisherCount ?? portalCount;
+  const countNote = portalCount;
 
   const activeFilterCount = useMemo(() => {
     if (view === 'analytics') {
       return (fromDate !== undefined ? 1 : 0) + (toDate !== undefined ? 1 : 0);
     }
-    if (view === 'configuration' || view === 'publishers') {
+    if (view === 'configuration') {
       return searchTerm.trim() !== '' ? 1 : 0;
     }
     if (view === 'audit') {
@@ -194,7 +167,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
 
     const params = new URLSearchParams();
 
-    if (view === 'configuration' || view === 'publishers') {
+    if (view === 'configuration') {
       const cleanSearch = searchTerm.trim();
       if (cleanSearch !== '') params.set('search', cleanSearch);
     } else if (view === 'audit') {
@@ -270,13 +243,13 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
         className="flex flex-col gap-3"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          {view === 'configuration' || view === 'publishers' ? (
+          {view === 'configuration' ? (
             <div className="flex flex-1 min-w-0 flex-col gap-1.5">
               <Label
                 htmlFor={portalInputId}
                 className="font-mono text-xs uppercase tracking-wider text-paper-dim"
               >
-                {view === 'publishers' ? 'Pencarian Institusi / Portal' : 'Pencarian Portal'}
+                Pencarian Portal
               </Label>
               <div className="relative flex items-center">
                 <Search className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-paper-dim" />
@@ -285,11 +258,7 @@ export function FilterControls({ view, data, onApply }: FilterControlsProps) {
                   name="search"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder={
-                    view === 'publishers'
-                      ? 'Cari nama rutan, lapas, atau subdomain...'
-                      : 'Cari hostname portal (mis. wonosobo.domainanda.id)...'
-                  }
+                  placeholder="Cari hostname portal (mis. wonosobo.domainanda.id)..."
                   className="h-9 rounded-md border-hairline-strong bg-bg pl-9 pr-8 font-mono text-xs text-paper placeholder:font-sans placeholder:text-paper-dim/50 hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
                 />
                 {searchTerm !== '' && (
