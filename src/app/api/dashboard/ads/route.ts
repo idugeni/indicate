@@ -10,7 +10,7 @@ import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAdsRepository } from '@/data/repos/ads';
 import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage';
-import { AD_CREATIVE_UPLOAD_MAX_BYTES, type AdCreativeUploadStorage } from '@/modules/ads/ads-upload';
+import { AD_CREATIVE_UPLOAD_MAX_BYTES } from '@/modules/ads/ads-upload';
 import { AdsService } from '@/modules/ads/ads-service';
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
