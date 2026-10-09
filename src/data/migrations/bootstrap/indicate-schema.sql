@@ -291,7 +291,7 @@
 --   275  20261006090000_cross_org_bridge_urls  ledger sha256:2b926d198c1067803ab6bc114225844bc888abf034586afa5869289537cc8749
 --   276  20261006100000_own_bridge_reads  ledger sha256:7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea
 --   277  20261006110000_articles_tags_gin_single  ledger sha256:ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6
---   278  20261009120000_ai_operator_approvals  ledger sha256:212c27bf1ee232f47ccfe18ee06780d4866d3899645894b8857fc93aedb3c1aa
+--   278  20261009120000_ai_operator_approvals  ledger sha256:cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1
 
 BEGIN;
 
@@ -23057,8 +23057,15 @@ CREATE TABLE public.ai_operator_approvals (
 CREATE UNIQUE INDEX ai_operator_approvals_idempotency_unique ON public.ai_operator_approvals (organization_id, requester_actor_id, idempotency_key);
 CREATE INDEX ai_operator_approvals_org_state_created_idx ON public.ai_operator_approvals (organization_id, state, created_at DESC);
 CREATE INDEX ai_operator_approvals_expiry_idx ON public.ai_operator_approvals (state, expires_at);
+INSERT INTO public.permission_definitions(scope, name, description, sort_order)
+VALUES ('organization', 'ai_operator.approve', 'Approve or reject AI Operator commands for this organization.', 900)
+ON CONFLICT (scope, name) DO UPDATE SET description = EXCLUDED.description;
+INSERT INTO public.permissions(id, organization_id, name, scope, description)
+SELECT gen_random_uuid(), o.id, 'ai_operator.approve', 'organization', 'Approve or reject AI Operator commands for this organization.'
+FROM public.organizations AS o
+ON CONFLICT DO NOTHING;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (277, 'ai_operator_approvals', 'sha256:e5865bcc83dfd1e06797d7508f54e4398f1689534877138c53105129044873ca');
+VALUES (277, 'ai_operator_approvals', 'sha256:447f898ab308a00a1cb1601fe2f807cf7fcf6c99d3e663de3f98e11e5472a967');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('212c27bf1ee232f47ccfe18ee06780d4866d3899645894b8857fc93aedb3c1aa', 1791547200000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1', 1791547200000);
 COMMIT;
