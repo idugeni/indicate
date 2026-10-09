@@ -75,6 +75,12 @@ describe('Taxonomy Control Center V2', () => {
     expect(command).not.toHaveBeenCalled();
   });
 
+  it('shows loading skeletons while the dashboard payload is unresolved', () => {
+    render(<TaxonomyControlCenterV2 data={null} command={command} />);
+    expect(screen.getByRole('status', { name: 'Memuat Taxonomy Studio' })).toBeDefined();
+    expect(screen.queryByText('Belum ada kategori')).toBeNull();
+  });
+
   it('handles empty or malformed snapshots without inventing taxonomy rows', () => {
     render(
       <TaxonomyControlCenterV2 data={{ categories: null, tags: 'invalid' }} command={command} />,
