@@ -173,4 +173,4 @@ Automated code and CI gates are green. The remaining evidence is specifically ru
 3. Exercise external provider and publication delivery outcomes only in an approved non-production environment with valid credentials.
 4. Record screenshots/results and any defects from those scenarios; add regression tests and rerun the full gate for any fixes.
 
-No production data writes, schema migrations, production deployment, or merge to `main` were performed. PR #53 remains open and draft until the remaining runtime evidence is recorded. Do not describe browser, tenant-isolation, or live external-provider verification as passed based on unit tests or CI alone.
+This audit itself did not perform production data writes, schema migrations, or a production deployment. PR #53 was subsequently merged; see its [merged PR record](https://github.com/idugeni/indicate/pull/53). Do not describe browser, tenant-isolation, or live external-provider verification as passed based on unit tests or CI alone.
