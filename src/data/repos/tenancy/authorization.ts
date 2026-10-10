@@ -42,8 +42,8 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
         let cursorCreatedAt: string | null = null;
         let cursorId: string | null = null;
         while (true) {
-          const allRows: { id: string; name: string; status: string; created_at: Date | string }[] = await transaction.execute<{ id: string; name: string; status: string; created_at: Date | string }>(sql`
-            SELECT id, name, status, created_at
+          const allRows: { id: string; name: string; status: string; created_at_cursor: string }[] = await transaction.execute<{ id: string; name: string; status: string; created_at_cursor: string }>(sql`
+            SELECT id, name, status, created_at::text AS created_at_cursor
             FROM indicate_private.customer_list(
               ${localUser.id}::uuid, 1000,
               ${cursorCreatedAt}::timestamptz,
@@ -58,9 +58,9 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
             allOrganizations.push(...activeRows);
           }
           if (allRows.length < 1000) break;
-          const last: { id: string; created_at: Date | string } | undefined = allRows[allRows.length - 1];
+          const last: { id: string; created_at_cursor: string } | undefined = allRows[allRows.length - 1];
           if (last === undefined) break;
-          cursorCreatedAt = last.created_at instanceof Date ? last.created_at.toISOString() : new Date(last.created_at).toISOString();
+          cursorCreatedAt = last.created_at_cursor;
           cursorId = last.id;
         }
         return allOrganizations;
