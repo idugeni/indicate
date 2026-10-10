@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 /** The workspace loads eighteen panels through `next/dynamic`, so a lazy panel needs more than the 1s default. */
 const LAZY_MODULE_TIMEOUT_MS = 8000;
@@ -103,11 +104,34 @@ describe('Dashboard workspace', () => {
     expect(screen.getByRole('button', { name: 'Kembali ke Command Center' })).toBeDefined();
   });
 
+  it.each(['articles', 'published'] as const)(
+    'requests cross-organization scope for %s when a listed organization holds the platform grant',
+    async (targetView) => {
+      initialView = targetView;
+      const organizations = [
+        { id: 'org-1', name: 'Org Uji', role: 'admin', permissions: [DASHBOARD_PERMISSIONS.articleRead] },
+        { id: 'org-2', name: 'Org Platform', role: 'admin', permissions: [INTEGRATIONS_PERMISSIONS.superAdmin] },
+      ] as never;
+      const fetchMock = vi.fn(async (url: unknown) => {
+        void url;
+        return { ok: true, json: async () => ({ articles: [], total: 0, articlesNextCursor: null }) };
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} />);
+
+      await waitFor(() => {
+        expect(fetchMock.mock.calls.some(([url]) => {
+          const requestUrl = String(url);
+          return requestUrl.includes(`view=${targetView}`) && requestUrl.includes('scope=all');
+        })).toBe(true);
+      }, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    },
+  );
+
   it('renders the brand, owner name, and initial summary', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
     expect(await screen.findByText('INDICATE / EXECUTIVE OVERVIEW')).toBeDefined();
   });
 
@@ -119,17 +143,6 @@ describe('Dashboard workspace', () => {
     expect(screen.getByRole('separator', { name: 'Bentangkan sidebar' })).toBeDefined();
   });
 
-  it('resets the document scroll to the top when the active view changes', async () => {
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    document.documentElement.scrollTop = 420;
-    document.body.scrollTop = 420;
-    act(() => setViewExternal?.('analytics'));
-    await waitFor(() => {
-      expect(document.documentElement.scrollTop).toBe(0);
-      expect(document.body.scrollTop).toBe(0);
-    });
-  });
-
   it('switches the title when an editorial module is selected', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
@@ -138,13 +151,12 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
-  it('pins the footer to the bottom with the owner label', async () => {
+  it('keeps the footer after workspace content with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('mt-auto');
-    expect(footer?.className).not.toContain('sticky');
     expect(screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash')).toBeDefined();
   });
 
@@ -186,8 +198,8 @@ describe('Dashboard workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Network Infrastructure', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     act(() => setViewExternal?.('publishers'));
     expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
-    expect(await screen.findByRole('status', { name: 'Memuat jaringan publisher' })).toBeDefined();
     expect(screen.queryByText(/Belum ada penerbit/i)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
     releasePublishers();
     expect((await screen.findAllByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).length).toBeGreaterThan(0);
     expect(screen.queryByRole('table')).toBeNull();

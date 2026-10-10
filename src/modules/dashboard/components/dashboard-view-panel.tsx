@@ -14,11 +14,13 @@ import { isAnalyticsProjection } from '@/modules/dashboard/components/data-view-
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import {
+  DashboardFormsGridSkeleton,
   DashboardMediaSkeleton,
+  DashboardSplitFormSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import { canAccessView, VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
-import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
+import type { View } from '@/modules/dashboard/components/dashboard-types';
 
 const InfrastructureControlCenterV2 = dynamic(
   () =>
@@ -46,7 +48,7 @@ const EditorialWorkspaceV2 = dynamic(
     import('@/modules/dashboard/components/editorial/editorial-workspace-v2').then((module) => ({
       default: module.EditorialWorkspaceV2,
     })),
-  { loading: () => <DashboardViewSkeleton view="editorial" /> },
+  { loading: () => <DashboardSplitFormSkeleton /> },
 );
 const AccessIntegrationsV2 = dynamic(
   () =>
@@ -97,7 +99,7 @@ const DistributionControlV2 = dynamic(
     import('@/modules/dashboard/components/publishing/distribution-control-v2').then((module) => ({
       default: module.DistributionControlV2,
     })),
-  { loading: () => <DashboardViewSkeleton view="publishing" /> },
+  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
 );
 const LiveResultsV2 = dynamic(
   () =>
@@ -166,7 +168,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   displayName,
   data,
   organizationId,
-  organizations,
   permissions,
   error,
   command,
@@ -185,7 +186,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly displayName: string;
   readonly data: unknown;
   readonly organizationId: string;
-  readonly organizations: readonly OrganizationOption[];
   readonly permissions: ReadonlySet<string>;
   readonly error: string | null;
   readonly command: DashboardCommand;
@@ -198,10 +198,13 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly articlesNextCursor?: string | null | undefined;
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?:
-    | (() => Promise<{
+    | ((cursor?: string | null) => Promise<{
         readonly loaded: number;
         readonly total: number;
         readonly nextCursor: string | null;
+        readonly articles: readonly unknown[];
+        readonly articleSites: readonly unknown[];
+        readonly bridgePublished: readonly unknown[];
       } | null>)
     | undefined;
   readonly crossOrg?: boolean | undefined;
@@ -217,13 +220,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     'editArticle',
     parseAsString.withOptions({ scroll: false, history: 'replace' }),
   );
-  const [editOwnerOrganizationId, setEditOwnerOrganizationId] = useQueryState(
-    'editOwnerOrganizationId',
-    parseAsString.withOptions({ scroll: false, history: 'replace' }),
-  );
   const exitEdit = () => {
     void setEditArticleId(null);
-    void setEditOwnerOrganizationId(null);
     onSelectView('articles');
   };
 
@@ -362,7 +360,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               command={command}
               organizationId={organizationId}
               editArticleId={editArticleId ?? undefined}
-              editOwnerOrganizationId={editOwnerOrganizationId ?? undefined}
               onExitEdit={exitEdit}
             />
           ) : null}
@@ -382,9 +379,8 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               articlesTotal={articlesTotal}
               onLoadMoreArticles={onLoadMoreArticles}
               crossOrg={crossOrg}
-              onEditArticle={(articleId, ownerOrganizationId) => {
+              onEditArticle={(articleId) => {
                 void setEditArticleId(articleId);
-                void setEditOwnerOrganizationId(ownerOrganizationId ?? null);
                 onSelectView('editorial');
               }}
             />
@@ -398,10 +394,15 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             />
           ) : null}
           {view === 'media' ? (
-            <MediaLibraryV2 data={data} command={command} organizationId={organizationId} organizations={organizations} crossOrg={crossOrg === true} />
+            <MediaLibraryV2 data={data} command={command} organizationId={organizationId} />
           ) : null}
           {view === 'published' ? (
-            <LiveResultsV2 data={data} organizationId={organizationId} />
+            <LiveResultsV2
+              data={data}
+              articlesNextCursor={articlesNextCursor}
+              articlesTotal={articlesTotal}
+              onLoadMoreArticles={onLoadMoreArticles}
+            />
           ) : null}
           {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
           {view === 'settings' ? (

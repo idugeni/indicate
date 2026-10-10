@@ -145,12 +145,10 @@ export function DashboardWorkspace({
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const [crossOrg, setCrossOrg] = useState(() => {
-    const permissions = organizations[0]?.permissions ?? [];
-    return permissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
-  });
+  const crossOrg = useMemo(() => organizations.some((organization) => (organization.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin)), [organizations]);
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
@@ -167,10 +165,14 @@ export function DashboardWorkspace({
   }, []);
 
   const activeOrgRef = useRef(organizationId);
+  const payloadRef = useRef(payload);
   const snapshotConsumedRef = useRef(false);
   useEffect(() => {
     activeOrgRef.current = organizationId;
   }, [organizationId]);
+  useEffect(() => {
+    payloadRef.current = payload;
+  }, [payload]);
 
   const scopeKey = `${organizationId}|${view}|${filterQuery}|${pendingOrgId ?? ''}`;
   const crossOrgScope = crossOrg && (view === 'articles' || view === 'published') ? '&scope=all' : '';
@@ -206,6 +208,7 @@ export function DashboardWorkspace({
   const fetchData = useCallback(
     async (targetView: View, targetOrg: string, query: string, signal?: AbortSignal) => {
       if (!targetOrg) return;
+      setBusy(true);
       setError(null);
 
       const endpoint = resolveApiEndpoint(targetView);
@@ -225,22 +228,9 @@ export function DashboardWorkspace({
         if (activeOrgRef.current !== targetOrg) return;
 
         if (!response.ok && scopeSuffix !== '' && response.status === 403) {
-          const retry = await fetch(
-            `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}`,
-            signal ? { signal } : undefined,
-          );
-          const retryBody = (await retry.json()) as unknown;
           if (activeOrgRef.current !== targetOrg) return;
-          if (!retry.ok) {
-            const apiError = retryBody as ApiErrorResponse;
-            setError(retry.status === 401
-              ? 'Sesi berakhir. Muat ulang lalu masuk kembali.'
-              : (apiError.error?.message ?? 'Server gagal memproses. Coba lagi.'));
-          } else {
-            setPayload({ key: `${targetOrg}|${targetView}|${query}||`, body: retryBody });
-            setCrossOrg(false);
-            toast.info('Akses lintas-org ditolak; menampilkan data organisasi aktif.');
-          }
+          setPayload(null);
+          setError('Akses lintas-organisasi ditolak server. Periksa grant administrator platform sebelum melanjutkan.');
           return;
         }
 
@@ -260,6 +250,10 @@ export function DashboardWorkspace({
         if (activeOrgRef.current === targetOrg) {
           setError('Gagal menghubungi server. Periksa koneksi internet, lalu coba lagi.');
         }
+      } finally {
+        if (activeOrgRef.current === targetOrg) {
+          setBusy(false);
+        }
       }
     },
     [fetchAnalytics, crossOrg]
@@ -269,6 +263,7 @@ export function DashboardWorkspace({
     if (!canAccessView(view, activePermissions)) {
       void Promise.resolve().then(() => {
         setPayload(null);
+        setBusy(false);
         setError(null);
       });
       return;
@@ -298,6 +293,7 @@ export function DashboardWorkspace({
     if (SELF_FETCHING_VIEWS.has(view)) {
       void Promise.resolve().then(() => {
         setPayload(null);
+        setBusy(false);
         setError(null);
       });
       return;
@@ -318,7 +314,6 @@ export function DashboardWorkspace({
       activeOrgRef.current = nextOrgId;
       setOrganizationId(nextOrgId);
       setGeneration((prev) => prev + 1);
-      setCrossOrg((target?.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin));
       toast.success(`Organisasi aktif beralih ke: ${target?.name ?? nextOrgId}`);
     },
     [organizations]
@@ -336,6 +331,7 @@ export function DashboardWorkspace({
 
   const command = useCallback(async (action: string, payload: unknown, options?: { readonly refresh?: boolean | undefined }): Promise<unknown> => {
     const targetOrg = organizationId;
+    setBusy(true);
     setError(null);
 
     const endpoint = resolveApiEndpoint(action);
@@ -382,24 +378,14 @@ export function DashboardWorkspace({
         );
       }
       return null;
+    } finally {
+      if (activeOrgRef.current === targetOrg) {
+        setBusy(false);
+      }
     }
   }, [organizationId, view, filterQuery, fetchData]);
 
   const dismissError = useCallback(() => setError(null), []);
-
-  const resetDashboardScroll = useCallback(() => {
-    if (typeof window !== 'undefined' && !window.navigator.userAgent.toLowerCase().includes('jsdom')) {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    }
-    if (typeof document !== 'undefined') {
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }
-  }, []);
-
-  useEffect(() => {
-    resetDashboardScroll();
-  }, [view, organizationId, resetDashboardScroll]);
 
   const selectView = useCallback((next: View) => {
     setView(next);
@@ -425,43 +411,54 @@ export function DashboardWorkspace({
    * Lookups, tag options, and totals always describe the first page scope;
    * only the row arrays grow.
    */
-  const fetchMoreArticles = useCallback(async (): Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null> => {
+  const fetchMoreArticles = useCallback(async (requestedCursor?: string | null): Promise<{
+    readonly loaded: number; readonly total: number; readonly nextCursor: string | null;
+    readonly articles: readonly unknown[]; readonly articleSites: readonly unknown[]; readonly bridgePublished: readonly unknown[];
+  } | null> => {
     const targetOrg = organizationId;
     const targetView = view;
     const query = filterQuery;
     const scopeSuffix = crossOrg && (targetView === 'articles' || targetView === 'published') ? '&scope=all' : '';
     const key = `${targetOrg}|${targetView}|${query}||${scopeSuffix}`;
-    const current = payload !== null && payload.key === key ? payload.body as {
+    const current = payloadRef.current;
+    const currentBody = current !== null && current.key === key ? current.body as {
       readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number;
       readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[];
     } : null;
-    const cursor = current?.articlesNextCursor ?? null;
+    const cursor = requestedCursor ?? currentBody?.articlesNextCursor ?? null;
     if (cursor === null || articlesMoreInflightRef.current) return null;
     articlesMoreInflightRef.current = true;
+    setBusy(true);
     try {
       const endpoint = resolveApiEndpoint(targetView);
       const response = await fetch(`/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}&limit=50&cursor=${encodeURIComponent(cursor)}${scopeSuffix}`);
-      const body = (await response.json()) as { readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number; readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[] };
+      const body = (await response.json()) as {
+        readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number;
+        readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[];
+      };
       if (!response.ok || activeOrgRef.current !== targetOrg) return null;
-      let merged: { readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null = null;
-      setPayload((previous) => {
-        if (previous === null || previous.key !== key) return previous;
-        const prevBody = previous.body as { readonly articles?: readonly unknown[]; readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[] };
-        const articles = [...(prevBody.articles ?? []), ...(body.articles ?? [])];
-        const articleSites = [...(prevBody.articleSites ?? []), ...(body.articleSites ?? [])];
-        const bridgePublished = [...(prevBody.bridgePublished ?? []), ...(body.bridgePublished ?? [])];
-        const nextCursor = typeof body.articlesNextCursor === 'string' ? body.articlesNextCursor : null;
-        merged = { loaded: articles.length, total: typeof body.total === 'number' ? body.total : articles.length, nextCursor };
-        return { key, body: { ...(body as Record<string, unknown>), articles, articleSites, bridgePublished } };
-      });
+      const previous = payloadRef.current;
+      if (previous === null || previous.key !== key) return null;
+      const previousBody = previous.body as {
+        readonly articles?: readonly unknown[]; readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[];
+      };
+      const articles = [...(previousBody.articles ?? []), ...(body.articles ?? [])];
+      const articleSites = [...(previousBody.articleSites ?? []), ...(body.articleSites ?? [])];
+      const bridgePublished = [...(previousBody.bridgePublished ?? []), ...(body.bridgePublished ?? [])];
+      const nextCursor = typeof body.articlesNextCursor === 'string' ? body.articlesNextCursor : null;
+      const nextPayload = { key, body: { ...(body as Record<string, unknown>), articles, articleSites, bridgePublished } };
+      const merged = { loaded: articles.length, total: typeof body.total === 'number' ? body.total : articles.length, nextCursor, articles, articleSites, bridgePublished };
+      payloadRef.current = nextPayload;
+      setPayload(nextPayload);
       return merged;
     } catch {
       if (activeOrgRef.current === targetOrg) setError('Gagal memuat artikel lebih banyak. Coba lagi.');
       return null;
     } finally {
       articlesMoreInflightRef.current = false;
+      if (activeOrgRef.current === targetOrg) setBusy(false);
     }
-  }, [organizationId, view, filterQuery, payload, crossOrg]);
+  }, [organizationId, view, filterQuery, crossOrg]);
 
   const articlesMore = (() => {
     if ((view !== 'articles' && view !== 'published') || data === null || typeof data !== 'object') {
@@ -492,6 +489,7 @@ export function DashboardWorkspace({
     const cursor = current?.auditNextCursor ?? null;
     if (cursor === null || moreInflightRef.current) return;
     moreInflightRef.current = true;
+    setBusy(true);
     try {
       const response = await fetch(`/api/dashboard/workspace?organizationId=${encodeURIComponent(targetOrg)}&view=audit${query}&limit=100&cursor=${encodeURIComponent(cursor)}`);
       const body = (await response.json()) as { readonly auditLogs?: readonly unknown[]; readonly auditNextCursor?: string | null };
@@ -505,6 +503,7 @@ export function DashboardWorkspace({
       if (activeOrgRef.current === targetOrg) setError('Gagal memuat riwayat lebih lama. Coba lagi.');
     } finally {
       moreInflightRef.current = false;
+      if (activeOrgRef.current === targetOrg) setBusy(false);
     }
   }, [organizationId, view, filterQuery, payload]);
 
@@ -530,7 +529,7 @@ export function DashboardWorkspace({
           onOrganizationSwitchFailed={handleSwitchFailed}
         />
 
-        <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 flex-none items-center gap-3 border-b border-white/[0.07] bg-[#080d1a]/90 px-4 backdrop-blur-xl sm:px-6">
           <Button
             type="button"
@@ -570,6 +569,15 @@ export function DashboardWorkspace({
               </span>
               <LiveClock />
             </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy || SELF_FETCHING_VIEWS.has(view)}
+              onClick={refreshActiveView}
+            >
+              <span>{busy ? 'Memuat…' : 'Refresh'}</span>
+            </Button>
           </div>
         </header>
 
@@ -668,7 +676,6 @@ export function DashboardWorkspace({
           displayName={displayName}
           data={data}
           organizationId={organizationId}
-          organizations={organizations}
           permissions={activePermissions}
           error={error}
           command={command}
