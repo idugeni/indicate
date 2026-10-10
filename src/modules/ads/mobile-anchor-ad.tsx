@@ -4,21 +4,20 @@ import { useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 /**
- * Jangkar iklan bawah khusus ponsel: menempel saat menggulir, bisa ditutup.
+ * Iklan khusus ponsel yang tetap berada di alur dokumen, bukan menempel
+ * pada viewport saat pengguna menggulir.
  *
  * @param children - Slot iklan khusus ponsel (mis. `mobile-banner`).
- * @returns Bilah selebar viewport di ponsel; null setelah ditutup atau di desktop/cetak.
- * @remarks Sticky (bukan fixed) agar bilah menyisakan ruang alir di akhir
- * halaman dan tidak menutup footer; margin ritme slot dinetralkan di sini.
- * Bilah sengaja selebar viewport; tombol tutup di dalam pojok kanan atas
- * penempatan. Tombol back-to-top tetap di posisinya dan boleh tertutup
- * sementara — tampil normal lagi setelah jangkar ditutup.
+ * @returns Slot iklan inline di ponsel; null setelah ditutup atau di desktop/cetak.
+ * @remarks Jangan gunakan sticky/fixed positioning di sini: bar yang kosong
+ * atau lambat diisi provider dapat menutupi konten dan tampak sebagai pita
+ * menetap di bagian bawah layar saat scrolling.
  */
 export function MobileAnchorAd({ children }: { readonly children: ReactNode }) {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
   return (
-    <div className="sticky inset-x-0 bottom-0 z-40 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden print:hidden">
+    <div className="relative w-full min-w-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden print:hidden">
       <div className="relative mx-auto w-full min-w-0 [&_[data-ad-slot]]:my-0">
         <button
           type="button"
