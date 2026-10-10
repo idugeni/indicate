@@ -7,6 +7,40 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  it('menerbitkan tagihan dengan UPT, nominal, jatuh tempo, dan keterangan yang dipilih', async () => {
+    const requests: Array<{ url: string; body?: Record<string, unknown> }> = [];
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string, init?: RequestInit) => {
+        const url = String(input);
+        requests.push({ url, ...(init?.body ? { body: JSON.parse(String(init.body)) as Record<string, unknown> } : {}) });
+        if (url.includes('subscription-state')) return { ok: true, json: async () => ({ state: 'active' }) };
+        if (url.includes('scope=invoices')) return { ok: true, json: async () => [] };
+        if (url.includes('view=customers')) return { ok: true, json: async () => [{ customer: { id: 'org-1', name: 'UPT Kendal', slug: 'upt-kendal' } }] };
+        return { ok: true, json: async () => ({ id: 'invoice-new' }) };
+      }),
+    );
+    render(<MonetizationControlCenterV2 organizationId="org-1" permissions={['platform.super_admin']} />);
+    await screen.findByText('Platform Actions');
+    const organizationInput = screen.getByPlaceholderText('Pilih organisasi…');
+    fireEvent.click(organizationInput);
+    fireEvent.change(organizationInput, { target: { value: 'UPT Kendal' } });
+    fireEvent.click(await screen.findByText(/UPT Kendal/));
+    fireEvent.change(screen.getByLabelText('Nominal (IDR)'), { target: { value: '725000' } });
+    fireEvent.change(screen.getByLabelText('Tanggal jatuh tempo'), { target: { value: '2030-10-31' } });
+    fireEvent.change(screen.getByLabelText('Keterangan / periode layanan'), { target: { value: 'Layanan UPT — Oktober 2030' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Terbitkan tagihan' }));
+    await waitFor(() => expect(requests.some((request) => request.body?.action === 'invoice.issue')).toBe(true));
+    const issue = requests.find((request) => request.body?.action === 'invoice.issue');
+    expect(issue?.body?.payload).toMatchObject({
+      organizationId: 'org-1',
+      amountIdr: 725000,
+      billingNote: 'Layanan UPT — Oktober 2030',
+    });
+    expect((issue?.body?.payload as { dueAt: string }).dueAt).toContain('2030-10-31');
+  });
+
 });
 
 function stub(state = 'active', invoices: unknown[] = []) {
@@ -16,7 +50,7 @@ function stub(state = 'active', invoices: unknown[] = []) {
       const url = String(input);
       if (url.includes('subscription-state')) return { ok: true, json: async () => ({ state }) };
       if (url.includes('scope=invoices')) return { ok: true, json: async () => invoices };
-      if (url.includes('view=customers')) return { ok: true, json: async () => [] };
+      if (url.includes('view=customers')) return { ok: true, json: async () => [{ customer: { id: 'org-1', name: 'UPT Kendal', slug: 'upt-kendal' } }] };
       return { ok: true, json: async () => ({}) };
     }),
   );
