@@ -61,7 +61,7 @@ describe('PublishedUrlBlock', () => {
       return `https://portal-${index}.example/slug`;
     });
     render(<PublishedUrlBlock title="Judul Berita" urls={urls} />);
-    fireEvent.click(screen.getByRole('button', { name: /salin siaran/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salin semua link/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const copied = writeText.mock.calls[0]![0];
     expect(copied.split('\n')).toHaveLength(502);
@@ -75,25 +75,29 @@ describe('PublishedUrlBlock', () => {
     });
     const { toast } = await import('sonner');
     render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} />);
-    fireEvent.click(screen.getByRole('button', { name: /salin siaran/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salin semua link/i }));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
   });
 
-  it('menonaktifkan WA sampai kesiapan siap dan menampilkannya setelah cek', async () => {
-    stubClipboard();
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ ready: true, reason: 'ready' }) }) as unknown as Response));
-    render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} organizationId="org-1" />);
-    fireEvent.click(screen.getByRole('button', { name: /cek kesiapan/i }));
-    await waitFor(() => expect(screen.getByText(/pratinjau gambar siap/i)).toBeDefined());
-    expect(screen.getByRole('button', { name: /kirim ke whatsapp/i })).toBeDefined();
+  it('tidak menampilkan cek kesiapan dan tidak menjalankan request readiness otomatis', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} />);
+
+    expect(screen.queryByRole('button', { name: /cek kesiapan/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /kirim ke whatsapp/i }).hasAttribute('disabled')).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('memblokir WA saat pratinjau belum siap', async () => {
-    stubClipboard();
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ ready: false, reason: 'social_tags_incomplete' }) }) as unknown as Response));
-    render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug']} organizationId="org-1" />);
-    fireEvent.click(screen.getByRole('button', { name: /cek kesiapan/i }));
-    await waitFor(() => expect(screen.getByText(/jangan bagikan dulu/i)).toBeDefined());
-    expect(screen.getByRole('button', { name: /kirim ke whatsapp/i }).hasAttribute('disabled')).toBe(true);
+  it('menyalin seluruh URL tanpa pemeriksaan kesiapan', async () => {
+    const writeText = stubClipboard();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(<PublishedUrlBlock title="Judul Berita" urls={['https://a.example/slug', 'https://b.example/slug']} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /salin semua link/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0]![0]).toContain('2. https://b.example/slug');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
