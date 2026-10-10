@@ -570,15 +570,6 @@ export function DashboardWorkspace({
               </span>
               <LiveClock />
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy || SELF_FETCHING_VIEWS.has(view)}
-              onClick={refreshActiveView}
-            >
-              <span>{busy ? 'Memuat…' : 'Refresh'}</span>
-            </Button>
           </div>
         </header>
 
