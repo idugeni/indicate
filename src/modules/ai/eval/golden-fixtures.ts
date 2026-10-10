@@ -35,7 +35,7 @@ export const GOLDEN_FIXTURES: readonly GoldenFixture[] = [
         'BPBD Salurkan Bantuan ke Desa Terdampak Banjir',
         'Pendataan Rumah Terdampak Banjir Wonosobo Berlanjut',
       ],
-      meta_description: 'Banjir merendam tiga desa di Wonosobo sejak Selasa pagi. BPBD menyalurkan bantuan dan mendata rumah warga yang terdampak.',
+      meta_description: 'Banjir merendam tiga desa di Wonosobo sejak Selasa pagi. BPBD menyalurkan bantuan, memantau kondisi warga, dan mendata rumah terdampak di wilayah tersebut.',
       excerpt: 'Banjir setinggi lutut merendam tiga desa di Wonosobo. BPBD menyalurkan bantuan dan mendata rumah terdampak.',
     }),
   },
@@ -45,8 +45,8 @@ export const GOLDEN_FIXTURES: readonly GoldenFixture[] = [
     title: 'Pasar Induk Magelang Terbakar',
     body: 'Kebakaran melanda puluhan kios Pasar Induk Magelang pada Jumat dini hari. Petugas memadamkan api selama tiga jam.',
     modelOutput: JSON.stringify({
-      titles: ['Kebakaran Landa Puluhan Kios Pasar Induk Magelang', 'Api Padam Setelah Tiga Jam Penanganan Petugas'],
-      meta_description: 'Kebakaran melanda puluhan kios Pasar Induk Magelang pada Jumat dini hari dan dipadamkan petugas selama tiga jam.',
+      titles: ['Kebakaran Landa Puluhan Kios Pasar Induk Magelang', 'Api Padam Setelah Tiga Jam Penanganan Petugas', 'Petugas Pastikan Area Pasar Aman Pascakebakaran'],
+      meta_description: 'Kebakaran melanda puluhan kios Pasar Induk Magelang pada Jumat dini hari. Petugas memadamkan api selama tiga jam dan memastikan lokasi aman untuk pedagang.',
       excerpt: 'Kebakaran melanda puluhan kios Pasar Induk Magelang. Petugas memadamkan api selama tiga jam.',
     }),
   },
@@ -55,7 +55,11 @@ export const GOLDEN_FIXTURES: readonly GoldenFixture[] = [
     task: 'seo-bundle',
     title: 'Jalan Provinsi Rusak di Banjarnegara',
     body: 'Ruas jalan provinsi di Banjarnegara rusak di beberapa titik. Warga meminta perbaikan sebelum musim hujan tiba.',
-    modelOutput: '```json\n{"titles":["Jalan Provinsi Rusak di Banjarnegara","Warga Minta Perbaikan Sebelum Hujan"],"meta_description":"Ruas jalan provinsi di Banjarnegara rusak di beberapa titik dan warga meminta perbaikan.","excerpt":"Jalan provinsi di Banjarnegara rusak di beberapa titik."}\n```',
+    modelOutput: JSON.stringify({
+      titles: ['Jalan Provinsi Rusak di Banjarnegara', 'Warga Minta Perbaikan Sebelum Hujan', 'Kerusakan Jalan Dikhawatirkan Ganggu Perjalanan'],
+      meta_description: 'Ruas jalan provinsi di Banjarnegara rusak di beberapa titik. Warga meminta perbaikan sebelum musim hujan tiba agar perjalanan tetap aman bagi pengguna jalan.',
+      excerpt: 'Jalan provinsi di Banjarnegara rusak di beberapa titik. Warga meminta perbaikan sebelum musim hujan tiba.',
+    }),
   },
   {
     id: 'polish-naskah',
@@ -71,7 +75,7 @@ export const GOLDEN_FIXTURES: readonly GoldenFixture[] = [
     task: 'polish',
     title: 'Festival Budaya',
     body: 'Ribuan warga hadiri festival. Acara berlangsung meriah.',
-    modelOutput: '```json\n{"body":"Ribuan warga menghadiri festival budaya yang berlangsung meriah."}\n```',
+    modelOutput: JSON.stringify({ body: 'Ribuan warga menghadiri festival budaya yang berlangsung meriah.' }),
   },
   {
     id: 'caption-sampul',

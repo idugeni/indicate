@@ -62,6 +62,7 @@ function toJsonSchemaType(value: unknown): unknown {
 export function toOpenAiJsonSchema(schema: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema)) {
+    if (key.startsWith('x-')) continue;
     if (key === 'type') {
       out[key] = toJsonSchemaType(value);
     } else if (key === 'properties' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -79,6 +80,10 @@ export function toOpenAiJsonSchema(schema: Record<string, unknown>): Record<stri
       out[key] = value;
     }
   }
+  if (out.type === 'object' && typeof out.properties === 'object' && out.properties !== null && !Array.isArray(out.properties)) {
+    out.required = Object.keys(out.properties as Record<string, unknown>);
+    out.additionalProperties = schema.additionalProperties === true;
+  }
   return out;
 }
 
@@ -91,6 +96,16 @@ export function toOpenAiJsonSchema(schema: Record<string, unknown>): Record<stri
  */
 function buildResponseFormat(promptData: AiChatPrompt): Record<string, unknown> | undefined {
   const schema = promptData.responseSchema;
+  const hasOpenObject = (node: unknown): boolean => {
+    if (typeof node !== 'object' || node === null || Array.isArray(node)) return false;
+    const record = node as Record<string, unknown>;
+    if ((record.type === 'OBJECT' || record.type === 'object') && record.additionalProperties === true) return true;
+    const children = [
+      ...(typeof record.properties === 'object' && record.properties !== null && !Array.isArray(record.properties) ? Object.values(record.properties as Record<string, unknown>) : []),
+      ...(record.items === undefined ? [] : [record.items]),
+    ];
+    return children.some(hasOpenObject);
+  };
   if (
     schema !== undefined &&
     typeof schema === 'object' &&
@@ -98,7 +113,8 @@ function buildResponseFormat(promptData: AiChatPrompt): Record<string, unknown> 
     !Array.isArray(schema) &&
     Object.keys(schema).length > 0
   ) {
-    return { type: 'json_schema', json_schema: { name: 'indicate', strict: true, schema: toOpenAiJsonSchema(schema as Record<string, unknown>) } };
+    const schemaRecord = schema as Record<string, unknown>;
+    return { type: 'json_schema', json_schema: { name: 'indicate', strict: !hasOpenObject(schemaRecord), schema: toOpenAiJsonSchema(schemaRecord) } };
   }
   if (promptData.responseMimeType === 'application/json') return { type: 'json_object' };
   return undefined;
@@ -119,11 +135,28 @@ function buildMessages(promptData: AiChatPrompt): Array<{ role: string; content:
     messages.push({ role: message.role === 'model' ? 'assistant' : message.role, content: message.text });
   }
   const images = promptData.images ?? [];
-  if (images.length > 0) {
+  const audioInputs = promptData.audio ?? [];
+  if (images.length > 0 || audioInputs.length > 0) {
     const content: Array<Record<string, unknown>> = [{ type: 'text', text: promptData.prompt }];
     for (const image of images.slice(0, 4)) {
       content.push({ type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.base64}` } });
     }
+    for (const audio of audioInputs.slice(0, 1)) {
+      const formatByMime: Readonly<Record<string, string>> = {
+        'audio/wav': 'wav',
+        'audio/x-wav': 'wav',
+        'audio/mp3': 'mp3',
+        'audio/mpeg': 'mp3',
+        'audio/webm': 'webm',
+        'audio/ogg': 'ogg',
+        'audio/mp4': 'mp4',
+        'audio/aac': 'aac',
+      };
+      const format = formatByMime[audio.mimeType.toLowerCase()];
+      if (format === undefined) throw new Error('Unsupported audio MIME type for OpenAI-compatible input.');
+      content.push({ type: 'input_audio', input_audio: { data: audio.base64, format } });
+    }
+    if (audioInputs.length > 1) throw new Error('OpenAI-compatible adapter supports at most one audio input per request.');
     messages.push({ role: 'user', content });
   } else {
     messages.push({ role: 'user', content: promptData.prompt });
@@ -178,10 +211,15 @@ function buildRequestBody(
   promptData: AiChatPrompt,
   stream: boolean,
   routing: OpenAiCompatibleRouting = {},
+  providerId = '',
 ): Record<string, unknown> {
   const effort = resolveReasoningEffort(promptData.thinkingConfig?.thinkingBudget);
   const responseFormat = buildResponseFormat(promptData);
   const provider = buildProviderRouting(routing, responseFormat, promptData.costMode);
+  const gatewayProviderOptions =
+    providerId === 'vercel-gateway' && promptData.gatewayOnlyProviders !== undefined
+      ? { gateway: { only: [...promptData.gatewayOnlyProviders] } }
+      : undefined;
   return {
     model: modelName,
     messages: buildMessages(promptData),
@@ -191,10 +229,12 @@ function buildRequestBody(
     presence_penalty: promptData.presencePenalty,
     frequency_penalty: promptData.frequencyPenalty,
     seed: promptData.seed,
+    ...(promptData.stopSequences === undefined || promptData.stopSequences.length === 0 ? {} : { stop: [...promptData.stopSequences] }),
     ...(responseFormat === undefined ? {} : { response_format: responseFormat }),
     ...(effort === undefined ? {} : { reasoning: { effort } }),
     ...(promptData.thinkingConfig?.includeThoughts === true ? { include_reasoning: true } : {}),
     ...(provider === undefined ? {} : { provider }),
+    ...(gatewayProviderOptions === undefined ? {} : { providerOptions: gatewayProviderOptions }),
     ...(stream ? { stream: true } : {}),
   };
 }
@@ -395,7 +435,7 @@ export class OpenAiCompatibleAdapter implements AiProviderAdapter {
       res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${plainKey}`, ...this.extraHeaders },
-        body: JSON.stringify(buildRequestBody(modelName, promptData, false, this.routing)),
+        body: JSON.stringify(buildRequestBody(modelName, promptData, false, this.routing, this.providerId)),
       });
     } catch {
       throw new Error('OpenAI-compatible request failed.');
@@ -441,7 +481,7 @@ export class OpenAiCompatibleAdapter implements AiProviderAdapter {
       res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${plainKey}`, ...this.extraHeaders },
-        body: JSON.stringify(buildRequestBody(modelName, promptData, true, this.routing)),
+        body: JSON.stringify(buildRequestBody(modelName, promptData, true, this.routing, this.providerId)),
         ...(opts?.signal === undefined ? {} : { signal: opts.signal }),
       });
     } catch (error) {

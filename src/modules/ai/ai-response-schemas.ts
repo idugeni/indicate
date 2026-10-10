@@ -10,14 +10,20 @@
  * each `parse*` function reads, so a schema-valid response always parses.
  */
 const stringField = { type: 'STRING' } as const;
-
-const stringArrayField = { type: 'ARRAY', items: { type: 'STRING' } } as const;
+const nonEmptyStringField = { type: 'STRING', 'x-minLength': 1 } as const;
+const boundedStringArrayField = (minItems: number, maxItems: number) => ({ type: 'ARRAY', items: nonEmptyStringField, minItems, maxItems });
+const stringArrayField = { type: 'ARRAY', items: stringField } as const;
 
 function objectSchema(
   properties: Record<string, unknown>,
   required: readonly string[],
 ): Record<string, unknown> {
-  return { type: 'OBJECT', properties, required: [...required] };
+  return {
+    type: 'OBJECT',
+    properties,
+    required: [...new Set([...required, ...Object.keys(properties)])],
+    additionalProperties: false,
+  };
 }
 
 /**
@@ -27,10 +33,10 @@ function objectSchema(
  */
 export const ARTICLE_DRAFT_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    title: stringField,
-    excerpt: stringField,
-    content: stringField,
-    slug_suggestion: stringField,
+    title: nonEmptyStringField,
+    excerpt: { type: 'STRING', 'x-minLength': 1, 'x-maxLength': 400 },
+    content: nonEmptyStringField,
+    slug_suggestion: nonEmptyStringField,
   },
   ['title', 'content'],
 );
@@ -42,8 +48,8 @@ export const ARTICLE_DRAFT_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const TAG_SUGGESTION_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    tags: stringArrayField,
-    category: stringField,
+    tags: boundedStringArrayField(5, 8),
+    category: nonEmptyStringField,
   },
   ['tags', 'category'],
 );
@@ -55,11 +61,11 @@ export const TAG_SUGGESTION_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const MODERATION_ANALYSIS_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    summary: stringField,
+    summary: nonEmptyStringField,
     suggested_priority: { type: 'STRING', enum: ['low', 'normal', 'high', 'urgent'] },
     risk_level: { type: 'STRING', enum: ['rendah', 'sedang', 'tinggi', 'kritis'] },
     keywords: stringArrayField,
-    recommendation: stringField,
+    recommendation: nonEmptyStringField,
   },
   ['summary'],
 );
@@ -71,8 +77,8 @@ export const MODERATION_ANALYSIS_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const COVER_CAPTION_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    alt: stringField,
-    caption: stringField,
+    alt: nonEmptyStringField,
+    caption: nonEmptyStringField,
   },
   ['alt', 'caption'],
 );
@@ -84,14 +90,14 @@ export const COVER_CAPTION_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const VISION_DRAFT_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    title: stringField,
-    slug: stringField,
+    title: nonEmptyStringField,
+    slug: nonEmptyStringField,
     excerpt: stringField,
-    content: stringField,
+    content: nonEmptyStringField,
     tags: stringArrayField,
     suggestedCategory: stringField,
-    alt: stringField,
-    caption: stringField,
+    alt: nonEmptyStringField,
+    caption: nonEmptyStringField,
   },
   ['title', 'content'],
 );
@@ -103,7 +109,7 @@ export const VISION_DRAFT_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const SEO_TITLES_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    titles: stringArrayField,
+    titles: boundedStringArrayField(3, 3),
   },
   ['titles'],
 );
@@ -115,7 +121,7 @@ export const SEO_TITLES_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const SEO_META_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    meta_description: stringField,
+    meta_description: { type: 'STRING', 'x-minLength': 150, 'x-maxLength': 160 },
   },
   ['meta_description'],
 );
@@ -127,7 +133,7 @@ export const SEO_META_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const SEO_EXCERPT_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    excerpt: stringField,
+    excerpt: { type: 'STRING', 'x-minLength': 1, 'x-maxLength': 400 },
   },
   ['excerpt'],
 );
@@ -139,9 +145,9 @@ export const SEO_EXCERPT_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const SEO_BUNDLE_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    titles: stringArrayField,
-    excerpt: stringField,
-    meta_description: stringField,
+    titles: boundedStringArrayField(3, 3),
+    excerpt: { type: 'STRING', 'x-minLength': 1, 'x-maxLength': 400 },
+    meta_description: { type: 'STRING', 'x-minLength': 150, 'x-maxLength': 160 },
   },
   ['titles', 'excerpt', 'meta_description'],
 );
@@ -153,7 +159,7 @@ export const SEO_BUNDLE_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const POLISH_BODY_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    body: stringField,
+    body: nonEmptyStringField,
   },
   ['body'],
 );
@@ -178,7 +184,7 @@ export const CLASSIFY_ARTICLE_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const TRANSCRIPT_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    transcript: stringField,
+    transcript: nonEmptyStringField,
   },
   ['transcript'],
 );
@@ -190,10 +196,75 @@ export const TRANSCRIPT_SCHEMA: Record<string, unknown> = objectSchema(
  */
 export const PUBLISHER_VERIFY_SCHEMA: Record<string, unknown> = objectSchema(
   {
-    summary: stringField,
+    summary: nonEmptyStringField,
     risk_level: { type: 'STRING', enum: ['rendah', 'sedang', 'tinggi'] },
     checklist: stringArrayField,
-    recommendation: stringField,
+    recommendation: nonEmptyStringField,
   },
   ['summary'],
 );
+
+/** Plain-language moderation reply inside a strict JSON envelope. */
+export const MODERATION_REPLY_SCHEMA: Record<string, unknown> = objectSchema(
+  { draft: nonEmptyStringField },
+  ['draft'],
+);
+
+/** Dashboard narrative inside a strict JSON envelope. */
+export const INSIGHT_NARRATIVE_SCHEMA: Record<string, unknown> = objectSchema(
+  { narrative: nonEmptyStringField },
+  ['narrative'],
+);
+
+/** Staff assistant reply inside a strict JSON envelope; `reply` itself remains plain text. */
+export const ASSISTANT_REPLY_SCHEMA: Record<string, unknown> = objectSchema(
+  { reply: nonEmptyStringField },
+  ['reply'],
+);
+
+/** Remove application-only validation extensions before forwarding a schema to a provider. */
+
+/** Strict top-level plan envelope for the dashboard's actor-filtered tool registry. */
+export function createAiOperatorToolPlanSchema(toolIds: readonly string[]): Record<string, unknown> {
+  const step = objectSchema({
+    toolId: { type: 'STRING', enum: [...toolIds] },
+    input: { type: 'STRING', 'x-minLength': 2, 'x-maxLength': 16000 },
+    rationale: { type: 'STRING', 'x-minLength': 1, 'x-maxLength': 500 },
+  }, ['toolId', 'input', 'rationale']);
+  return objectSchema({
+    kind: { type: 'STRING', enum: ['plan', 'clarification'] },
+    summary: { type: 'STRING', 'x-maxLength': 1000 },
+    question: { type: 'STRING', 'x-maxLength': 1000 },
+    steps: { type: 'ARRAY', items: step, maxItems: 8 },
+  }, ['kind', 'summary', 'question', 'steps']);
+}
+
+/** Strict read-capability planning contract; capability input is validated by its own strict Zod schema. */
+export function createReadOperatorPlanSchema(capabilityIds: readonly string[]): Record<string, unknown> {
+  const step = objectSchema({
+    id: { type: 'STRING', 'x-minLength': 1, 'x-maxLength': 64 },
+    capabilityId: { type: 'STRING', enum: [...capabilityIds] },
+    arguments: { type: 'STRING', 'x-minLength': 2, 'x-maxLength': 8000 },
+  }, ['id', 'capabilityId', 'arguments']);
+  return objectSchema({
+    steps: { type: 'ARRAY', items: step, maxItems: 8 },
+  }, ['steps']);
+}
+
+export function toProviderResponseSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key.startsWith('x-')) continue;
+    if (key === 'properties' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      out[key] = Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([name, child]) => [
+        name, typeof child === 'object' && child !== null && !Array.isArray(child)
+          ? toProviderResponseSchema(child as Record<string, unknown>) : child,
+      ]));
+    } else if (key === 'items' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      out[key] = toProviderResponseSchema(value as Record<string, unknown>);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}

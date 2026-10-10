@@ -43,13 +43,14 @@ describe('parseSseFrame', () => {
 });
 
 describe('parseStreamedDraft', () => {
-  it('mengurai JSON berpagar kode dengan slug', () => {
-    const draft = parseStreamedDraft('```json\n{"title":"Banjir Surut","excerpt":"Air surut.","content":"Isi.","slug_suggestion":"banjir-surut"}\n```', 'Topik');
+  it('mengurai JSON murni yang memenuhi semua field', () => {
+    const draft = parseStreamedDraft('{"title":"Banjir Surut","excerpt":"Air surut.","content":"Isi.","slug_suggestion":"banjir-surut"}', 'Topik');
     expect(draft?.slug).toBe('banjir-surut');
+    expect(parseStreamedDraft('```json\n{\"title\":\"Banjir\"}\n```', 'Topik')).toBeNull();
   });
 
-  it('memakai topik sebagai judul cadangan dan menolak sampah', () => {
-    expect(parseStreamedDraft('{"title":"","excerpt":"","content":""}', 'Cadangan Valid')?.title).toBe('Cadangan Valid');
+  it('menolak JSON yang tidak memenuhi kontrak lengkap maupun sampah', () => {
+    expect(parseStreamedDraft('{"title":"","excerpt":"","content":"","slug_suggestion":""}', 'Cadangan Valid')).toBeNull();
     expect(parseStreamedDraft('bukan json', 'Topik Valid')).toBeNull();
   });
 });

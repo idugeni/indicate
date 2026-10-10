@@ -4,6 +4,7 @@ import type { AiServiceDeps } from '@/modules/ai/ai-service';
 import { runTaskQuery } from '@/modules/ai/ai-task-query';
 import { OPERATOR_CAPABILITIES, OPERATOR_EXECUTABLE_READ_CAPABILITY_IDS } from '@/modules/ai/operator-capabilities';
 import { validateOperatorPlan, type OperatorPlan } from '@/modules/ai/operator-plan';
+import { createReadOperatorPlanSchema } from '@/modules/ai/ai-response-schemas';
 
 export type OperatorPlanningResult =
   | { readonly ok: true; readonly plan: OperatorPlan; readonly executed: false }
@@ -39,13 +40,29 @@ export async function planOperatorActions(input: {
     maxOutputTokens: 700,
     thinkingTask: 'chat',
     responseMimeType: 'application/json',
+    responseSchema: createReadOperatorPlanSchema(catalog.map((capability) => capability.id)),
+    skipSemanticCache: true,
   });
   if (!generated.ok) return { ok: false, error: generated.error };
 
   let decoded: unknown;
   try { decoded = JSON.parse(generated.text); }
   catch { return { ok: false, error: 'AI menghasilkan rencana yang tidak valid.' }; }
-  const validated = validateOperatorPlan(decoded);
+  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return { ok: false, error: 'AI menghasilkan rencana yang tidak valid.' };
+  const envelope = decoded as Record<string, unknown>;
+  if (!Array.isArray(envelope.steps)) return { ok: false, error: 'AI menghasilkan rencana yang tidak valid.' };
+  const steps = envelope.steps.map((step) => {
+    if (typeof step !== 'object' || step === null || Array.isArray(step)) return step;
+    const row = step as Record<string, unknown>;
+    if (typeof row.arguments !== 'string') return row;
+    try {
+      const args: unknown = JSON.parse(row.arguments);
+      return { ...row, arguments: args };
+    } catch {
+      return row;
+    }
+  });
+  const validated = validateOperatorPlan({ ...envelope, steps });
   if (!validated.ok) return { ok: false, error: validated.message };
   return { ok: true, plan: validated.plan, executed: false };
 }

@@ -22,6 +22,7 @@ import { parseTranscript } from '@/modules/ai/ai-transcribe';
 import { parseVerification } from '@/modules/ai/ai-verify';
 
 const LONG_TEXT = 'Deskripsi metaakanonik yang cukup panjang untuk melewati ambang minimal lima puluh karakter validasi.';
+const META_TEXT = 'M'.repeat(150);
 const BODY_TEXT = 'Isi berita lengkap yang cukup panjang untuk menjadi bahan pengujian skema respons terstruktur.';
 
 function requiredOf(schema: Record<string, unknown>): readonly string[] {
@@ -47,7 +48,7 @@ describe('ai-response-schemas', () => {
   });
 
   it('skema tag lolos parseTagSuggestion', () => {
-    expect(parseTagSuggestion(JSON.stringify({ tags: ['politik-nasional'], category: 'Politik' }))).not.toBeNull();
+    expect(parseTagSuggestion(JSON.stringify({ tags: ['politik-nasional', 'pemerintah', 'nasional', 'kebijakan', 'masyarakat'], category: 'Politik' }))).not.toBeNull();
   });
 
   it('skema moderasi lolos parseModerationAnalysis', () => {
@@ -66,10 +67,10 @@ describe('ai-response-schemas', () => {
 
   it('skema SEO lolos parser masing-masing', () => {
     expect(parseTitleSuggestions(JSON.stringify({ titles: ['Judul Satu', 'Judul Dua', 'Judul Tiga'] }))).not.toBeNull();
-    expect(parseMetaDescription(JSON.stringify({ meta_description: LONG_TEXT }))).not.toBeNull();
+    expect(parseMetaDescription(JSON.stringify({ meta_description: META_TEXT }))).not.toBeNull();
     expect(parseExcerptSuggestion(JSON.stringify({ excerpt: LONG_TEXT }))).not.toBeNull();
     expect(
-      parseSeoBundle(JSON.stringify({ titles: ['Judul Satu'], excerpt: LONG_TEXT, meta_description: LONG_TEXT })),
+      parseSeoBundle(JSON.stringify({ titles: ['Judul Satu', 'Judul Dua', 'Judul Tiga'], excerpt: LONG_TEXT, meta_description: META_TEXT })),
     ).not.toBeNull();
   });
 

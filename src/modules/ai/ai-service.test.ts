@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
 
 import { AI_MAX_TOTAL_ATTEMPTS, computeRetryDelayMs, executeAiQuery, getAiConcurrencyUsage, normalizeCachePrompt, resetAiConcurrencyState, toToolsParam, type AiRequestLogEntry, type AiServiceDeps } from '@/modules/ai/ai-service';
 import { aiOrgQuotaRequestsKey, aiOrgQuotaTokensKey, aiRateLimitWindow, aiRpmKey, estimateAiInputTokens } from '@/modules/ai/ai-rate-limit';
-import type { AiDb } from '@/modules/ai/ai-types';
+import type { AiChatPrompt, AiDb } from '@/modules/ai/ai-types';
 
 const POLICY_ROW = {
   id: 'default',
@@ -195,6 +196,67 @@ describe('executeAiQuery strategi rantai', () => {
     const result = await executeAiQuery(depsFor(fake, { rateLimit: { store } }), PROMPT);
     expect(result.modelName).toBe('gemini-3.8-flash');
     expect(fake.adapterCalls).toHaveLength(1);
+  });
+
+  it('SEO pinned model bypasses cache and never leaves its single provider/model', async () => {
+    const fake = setup([[credentialRow('cred-vercel-1', 'vercel-gateway')]], POLICY_ROW, 'vercel-gateway');
+    const cache = {
+      lookup: vi.fn(async () => ({ responseText: 'cached old-provider answer', modelName: 'nvidia/nemotron-3-super-120b-a12b:free' })),
+      store: vi.fn(async () => {}),
+    };
+    const result = await executeAiQuery(depsFor(fake, { cache }), {
+      ...PROMPT,
+      modelOverride: 'google/gemini-2.5-flash-lite',
+      requireModelOwner: true,
+      skipSemanticCache: true,
+      gatewayOnlyProviders: ['google'],
+    });
+    expect(result.providerId).toBe('vercel-gateway');
+    expect(result.modelName).toBe('google/gemini-2.5-flash-lite');
+    expect(fake.adapterCalls).toEqual([{ providerId: 'vercel-gateway', modelName: 'google/gemini-2.5-flash-lite' }]);
+    expect(cache.lookup).not.toHaveBeenCalled();
+    expect(cache.store).not.toHaveBeenCalled();
+  });
+
+  it('menolak keluaran terstruktur yang memiliki teks ekstra atau properti di luar skema', async () => {
+    const fake = setup([[credentialRow('cred-vercel-1', 'vercel-gateway')]], POLICY_ROW, 'vercel-gateway');
+    const cache = { lookup: vi.fn(async () => null), store: vi.fn(async () => {}) };
+    let sentPrompt: AiChatPrompt | undefined;
+    const deps = depsFor(fake, {
+      cache,
+      resolveAdapter: (providerId: string) => ({
+        execute: async (_apiKey: string, modelName: string, prompt: AiChatPrompt) => {
+          fake.adapterCalls.push({ providerId, modelName });
+          sentPrompt = prompt;
+          return { text: '{"reply":"jawaban valid","extra":"tidak boleh"}', tokensUsage: { prompt: 10, completion: 10, total: 20 }, toolCallsExecuted: [] };
+        },
+      }),
+    });
+    const result = await executeAiQuery(deps, {
+      ...PROMPT,
+      modelOverride: 'google/gemini-2.5-flash-lite',
+      requireModelOwner: true,
+      gatewayOnlyProviders: ['google'],
+      responseMimeType: 'application/json',
+      responseSchema: { type: 'OBJECT', properties: { reply: { type: 'STRING', 'x-minLength': 1 } }, required: ['reply'], additionalProperties: false },
+      skipSemanticCache: true,
+    });
+    expect(result.error).toBe('ALL_RETRIES_EXHAUSTED');
+    expect(result.text).not.toContain('jawaban valid');
+    expect(fake.logs.some((entry) => entry.errorClass === 'malformed_response' && entry.status === 'failed')).toBe(true);
+    expect(cache.store).not.toHaveBeenCalled();
+    expect(sentPrompt?.systemInstruction).toContain('Tanggal referensi saat ini: 2026-09-30');
+    expect(sentPrompt?.systemInstruction).toContain('KONTRAK KELUARAN WAJIB');
+  });
+  it('strict model override fails closed if the database has no model owner', async () => {
+    const fake = setup([[credentialRow('cred-primary-1', 'gemini')]], POLICY_ROW, null);
+    const result = await executeAiQuery(depsFor(fake), {
+      ...PROMPT,
+      modelOverride: 'google/gemini-2.5-flash-lite',
+      requireModelOwner: true,
+    });
+    expect(result.error).toBe('PINNED_MODEL_NOT_REGISTERED');
+    expect(fake.adapterCalls).toEqual([]);
   });
 
   it('modelOverride berjalan di provider pemilik katalog bukan primary', async () => {
@@ -487,7 +549,7 @@ describe('executeAiQuery mode retry', () => {
 });
 
 describe('executeAiQuery cache dan redactor', () => {
-  it('lookup cache memakai prompt ternormalisasi', async () => {
+  it('cache memakai hash kontrak yang tidak membocorkan prompt mentah', async () => {
     const fake = setup([[credentialRow('cred-1', 'gemini')]]);
     const seen: string[] = [];
     const stored: string[] = [];
@@ -506,8 +568,10 @@ describe('executeAiQuery cache dan redactor', () => {
       { ...PROMPT, prompt: '  Tulis   RINGKASAN berita hari ini  ' },
     );
     expect(result.providerId).toBe('gemini');
-    expect(seen).toEqual(['tulis ringkasan berita hari ini']);
-    expect(stored).toEqual(['tulis ringkasan berita hari ini']);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatch(/^[a-f0-9]{64}$/u);
+    expect(stored).toEqual(seen);
+    expect(seen[0]).not.toContain('tulis ringkasan berita hari ini');
   });
 
   it('menyajikan hit cache model fallback tanpa memanggil provider', async () => {

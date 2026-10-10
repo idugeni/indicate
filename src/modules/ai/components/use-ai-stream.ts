@@ -73,25 +73,24 @@ export function parseSseFrame(frame: string): DraftStreamEvent | null {
  * @param fallbackTopic - Topic used when the model leaves the title empty.
  * @returns Draft, or null when the text is not parseable draft JSON.
  */
-export function parseStreamedDraft(text: string, fallbackTopic: string): StreamedDraft | null {
-  const compact = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+export function parseStreamedDraft(text: string, _fallbackTopic: string): StreamedDraft | null {
+  void _fallbackTopic; // Retained only for call-site compatibility; invalid drafts no longer synthesize fields.
+  const compact = text.trim();
   let parsed: unknown;
   try {
     parsed = JSON.parse(compact) as unknown;
   } catch {
     return null;
   }
-  if (typeof parsed !== 'object' || parsed === null) return null;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
   const record = parsed as Record<string, unknown>;
-  const title = typeof record.title === 'string' && record.title.trim() !== ''
-    ? record.title.trim().slice(0, 160)
-    : fallbackTopic.trim().slice(0, 160);
-  if (title === '') return null;
+  const requiredKeys = ['title', 'excerpt', 'content', 'slug_suggestion'];
+  if (Object.keys(record).some((key) => !requiredKeys.includes(key)) || requiredKeys.some((key) => !Object.prototype.hasOwnProperty.call(record, key))) return null;
+  const title = typeof record.title === 'string' ? record.title.trim().slice(0, 160) : '';
   const excerpt = typeof record.excerpt === 'string' ? record.excerpt.trim().slice(0, 400) : '';
   const content = typeof record.content === 'string' ? record.content.trim().slice(0, 20000) : '';
-  const slugSource = typeof record.slug_suggestion === 'string' && record.slug_suggestion.trim() !== ''
-    ? record.slug_suggestion
-    : typeof record.slug === 'string' && record.slug.trim() !== '' ? record.slug : title;
+  const slugSource = typeof record.slug_suggestion === 'string' ? record.slug_suggestion : '';
+  if (title === '' || excerpt === '' || content === '' || slugSource.trim() === '') return null;
   return { title, excerpt, content, slug: slugify(slugSource).slice(0, 120) };
 }
 

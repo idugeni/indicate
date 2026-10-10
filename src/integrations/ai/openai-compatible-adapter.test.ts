@@ -39,6 +39,43 @@ describe('OpenAiCompatibleAdapter', () => {
     expect(last.some((part) => part.type === 'image_url')).toBe(true);
   });
 
+
+  it('mengirim audio sebagai input_audio ke Gateway, bukan menjatuhkannya dari request', async () => {
+    const adapter = new OpenAiCompatibleAdapter('vercel-gateway', 'https://ai-gateway.vercel.sh/v1');
+    await adapter.execute('router-key', 'google/gemini-2.5-flash-lite', {
+      prompt: 'Transkripsikan rekaman ini.',
+      audio: [{ base64: 'YXVkaW8=', mimeType: 'audio/mpeg' }],
+      gatewayOnlyProviders: ['google'],
+    });
+    const body = lastBody() as { messages: Array<{ role: string; content: unknown }> };
+    const last = body.messages.at(-1)?.content as Array<Record<string, unknown>>;
+    expect(last).toContainEqual({ type: 'input_audio', input_audio: { data: 'YXVkaW8=', format: 'mp3' } });
+    expect(last.some((part) => part.type === 'text')).toBe(true);
+  });
+
+  it('meneruskan stop sequences pada request OpenAI-compatible', async () => {
+    const adapter = new OpenAiCompatibleAdapter();
+    await adapter.execute('router-key', 'model', { prompt: 'Buat satu kalimat.', stopSequences: ['END'] });
+    expect(lastBody().stop).toEqual(['END']);
+  });
+
+  it('mengunci Vercel AI Gateway ke provider allowlist tanpa opsi fallback', async () => {
+    const adapter = new OpenAiCompatibleAdapter('vercel-gateway', 'https://ai-gateway.vercel.sh/v1');
+    await adapter.execute('router-key', 'google/gemini-2.5-flash-lite', {
+      prompt: 'Buat deskripsi meta SEO.',
+      gatewayOnlyProviders: ['google'],
+    });
+    const body = lastBody();
+    expect(body.providerOptions).toEqual({ gateway: { only: ['google'] } });
+    expect(body).not.toHaveProperty('providerOptions.gateway.models');
+  });
+
+  it('tidak mengirim filter provider Gateway ke adapter provider lain', async () => {
+    const adapter = new OpenAiCompatibleAdapter('openrouter', 'https://openrouter.ai/api/v1');
+    await adapter.execute('router-key', 'model', { prompt: 'hai', gatewayOnlyProviders: ['google'] });
+    expect(lastBody()).not.toHaveProperty('providerOptions');
+  });
+
   it('meminta json_object saat responseMimeType json', async () => {
     const adapter = new OpenAiCompatibleAdapter();
     await adapter.execute('router-key', 'model', { prompt: 'hai', responseMimeType: 'application/json' });
@@ -64,7 +101,8 @@ describe('OpenAiCompatibleAdapter', () => {
         tags: { type: 'array', items: { type: 'string' } },
         risk: { type: 'string', enum: ['rendah', 'tinggi'] },
       },
-      required: ['title'],
+      required: ['title', 'tags', 'risk'],
+      additionalProperties: false,
     });
   });
 
@@ -79,6 +117,7 @@ describe('OpenAiCompatibleAdapter', () => {
       type: 'object',
       properties: { text: { type: 'string' } },
       required: ['text'],
+      additionalProperties: false,
     });
   });
 

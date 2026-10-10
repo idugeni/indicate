@@ -5,12 +5,15 @@ import {
   ARTICLE_DRAFT_SCHEMA,
   COVER_CAPTION_SCHEMA,
   MODERATION_ANALYSIS_SCHEMA,
+  MODERATION_REPLY_SCHEMA,
+  INSIGHT_NARRATIVE_SCHEMA,
   TAG_SUGGESTION_SCHEMA,
   VISION_DRAFT_SCHEMA,
 } from '@/modules/ai/ai-response-schemas';
 import { taskThinkingOverride, type AiTaskKind } from '@/modules/ai/ai-task-profiles';
 import type { AiCallerRole, AiChatImage, AiThinkingConfig } from '@/modules/ai/ai-types';
 import { slugify } from '@/modules/site/slugify';
+import { LOW_COST_TEXT_GATEWAY_PROVIDER, LOW_COST_TEXT_MODEL, SEO_METADATA_GATEWAY_PROVIDER, SEO_METADATA_MODEL } from '@/modules/ai/ai-task-models';
 
 export const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 
@@ -81,6 +84,15 @@ export function stripCodeFence(text: string): string {
   return text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 }
 
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(stripCodeFence(text));
+    return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface ArticleDraft {
   readonly title: string;
   readonly excerpt: string;
@@ -98,20 +110,22 @@ export interface ArticleDraft {
 export function parseArticleDraft(text: string, fallbackTopic: string): ArticleDraft | null {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(stripCodeFence(text)) as unknown;
+    parsed = JSON.parse(text.trim()) as unknown;
   } catch {
     return null;
   }
-  if (typeof parsed !== 'object' || parsed === null) return null;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
   const record = parsed as Record<string, unknown>;
-  const title = typeof record.title === 'string' && record.title.trim() !== '' ? record.title.trim().slice(0, 160) : fallbackTopic.trim().slice(0, 160);
-  if (title === '') return null;
+  const requiredKeys = ['title', 'excerpt', 'content', 'slug_suggestion'];
+  if (Object.keys(record).some((key) => !requiredKeys.includes(key)) || requiredKeys.some((key) => !Object.prototype.hasOwnProperty.call(record, key))) return null;
+  const title = typeof record.title === 'string' ? record.title.trim().slice(0, 160) : '';
   const excerpt = typeof record.excerpt === 'string' ? record.excerpt.trim().slice(0, 400) : '';
   const content = typeof record.content === 'string' ? record.content.trim().slice(0, 20000) : '';
-  const slugSource = typeof record.slug_suggestion === 'string' && record.slug_suggestion.trim() !== ''
-    ? record.slug_suggestion
-    : typeof record.slug === 'string' && record.slug.trim() !== '' ? record.slug : title;
-  return { title, excerpt, content, slug: slugify(slugSource).slice(0, 120) };
+  const slugSource = typeof record.slug_suggestion === 'string' ? record.slug_suggestion.trim() : '';
+  const slug = slugify(slugSource).slice(0, 120);
+  if (title === '' || excerpt === '' || content === '' || slug === '') return null;
+  void fallbackTopic; // Kept for source compatibility; required fields are never synthesized.
+  return { title, excerpt, content, slug };
 }
 
 export interface TagSuggestion {
@@ -145,7 +159,7 @@ export function parseTagSuggestion(text: string): TagSuggestion | null {
     : typeof record.suggestedCategory === 'string' && record.suggestedCategory.trim() !== ''
       ? record.suggestedCategory.trim().slice(0, 120)
       : null;
-  if (tags.length === 0 && category === null) return null;
+  if (tags.length < 5 || tags.length > 8 || category === null) return null;
   return { tags, category };
 }
 
@@ -173,17 +187,14 @@ export function parseModerationAnalysis(text: string): ModerationAnalysis | null
   if (typeof parsed !== 'object' || parsed === null) return null;
   const record = parsed as Record<string, unknown>;
   const summary = typeof record.summary === 'string' ? record.summary.trim().slice(0, 800) : '';
-  if (summary === '') return null;
-  const pick = (value: unknown, fallback: string): string => typeof value === 'string' && value.trim() !== '' ? value.trim().slice(0, 40) : fallback;
-  const keywords = Array.isArray(record.keywords) ? record.keywords.filter((item): item is string => typeof item === 'string').map((item) => item.trim().slice(0, 60)).filter((item) => item !== '').slice(0, 10) : [];
-  const recommendation = typeof record.recommendation === 'string' ? record.recommendation.trim().slice(0, 1200) : '';
-  return {
-    summary,
-    suggestedPriority: pick(record.suggested_priority ?? record.suggestedPriority, 'normal'),
-    riskLevel: pick(record.risk_level ?? record.riskLevel, 'sedang'),
-    keywords,
-    recommendation,
-  };
+  const priority = record.suggested_priority ?? record.suggestedPriority;
+  const risk = record.risk_level ?? record.riskLevel;
+  const validPriorities = new Set(['low', 'normal', 'high', 'urgent']);
+  const validRisks = new Set(['rendah', 'sedang', 'tinggi', 'kritis']);
+  if (summary === '' || typeof priority !== 'string' || !validPriorities.has(priority) || typeof risk !== 'string' || !validRisks.has(risk)) return null;
+  if (!Array.isArray(record.keywords) || typeof record.recommendation !== 'string' || record.recommendation.trim() === '') return null;
+  const keywords = record.keywords.filter((item): item is string => typeof item === 'string').map((item) => item.trim().slice(0, 60)).filter((item) => item !== '').slice(0, 10);
+  return { summary, suggestedPriority: priority, riskLevel: risk, keywords, recommendation: record.recommendation.trim().slice(0, 1200) };
 }
 
 /**
@@ -208,29 +219,42 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
   readonly modelOverride?: string | undefined;
   readonly responseModalities?: readonly ('TEXT' | 'IMAGE' | 'AUDIO')[] | undefined;
   readonly speechVoiceName?: string | undefined;
+  readonly skipSemanticCache?: boolean | undefined;
+  readonly requireModelOwner?: boolean | undefined;
+  readonly gatewayOnlyProviders?: readonly string[] | undefined;
 }): Promise<{ readonly ok: true; readonly text: string; readonly inlineData?: readonly { readonly mimeType: string; readonly base64: string }[] } | { readonly ok: false; readonly error: string }> {
   const scanned = scanPrompt(query.prompt);
   if (!scanned.ok) return { ok: false, error: scanned.reason };
   if (configured === null) return { ok: false, error: BUSY_MESSAGE };
-  const thinkingConfig = query.thinkingConfig
-    ?? (query.thinkingTask === undefined ? undefined : taskThinkingOverride(query.thinkingTask));
+  const producesNonTextMedia = (query.responseModalities ?? []).some((modality) => modality === 'IMAGE' || modality === 'AUDIO');
+  if (producesNonTextMedia && (query.modelOverride === undefined || query.modelOverride === LOW_COST_TEXT_MODEL)) {
+    return { ok: false, error: 'Tugas ini memerlukan model khusus untuk menghasilkan gambar atau audio.' };
+  }
+  const routedQuery = !producesNonTextMedia && (query.modelOverride === undefined || query.modelOverride === LOW_COST_TEXT_MODEL)
+    ? { ...query, modelOverride: LOW_COST_TEXT_MODEL, requireModelOwner: true, gatewayOnlyProviders: [LOW_COST_TEXT_GATEWAY_PROVIDER] }
+    : query.modelOverride === undefined ? query : { ...query, requireModelOwner: true };
+  const thinkingConfig = routedQuery.thinkingConfig
+    ?? (routedQuery.thinkingTask === undefined ? undefined : taskThinkingOverride(routedQuery.thinkingTask));
   const result = await executeAiQuery(configured, {
-    prompt: query.prompt,
+    prompt: routedQuery.prompt,
     organizationId: organizationId ?? null,
-    systemInstruction: query.systemInstruction,
-    temperature: query.temperature,
-    maxOutputTokens: query.maxOutputTokens,
-    responseMimeType: query.responseMimeType,
-    ...(query.responseSchema === undefined ? {} : { responseSchema: query.responseSchema }),
+    systemInstruction: routedQuery.systemInstruction,
+    temperature: routedQuery.temperature,
+    maxOutputTokens: routedQuery.maxOutputTokens,
+    responseMimeType: routedQuery.responseMimeType,
+    ...(routedQuery.responseSchema === undefined ? {} : { responseSchema: routedQuery.responseSchema }),
     ...(thinkingConfig === undefined ? {} : { thinkingConfig }),
     channel: 'web',
     callerRole,
     enableTools: false,
-    ...(query.images === undefined ? {} : { images: [...query.images] }),
-    ...(query.audio === undefined ? {} : { audio: [...query.audio] }),
-    ...(query.modelOverride === undefined ? {} : { modelOverride: query.modelOverride }),
-    ...(query.responseModalities === undefined ? {} : { responseModalities: [...query.responseModalities] }),
-    ...(query.speechVoiceName === undefined ? {} : { speechVoiceName: query.speechVoiceName }),
+    ...(routedQuery.images === undefined ? {} : { images: [...routedQuery.images] }),
+    ...(routedQuery.audio === undefined ? {} : { audio: [...routedQuery.audio] }),
+    ...(routedQuery.modelOverride === undefined ? {} : { modelOverride: routedQuery.modelOverride }),
+    ...(routedQuery.skipSemanticCache === undefined ? {} : { skipSemanticCache: routedQuery.skipSemanticCache }),
+    ...(routedQuery.requireModelOwner === undefined ? {} : { requireModelOwner: routedQuery.requireModelOwner }),
+    ...(routedQuery.gatewayOnlyProviders === undefined ? {} : { gatewayOnlyProviders: [...routedQuery.gatewayOnlyProviders] }),
+    ...(routedQuery.responseModalities === undefined ? {} : { responseModalities: [...routedQuery.responseModalities] }),
+    ...(routedQuery.speechVoiceName === undefined ? {} : { speechVoiceName: routedQuery.speechVoiceName }),
   });
   if (result.error !== undefined || (result.text.trim() === '' && (result.inlineData?.length ?? 0) === 0)) return { ok: false, error: BUSY_MESSAGE };
   return {
@@ -250,7 +274,8 @@ const DRAFT_SYSTEM = [
 
 const TAG_SYSTEM = [
   'Kamu adalah editor taksonomi jaringan media Indonesia.',
-  'Sarankan tag slug kecil bertanda hubung dan satu kategori yang sudah umum.',
+  'Sarankan satu kategori yang paling sesuai dan 5-8 kata kunci yang relevan untuk dijadikan hashtag redaksi.',
+  'Nilai tags harus berupa slug lowercase dengan tanda hubung, tanpa karakter #; pilih kata kunci faktual yang spesifik, bukan kata umum atau berulang.',
   'Jangan mengarang portal atau angka. Keluarkan JSON murni:',
   '{"tags":["..."],"category":"..."}',
 ].join('\n');
@@ -350,6 +375,8 @@ export async function suggestTags(input: { readonly title: string; readonly body
     prompt: `Sarankan tag dan kategori untuk artikel berikut:\n\nJudul: ${title}\n\nIsi:\n${body}`,
     systemInstruction: TAG_SYSTEM, temperature: 0.3, maxOutputTokens: 512, responseMimeType: 'application/json',
     responseSchema: TAG_SUGGESTION_SCHEMA, thinkingTask: 'seo',
+    modelOverride: SEO_METADATA_MODEL, requireModelOwner: true, skipSemanticCache: true,
+    gatewayOnlyProviders: [SEO_METADATA_GATEWAY_PROVIDER],
   });
   if (!result.ok) return result;
   const suggestion = parseTagSuggestion(result.text);
@@ -393,10 +420,14 @@ export async function draftModerationReply(input: { readonly context: string; re
   const result = await runQuery('admin', input.organizationId, {
     prompt: `Buatkan draf tanggapan resmi untuk laporan berikut (tanpa menyebut identitas pelapor):\n\n${context}`,
     systemInstruction: REPLY_SYSTEM, temperature: 0.7, maxOutputTokens: 1024, thinkingTask: 'chat',
+    responseMimeType: 'application/json', responseSchema: MODERATION_REPLY_SCHEMA,
   });
   if (!result.ok) return result;
-  const draft = result.text.trim().slice(0, 2500);
-  if (draft === '') return { ok: false, error: BUSY_MESSAGE };
+  const record = parseJsonObject(result.text);
+  const rawDraft = record?.draft;
+  if (typeof rawDraft !== 'string' || rawDraft.trim() === '') return { ok: false, error: BUSY_MESSAGE };
+  const draft = rawDraft.trim().slice(0, 2500);
+  if (draft.split(/\s+/u).length > 300 || /(^|\n)\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|```)/u.test(draft)) return { ok: false, error: BUSY_MESSAGE };
   return { ok: true, draft };
 }
 
@@ -431,7 +462,7 @@ export function parseCoverCaption(text: string): CoverCaption | null {
   const record = parsed as Record<string, unknown>;
   const alt = typeof record.alt === 'string' ? record.alt.trim().slice(0, 200) : '';
   const caption = typeof record.caption === 'string' ? record.caption.trim().slice(0, 200) : '';
-  if (alt === '' && caption === '') return null;
+  if (alt === '' || caption === '') return null;
   return { alt, caption };
 }
 
@@ -553,9 +584,17 @@ export async function narrateInsights(input: { readonly summary: string; readonl
   const result = await runQuery('editor', input.organizationId, {
     prompt: `Susun narasi 3-5 kalimat dari ringkasan dasbor berikut. Jangan tambah angka.\n\n${summary}`,
     systemInstruction: INSIGHT_SYSTEM, temperature: 0.3, maxOutputTokens: 512, thinkingTask: 'summarize',
+    responseMimeType: 'application/json', responseSchema: INSIGHT_NARRATIVE_SCHEMA,
   });
   if (!result.ok) return result;
-  const narrative = result.text.trim().slice(0, 1500);
-  if (narrative === '') return { ok: false, error: BUSY_MESSAGE };
+  const record = parseJsonObject(result.text);
+  const rawNarrative = record?.narrative;
+  if (typeof rawNarrative !== 'string') return { ok: false, error: BUSY_MESSAGE };
+  const narrative = rawNarrative.trim().slice(0, 1500);
+  const sentences = narrative.match(/[^.!?]+[.!?]+|[^.!?]+$/gu)?.filter((sentence) => sentence.trim() !== '') ?? [];
+  if (sentences.length < 3 || sentences.length > 5) return { ok: false, error: BUSY_MESSAGE };
+  const sourceNumbers = new Set(summary.match(/\d+(?:[.,]\d+)?%?/gu) ?? []);
+  const outputNumbers = narrative.match(/\d+(?:[.,]\d+)?%?/gu) ?? [];
+  if (outputNumbers.some((number) => !sourceNumbers.has(number))) return { ok: false, error: BUSY_MESSAGE };
   return { ok: true, narrative };
 }

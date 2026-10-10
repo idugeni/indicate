@@ -42,6 +42,30 @@ describe('runTaskQuery shared helper', () => {
     });
   });
 
+  it('mengunci semua teks default ke Gemini 2.5 Flash-Lite lewat Google di Vercel Gateway', async () => {
+    await runTaskQuery({} as never, 'editor', 'org-1', { ...baseQuery(), responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { reply: { type: 'STRING' } }, required: ['reply'] } });
+    expect(vi.mocked(executeAiQuery).mock.calls[0]?.[1]).toMatchObject({
+      organizationId: 'org-1',
+      modelOverride: 'google/gemini-2.5-flash-lite',
+      requireModelOwner: true,
+      gatewayOnlyProviders: ['google'],
+    });
+  });
+
+  it('menolak keluaran image/audio jika tidak memilih model khusus sebelum memanggil provider', async () => {
+    const result = await runTaskQuery({} as never, 'editor', 'org-1', { ...baseQuery(), responseModalities: ['IMAGE'] });
+    expect(result.ok).toBe(false);
+    expect(vi.mocked(executeAiQuery)).not.toHaveBeenCalled();
+  });
+
+  it('mempertahankan model khusus eksplisit untuk keluaran gambar', async () => {
+    await runTaskQuery({} as never, 'editor', 'org-1', { ...baseQuery(), modelOverride: 'gemini-3.1-flash-image', responseModalities: ['IMAGE'] });
+    expect(vi.mocked(executeAiQuery).mock.calls[0]?.[1]).toMatchObject({
+      modelOverride: 'gemini-3.1-flash-image',
+      requireModelOwner: true,
+    });
+    expect(vi.mocked(executeAiQuery).mock.calls[0]?.[1]).not.toHaveProperty('gatewayOnlyProviders');
+  });
   it('menghormati thinkingConfig eksplisit di atas thinkingTask', async () => {
     await runTaskQuery({} as never, 'editor', undefined, {
       ...baseQuery(),
