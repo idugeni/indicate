@@ -139,7 +139,7 @@ export default function RootLayout({
         plexMono.variable
       )}
     >
-      <body className="min-h-screen min-h-dvh bg-bg text-paper antialiased">
+      <body className="min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased">
         <script id="__indicateCanvas" dangerouslySetInnerHTML={{ __html: CANVAS_PAINT_SCRIPT }} />
         <ZoomLock />
         <script type="module" async src={WEBMCP_BRIDGE_PATH} data-packs={WEBMCP_DEFAULT_PACKS} data-mcp-url={WEBMCP_MCP_PATH} />
