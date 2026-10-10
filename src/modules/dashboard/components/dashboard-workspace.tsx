@@ -147,7 +147,10 @@ export function DashboardWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const [crossOrg, setCrossOrg] = useState(() => (organizations[0]?.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin));
+  const [crossOrg, setCrossOrg] = useState(() => {
+    const permissions = organizations[0]?.permissions ?? [];
+    return permissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin) || permissions.includes(INTEGRATIONS_PERMISSIONS.customerAdmin);
+  });
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');

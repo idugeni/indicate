@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { resolveVerifiedUserOrganizations } from '@/modules/auth/resolve-authenticated-user';
+import type { MembershipAuthorization } from '@/modules/auth/rbac';
 import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
 import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
 import { getDashboardSnapshot } from '@/modules/dashboard';
@@ -16,6 +17,9 @@ import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
+import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
+import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { buttonVariants } from '@/components/ui/button';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
@@ -72,21 +76,31 @@ async function DashboardBody({
   const repository = new DrizzleAuthorizationRepository(runtime.db);
   const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in?auth=inactive');
   const localUser = discovery.value.localUser;
-  const memberships = await repository.findActiveMemberships(
-    localUser.id,
-    discovery.value.organizations.map(({ id }) => id),
-  );
+  const platformPermissions: readonly string[] = await repository.listPlatformPermissions(localUser.id).catch((): readonly string[] => []);
+  const isPlatformSuperAdmin = platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin)
+    || platformPermissions.includes(INTEGRATIONS_PERMISSIONS.customerAdmin);
+  const memberships: ReadonlyMap<string, MembershipAuthorization> = isPlatformSuperAdmin
+    ? new Map<string, MembershipAuthorization>()
+    : await repository.findActiveMemberships(
+      localUser.id,
+      discovery.value.organizations.map(({ id }) => id),
+    );
+  const platformAdminTenantPermissions = [
+    ...DASHBOARD_PERMISSION_NAMES,
+    ...PUBLISHING_PERMISSION_NAMES,
+    ...INTEGRATIONS_TENANT_PERMISSION_NAMES,
+    INTEGRATIONS_PERMISSIONS.siteSettingsManage,
+  ];
   let organizations: readonly OrganizationOption[] = discovery.value.organizations.map(({ id, name }) => {
     const membership = memberships.get(id);
     return {
       id,
       name,
-      ...(membership === undefined
-        ? {}
-        : {
-          role: membership.roleTier,
-          permissions: [...membership.orgPermissions, ...membership.platformPermissions],
-        }),
+      ...(isPlatformSuperAdmin
+        ? { role: 'superadmin' as const, permissions: [...platformAdminTenantPermissions, ...platformPermissions] }
+        : membership === undefined
+          ? {}
+          : { role: membership.roleTier, permissions: [...membership.orgPermissions, ...membership.platformPermissions] }),
     };
   });
   const selected = z.uuid().safeParse(cookieStore.get('indicate-active-organization')?.value);
@@ -125,7 +139,7 @@ async function DashboardBody({
   const resolvedParams = searchParams === undefined ? undefined : await searchParams;
   const rawView = Array.isArray(resolvedParams?.view) ? resolvedParams?.view[0] : resolvedParams?.view;
   const needsSnapshot = rawView === undefined || rawView === 'dashboard';
-  const initialDashboard = !needsSnapshot || firstOrganization === undefined
+  const initialDashboard = !needsSnapshot || firstOrganization === undefined || isPlatformSuperAdmin
     ? null
     : firstMembership === undefined
       ? await getDashboardSnapshot(firstOrganization.id, identity)
@@ -150,7 +164,7 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
       id: bound.id,
       name: bound.name,
       role: resolved.membership.roleTier,
-      permissions: [...resolved.membership.orgPermissions, ...resolved.membership.platformPermissions],
+      permissions: [...resolved.membership.orgPermissions],
     },
   ];
   const sessionIdentity = {

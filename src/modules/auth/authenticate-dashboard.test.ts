@@ -17,6 +17,8 @@ const shared = vi.hoisted(() => ({
   otherOrgId: '88888888-8888-4888-8888-888888888888',
   userId: '11111111-1111-4111-8111-111111111111',
   authUserId: '22222222-2222-4222-8222-222222222222',
+  platformPermissions: [] as string[],
+  accessibleOrganizations: [{ id: '7e27727d-b59f-4d24-998e-1bee6eeb3fa0', name: 'Proof Org' }],
 }));
 
 type Db = Parameters<typeof authenticateDashboardUser>[0];
@@ -32,7 +34,7 @@ function proofMembership(): MembershipAuthorization {
     roleTier: 'admin',
     regionId: null,
     orgPermissions: new Set(['sites.manage']),
-    platformPermissions: new Set(['platform.customer.admin']),
+    platformPermissions: new Set(shared.platformPermissions),
   };
 }
 
@@ -114,7 +116,8 @@ vi.mock('@/data/repos/tenancy/authorization', () => ({
   DrizzleAuthorizationRepository: class {
     findActiveMembership = async (organizationId: string) =>
       shared.membership && organizationId === shared.orgId ? proofMembership() : null;
-    listPlatformPermissions = async () => ['platform.customer.admin'];
+    listPlatformPermissions = async () => shared.platformPermissions;
+    listActiveOrganizationsForUser = async () => shared.accessibleOrganizations;
   },
 }));
 
@@ -173,6 +176,7 @@ describe('authenticate-dashboard', () => {
   it('menolak sesi tanpa membership', async () => {
     shared.session = true;
     shared.membership = false;
+    shared.platformPermissions = [];
     const user = (await authenticateDashboardUser({} as unknown as Db, proofStore(), 'req-1')) as DashboardUser;
     const actor = await authorizeDashboardOrganization(
       {} as unknown as Db,
@@ -182,6 +186,39 @@ describe('authenticate-dashboard', () => {
     );
     expect(actor).toBeNull();
     shared.membership = true;
+    shared.platformPermissions = ['platform.customer.admin'];
+  });
+
+  it('memberi platform super-admin semua izin tenant walau ia juga punya membership lokal', async () => {
+    shared.session = true;
+    shared.membership = true;
+    shared.platformPermissions = ['platform.super_admin'];
+    shared.accessibleOrganizations = [{ id: shared.orgId, name: 'Proof Org' }];
+    const user = (await authenticateDashboardUser({} as unknown as Db, proofStore(), 'req-superadmin-local')) as DashboardUser;
+    const actor = await authorizeDashboardOrganization({} as unknown as Db, user, shared.orgId, 'req-superadmin-local');
+    expect(actor?.permissionSet.has('article.manage')).toBe(true);
+    expect(actor?.regionScopeId).toBeNull();
+    shared.membership = true;
+    shared.platformPermissions = [];
+  });
+
+  it('memberi platform super-admin akses tenant tanpa membership setelah memverifikasi organisasi', async () => {
+    shared.session = true;
+    shared.membership = false;
+    shared.platformPermissions = ['platform.super_admin'];
+    shared.accessibleOrganizations = [
+      { id: shared.orgId, name: 'Proof Org' },
+      { id: shared.otherOrgId, name: 'Other Org' },
+    ];
+    const user = (await authenticateDashboardUser({} as unknown as Db, proofStore(), 'req-cross-org')) as DashboardUser;
+    const actor = await authorizeDashboardOrganization({} as unknown as Db, user, shared.otherOrgId, 'req-cross-org');
+    expect(actor?.organizationId).toBe(shared.otherOrgId);
+    expect(actor?.regionScopeId).toBeNull();
+    expect(actor?.permissionSet.has('article.manage')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.super_admin')).toBe(true);
+    shared.membership = true;
+    shared.platformPermissions = ['platform.customer.admin'];
+    shared.accessibleOrganizations = [{ id: shared.orgId, name: 'Proof Org' }];
   });
 
   it('mengikat access-key hanya ke organisasi penerbit', async () => {
@@ -206,6 +243,7 @@ describe('authenticate-dashboard', () => {
 
   it('membangun aktor platform untuk kedua kondisi', async () => {
     shared.session = true;
+    shared.platformPermissions = ['platform.customer.admin'];
     const sessionUser = (await authenticateDashboardUser(
       {} as unknown as Db,
       proofStore(),
@@ -235,5 +273,6 @@ describe('authenticate-dashboard', () => {
     );
     expect(foreign).toBeNull();
     shared.session = true;
+    shared.platformPermissions = [];
   });
 });
