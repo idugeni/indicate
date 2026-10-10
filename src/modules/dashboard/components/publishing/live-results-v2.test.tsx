@@ -4,6 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 
 import { LiveResultsV2 } from '@/modules/dashboard/components/publishing/live-results-v2';
 
+vi.mock('@/modules/dashboard/components/shared/use-dashboard-query', () => ({
+  useDashboardPage: () => [1, vi.fn()],
+}));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -18,7 +22,11 @@ const DATA = {
       title: 'Berita Pertama',
       slug: 'berita-pertama',
       publishedAt: '2026-10-08T10:00:00Z',
-      publishedUrls: ['https://portal-a.example/berita-pertama'],
+      publishedUrls: [
+        'https://portal-a.example/berita-pertama',
+        'https://portal-a2.example/berita-pertama',
+      ],
+      orgName: 'RUTAN WONOSOBO',
     },
     {
       id: 'a-2',
@@ -38,11 +46,13 @@ function mockClipboard() {
 
 describe('LiveResultsV2', () => {
   it('menampilkan control tower dan hasil terbaru', () => {
-    render(<LiveResultsV2 data={DATA} />);
+    render(<LiveResultsV2 data={DATA} crossOrg />);
     expect(screen.getByText('Live Results Control Tower')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Live Results', level: 1 })).toBeTruthy();
     expect(screen.getAllByRole('heading', { name: 'Berita Pertama' }).length).toBeGreaterThan(0);
-    expect(screen.getByText('https://portal-a.example/berita-pertama')).toBeTruthy();
+    expect(screen.queryByText('https://portal-a.example/berita-pertama')).toBeNull();
+    expect(screen.getByText('Organisasi pemilik: RUTAN WONOSOBO')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Salin berurutan Berita Pertama' })).toBeTruthy();
   });
 
   it('menghapus fitur preview dan tidak memanggil endpoint readiness', () => {
@@ -54,77 +64,60 @@ describe('LiveResultsV2', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('menyalin semua URL dalam urutan hasil tanpa judul artikel', async () => {
+  it('menyalin hanya seluruh URL milik satu artikel secara berurutan tanpa judul artikel', async () => {
     const writeText = mockClipboard();
     render(<LiveResultsV2 data={DATA} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Salin berurutan' }));
-
+    fireEvent.click(screen.getByRole('button', { name: 'Salin berurutan Berita Pertama' }));
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(
-        '1. https://portal-a.example/berita-pertama\n2. https://portal-b.example/berita-kedua',
+        '1. https://portal-a.example/berita-pertama\n2. https://portal-a2.example/berita-pertama',
       ),
     );
-    expect(screen.getByRole('status').textContent).toContain('siap ditempel ke WhatsApp');
+    expect(writeText.mock.calls[0]?.[0]).not.toContain('portal-b.example');
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((node) => node.textContent?.includes('URL artikel ini disalin berurutan')),
+    ).toBe(true);
   });
-
   it('mengacak URL tetapi tetap menomori daftar untuk WhatsApp', async () => {
     const writeText = mockClipboard();
     vi.spyOn(Math, 'random').mockReturnValue(0);
     render(<LiveResultsV2 data={DATA} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Salin acak' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salin acak Berita Pertama' }));
 
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(
-        '1. https://portal-b.example/berita-kedua\n2. https://portal-a.example/berita-pertama',
+        '1. https://portal-a2.example/berita-pertama\n2. https://portal-a.example/berita-pertama',
       ),
     );
     const copied = writeText.mock.calls[0]?.[0] ?? '';
     expect(copied).not.toContain('Berita Pertama');
     expect(copied).not.toContain('Berita Kedua');
+    expect(copied).not.toContain('portal-b.example');
   });
 
-  it('memuat seluruh halaman server sebelum menyalin semua URL', async () => {
-    const writeText = mockClipboard();
-    const onLoadMoreArticles = vi.fn(async (cursor?: string | null) => {
-      expect(cursor).toBe('cursor-1');
-      return {
-        loaded: 3,
-        total: 3,
-        nextCursor: null,
-        articles: [
-          ...DATA.articles,
-          {
-            id: 'a-3',
-            title: 'Berita Ketiga',
-            slug: 'berita-ketiga',
-            publishedAt: '2026-10-08T08:00:00Z',
-            publishedUrls: ['https://portal-c.example/berita-ketiga'],
-          },
-        ],
-        articleSites: [],
-        bridgePublished: [],
-      };
-    });
-    render(
-      <LiveResultsV2
-        data={{ ...DATA, articlesNextCursor: 'cursor-1' }}
-        articlesTotal={3}
-        onLoadMoreArticles={onLoadMoreArticles}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Salin berurutan' }));
-
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith(
-        '1. https://portal-a.example/berita-pertama\n2. https://portal-b.example/berita-kedua\n3. https://portal-c.example/berita-ketiga',
-      ),
-    );
-    expect(onLoadMoreArticles).toHaveBeenCalledTimes(1);
+  it('menampilkan kontrol copy pada tiap artikel tanpa menampilkan daftar URL panjang', () => {
+    render(<LiveResultsV2 data={DATA} />);
+    expect(screen.getByRole('button', { name: 'Salin berurutan Berita Pertama' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Salin acak Berita Kedua' })).toBeTruthy();
+    expect(screen.queryByText('https://portal-a.example/berita-pertama')).toBeNull();
+    expect(screen.getByText('1 / 1')).toBeTruthy();
   });
 
+  it('membatasi daftar Live Results menjadi 20 artikel per halaman', () => {
+    const articles = Array.from({ length: 25 }, (_, index) => ({
+      id: `article-${index}`,
+      title: `Artikel ${index}`,
+      slug: `artikel-${index}`,
+      publishedAt: '2026-10-08T10:00:00Z',
+      publishedUrls: [`https://portal.example/artikel-${index}`],
+    }));
+    render(<LiveResultsV2 data={{ articles, total: 25 }} />);
+    expect(screen.getAllByRole('button', { name: /^Salin berurutan Artikel / })).toHaveLength(20);
+    expect(screen.getByText('1 / 2')).toBeTruthy();
+  });
   it('menyalin hanya URL dari hasil yang cocok dengan pencarian', async () => {
     const writeText = mockClipboard();
     render(<LiveResultsV2 data={DATA} />);
@@ -132,7 +125,7 @@ describe('LiveResultsV2', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Cari hasil distribusi' }), {
       target: { value: 'Berita Kedua' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Salin berurutan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salin berurutan Berita Kedua' }));
 
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith('1. https://portal-b.example/berita-kedua'),
