@@ -50,7 +50,6 @@ function AdHtml({ creative }: { readonly creative: Extract<AdCreative, { kind: '
   return (
     <iframe
       title="Iklan"
-      aria-label="Iklan"
       sandbox="allow-popups allow-popups-to-escape-sandbox"
       referrerPolicy="no-referrer"
       loading="lazy"
