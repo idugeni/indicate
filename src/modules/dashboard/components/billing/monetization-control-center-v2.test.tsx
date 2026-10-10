@@ -3,6 +3,38 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MonetizationControlCenterV2 } from './monetization-control-center-v2';
 
+vi.mock('@/modules/dashboard/components/shared/search-combobox', () => ({
+  SearchCombobox: ({
+    id,
+    value,
+    onValueChange,
+    options,
+    placeholder,
+  }: {
+    id?: string;
+    value: string;
+    onValueChange: (value: string | null) => void;
+    options: readonly { value: string; label: string }[];
+    placeholder: string;
+  }) => (
+    <select
+      id={id}
+      aria-label="Organisasi"
+      value={value}
+      onChange={(event) => onValueChange(event.target.value)}
+    >
+      <option value="">{placeholder}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  ),
+}));
+
+
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -16,7 +48,7 @@ function stub(state = 'active', invoices: unknown[] = []) {
       const url = String(input);
       if (url.includes('subscription-state')) return { ok: true, json: async () => ({ state }) };
       if (url.includes('scope=invoices')) return { ok: true, json: async () => invoices };
-      if (url.includes('view=customers')) return { ok: true, json: async () => [] };
+      if (url.includes('view=customers')) return { ok: true, json: async () => [{ customer: { id: 'org-1', name: 'UPT Kendal', slug: 'upt-kendal' } }] };
       return { ok: true, json: async () => ({}) };
     }),
   );
@@ -218,8 +250,40 @@ describe('Monetization Control Center V2', () => {
       <MonetizationControlCenterV2 organizationId="org-1" permissions={['platform.super_admin']} />,
     );
     expect(await screen.findByText('Platform Actions')).toBeDefined();
-    fireEvent.change(screen.getByLabelText('Nominal faktur'), { target: { value: '600000' } });
-    expect((screen.getByLabelText('Nominal faktur') as HTMLInputElement).value).toBe('600000');
+    fireEvent.change(screen.getByLabelText('Nominal (IDR)'), { target: { value: '600000' } });
+    expect((screen.getByLabelText('Nominal (IDR)') as HTMLInputElement).value).toBe('600000');
     expect(calls).toHaveLength(0);
   });
+  it('menerbitkan tagihan dengan UPT, nominal, jatuh tempo, dan keterangan yang dipilih', async () => {
+    const requests: Array<{ url: string; body?: Record<string, unknown> }> = [];
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string, init?: RequestInit) => {
+        const url = String(input);
+        requests.push({ url, ...(init?.body ? { body: JSON.parse(String(init.body)) as Record<string, unknown> } : {}) });
+        if (url.includes('subscription-state')) return { ok: true, json: async () => ({ state: 'active' }) };
+        if (url.includes('scope=invoices')) return { ok: true, json: async () => [] };
+        if (url.includes('view=customers')) return { ok: true, json: async () => [{ customer: { id: 'org-1', name: 'UPT Kendal', slug: 'upt-kendal' } }] };
+        return { ok: true, json: async () => ({ id: 'invoice-new' }) };
+      }),
+    );
+    render(<MonetizationControlCenterV2 organizationId="org-1" permissions={['platform.super_admin']} />);
+    await screen.findByText('Platform Actions');
+    await waitFor(() => expect(screen.getByLabelText('Organisasi').querySelectorAll('option').length).toBeGreaterThan(1));
+    fireEvent.change(screen.getByLabelText('Organisasi'), { target: { value: 'org-1' } });
+    fireEvent.change(screen.getByLabelText('Nominal (IDR)'), { target: { value: '725000' } });
+    fireEvent.change(screen.getByLabelText('Tanggal jatuh tempo'), { target: { value: '2030-10-31' } });
+    fireEvent.change(screen.getByLabelText('Keterangan / periode layanan'), { target: { value: 'Layanan UPT — Oktober 2030' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Terbitkan tagihan' }));
+    await waitFor(() => expect(requests.some((request) => request.body?.action === 'invoice.issue')).toBe(true));
+    const issue = requests.find((request) => request.body?.action === 'invoice.issue');
+    expect(issue?.body?.payload).toMatchObject({
+      organizationId: 'org-1',
+      amountIdr: 725000,
+      billingNote: 'Layanan UPT — Oktober 2030',
+    });
+    expect((issue?.body?.payload as { dueAt: string }).dueAt).toContain('2030-10-31');
+  });
+
 });

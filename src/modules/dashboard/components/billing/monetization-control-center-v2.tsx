@@ -25,6 +25,7 @@ import { formatDate } from '@/modules/dashboard/components/shared/dashboard-date
 type Invoice = {
   readonly id: string;
   readonly organizationId: string;
+  readonly organizationName?: string;
   readonly number: string;
   readonly amountIdr: number;
   readonly status: 'paid' | 'voided' | 'unpaid';
@@ -39,6 +40,17 @@ type Invoice = {
 type Customer = { readonly id: string; readonly name: string; readonly slug: string };
 
 const INVOICE_PAGE_SIZE = 100;
+
+function localDateInputValue(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function invoiceDateTime(value: string): string {
+  return new Date(`${value}T12:00:00+07:00`).toISOString();
+}
 
 const money = (n: number) => `Rp${new Intl.NumberFormat('id-ID').format(n)}`;
 
@@ -65,6 +77,15 @@ export function MonetizationControlCenterV2({
   const [selectedOrg, setSelectedOrg] = useState('');
   const [status, setStatus] = useState('active');
   const [amount, setAmount] = useState(String(SINGLE_INVOICE_AMOUNT_IDR));
+  const [invoiceMode, setInvoiceMode] = useState<'unpaid' | 'paid'>('unpaid');
+  const [dueDate, setDueDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    return localDateInputValue(date);
+  });
+  const [paidDate, setPaidDate] = useState(() => localDateInputValue());
+  const [billingNote, setBillingNote] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Transfer bank');
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -386,8 +407,14 @@ export function MonetizationControlCenterV2({
                         {invoice.number}
                       </p>
                       <p className="m-0 mt-1 text-[11px] text-paper-dim">
-                        {formatDate(invoice.createdAt)} · {customerName(invoice.organizationId)}
+                        Diterbitkan {formatDate(invoice.createdAt)} · {invoice.organizationName || customerName(invoice.organizationId)}
                       </p>
+                      {invoice.dueAt ? (
+                        <p className="m-0 mt-1 text-[10px] text-paper-faint">Jatuh tempo {formatDate(invoice.dueAt)}</p>
+                      ) : null}
+                      {invoice.billingNote ? (
+                        <p className="m-0 mt-1 line-clamp-2 text-[11px] text-paper-dim">{invoice.billingNote}</p>
+                      ) : null}
                     </div>
                     <Badge variant="outline" className="capitalize">
                       {invoice.status}
@@ -412,6 +439,36 @@ export function MonetizationControlCenterV2({
                       >
                         <FileDown className="h-3.5 w-3.5" aria-hidden="true" /> Unduh
                       </Button>
+                      {isPlatform && invoice.status === 'unpaid' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => {
+                            const date = window.prompt(
+                              `Tanggal pembayaran ${invoice.number} (YYYY-MM-DD):`,
+                              localDateInputValue(),
+                            );
+                            if (!date || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return;
+                            const method = window.prompt('Metode pembayaran:', 'Transfer bank');
+                            if (!method?.trim()) return;
+                            if (!window.confirm(`Konfirmasi pembayaran ${invoice.number} sebesar ${money(invoice.amountIdr)}?`)) return;
+                            void runAction(
+                              'invoice.pay',
+                              {
+                                invoiceId: invoice.id,
+                                expectedVersion: invoice.version,
+                                paidAt: invoiceDateTime(date),
+                                paymentMethod: method.trim(),
+                              },
+                              'Pembayaran invoice berhasil dicatat.',
+                            );
+                          }}
+                        >
+                          Tandai lunas
+                        </Button>
+                      ) : null}
                       {isPlatform && invoice.status === 'paid' ? (
                         <Button
                           type="button"
@@ -545,47 +602,120 @@ export function MonetizationControlCenterV2({
                   Terapkan status
                 </Button>
                 <div className="border-t border-hairline pt-4">
-                  <Label htmlFor="monetization-amount">Nominal faktur</Label>
-                  <Input
-                    id="monetization-amount"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    disabled={busy}
-                    inputMode="numeric"
-                    className="mt-1.5 font-mono text-xs"
-                  />
-                  <p className="m-0 mt-1 text-[10px] text-paper-faint">
-                    Bawaan {money(SINGLE_INVOICE_AMOUNT_IDR)} per periode.
-                  </p>
+                  <p className="m-0 mb-3 text-xs font-semibold text-paper">Buat invoice khusus</p>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="monetization-invoice-mode">Jenis invoice</Label>
+                    <select
+                      id="monetization-invoice-mode"
+                      value={invoiceMode}
+                      onChange={(e) => setInvoiceMode(e.target.value as typeof invoiceMode)}
+                      disabled={busy}
+                      className="h-9 w-full rounded-md border border-hairline bg-bg px-2 text-xs text-paper"
+                    >
+                      <option value="unpaid">Tagihan baru · belum dibayar</option>
+                      <option value="paid">Invoice lunas · pembayaran terkonfirmasi</option>
+                    </select>
+                  </div>
+                  <div className="mt-3 space-y-1.5">
+                    <Label htmlFor="monetization-amount">Nominal (IDR)</Label>
+                    <Input
+                      id="monetization-amount"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      disabled={busy}
+                      inputMode="numeric"
+                      className="font-mono text-xs"
+                    />
+                    <p className="m-0 text-[10px] text-paper-faint">
+                      Nilai awal {money(SINGLE_INVOICE_AMOUNT_IDR)}; dapat disesuaikan untuk setiap UPT.
+                    </p>
+                  </div>
+                  {invoiceMode === 'unpaid' ? (
+                    <div className="mt-3 space-y-1.5">
+                      <Label htmlFor="monetization-due-date">Tanggal jatuh tempo</Label>
+                      <Input
+                        id="monetization-due-date"
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        disabled={busy}
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-1.5">
+                      <Label htmlFor="monetization-paid-date">Tanggal pembayaran</Label>
+                      <Input
+                        id="monetization-paid-date"
+                        type="date"
+                        value={paidDate}
+                        onChange={(e) => setPaidDate(e.target.value)}
+                        disabled={busy}
+                        required
+                      />
+                      <Label htmlFor="monetization-payment-method">Metode pembayaran</Label>
+                      <Input
+                        id="monetization-payment-method"
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        disabled={busy}
+                        maxLength={40}
+                      />
+                    </div>
+                  )}
+                  <div className="mt-3 space-y-1.5">
+                    <Label htmlFor="monetization-billing-note">Keterangan / periode layanan</Label>
+                    <textarea
+                      id="monetization-billing-note"
+                      value={billingNote}
+                      onChange={(e) => setBillingNote(e.target.value)}
+                      disabled={busy}
+                      maxLength={500}
+                      rows={3}
+                      placeholder="Contoh: Layanan distribusi konten UPT — Oktober 2026"
+                      className="w-full rounded-md border border-hairline bg-bg px-3 py-2 text-xs text-paper placeholder:text-paper-faint"
+                    />
+                    <p className="m-0 text-[10px] text-paper-faint">
+                      Tanggal penerbitan dan nomor invoice dibuat otomatis saat invoice diterbitkan.
+                    </p>
+                  </div>
                   <Button
                     type="button"
                     size="sm"
                     className="mt-3"
-                    disabled={busy || !selectedOrg}
+                    disabled={busy || !selectedOrg || !amount.trim() || (invoiceMode === 'unpaid' ? !dueDate : !paidDate || !paymentMethod.trim())}
                     onClick={() => {
                       const n = Number(amount);
-                      if (!Number.isInteger(n) || n < 1) {
-                        setError('Nominal faktur tidak valid.');
+                      if (!Number.isSafeInteger(n) || n < 1) {
+                        setError('Nominal invoice harus berupa bilangan bulat positif.');
                         return;
                       }
-                      if (
-                        window.confirm(`Catat faktur ${customerName(selectedOrg)} · ${money(n)}?`)
-                      ) {
-                        void runAction(
-                          'invoice.create',
-                          {
+                      if (invoiceMode === 'unpaid' && invoiceDateTime(dueDate) <= new Date().toISOString()) {
+                        setError('Tanggal jatuh tempo harus berada di masa depan.');
+                        return;
+                      }
+                      const action = invoiceMode === 'unpaid' ? 'invoice.issue' : 'invoice.create';
+                      const payload = invoiceMode === 'unpaid'
+                        ? {
                             organizationId: selectedOrg,
                             amountIdr: n,
-                            paidAt: new Date().toISOString(),
-                            billingNote: null,
-                            paymentMethod: null,
-                          },
-                          'Faktur tercatat.',
-                        );
+                            dueAt: invoiceDateTime(dueDate),
+                            billingNote: billingNote.trim() || null,
+                          }
+                        : {
+                            organizationId: selectedOrg,
+                            amountIdr: n,
+                            paidAt: invoiceDateTime(paidDate),
+                            billingNote: billingNote.trim() || null,
+                            paymentMethod: paymentMethod.trim(),
+                          };
+                      const actionLabel = invoiceMode === 'unpaid' ? 'Terbitkan tagihan' : 'Catat invoice lunas';
+                      if (window.confirm(`${actionLabel} untuk ${customerName(selectedOrg)} sebesar ${money(n)}?`)) {
+                        void runAction(action, payload, invoiceMode === 'unpaid' ? 'Tagihan berhasil diterbitkan.' : 'Invoice lunas berhasil dicatat.');
                       }
                     }}
                   >
-                    Catat faktur
+                    {invoiceMode === 'unpaid' ? 'Terbitkan tagihan' : 'Catat invoice lunas'}
                   </Button>
                 </div>
               </div>
