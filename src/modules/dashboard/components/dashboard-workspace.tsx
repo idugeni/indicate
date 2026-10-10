@@ -17,7 +17,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { CommandPalette } from '@/modules/dashboard/components/command-palette';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import {
@@ -53,9 +58,7 @@ function withAnalytics(body: unknown, analytics: unknown): unknown {
   return { ...(body as Record<string, unknown>), analytics };
 }
 
-function resolveApiEndpoint(
-  target: View | string,
-): 'publishing' | 'integrations' | 'workspace' | 'ads' {
+function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations' | 'workspace' | 'ads' {
   if (target === 'ads' || target.startsWith('ads.')) {
     return 'ads';
   }
@@ -91,14 +94,7 @@ function resolveApiEndpoint(
  * discarded for them (see the loading effect below), so a post-mutation
  * refetch here would only waste one GET per mutation. Panels own refresh.
  */
-const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>([
-  'content',
-  'billing',
-  'moderation',
-  'ai',
-  'ads',
-  'customers',
-]);
+const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['content', 'billing', 'moderation', 'ai', 'ads', 'customers']);
 
 const DASHBOARD_ARTICLE_PAGE_SIZE = 20;
 
@@ -147,21 +143,13 @@ export function DashboardWorkspace({
   const [organizationId, setOrganizationId] = useState(initialOrgId);
   const [generation, setGeneration] = useState(initialOrgId ? 1 : 0);
   const [view, setView] = useDashboardView();
-  const [payload, setPayload] = useState<{ readonly key: string; readonly body: unknown } | null>(
-    null,
-  );
+  const [payload, setPayload] = useState<{ readonly key: string; readonly body: unknown } | null>(null);
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const crossOrg = useMemo(
-    () =>
-      organizations.some((organization) =>
-        (organization.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin),
-      ),
-    [organizations],
-  );
+  const crossOrg = useMemo(() => organizations.some((organization) => (organization.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin)), [organizations]);
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
@@ -188,14 +176,13 @@ export function DashboardWorkspace({
   }, [payload]);
 
   const scopeKey = `${organizationId}|${view}|${filterQuery}|${pendingOrgId ?? ''}`;
-  const crossOrgScope =
-    crossOrg && (view === 'articles' || view === 'published') ? '&scope=all' : '';
+  const crossOrgScope = crossOrg && (view === 'articles' || view === 'published') ? '&scope=all' : '';
   const scopedKey = `${scopeKey}|${crossOrgScope}`;
   const data = payload !== null && payload.key === scopedKey ? payload.body : null;
 
   const activeOrganization = useMemo(
     () => organizations.find((org) => org.id === organizationId),
-    [organizations, organizationId],
+    [organizations, organizationId]
   );
 
   const activePermissions = useMemo(
@@ -216,7 +203,7 @@ export function DashboardWorkspace({
         return null;
       }
     },
-    [],
+    []
   );
 
   const fetchData = useCallback(
@@ -233,8 +220,7 @@ export function DashboardWorkspace({
 
       try {
         const pendingBody = fetch(url, signal ? { signal } : undefined);
-        const pendingAnalytics =
-          targetView === 'dashboard' ? fetchAnalytics(targetOrg, signal) : null;
+        const pendingAnalytics = targetView === 'dashboard' ? fetchAnalytics(targetOrg, signal) : null;
         const response = await pendingBody;
         const [body, analytics] = await Promise.all([
           response.json() as Promise<unknown>,
@@ -246,19 +232,15 @@ export function DashboardWorkspace({
         if (!response.ok && scopeSuffix !== '' && response.status === 403) {
           if (activeOrgRef.current !== targetOrg) return;
           setPayload(null);
-          setError(
-            'Akses lintas-organisasi ditolak server. Periksa grant administrator platform sebelum melanjutkan.',
-          );
+          setError('Akses lintas-organisasi ditolak server. Periksa grant administrator platform sebelum melanjutkan.');
           return;
         }
 
         if (!response.ok) {
           const apiError = body as ApiErrorResponse;
-          setError(
-            response.status === 401
-              ? 'Sesi berakhir. Muat ulang lalu masuk kembali.'
-              : (apiError.error?.message ?? 'Server gagal memproses. Coba lagi.'),
-          );
+          setError(response.status === 401
+            ? 'Sesi berakhir. Muat ulang lalu masuk kembali.'
+            : (apiError.error?.message ?? 'Server gagal memproses. Coba lagi.'));
         } else if (targetView === 'dashboard') {
           if (activeOrgRef.current !== targetOrg) return;
           setPayload({ key, body: withAnalytics(body, analytics) });
@@ -272,7 +254,7 @@ export function DashboardWorkspace({
         }
       }
     },
-    [fetchAnalytics, crossOrg],
+    [fetchAnalytics, crossOrg]
   );
 
   useEffect(() => {
@@ -299,11 +281,9 @@ export function DashboardWorkspace({
       // initial RSC response is not coupled to the heavier analytical query set.
       void fetchAnalytics(snapshotOrg).then((analytics) => {
         if (analytics === null || activeOrgRef.current !== snapshotOrg) return;
-        setPayload((previous) =>
-          previous === null || previous.key !== snapshotKey
-            ? previous
-            : { key: snapshotKey, body: withAnalytics(previous.body, analytics) },
-        );
+        setPayload((previous) => (previous === null || previous.key !== snapshotKey
+          ? previous
+          : { key: snapshotKey, body: withAnalytics(previous.body, analytics) }));
       });
       return;
     }
@@ -316,18 +296,10 @@ export function DashboardWorkspace({
     }
     const controller = new AbortController();
     void Promise.resolve().then(() =>
-      fetchData(view, organizationId, filterQuery, controller.signal),
+      fetchData(view, organizationId, filterQuery, controller.signal)
     );
     return () => controller.abort();
-  }, [
-    fetchAnalytics,
-    fetchData,
-    view,
-    organizationId,
-    filterQuery,
-    initialDashboard,
-    activePermissions,
-  ]);
+  }, [fetchAnalytics, fetchData, view, organizationId, filterQuery, initialDashboard, activePermissions]);
 
   const handleSwitchCommitted = useCallback(
     (nextOrgId: string) => {
@@ -340,7 +312,7 @@ export function DashboardWorkspace({
       setGeneration((prev) => prev + 1);
       toast.success(`Organisasi aktif beralih ke: ${target?.name ?? nextOrgId}`);
     },
-    [organizations],
+    [organizations]
   );
 
   const handleSwitchFailed = useCallback((message: string) => {
@@ -353,86 +325,69 @@ export function DashboardWorkspace({
     setPendingOrgId(nextOrgId);
   }, []);
 
-  const command = useCallback(
-    async (
-      action: string,
-      payload: unknown,
-      options?: { readonly refresh?: boolean | undefined },
-    ): Promise<unknown> => {
-      const targetOrg = organizationId;
-      setError(null);
+  const command = useCallback(async (action: string, payload: unknown, options?: { readonly refresh?: boolean | undefined }): Promise<unknown> => {
+    const targetOrg = organizationId;
+    setError(null);
 
-      const endpoint = resolveApiEndpoint(action);
+    const endpoint = resolveApiEndpoint(action);
 
-      const run = async (): Promise<unknown> => {
-        const response = await fetch(`/api/dashboard/${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ organizationId: targetOrg, action, payload }),
-        });
+    const run = async (): Promise<unknown> => {
+      const response = await fetch(`/api/dashboard/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: targetOrg, action, payload }),
+      });
 
-        const body = (await response.json()) as unknown;
-        if (activeOrgRef.current !== targetOrg) return null;
+      const body = (await response.json()) as unknown;
+      if (activeOrgRef.current !== targetOrg) return null;
 
-        if (!response.ok) {
-          const apiErr = body as ApiErrorResponse;
-          const fieldDetails = apiErr.error?.fields
-            ? ` (${Object.entries(apiErr.error.fields)
-                .map(([f, m]) => `${f}: ${m.join(', ')}`)
-                .join('; ')})`
-            : '';
-          const message =
-            response.status === 401
-              ? 'Sesi berakhir. Muat ulang lalu masuk kembali.'
-              : `${apiErr.error?.message ?? 'Gagal menjalankan perintah.'}${fieldDetails}`;
-          throw Object.assign(new Error(message), { status: response.status });
-        }
-        return body;
-      };
-
-      try {
-        // No command speaks for itself: callers own the toast so one user action
-        // reports one outcome, and so a multi-step action cannot stack a toast and
-        // a full refetch per step. Refresh is opt-in for the same reason.
-        const body = await run();
-        if (body === null || activeOrgRef.current !== targetOrg) return null;
-        if (options?.refresh === true && !SELF_FETCHING_VIEWS.has(view))
-          void fetchData(view, targetOrg, filterQuery);
-        return body;
-      } catch (err: unknown) {
-        if (activeOrgRef.current === targetOrg) {
-          setError(
-            err instanceof TypeError
-              ? 'Gagal menghubungi server saat mengirim perintah.'
-              : err instanceof Error
-                ? err.message
-                : 'Gagal menjalankan perintah.',
-          );
-        }
-        return null;
+      if (!response.ok) {
+        const apiErr = body as ApiErrorResponse;
+        const fieldDetails = apiErr.error?.fields
+          ? ` (${Object.entries(apiErr.error.fields).map(([f, m]) => `${f}: ${m.join(', ')}`).join('; ')})`
+          : '';
+        const message = response.status === 401
+          ? 'Sesi berakhir. Muat ulang lalu masuk kembali.'
+          : `${apiErr.error?.message ?? 'Gagal menjalankan perintah.'}${fieldDetails}`;
+        throw Object.assign(new Error(message), { status: response.status });
       }
-    },
-    [organizationId, view, filterQuery, fetchData],
-  );
+      return body;
+    };
+
+    try {
+      // No command speaks for itself: callers own the toast so one user action
+      // reports one outcome, and so a multi-step action cannot stack a toast and
+      // a full refetch per step. Refresh is opt-in for the same reason.
+      const body = await run();
+      if (body === null || activeOrgRef.current !== targetOrg) return null;
+      if (options?.refresh === true && !SELF_FETCHING_VIEWS.has(view)) void fetchData(view, targetOrg, filterQuery);
+      return body;
+    } catch (err: unknown) {
+      if (activeOrgRef.current === targetOrg) {
+        setError(
+          err instanceof TypeError
+            ? 'Gagal menghubungi server saat mengirim perintah.'
+            : err instanceof Error
+              ? err.message
+              : 'Gagal menjalankan perintah.',
+        );
+      }
+      return null;
+    }
+  }, [organizationId, view, filterQuery, fetchData]);
 
   const dismissError = useCallback(() => setError(null), []);
 
-  const selectView = useCallback(
-    (next: View) => {
-      setView(next);
-      setFilterQuery('');
-    },
-    [setView],
-  );
+  const selectView = useCallback((next: View) => {
+    setView(next);
+    setFilterQuery('');
+  }, [setView]);
 
-  const selectMobileNavView = useCallback(
-    (next: View) => {
-      setView(next);
-      setFilterQuery('');
-      setNavOpen(false);
-    },
-    [setView],
-  );
+  const selectMobileNavView = useCallback((next: View) => {
+    setView(next);
+    setFilterQuery('');
+    setNavOpen(false);
+  }, [setView]);
 
   const refreshActiveView = useCallback(() => {
     if (SELF_FETCHING_VIEWS.has(view)) return;
@@ -447,97 +402,55 @@ export function DashboardWorkspace({
    * Lookups, tag options, and totals always describe the first page scope;
    * only the row arrays grow.
    */
-  const fetchMoreArticles = useCallback(
-    async (
-      requestedCursor?: string | null,
-    ): Promise<{
-      readonly loaded: number;
-      readonly total: number;
-      readonly nextCursor: string | null;
-      readonly articles: readonly unknown[];
-      readonly articleSites: readonly unknown[];
-      readonly bridgePublished: readonly unknown[];
-    } | null> => {
-      const targetOrg = organizationId;
-      const targetView = view;
-      const query = filterQuery;
-      const scopeSuffix =
-        crossOrg && (targetView === 'articles' || targetView === 'published') ? '&scope=all' : '';
-      const key = `${targetOrg}|${targetView}|${query}||${scopeSuffix}`;
-      const current = payloadRef.current;
-      const currentBody =
-        current !== null && current.key === key
-          ? (current.body as {
-              readonly articles?: readonly unknown[];
-              readonly articlesNextCursor?: string | null;
-              readonly total?: number;
-              readonly articleSites?: readonly unknown[];
-              readonly bridgePublished?: readonly unknown[];
-            })
-          : null;
-      const cursor = requestedCursor ?? currentBody?.articlesNextCursor ?? null;
-      if (cursor === null || articlesMoreInflightRef.current) return null;
-      articlesMoreInflightRef.current = true;
-      try {
-        const endpoint = resolveApiEndpoint(targetView);
-        const response = await fetch(
-          `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}&limit=${DASHBOARD_ARTICLE_PAGE_SIZE}&cursor=${encodeURIComponent(cursor)}${scopeSuffix}`,
-        );
-        const body = (await response.json()) as {
-          readonly articles?: readonly unknown[];
-          readonly articlesNextCursor?: string | null;
-          readonly total?: number;
-          readonly articleSites?: readonly unknown[];
-          readonly bridgePublished?: readonly unknown[];
-        };
-        if (!response.ok || activeOrgRef.current !== targetOrg) return null;
-        const previous = payloadRef.current;
-        if (previous === null || previous.key !== key) return null;
-        const previousBody = previous.body as {
-          readonly articles?: readonly unknown[];
-          readonly articleSites?: readonly unknown[];
-          readonly bridgePublished?: readonly unknown[];
-        };
-        const articles = [...(previousBody.articles ?? []), ...(body.articles ?? [])];
-        const articleSites = [...(previousBody.articleSites ?? []), ...(body.articleSites ?? [])];
-        const bridgePublished = [
-          ...(previousBody.bridgePublished ?? []),
-          ...(body.bridgePublished ?? []),
-        ];
-        const nextCursor =
-          typeof body.articlesNextCursor === 'string' ? body.articlesNextCursor : null;
-        const nextPayload = {
-          key,
-          body: { ...(body as Record<string, unknown>), articles, articleSites, bridgePublished },
-        };
-        const merged = {
-          loaded: articles.length,
-          total: typeof body.total === 'number' ? body.total : articles.length,
-          nextCursor,
-          articles,
-          articleSites,
-          bridgePublished,
-        };
-        payloadRef.current = nextPayload;
-        setPayload(nextPayload);
-        return merged;
-      } catch {
-        if (activeOrgRef.current === targetOrg)
-          setError('Gagal memuat artikel lebih banyak. Coba lagi.');
-        return null;
-      } finally {
-        articlesMoreInflightRef.current = false;
-      }
-    },
-    [organizationId, view, filterQuery, crossOrg],
-  );
+  const fetchMoreArticles = useCallback(async (requestedCursor?: string | null): Promise<{
+    readonly loaded: number; readonly total: number; readonly nextCursor: string | null;
+    readonly articles: readonly unknown[]; readonly articleSites: readonly unknown[]; readonly bridgePublished: readonly unknown[];
+  } | null> => {
+    const targetOrg = organizationId;
+    const targetView = view;
+    const query = filterQuery;
+    const scopeSuffix = crossOrg && (targetView === 'articles' || targetView === 'published') ? '&scope=all' : '';
+    const key = `${targetOrg}|${targetView}|${query}||${scopeSuffix}`;
+    const current = payloadRef.current;
+    const currentBody = current !== null && current.key === key ? current.body as {
+      readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number;
+      readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[];
+    } : null;
+    const cursor = requestedCursor ?? currentBody?.articlesNextCursor ?? null;
+    if (cursor === null || articlesMoreInflightRef.current) return null;
+    articlesMoreInflightRef.current = true;
+    try {
+      const endpoint = resolveApiEndpoint(targetView);
+      const response = await fetch(`/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}&limit=${DASHBOARD_ARTICLE_PAGE_SIZE}&cursor=${encodeURIComponent(cursor)}${scopeSuffix}`);
+      const body = (await response.json()) as {
+        readonly articles?: readonly unknown[]; readonly articlesNextCursor?: string | null; readonly total?: number;
+        readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[];
+      };
+      if (!response.ok || activeOrgRef.current !== targetOrg) return null;
+      const previous = payloadRef.current;
+      if (previous === null || previous.key !== key) return null;
+      const previousBody = previous.body as {
+        readonly articles?: readonly unknown[]; readonly articleSites?: readonly unknown[]; readonly bridgePublished?: readonly unknown[];
+      };
+      const articles = [...(previousBody.articles ?? []), ...(body.articles ?? [])];
+      const articleSites = [...(previousBody.articleSites ?? []), ...(body.articleSites ?? [])];
+      const bridgePublished = [...(previousBody.bridgePublished ?? []), ...(body.bridgePublished ?? [])];
+      const nextCursor = typeof body.articlesNextCursor === 'string' ? body.articlesNextCursor : null;
+      const nextPayload = { key, body: { ...(body as Record<string, unknown>), articles, articleSites, bridgePublished } };
+      const merged = { loaded: articles.length, total: typeof body.total === 'number' ? body.total : articles.length, nextCursor, articles, articleSites, bridgePublished };
+      payloadRef.current = nextPayload;
+      setPayload(nextPayload);
+      return merged;
+    } catch {
+      if (activeOrgRef.current === targetOrg) setError('Gagal memuat artikel lebih banyak. Coba lagi.');
+      return null;
+    } finally {
+      articlesMoreInflightRef.current = false;
+    }
+  }, [organizationId, view, filterQuery, crossOrg]);
 
   const articlesMore = (() => {
-    if (
-      (view !== 'articles' && view !== 'published') ||
-      data === null ||
-      typeof data !== 'object'
-    ) {
+    if ((view !== 'articles' && view !== 'published') || data === null || typeof data !== 'object') {
       return { cursor: null as string | null, total: 0 };
     }
     const body = data as { readonly articlesNextCursor?: unknown; readonly total?: unknown };
@@ -559,39 +472,23 @@ export function DashboardWorkspace({
     const targetView = view;
     const query = filterQuery;
     const key = `${targetOrg}|${targetView}|${query}||`;
-    const current =
-      payload !== null && payload.key === key
-        ? (payload.body as {
-            readonly auditLogs?: readonly unknown[];
-            readonly auditNextCursor?: string | null;
-          })
-        : null;
+    const current = payload !== null && payload.key === key ? payload.body as {
+      readonly auditLogs?: readonly unknown[]; readonly auditNextCursor?: string | null;
+    } : null;
     const cursor = current?.auditNextCursor ?? null;
     if (cursor === null || moreInflightRef.current) return;
     moreInflightRef.current = true;
     try {
-      const response = await fetch(
-        `/api/dashboard/workspace?organizationId=${encodeURIComponent(targetOrg)}&view=audit${query}&limit=100&cursor=${encodeURIComponent(cursor)}`,
-      );
-      const body = (await response.json()) as {
-        readonly auditLogs?: readonly unknown[];
-        readonly auditNextCursor?: string | null;
-      };
+      const response = await fetch(`/api/dashboard/workspace?organizationId=${encodeURIComponent(targetOrg)}&view=audit${query}&limit=100&cursor=${encodeURIComponent(cursor)}`);
+      const body = (await response.json()) as { readonly auditLogs?: readonly unknown[]; readonly auditNextCursor?: string | null };
       if (!response.ok || activeOrgRef.current !== targetOrg) return;
       setPayload((previous) => {
         if (previous === null || previous.key !== key) return previous;
         const prevBody = previous.body as { readonly auditLogs?: readonly unknown[] };
-        return {
-          key,
-          body: {
-            ...(body as Record<string, unknown>),
-            auditLogs: [...(prevBody.auditLogs ?? []), ...(body.auditLogs ?? [])],
-          },
-        };
+        return { key, body: { ...(body as Record<string, unknown>), auditLogs: [...(prevBody.auditLogs ?? []), ...(body.auditLogs ?? [])] } };
       });
     } catch {
-      if (activeOrgRef.current === targetOrg)
-        setError('Gagal memuat riwayat lebih lama. Coba lagi.');
+      if (activeOrgRef.current === targetOrg) setError('Gagal memuat riwayat lebih lama. Coba lagi.');
     } finally {
       moreInflightRef.current = false;
     }
@@ -605,10 +502,7 @@ export function DashboardWorkspace({
 
   return (
     <TooltipProvider delay={150}>
-      <div
-        className="flex min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased"
-        data-generation={generation}
-      >
+      <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh bg-bg text-paper antialiased" data-generation={generation}>
         <DashboardSidebar
           displayName={displayName}
           avatarUrl={avatarUrl}
@@ -623,169 +517,158 @@ export function DashboardWorkspace({
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 flex-none items-center gap-3 border-b border-white/[0.07] bg-[#080d1a]/90 px-4 backdrop-blur-xl sm:px-6">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setNavOpen(true)}
-              aria-label="Buka navigasi workspace"
-              aria-haspopup="dialog"
-              className="flex-none text-paper-dim hover:text-paper md:hidden"
-            >
-              <Menu className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Breadcrumb className="min-w-0">
-              <BreadcrumbList className="flex-nowrap font-sans text-[13px] text-paper-dim">
-                <BreadcrumbItem className="hidden sm:list-item">
-                  <BreadcrumbLink href="/dashboard" className="hover:text-paper">
-                    {activeOrganization?.name ?? 'Workspace'}
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden text-hairline-strong sm:list-item" />
-                <BreadcrumbItem className="min-w-0">
-                  <BreadcrumbPage className="truncate font-medium text-white">
-                    <span
-                      key={view}
-                      className="block animate-in truncate font-medium fade-in duration-200"
-                    >
-                      {viewLabel(view)}
-                    </span>
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-
-            <div className="ml-auto flex flex-none items-center gap-2">
-              <CommandPalette permissions={activePermissions} organizationId={organizationId} />
-              <p className="m-0 hidden items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-[#8e99b0] md:inline-flex">
-                <span className="relative flex h-1.5 w-1.5 flex-none" aria-hidden="true">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                </span>
-                <LiveClock />
-              </p>
-            </div>
-          </header>
-
-          <Sheet open={navOpen} onOpenChange={setNavOpen}>
-            <SheetContent
-              side="left"
-              aria-label="Navigasi workspace"
-              className="w-[min(20rem,85vw)] gap-0 overflow-hidden border-hairline bg-bg-raised p-0 shadow-none"
-            >
-              <SheetHeader className="flex-none border-b border-hairline px-4 py-3 text-left">
-                <SheetTitle className="flex items-center gap-2 font-sans text-sm font-bold tracking-tight text-paper">
-                  <Image
-                    src="/brand/indicate-mark.svg"
-                    alt=""
-                    aria-hidden="true"
-                    unoptimized
-                    width={24}
-                    height={24}
-                    className="h-6 w-6 flex-none rounded-md"
-                  />
-                  <span className="grid min-w-0 leading-none">
-                    <span className="truncate">Indicate Dashboard</span>
-                    <span className="mt-1 truncate font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-paper-faint">
-                      Publishing infrastructure
-                    </span>
+        <header className="sticky top-0 z-30 flex h-14 flex-none items-center gap-3 border-b border-white/[0.07] bg-[#080d1a]/90 px-4 backdrop-blur-xl sm:px-6">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setNavOpen(true)}
+            aria-label="Buka navigasi workspace"
+            aria-haspopup="dialog"
+            className="flex-none text-paper-dim hover:text-paper md:hidden"
+          >
+            <Menu className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Breadcrumb className="min-w-0">
+            <BreadcrumbList className="flex-nowrap font-sans text-[13px] text-paper-dim">
+              <BreadcrumbItem className="hidden sm:list-item">
+                <BreadcrumbLink href="/dashboard" className="hover:text-paper">
+                  {activeOrganization?.name ?? 'Workspace'}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden text-hairline-strong sm:list-item" />
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbPage className="truncate font-medium text-white">
+                  <span key={view} className="block animate-in truncate font-medium fade-in duration-200">
+                    {viewLabel(view)}
                   </span>
-                </SheetTitle>
-              </SheetHeader>
-              <div className="flex-none border-b border-hairline px-4 py-3">
-                <Label
-                  htmlFor={drawerOrgId}
-                  className="font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint"
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          <div className="ml-auto flex flex-none items-center gap-2">
+            <CommandPalette permissions={activePermissions} organizationId={organizationId} />
+            <p className="m-0 hidden items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-[#8e99b0] md:inline-flex">
+              <span className="relative flex h-1.5 w-1.5 flex-none" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              </span>
+              <LiveClock />
+            </p>
+          </div>
+        </header>
+
+        <Sheet open={navOpen} onOpenChange={setNavOpen}>
+          <SheetContent
+            side="left"
+            aria-label="Navigasi workspace"
+            className="w-[min(20rem,85vw)] gap-0 overflow-hidden border-hairline bg-bg-raised p-0 shadow-none"
+          >
+            <SheetHeader className="flex-none border-b border-hairline px-4 py-3 text-left">
+              <SheetTitle className="flex items-center gap-2 font-sans text-sm font-bold tracking-tight text-paper">
+                <Image
+                  src="/brand/indicate-mark.svg"
+                  alt=""
+                  aria-hidden="true"
+                  unoptimized
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 flex-none rounded-md"
+                />
+                <span className="grid min-w-0 leading-none">
+                  <span className="truncate">Indicate Dashboard</span>
+                  <span className="mt-1 truncate font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-paper-faint">
+                    Publishing infrastructure
+                  </span>
+                </span>
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-none border-b border-hairline px-4 py-3">
+              <Label htmlFor={drawerOrgId} className="font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
+                Organisasi
+              </Label>
+              <div className="mt-1.5">
+                {organizations.length > 1 ? (
+                  <OrganizationSwitcher
+                    organizations={organizations}
+                    activeOrganizationId={organizationId}
+                    selectId={drawerOrgId}
+                    onSwitchRequested={handleSwitchRequested}
+                    onSwitchCommitted={handleSwitchCommitted}
+                    onSwitchFailed={handleSwitchFailed}
+                  />
+                ) : (
+                  <p className="truncate font-sans text-[13px] font-medium text-paper">
+                    {activeOrganization?.name ?? 'Belum ada organisasi'}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="dashboard-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-4">
+              <DashboardNavList
+                view={view}
+                permissions={activePermissions}
+                onSelect={selectMobileNavView}
+              />            </div>
+            <div className="flex-none border-t border-hairline px-4 py-3">
+              <div className="flex w-full items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Buka profil saya"
+                  onClick={() => selectMobileNavView('settings')}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
                 >
-                  Organisasi
-                </Label>
-                <div className="mt-1.5">
-                  {organizations.length > 1 ? (
-                    <OrganizationSwitcher
-                      organizations={organizations}
-                      activeOrganizationId={organizationId}
-                      selectId={drawerOrgId}
-                      onSwitchRequested={handleSwitchRequested}
-                      onSwitchCommitted={handleSwitchCommitted}
-                      onSwitchFailed={handleSwitchFailed}
-                    />
-                  ) : (
-                    <p className="truncate font-sans text-[13px] font-medium text-paper">
-                      {activeOrganization?.name ?? 'Belum ada organisasi'}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="dashboard-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-4">
-                <DashboardNavList
-                  view={view}
-                  permissions={activePermissions}
-                  onSelect={selectMobileNavView}
-                />{' '}
-              </div>
-              <div className="flex-none border-t border-hairline px-4 py-3">
-                <div className="flex w-full items-center gap-1">
+                  <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
+                  <span className="grid min-w-0 flex-1 leading-none">
+                    <span className="truncate font-sans text-xs font-medium text-paper">{displayName}</span>
+                    {activeOrganization?.role ? (
+                      <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
+                        {activeOrganization.role}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+                <AppTooltip label="Keluar dari workspace" side="right">
                   <button
                     type="button"
-                    aria-label="Buka profil saya"
-                    onClick={() => selectMobileNavView('settings')}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
+                    aria-label="Keluar dari workspace"
+                    onClick={() => {
+                      setNavOpen(false);
+                      setSignOutOpen(true);
+                    }}
+                    className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
                   >
-                    <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
-                    <span className="grid min-w-0 flex-1 leading-none">
-                      <span className="truncate font-sans text-xs font-medium text-paper">
-                        {displayName}
-                      </span>
-                      {activeOrganization?.role ? (
-                        <span className="mt-1 truncate font-mono text-[10px] uppercase tracking-wider text-paper-faint">
-                          {activeOrganization.role}
-                        </span>
-                      ) : null}
-                    </span>
+                    <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
-                  <AppTooltip label="Keluar dari workspace" side="right">
-                    <button
-                      type="button"
-                      aria-label="Keluar dari workspace"
-                      onClick={() => {
-                        setNavOpen(false);
-                        setSignOutOpen(true);
-                      }}
-                      className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-paper-dim transition-colors duration-150 hover:bg-bg-raised-2 hover:text-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
-                    >
-                      <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                  </AppTooltip>
-                </div>
+                </AppTooltip>
               </div>
-            </SheetContent>
-          </Sheet>
+            </div>
+          </SheetContent>
+        </Sheet>
 
-          <SignOutDialog mode="icon" open={signOutOpen} onOpenChange={setSignOutOpen} hideTrigger />
+        <SignOutDialog mode="icon" open={signOutOpen} onOpenChange={setSignOutOpen} hideTrigger />
 
-          <DashboardViewPanel
-            view={view}
-            displayName={displayName}
-            data={data}
-            organizationId={organizationId}
-            permissions={activePermissions}
-            error={error}
-            command={command}
-            onDismissError={dismissError}
-            onFilterApply={setFilterQuery}
-            onRefresh={refreshActiveView}
-            onSelectView={selectView}
-            auditNextCursor={auditNextCursor}
-            onLoadMoreAudit={view === 'audit' ? fetchMoreAudit : undefined}
-            articlesNextCursor={articlesMore.cursor}
-            articlesTotal={articlesMore.total}
-            onLoadMoreArticles={
-              view === 'articles' || view === 'published' ? fetchMoreArticles : undefined
-            }
-            crossOrg={crossOrg}
-          />
-          <DashboardFooter />
+        <DashboardViewPanel
+          view={view}
+          displayName={displayName}
+          data={data}
+          organizationId={organizationId}
+          permissions={activePermissions}
+          error={error}
+          command={command}
+          onDismissError={dismissError}
+          onFilterApply={setFilterQuery}
+          onRefresh={refreshActiveView}
+          onSelectView={selectView}
+          auditNextCursor={auditNextCursor}
+          onLoadMoreAudit={view === 'audit' ? fetchMoreAudit : undefined}
+          articlesNextCursor={articlesMore.cursor}
+          articlesTotal={articlesMore.total}
+          onLoadMoreArticles={view === 'articles' || view === 'published' ? fetchMoreArticles : undefined}
+          crossOrg={crossOrg}
+        />
+        <DashboardFooter />
         </div>
       </div>
     </TooltipProvider>
