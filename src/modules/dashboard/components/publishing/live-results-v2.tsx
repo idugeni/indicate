@@ -17,6 +17,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatMoment } from '@/modules/dashboard/components/shared/format-moment';
+import { DashboardPager } from '@/modules/dashboard/components/shared/dashboard-pager';
+import { useDashboardPage } from '@/modules/dashboard/components/shared/use-dashboard-query';
 
 interface LiveArticle {
   readonly id: string;
@@ -73,6 +75,7 @@ interface LiveResultsV2Props {
   readonly onLoadMoreArticles?:
     | ((cursor?: string | null) => Promise<LoadMoreArticlesResult | null>)
     | undefined;
+  readonly crossOrg?: boolean | undefined;
 }
 
 interface ResultRow {
@@ -188,13 +191,21 @@ export function LiveResultsV2({
   articlesNextCursor,
   articlesTotal,
   onLoadMoreArticles,
+  crossOrg = false,
 }: LiveResultsV2Props) {
   const model = useMemo(() => (data as LiveResultsModel | null) ?? {}, [data]);
   const results = useMemo(() => collectResults(model), [model]);
   const [query, setQuery] = useState('');
-  const [copiedOrder, setCopiedOrder] = useState<CopyOrder | null>(null);
-  const [copyError, setCopyError] = useState<string | null>(null);
-  const [copying, setCopying] = useState(false);
+  const [copied, setCopied] = useState<{
+    readonly articleId: string;
+    readonly order: CopyOrder;
+  } | null>(null);
+  const [copyError, setCopyError] = useState<{
+    readonly articleId: string;
+    readonly message: string;
+  } | null>(null);
+  const [copyingArticleId, setCopyingArticleId] = useState<string | null>(null);
+  const [page, setPage] = useDashboardPage('liveResultsPage');
   const [loadingMore, setLoadingMore] = useState(false);
   const totalResults = model.total ?? articlesTotal ?? results.length;
   const nextCursor = model.articlesNextCursor ?? articlesNextCursor ?? null;
@@ -202,76 +213,54 @@ export function LiveResultsV2({
   const filtered = useMemo(() => filterResults(results, query), [results, query]);
 
   const urls = useMemo(() => collectUrls(filtered), [filtered]);
-  const totalUrls = useMemo(
-    () => results.reduce((sum, row) => sum + row.urls.length, 0),
-    [results],
-  );
-  const uniqueTotalUrls = useMemo(() => collectUrls(results).length, [results]);
   const latest = results[0] ?? null;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / 20));
+  const safePage = Math.min(page, pageCount);
+  const visible = filtered.slice((safePage - 1) * 20, safePage * 20);
 
   const loadMoreResults = async () => {
-    if (nextCursor === null || onLoadMoreArticles === undefined || loadingMore || copying) return;
+    if (
+      nextCursor === null ||
+      onLoadMoreArticles === undefined ||
+      loadingMore ||
+      copyingArticleId !== null
+    )
+      return;
     setLoadingMore(true);
     setCopyError(null);
     try {
       const page = await onLoadMoreArticles(nextCursor);
-      if (page === null) setCopyError('Gagal memuat hasil tambahan. Coba lagi.');
+      if (page === null)
+        setCopyError({ articleId: '', message: 'Gagal memuat hasil tambahan. Coba lagi.' });
     } catch {
-      setCopyError('Gagal memuat hasil tambahan. Coba lagi.');
+      setCopyError({ articleId: '', message: 'Gagal memuat hasil tambahan. Coba lagi.' });
     } finally {
       setLoadingMore(false);
     }
   };
 
-  const copyLinks = async (order: CopyOrder) => {
-    if (copying) return;
-    setCopying(true);
-    setCopiedOrder(null);
+  const copyArticleLinks = async (row: ResultRow, order: CopyOrder) => {
+    if (copyingArticleId !== null) return;
+    setCopyingArticleId(row.articleId);
+    setCopied(null);
     setCopyError(null);
-
     try {
-      let copyModel = model;
-      let cursor = copyModel.articlesNextCursor ?? articlesNextCursor ?? null;
-      const visitedCursors = new Set<string>();
-      while (cursor !== null) {
-        if (onLoadMoreArticles === undefined) {
-          throw new Error(
-            'Masih ada halaman hasil yang belum dimuat. Muat hasil tambahan sebelum menyalin.',
-          );
-        }
-        if (visitedCursors.has(cursor))
-          throw new Error('Pagination tidak bergerak ke halaman berikutnya.');
-        visitedCursors.add(cursor);
-        const page = await onLoadMoreArticles(cursor);
-        if (page === null || page.nextCursor === cursor) {
-          throw new Error('Tidak bisa memuat seluruh hasil. Silakan coba salin lagi.');
-        }
-        copyModel = {
-          ...model,
-          articles: page.articles as readonly LiveArticle[],
-          articleSites: page.articleSites as readonly LiveArticleSite[],
-          bridgePublished: page.bridgePublished as readonly BridgePublishedEntry[],
-        };
-        cursor = page.nextCursor;
+      const articleUrls = [...new Set(row.urls.filter((url) => url.trim() !== ''))];
+      if (articleUrls.length === 0) throw new Error('Artikel ini belum memiliki URL tayang.');
+      const orderedUrls = order === 'random' ? shuffleUrls(articleUrls) : articleUrls;
+      if (typeof navigator.clipboard?.writeText !== 'function') {
+        throw new Error('Clipboard tidak tersedia. Periksa izin browser, lalu coba lagi.');
       }
-
-      const allUrls = collectUrls(filterResults(collectResults(copyModel), query));
-      if (allUrls.length === 0)
-        throw new Error('Tidak ada URL pada hasil yang cocok dengan pencarian.');
-      const orderedUrls = order === 'random' ? shuffleUrls(allUrls) : allUrls;
-      if (typeof navigator.clipboard?.writeText !== 'function')
-        throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(formatWhatsappLinks(orderedUrls));
-      setCopiedOrder(order);
+      setCopied({ articleId: row.articleId, order });
     } catch (error) {
-      setCopiedOrder(null);
-      setCopyError(
-        error instanceof Error
-          ? error.message
-          : 'Tidak bisa menyalin link. Periksa izin clipboard browser, lalu coba lagi.',
-      );
+      setCopied(null);
+      setCopyError({
+        articleId: row.articleId,
+        message: error instanceof Error ? error.message : 'Gagal menyalin URL artikel.',
+      });
     } finally {
-      setCopying(false);
+      setCopyingArticleId(null);
     }
   };
 
@@ -299,21 +288,11 @@ export function LiveResultsV2({
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-hairline bg-bg-raised p-3">
           <span className="font-mono text-[10px] uppercase text-paper-faint">Artikel tayang</span>
           <p className="mt-1 font-mono text-xl text-paper">
             {totalResults.toLocaleString('id-ID')}
-          </p>
-        </div>
-        <div className="rounded-lg border border-hairline bg-bg-raised p-3">
-          <span className="font-mono text-[10px] uppercase text-paper-faint">URL termuat</span>
-          <p className="mt-1 font-mono text-xl text-paper">{totalUrls.toLocaleString('id-ID')}</p>
-        </div>
-        <div className="rounded-lg border border-hairline bg-bg-raised p-3">
-          <span className="font-mono text-[10px] uppercase text-paper-faint">URL unik termuat</span>
-          <p className="mt-1 font-mono text-xl text-paper">
-            {uniqueTotalUrls.toLocaleString('id-ID')}
           </p>
         </div>
         <div className="rounded-lg border border-hairline bg-bg-raised p-3">
@@ -346,76 +325,26 @@ export function LiveResultsV2({
       ) : null}
 
       <div className="rounded-lg border border-hairline bg-bg-raised p-3">
-        <div className="flex flex-col gap-2 lg:flex-row">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-paper-faint" />
-            <Input
-              aria-label="Cari hasil distribusi"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setCopiedOrder(null);
-                setCopyError(null);
-              }}
-              placeholder="Cari judul, slug, organisasi, atau URL…"
-              className="pl-9"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={urls.length === 0 || copying}
-              onClick={() => void copyLinks('ordered')}
-            >
-              {copiedOrder === 'ordered' ? (
-                <Check className="mr-1 h-3.5 w-3.5 text-emerald-400" />
-              ) : (
-                <Copy className="mr-1 h-3.5 w-3.5" />
-              )}
-              {copying
-                ? 'Memuat & menyalin…'
-                : copiedOrder === 'ordered'
-                  ? 'Link berurutan disalin'
-                  : 'Salin berurutan'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={urls.length === 0 || copying}
-              onClick={() => void copyLinks('random')}
-            >
-              {copiedOrder === 'random' ? (
-                <Check className="mr-1 h-3.5 w-3.5 text-emerald-400" />
-              ) : (
-                <Shuffle className="mr-1 h-3.5 w-3.5" />
-              )}
-              {copying
-                ? 'Memuat & menyalin…'
-                : copiedOrder === 'random'
-                  ? 'Link acak disalin'
-                  : 'Salin acak'}
-            </Button>
-          </div>
+        <div className="relative min-w-0">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-paper-faint" />
+          <Input
+            aria-label="Cari hasil distribusi"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setCopied(null);
+              setCopyError(null);
+              setPage(1);
+            }}
+            placeholder="Cari judul, slug, organisasi, atau URL…"
+            className="pl-9"
+          />
         </div>
         <p className="mt-2 font-mono text-[10px] text-paper-faint">
-          {urls.length.toLocaleString('id-ID')} URL unik termuat · Total{' '}
-          {(model.total ?? articlesTotal ?? results.length).toLocaleString('id-ID')} hasil ·
-          Penyalinan memuat seluruh halaman.
+          {urls.length.toLocaleString('id-ID')} URL unik dari{' '}
+          {filtered.length.toLocaleString('id-ID')} artikel yang cocok. Salin dilakukan per kartu
+          artikel.
         </p>
-        {copiedOrder ? (
-          <p role="status" className="mt-2 font-mono text-[10px] text-emerald-400">
-            Link {copiedOrder === 'ordered' ? 'berurutan' : 'acak'} disalin dan siap ditempel ke
-            WhatsApp.
-          </p>
-        ) : null}
-        {copyError ? (
-          <p role="alert" className="mt-2 font-mono text-[10px] text-amber-400">
-            {copyError}
-          </p>
-        ) : null}
       </div>
 
       {filtered.length === 0 ? (
@@ -432,7 +361,7 @@ export function LiveResultsV2({
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((row) => {
+          {visible.map((row) => {
             const primaryUrl = row.urls[0];
             return (
               <article
@@ -454,8 +383,12 @@ export function LiveResultsV2({
                       /{row.slug} · {formatMoment(row.publishedAt) ?? 'waktu belum tercatat'}
                     </p>
                     {row.orgName ? (
-                      <p className="mt-0.5 truncate font-sans text-[10px] text-paper-faint">
-                        {row.orgName}
+                      <p className="mt-0.5 truncate font-sans text-[11px] text-paper-dim">
+                        {crossOrg ? `Organisasi pemilik: ${row.orgName}` : row.orgName}
+                      </p>
+                    ) : crossOrg ? (
+                      <p className="mt-0.5 truncate font-sans text-[11px] text-paper-dim">
+                        Artikel lintas organisasi
                       </p>
                     ) : null}
                   </div>
@@ -472,31 +405,75 @@ export function LiveResultsV2({
                     ) : null}
                   </div>
                 </div>
-                <div className="mt-3 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-                  {row.urls.slice(0, 6).map((url) => (
-                    <a
-                      key={url}
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="min-w-0 truncate rounded border border-hairline/60 bg-bg px-2.5 py-1.5 font-mono text-[10px] text-paper-dim hover:border-hairline-strong hover:text-paper"
-                    >
-                      {url}
-                    </a>
-                  ))}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={row.urls.length === 0 || copyingArticleId !== null}
+                    aria-label={`Salin berurutan ${row.title}`}
+                    onClick={() => void copyArticleLinks(row, 'ordered')}
+                  >
+                    {copyingArticleId === row.articleId ? (
+                      'Menyalin…'
+                    ) : copied?.articleId === row.articleId && copied.order === 'ordered' ? (
+                      <Check className="mr-1 h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="mr-1 h-3.5 w-3.5" />
+                    )}{' '}
+                    Salin berurutan
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={row.urls.length === 0 || copyingArticleId !== null}
+                    aria-label={`Salin acak ${row.title}`}
+                    onClick={() => void copyArticleLinks(row, 'random')}
+                  >
+                    {copyingArticleId === row.articleId ? (
+                      'Menyalin…'
+                    ) : copied?.articleId === row.articleId && copied.order === 'random' ? (
+                      <Check className="mr-1 h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <Shuffle className="mr-1 h-3.5 w-3.5" />
+                    )}{' '}
+                    Salin acak
+                  </Button>
                 </div>
+                {copied?.articleId === row.articleId ? (
+                  <p role="status" className="mt-2 font-mono text-[10px] text-emerald-400">
+                    URL artikel ini disalin{' '}
+                    {copied.order === 'ordered' ? 'berurutan' : 'dalam urutan acak'} dan siap
+                    ditempel ke WhatsApp.
+                  </p>
+                ) : null}
+                {copyError &&
+                (copyError.articleId === row.articleId || copyError.articleId === '') ? (
+                  <p role="alert" className="mt-2 font-mono text-[10px] text-amber-400">
+                    {copyError.message}
+                  </p>
+                ) : null}
               </article>
             );
           })}
         </div>
       )}
 
+      <DashboardPager
+        startIndex={(safePage - 1) * 20}
+        visibleCount={visible.length}
+        total={totalResults}
+        page={safePage}
+        pageCount={pageCount}
+        onPageChange={setPage}
+      />
       {nextCursor !== null && onLoadMoreArticles !== undefined ? (
         <div className="flex justify-center">
           <Button
             type="button"
             variant="outline"
-            disabled={loadingMore || copying}
+            disabled={loadingMore || copyingArticleId !== null}
             onClick={() => void loadMoreResults()}
           >
             {loadingMore ? 'Memuat hasil…' : 'Muat hasil lebih banyak'}
@@ -505,8 +482,7 @@ export function LiveResultsV2({
       ) : null}
 
       <p className="font-mono text-[9px] text-paper-faint">
-        Scope: {totalResults.toLocaleString('id-ID')} hasil tercatat. Pagination server tetap
-        mengikuti kontrak dashboard saat ini.
+        Scope: {totalResults.toLocaleString('id-ID')} hasil tercatat · 20 artikel per halaman.
       </p>
     </section>
   );

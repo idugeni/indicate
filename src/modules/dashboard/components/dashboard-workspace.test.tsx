@@ -122,11 +122,17 @@ describe('Dashboard workspace', () => {
       await waitFor(() => {
         expect(fetchMock.mock.calls.some(([url]) => {
           const requestUrl = String(url);
-          return requestUrl.includes(`view=${targetView}`) && requestUrl.includes('scope=all');
+          return requestUrl.includes(`view=${targetView}`) && requestUrl.includes('scope=all') && requestUrl.includes('limit=20');
         })).toBe(true);
       }, { timeout: LAZY_MODULE_TIMEOUT_MS });
     },
   );
+
+  it('does not restore the global Refresh action after navigation changes', async () => {
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
+    expect(screen.queryByRole('button', { name: /^Refresh$/ })).toBeNull();
+  });
 
   it('renders the brand, owner name, and initial summary', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
@@ -157,6 +163,7 @@ describe('Dashboard workspace', () => {
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('mt-auto');
+    expect(footer?.className).toContain('pt-8');
     expect(screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash')).toBeDefined();
   });
 

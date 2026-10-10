@@ -402,6 +402,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               articlesNextCursor={articlesNextCursor}
               articlesTotal={articlesTotal}
               onLoadMoreArticles={onLoadMoreArticles}
+              crossOrg={crossOrg}
             />
           ) : null}
           {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
