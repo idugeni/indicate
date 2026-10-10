@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import type { DashboardCommand } from '@/modules/dashboard/command';
+import type { OrganizationOption } from '@/modules/dashboard/components/dashboard-types';
 import type { LibraryMedia } from '@/modules/dashboard/components/publishing/media-library';
 import { AiMediaAnalyze } from '@/modules/ai/components/ai-media-analyze';
 import { formatBytes } from '@/modules/publishing/compress-image';
@@ -45,6 +46,8 @@ interface MediaLibraryV2Props {
   readonly data: unknown;
   readonly command: DashboardCommand;
   readonly organizationId?: string | undefined;
+  readonly organizations?: readonly OrganizationOption[] | undefined;
+  readonly crossOrg?: boolean | undefined;
 }
 
 interface SignedAssetAuthorization {
@@ -83,14 +86,27 @@ function ownerLabel(item: LibraryMedia, model: MediaLibraryV2Model | null): stri
   return 'Organisasi';
 }
 
-export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2Props) {
+export function MediaLibraryV2({ data, command, organizationId, organizations = [], crossOrg = false }: MediaLibraryV2Props) {
   const model = useMemo(() => (data as MediaLibraryV2Model | null) ?? {}, [data]);
   const baseItems = useMemo(() => model.media ?? [], [model.media]);
   const counts = model.mediaCounts ?? [];
   const [search, setSearch] = useState('');
+  const [mediaOrganizationSelection, setMediaOrganizationSelection] = useState({ baseOrganizationId: organizationId ?? '', selectedOrganizationId: organizationId ?? '' });
+  const mediaOrganizationId = mediaOrganizationSelection.baseOrganizationId === (organizationId ?? '')
+    ? mediaOrganizationSelection.selectedOrganizationId
+    : organizationId ?? '';
+  const setMediaOrganizationId = (selectedOrganizationId: string) => setMediaOrganizationSelection({ baseOrganizationId: organizationId ?? '', selectedOrganizationId });
+  const ownerOrganizationId = crossOrg && mediaOrganizationId !== '' && mediaOrganizationId !== organizationId ? mediaOrganizationId : undefined;
+  const scopedCommand = useMemo<DashboardCommand>(() => (action, payload, options) => {
+    if (ownerOrganizationId === undefined || !action.startsWith('media.') || typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+      return options === undefined ? command(action, payload) : command(action, payload, options);
+    }
+    const scopedPayload = { ...(payload as Record<string, unknown>), ownerOrganizationId };
+    return options === undefined ? command(action, scopedPayload) : command(action, scopedPayload, options);
+  }, [command, ownerOrganizationId]);
   const [owner, setOwner] = useState<'all' | MediaOwnerKind>('all');
   const [state, setState] = useState('all');
-  const querySignature = `${search.trim()}|${owner}|${state}`;
+  const querySignature = `${mediaOrganizationId}|${search.trim()}|${owner}|${state}`;
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   const [selectedId, setSelectedId] = useState('');
   const [drawer, setDrawer] = useState<'none' | 'upload' | 'ai'>('none');
@@ -100,7 +116,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
   const [preview, setPreview] = useState<Record<string, SignedAssetAuthorization>>({});
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [page, setPage] = useState<{ readonly key: string; readonly items: readonly LibraryMedia[]; readonly next: string | null }>({ key: '', items: [], next: null });
-  const isDefaultQuery = search.trim() === '' && owner === 'all' && state === 'all';
+  const isDefaultQuery = search.trim() === '' && owner === 'all' && state === 'all' && ownerOrganizationId === undefined;
   const appended = useMemo(() => (page.key === querySignature ? page.items : []), [page.key, page.items, querySignature]);
   const items = useMemo(() => {
     if (!isDefaultQuery) return appended;
@@ -127,7 +143,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
 
   useEffect(() => {
     let cancelled = false;
-    if (search.trim() === '' && owner === 'all' && state === 'all') {
+    if (search.trim() === '' && owner === 'all' && state === 'all' && ownerOrganizationId === undefined) {
       const resetTimer = window.setTimeout(() => {
         setLoadingList(false);
         setListError(null);
@@ -139,7 +155,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
       setListError(null);
       void (async () => {
         try {
-          const nextPage = readPage(await command('media.list', {
+          const nextPage = readPage(await scopedCommand('media.list', {
             limit: PAGE_SIZE,
             ...(search.trim() === '' ? {} : { search: search.trim() }),
             ...(owner === 'all' ? {} : { owner }),
@@ -147,7 +163,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
           }));
           if (nextPage === null) throw new Error('Invalid media page');
           if (cancelled) return;
-          const requestKey = `${search.trim()}|${owner}|${state}`;
+          const requestKey = `${mediaOrganizationId}|${search.trim()}|${owner}|${state}`;
           setPage({ key: requestKey, items: nextPage.items, next: nextPage.next });
           setSelectedId(nextPage.items[0]?.id ?? '');
         } catch {
@@ -161,7 +177,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [search, owner, state, command]);
+  }, [search, owner, state, scopedCommand, ownerOrganizationId, mediaOrganizationId]);
 
   const selected = filtered.find((item) => item.id === selectedId) ?? filtered[0] ?? null;
   const totalBytes = useMemo(() => items.reduce((sum, item) => sum + item.sizeBytes, 0), [items]);
@@ -173,7 +189,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
     if (preview[item.id]) return;
     setPreviewingId(item.id);
     try {
-      const result = await command('media.read', { mediaId: item.id }) as {
+      const result = await scopedCommand('media.read', { mediaId: item.id }) as {
         readonly url?: string;
         readonly requiredHeaders?: Record<string, string>;
       } | null;
@@ -193,7 +209,7 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
     if (cursor === null || loadingMore) return;
     setLoadingMore(true);
     try {
-      const nextPage = readPage(await command('media.list', {
+      const nextPage = readPage(await scopedCommand('media.list', {
         limit: PAGE_SIZE,
         cursor,
         ...(search.trim() === '' ? {} : { search: search.trim() }),
@@ -246,8 +262,8 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
             </div>
             <Button type="button" variant="ghost" size="icon-xs" aria-label="Tutup panel" onClick={() => setDrawer('none')}><X className="h-4 w-4" /></Button>
           </div>
-          {drawer === 'upload' ? <MediaForm data={data} command={command} /> : (
-            <AiMediaAnalyze organizationId={organizationId} onDraft={(draft) => toast.info(draft.alt === '' ? draft.title : `Alt text: ${draft.alt}`)} />
+          {drawer === 'upload' ? <MediaForm data={data} command={scopedCommand} /> : (
+            <AiMediaAnalyze organizationId={mediaOrganizationId || organizationId} onDraft={(draft) => toast.info(draft.alt === '' ? draft.title : `Alt text: ${draft.alt}`)} />
           )}
         </div>
       ) : null}
@@ -255,19 +271,20 @@ export function MediaLibraryV2({ data, command, organizationId }: MediaLibraryV2
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 rounded-lg border border-hairline bg-bg-raised">
           <div className="border-b border-hairline p-3">
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_150px_auto]">
+            <div className={`grid gap-2 ${crossOrg ? 'sm:grid-cols-[minmax(0,1fr)_190px_150px_150px_auto]' : 'sm:grid-cols-[minmax(0,1fr)_150px_150px_auto]'}`}>
               <div className="relative">
                 <Label htmlFor="media-v2-search" className="sr-only">Cari aset</Label>
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-paper-faint" />
                 <Input id="media-v2-search" aria-label="Cari aset" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nama, alt text, caption, pemilik…" className="pl-9" />
               </div>
-              <DashboardSelect aria-label="Folder media" value={owner} onValueChange={(value) => setOwner((value ?? 'all') as typeof owner)} placeholder="Folder">
+              {crossOrg ? <DashboardSelect ariaLabel="Organisasi media" value={mediaOrganizationId} onValueChange={(value) => setMediaOrganizationId(value ?? organizationId ?? '')} placeholder="Organisasi">{organizations.map((org) => <DashboardSelectItem key={org.id} value={org.id}>{org.name}</DashboardSelectItem>)}</DashboardSelect> : null}
+              <DashboardSelect ariaLabel="Folder media" value={owner} onValueChange={(value) => setOwner((value ?? 'all') as typeof owner)} placeholder="Folder">
                 <DashboardSelectItem value="all">Semua scope</DashboardSelectItem>
                 <DashboardSelectItem value="organization">Organisasi ({countsFor('organization')})</DashboardSelectItem>
                 <DashboardSelectItem value="article">Artikel ({countsFor('article')})</DashboardSelectItem>
                 <DashboardSelectItem value="site">Portal ({countsFor('site')})</DashboardSelectItem>
               </DashboardSelect>
-              <DashboardSelect aria-label="Status media" value={state} onValueChange={(value) => setState(value ?? 'all')} placeholder="Status">
+              <DashboardSelect ariaLabel="Status media" value={state} onValueChange={(value) => setState(value ?? 'all')} placeholder="Status">
                 <DashboardSelectItem value="all">Semua status</DashboardSelectItem>
                 <DashboardSelectItem value="active">Aktif</DashboardSelectItem>
                 <DashboardSelectItem value="archived">Arsip</DashboardSelectItem>

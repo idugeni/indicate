@@ -665,6 +665,7 @@ export function DashboardWorkspace({
           displayName={displayName}
           data={data}
           organizationId={organizationId}
+          organizations={organizations}
           permissions={activePermissions}
           error={error}
           command={command}

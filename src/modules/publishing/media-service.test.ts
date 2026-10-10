@@ -436,6 +436,16 @@ describe('MediaService lintas-org', () => {
   const steward = { ...actor, platformPermissionSet: new Set<string>(['platform.super_admin']) };
   const TARGET = '0199a2b3-4c5d-7e8f-9012-3456789abcff';
 
+  it('mencantumkan media organisasi tujuan dengan izin media internal untuk platform super-admin', async () => {
+    const { service, repository } = harness();
+    const result = await service.list(steward, { ownerOrganizationId: TARGET, limit: 24 });
+    expect(result.ok).toBe(true);
+    const calledActor = (repository.listMedia as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { readonly organizationId?: string; readonly permissionSet?: Set<string> };
+    expect(calledActor?.organizationId).toBe(TARGET);
+    expect(calledActor?.permissionSet?.has('media.read')).toBe(true);
+    expect(calledActor?.permissionSet?.has('media.manage')).toBe(true);
+  });
+
   it('menolak reservasi org lain tanpa grant platform', async () => {
     const { service, repository } = harness();
     const result = await service.reserveUpload(actor, { ...upload, ownerOrganizationId: TARGET });

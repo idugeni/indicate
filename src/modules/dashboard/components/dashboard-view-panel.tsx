@@ -20,7 +20,7 @@ import {
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import { canAccessView, VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
-import type { View } from '@/modules/dashboard/components/dashboard-types';
+import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
 
 const InfrastructureControlCenterV2 = dynamic(
   () =>
@@ -168,6 +168,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   displayName,
   data,
   organizationId,
+  organizations,
   permissions,
   error,
   command,
@@ -186,6 +187,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   readonly displayName: string;
   readonly data: unknown;
   readonly organizationId: string;
+  readonly organizations: readonly OrganizationOption[];
   readonly permissions: ReadonlySet<string>;
   readonly error: string | null;
   readonly command: DashboardCommand;
@@ -398,7 +400,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             />
           ) : null}
           {view === 'media' ? (
-            <MediaLibraryV2 data={data} command={command} organizationId={organizationId} />
+            <MediaLibraryV2 data={data} command={command} organizationId={organizationId} organizations={organizations} crossOrg={crossOrg === true} />
           ) : null}
           {view === 'published' ? (
             <LiveResultsV2 data={data} organizationId={organizationId} />
