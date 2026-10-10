@@ -14,7 +14,7 @@ const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
 const GROUNDING_SENTENCE =
   'Gunakan hanya fakta dari judul, kutipan, dan isi yang diberikan; jangan menambah fakta baru di luar teks tersebut.';
 
-const COVER_MODEL = 'gemini-3.1-flash-image';
+const COVER_MODEL = 'gemini-3.1-flash-lite-image';
 
 const COVER_IMAGE_BASE64_LIMIT = 5_242_880;
 
@@ -139,7 +139,7 @@ export async function generateCoverImage(input: CoverImageInput): Promise<{ read
     prompt: built.prompt,
     systemInstruction: built.systemInstruction,
     temperature: TASK_MODEL_PROFILE.cover.temperature,
-    maxOutputTokens: 512,
+    maxOutputTokens: 4096,
     thinkingTask: 'cover',
     ...(input.thinkingConfig === undefined ? {} : { thinkingConfig: input.thinkingConfig }),
     modelOverride: COVER_MODEL,

@@ -479,6 +479,7 @@ const NON_CHAT_TASKS: ReadonlySet<string> = new Set([
   'embeddings',
   'image generation',
   'research',
+  'seo descriptions and taxonomy tags',
 ]);
 
 /**

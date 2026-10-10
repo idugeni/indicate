@@ -25,7 +25,7 @@ describe('parseMetaDescription', () => {
   });
 
   it('mendukung alias metaDescription dan menolak kosong', () => {
-    expect(parseMetaDescription(JSON.stringify({ metaDescription: 'Deskripsi.' }))).toBe('Deskripsi.');
+    expect(parseMetaDescription(JSON.stringify({ metaDescription: 'M'.repeat(150) }))).toBe('M'.repeat(150));
     expect(parseMetaDescription(JSON.stringify({ meta_description: '' }))).toBeNull();
     expect(parseMetaDescription('bukan json')).toBeNull();
   });
@@ -67,8 +67,8 @@ describe('suggest fallback sibuk', () => {
 
 describe('parseSeoBundle', () => {
   it('mengurai paket lengkap dalam satu respons', () => {
-    const raw = JSON.stringify({ titles: ['a', 'b', 'c'], excerpt: 'Air surut.', meta_description: 'Deskripsi.' });
-    expect(parseSeoBundle(raw)).toEqual({ titles: ['a', 'b', 'c'], excerpt: 'Air surut.', metaDescription: 'Deskripsi.' });
+    const raw = JSON.stringify({ titles: ['a', 'b', 'c'], excerpt: 'Air surut.', meta_description: 'M'.repeat(150) });
+    expect(parseSeoBundle(raw)).toEqual({ titles: ['a', 'b', 'c'], excerpt: 'Air surut.', metaDescription: 'M'.repeat(150) });
   });
 
   it('mengembalikan null bila ada bagian hilang', () => {

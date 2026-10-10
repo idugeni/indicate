@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (278 migrations):
+-- Reviewed sources, in journal order (279 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -292,6 +292,7 @@
 --   276  20261006100000_own_bridge_reads  ledger sha256:7c7296d69edbb98af85d1e903145bc543dbc9b94d2f92be7eea43b7aeb3c2fea
 --   277  20261006110000_articles_tags_gin_single  ledger sha256:ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6
 --   278  20261009120000_ai_operator_approvals  ledger sha256:cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1
+--   279  20261010000000_seo_vercel_gateway_model  ledger sha256:c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7
 
 BEGIN;
 
@@ -23068,4 +23069,64 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (277, 'ai_operator_approvals', 'sha256:447f898ab308a00a1cb1601fe2f807cf7fcf6c99d3e663de3f98e11e5472a967');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1', 1791547200000);
+
+-- ----------------------------------------------------------------------
+-- 20261010000000_seo_vercel_gateway_model
+-- ----------------------------------------------------------------------
+-- Register the selected low-cost Vercel AI Gateway model for all text-output AI tasks.
+-- Google is the only permitted provider for the selected model; specialized image/audio output stays on dedicated models.
+INSERT INTO public.ai_models (
+  id, provider_id, model_name, display_name, description,
+  context_window, input_token_limit, output_token_limit, supported_modalities,
+  release_stage, rpm_limit, tpm_limit, rpd_limit, task_recommendation,
+  supports_tools, supports_vision, is_default, is_active, priority
+)
+VALUES (
+  'vercel-google-gemini-2-5-flash-lite',
+  'vercel-gateway',
+  'google/gemini-2.5-flash-lite',
+  'Gemini 2.5 Flash-Lite via Vercel AI Gateway',
+  'Low-cost text-output model for editorial AI, SEO, classification and audio/image-input extraction through Vercel AI Gateway.',
+  1048576, 1048576, 65536, ARRAY['text','image','audio','video'],
+  'stable', NULL, NULL, NULL, 'seo descriptions and taxonomy tags',
+  true, true, false, true, 1
+)
+ON CONFLICT (id) DO UPDATE SET
+  provider_id = EXCLUDED.provider_id,
+  model_name = EXCLUDED.model_name,
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  context_window = EXCLUDED.context_window,
+  input_token_limit = EXCLUDED.input_token_limit,
+  output_token_limit = EXCLUDED.output_token_limit,
+  supported_modalities = EXCLUDED.supported_modalities,
+  release_stage = EXCLUDED.release_stage,
+  task_recommendation = EXCLUDED.task_recommendation,
+  supports_tools = EXCLUDED.supports_tools,
+  supports_vision = EXCLUDED.supports_vision,
+  is_default = false,
+  is_active = true,
+  priority = EXCLUDED.priority,
+  updated_at = now();
+UPDATE public.ai_models
+SET is_active = false, is_default = false, updated_at = now()
+WHERE provider_id = 'vercel-gateway'
+  AND model_name = 'google/gemini-3.5-flash-lite';
+UPDATE public.ai_routing_policies
+SET primary_provider_id = 'vercel-gateway',
+    default_model = 'google/gemini-2.5-flash-lite',
+    fallback_provider_id = 'vercel-gateway',
+    fallback_model = 'google/gemini-2.5-flash-lite',
+    max_retries = 1,
+    per_key_retry_limit = 1,
+    chain_strategy = 'fallback',
+    cost_mode = 'price',
+    rotation_strategy = 'priority_based',
+    version = version + 1,
+    updated_at = now()
+WHERE id = 'default';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (278, 'seo_vercel_gateway_model', 'sha256:1002d8de1cd5a040f13c167874bc49d689c7f728f606077bfe1f89dd37e7f5de');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7', 1791586717648);
 COMMIT;

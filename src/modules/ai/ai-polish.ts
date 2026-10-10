@@ -146,6 +146,9 @@ export function parseClassification(text: string, allowed: readonly string[]): A
     : typeof record.category === 'string'
       ? [record.category]
       : [];
+  // The provider contract is checked before this parser runs; this legacy
+  // adapter also tolerates stale/imported classifications by dropping unknown
+  // categories, while never returning a category outside the caller allow-list.
   const categories = [...new Set(
     raw
       .filter((item): item is string => typeof item === 'string')

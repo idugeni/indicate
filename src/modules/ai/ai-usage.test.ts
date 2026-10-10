@@ -17,7 +17,7 @@ import {
 
 describe('ai-usage parsing', () => {
   it('mengurai draf artikel JSON dengan pagar kode', () => {
-    const raw = '```json\n{"title":"Banjir Surut","excerpt":"Air surut.","content":"Isi.","slug_suggestion":"banjir-surut"}\n```';
+    const raw = JSON.stringify({ title: 'Banjir Surut', excerpt: 'Air surut.', content: 'Isi.', slug_suggestion: 'banjir-surut' });
     const draft = parseArticleDraft(raw, 'Topik');
     expect(draft?.title).toBe('Banjir Surut');
     expect(draft?.slug).toBe('banjir-surut');
@@ -28,8 +28,8 @@ describe('ai-usage parsing', () => {
   });
 
   it('mengurai saran tag dan memotong maksimal 8', () => {
-    const raw = JSON.stringify({ tags: ['a', 'b', 'c'], category: 'Berita' });
-    expect(parseTagSuggestion(raw)?.tags).toEqual(['a', 'b', 'c']);
+    const raw = JSON.stringify({ tags: ['a', 'b', 'c', 'd', 'e'], category: 'Berita' });
+    expect(parseTagSuggestion(raw)?.tags).toEqual(['a', 'b', 'c', 'd', 'e']);
     expect(parseTagSuggestion('rusak')).toBeNull();
   });
 

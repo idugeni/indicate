@@ -13,13 +13,14 @@ vi.mock('@/modules/ai/ai-service', () => ({
 }));
 
 describe('parseTranscript', () => {
-  it('mengurai JSON {transcript} beserta pagar kode', () => {
-    const raw = '```json\n{"transcript":"Pembicara 1: Selamat pagi."}\n```';
+  it('mengurai JSON {transcript} murni', () => {
+    const raw = '{"transcript":"Pembicara 1: Selamat pagi."}';
     expect(parseTranscript(raw)).toBe('Pembicara 1: Selamat pagi.');
+    expect(parseTranscript('```json\n' + raw + '\n```')).toBeNull();
   });
 
-  it('menerima teks mentah tanpa JSON', () => {
-    expect(parseTranscript('Hasil wawancara hari ini.')).toBe('Hasil wawancara hari ini.');
+  it('menolak teks mentah tanpa JSON agar format tetap konsisten', () => {
+    expect(parseTranscript('Hasil wawancara hari ini.')).toBeNull();
   });
 
   it('mengembalikan null untuk keluaran kosong', () => {
@@ -27,7 +28,8 @@ describe('parseTranscript', () => {
     expect(parseTranscript('   ')).toBeNull();
     expect(parseTranscript('{"transcript":""}')).toBeNull();
     expect(parseTranscript('{"transcript":"   "}')).toBeNull();
-    expect(parseTranscript('{"ringkasan":"tanpa transkrip"}')).toBe('{"ringkasan":"tanpa transkrip"}');
+    expect(parseTranscript('{"ringkasan":"tanpa transkrip"}')).toBeNull();
+    expect(parseTranscript('"string mentah"')).toBeNull();
   });
 });
 

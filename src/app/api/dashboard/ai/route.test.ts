@@ -271,7 +271,7 @@ describe('POST draft-article-stream pre-flight parity', () => {
   it('menyajikan cache-hit tanpa provider dan mencatat baris sukses', async () => {
     dbState.quotaRow = { daily_request_limit: 100, daily_token_limit: null };
     dbState.cacheRows = [
-      { id: 'cache-1', response_text: '{"title":"Tembolok"}', model_name: 'gemini-2.5-flash' },
+      { id: 'cache-1', response_text: '{"title":"Tembolok","excerpt":"Ringkasan artikel dari cache.","content":"Isi artikel lengkap yang sudah tersimpan di cache dan memenuhi kontrak draf.","slug_suggestion":"tembolok-artikel"}', model_name: 'google/gemini-2.5-flash-lite' },
     ];
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     try {

@@ -8,7 +8,8 @@ import {
 } from '@/modules/ai/ai-response-schemas';
 import { runTaskQuery } from '@/modules/ai/ai-task-query';
 import { TASK_MODEL_PROFILE } from '@/modules/ai/ai-task-profiles';
-import { stripCodeFence, parseArticleDraft, type ArticleDraft } from '@/modules/ai/ai-usage';
+import { SEO_METADATA_MODEL, SEO_METADATA_GATEWAY_PROVIDER } from '@/modules/ai/ai-task-models';
+import { parseArticleDraft, type ArticleDraft } from '@/modules/ai/ai-usage';
 import { parseClassification, type ArticleClassification } from '@/modules/ai/ai-polish';
 
 const BUSY_MESSAGE = 'Layanan AI sedang sibuk. Silakan coba lagi.';
@@ -17,7 +18,7 @@ let configured: AiServiceDeps | null = null;
 
 export const TRANSCRIBE_BASE64_LIMIT = 10_000_000;
 
-export const TRANSCRIBE_MODEL = 'gemini-3.5-transcribe';
+export const TRANSCRIBE_MODEL = SEO_METADATA_MODEL;
 
 export const TRANSCRIBE_AUDIO_MIME_ALLOWLIST: ReadonlySet<string> = new Set([
   'audio/wav',
@@ -57,26 +58,16 @@ export function configureAiTranscribe(deps: AiServiceDeps): void {
  * @returns Transkrip terpangkas; null bila kosong atau tidak bisa dipakai.
  */
 export function parseTranscript(text: string): string | null {
-  const stripped = stripCodeFence(text);
-  if (stripped === '') return null;
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(stripped) as unknown;
-    if (typeof parsed === 'string') {
-      const transcript = parsed.trim().slice(0, 20000);
-      return transcript === '' ? null : transcript;
-    }
-    if (typeof parsed === 'object' && parsed !== null) {
-      const record = parsed as Record<string, unknown>;
-      if (typeof record.transcript === 'string') {
-        const transcript = record.transcript.trim().slice(0, 20000);
-        return transcript === '' ? null : transcript;
-      }
-    }
+    parsed = JSON.parse(text.trim()) as unknown;
   } catch {
-    /* Bukan JSON; diperlakukan sebagai transkrip mentah di bawah. */
+    return null;
   }
-  const raw = stripped.trim().slice(0, 20000);
-  return raw === '' ? null : raw;
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+  const transcript = (parsed as Record<string, unknown>).transcript;
+  if (typeof transcript !== 'string' || transcript.trim() === '') return null;
+  return transcript.trim().slice(0, 20000);
 }
 
 /**
@@ -107,6 +98,9 @@ export async function transcribeAudio(input: {
     thinkingTask: 'transcribe',
     audio: [{ base64: compact, mimeType }],
     modelOverride: TRANSCRIBE_MODEL,
+    requireModelOwner: true,
+    skipSemanticCache: true,
+    gatewayOnlyProviders: [SEO_METADATA_GATEWAY_PROVIDER],
   });
   if (!result.ok) return result;
   const transcript = parseTranscript(result.text);
@@ -175,8 +169,8 @@ export async function transcribeToArticle(input: {
     responseSchema: CLASSIFY_ARTICLE_SCHEMA,
     thinkingTask: 'seo',
   });
-  const classification = !classifyResult.ok
-    ? { categories: [], tags: [] as readonly string[] }
-    : (parseClassification(classifyResult.text, allowed) ?? { categories: [], tags: [] as readonly string[] });
+  if (!classifyResult.ok) return classifyResult;
+  const classification = parseClassification(classifyResult.text, allowed);
+  if (classification === null) return { ok: false, error: BUSY_MESSAGE };
   return { ok: true, article: { transcript: transcribed.transcript, draft, classification } };
 }

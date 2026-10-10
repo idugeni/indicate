@@ -220,6 +220,8 @@ export interface AiChatPrompt {
   readonly correlationId?: string | undefined;
   readonly modelOverride?: string | undefined;
   readonly costMode?: 'throughput' | 'price' | undefined;
+  /** Optional hard provider allowlist for Vercel AI Gateway requests. */
+  readonly gatewayOnlyProviders?: readonly string[] | undefined;
 }
 
 export interface AiGenerationResult {
