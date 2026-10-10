@@ -450,28 +450,28 @@ export function DashboardViewSkeleton({ view }: { readonly view: View }) {
       ) : null}
             {view === 'operations' ? (
         <>
-          <DashboardStatsSkeleton count={4} />
-          <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-            <DashboardPanelSkeleton />
-            <TablesGridBare columns={2} count={2} />
+          <DashboardStatsSkeleton count={6} />
+          <DashboardTabsSkeleton />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <TablesGridBare columns={1} count={3} />
+            <div className="space-y-4"><DashboardPanelSkeleton /><DashboardPanelSkeleton /></div>
           </div>
         </>
       ) : null}
       {view === 'customers' ? (
         <>
           <DashboardStatsSkeleton count={4} />
-          <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-            <DashboardPanelSkeleton />
-            <TablesGridBare columns={2} count={2} />
-          </div>
+          <FormsGridBare columns={1} count={2} />
+          <TablesGridBare columns={1} count={1} />
         </>
       ) : null}
       {view === 'moderation' ? (
         <>
-          <DashboardStatsSkeleton count={4} />
-          <div className="grid gap-4 xl:grid-cols-[230px_minmax(0,1fr)]">
-            <DashboardPanelSkeleton />
-            <TablesGridBare columns={2} count={2} />
+          <DashboardStatsSkeleton count={3} />
+          <DashboardTabsSkeleton />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+            <TablesGridBare columns={1} count={3} />
+            <DashboardFormCardSkeleton />
           </div>
         </>
       ) : null}
