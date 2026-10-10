@@ -74,7 +74,7 @@ export function InfrastructureControlCenterV2({
 
       {onFilterApply ? <DashboardV2FilterBar view="configuration" data={data} onApply={onFilterApply} /> : null}
 
-      <section aria-label="Ringkasan infrastruktur" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section aria-label="Ringkasan infrastruktur" className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
           ['Domain', counts.domains],
           ['Wilayah', counts.regions],
@@ -89,7 +89,7 @@ export function InfrastructureControlCenterV2({
         ))}
       </section>
 
-      <section aria-label="Area operasi infrastruktur" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Area operasi infrastruktur" className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {areas.map((area) => {
           const Icon = area.icon;
           const selected = area.id === focus;
