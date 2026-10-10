@@ -446,7 +446,11 @@ export function AiManagementPanel({
   }, [organizationId, syncFormFromPolicy]);
 
   useEffect(() => {
-    void Promise.resolve().then(() => reload());
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void reload();
+    });
+    return () => { cancelled = true; };
   }, [reload]);
 
   const runCommand = useCallback(async (action: string, payload: Record<string, unknown>, success: string) => {
