@@ -1,5 +1,7 @@
 # INDICATE Dashboard V2 Deep Audit
 
+> **Historical audit snapshot (2026-10-09):** The source and CI evidence below refer to the recorded audit branch/head, not automatically to today's main. PR [#53](https://github.com/idugeni/indicate/pull/53) was merged on 2026-10-09; the older statements below that it remains open/draft are superseded. Runtime/browser, authenticated role-matrix, cross-tenant denial, and external-provider verification remain unverified unless separately evidenced.
+
 **Repository:** `idugeni/indicate`  
 **Base:** `main` at `d8fb3caaa9086ac010c136dd67d26ec053e7e6b0`  
 **Audit branch:** `audit/dashboard-v2-deep-audit`  
