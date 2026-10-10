@@ -107,6 +107,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
     expect(await screen.findByText('INDICATE / EXECUTIVE OVERVIEW')).toBeDefined();
   });
 
