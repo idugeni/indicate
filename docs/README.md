@@ -20,6 +20,7 @@ dokumen mana pun, termasuk dari sini.
 | Document | Status | Contents |
 |---|---|---|
 | [documentation health audit](audits/documentation-health-audit-2026-10-11.md) | Snapshot 2026-10-11 | Dated findings for stale audit status, authority conflicts, lifecycle rules, and evidence-based deletion. Re-run after major documentation or architecture changes. |
+| [Dashboard V2 deep audit](audits/dashboard-v2-deep-audit-2026-10-09.md) | Historical snapshot 2026-10-09 | Source-level review of 19 dashboard views, targeted fixes, and explicit runtime-verification gaps. |
 
 ## Architecture and design
 
@@ -28,6 +29,14 @@ dokumen mana pun, termasuk dari sini.
 | [architecture](architecture.md) | Approved 2026-08-30 | MVP topology, invariants, deployment and hostname design. Sections 1-20 are binding; §21 holds the advisory registers (owner relaxations, decision boundaries, approval record) and binds nothing. Code wins on conflict. |
 | [architecture rules](architecture-rules.md) | Advisory | Performance and caching rules for contributors. |
 | [templates](templates.md) | Advisory | Ten public news templates in `src/modules/site/components/network/templates/`. |
+| [operator rollout](architecture/operator-rollout.md) | Operational reference | Owner-operated rollout sequence and operational constraints. |
+
+## Product operations
+
+| Document | Status | Contents |
+|---|---|---|
+| [ads](ads.md) | Living | Advertising surfaces, placements, and operational behavior. |
+| [AI operations](ai-operations.md) | Operational runbook | AI provider routing, credential rotation, budget guards, and usage/log triage. |
 
 ## Operations
 
