@@ -39,8 +39,15 @@ This audit intentionally does **not** delete archived third-party reference mate
 
 **File:** [`docs/README.md`](../README.md)  
 **Severity:** Medium  
-**Evidence:** The index identifies active and archived documentation, but does not yet provide one place to track document-health findings and disposition.  
-**Action:** Link this audit and keep it as a dated snapshot. Update the index when documents are renamed, archived, consolidated, or removed.
+**Evidence:** The index identifies active and archived documentation, but did not provide one place to track document-health findings and disposition.  
+**Action:** Link this audit and keep it as a dated snapshot. Update the index when documents are renamed, archived, consolidated, or removed. **Completed in the documentation-health PR.**
+
+### DOC-005 — Active operational documents were not discoverable from the index
+
+**File:** [`docs/README.md`](../README.md)  
+**Severity:** Medium  
+**Evidence:** A path-by-path comparison against the repository tree found `docs/ads.md`, `docs/ai-operations.md`, `docs/architecture/operator-rollout.md`, and `docs/audits/dashboard-v2-deep-audit-2026-10-09.md` were not individually linked from the index. The tenant note `docs/tenants/upt-jateng.md` is covered by the existing per-tenant directory entry and is not classified as an index omission. The Dashboard V2 audit is historical evidence, not a current runtime attestation.
+**Action:** Add the active operations documents and operator rollout guide to the index, and list the Dashboard V2 audit under documentation health. No content was deleted; this is a discoverability defect, not proof of redundancy. **Index links added in the follow-up PR.**
 
 ## Lifecycle and deletion policy
 
@@ -76,5 +83,6 @@ This is a source/documentation consistency audit, not a full semantic proof of e
 - [ ] Reconcile remaining claims in the AI audit against current source and tests.
 - [ ] Review other dated audit/remediation reports for stale PR status, commit SHA, and test counts.
 - [ ] Validate Markdown links and headings using the repository's documented lint/check commands.
+- [x] Compare all `docs/**/*.md` paths against the index and add missing links for active operations and audit documents.
 - [ ] Inspect inbound references before deleting or consolidating any file.
 - [ ] Keep runtime/browser/tenant isolation status explicitly marked unverified until supported by test evidence.
