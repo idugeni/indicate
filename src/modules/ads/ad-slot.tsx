@@ -117,7 +117,7 @@ export function AdSlot({ site, slot, eager = false, campaign, className = '' }: 
       <div className="mx-auto w-full min-w-0" style={{ maxWidth: definition.maxWidthPx }}>
         <AdLabel />
         <div
-          className={`mt-1 w-full min-w-0 ${creativeRatio === null ? definition.reserveClass : ''}`}
+          className={`relative isolate overflow-clip mt-1 w-full min-w-0 ${creativeRatio === null ? definition.reserveClass : ''}`}
           {...(creativeRatio === null ? {} : { style: { aspectRatio: creativeRatio } })}
         >
           {resolved.creative.kind === 'image' ? (
