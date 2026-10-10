@@ -52,13 +52,13 @@ describe('AdSlot', () => {
     expect(html).not.toContain('href="/kontak"');
   });
 
-  it('membatasi paint kreatif iklan di dalam kotak slot agar tidak bocor saat scroll', () => {
+  it('mengisolasi HTML kreatif di iframe sandbox agar CSS kreatif tidak menutupi viewport', () => {
     const html = renderToStaticMarkup(
       <AdSlot
         site={siteFor('clean-blue', {
           leaderboard: {
             enabled: true,
-            creative: { kind: 'html', html: '<div>Creative</div>' },
+            creative: { kind: 'html', html: '<div style="position:fixed;bottom:0">Creative</div>' },
           },
         })}
         slot="leaderboard"
@@ -66,6 +66,10 @@ describe('AdSlot', () => {
     );
     expect(html).toContain('overflow-clip');
     expect(html).toContain('isolate');
+    expect(html).toContain('<iframe');
+    expect(html).toContain('sandbox="allow-popups allow-popups-to-escape-sandbox"');
+    expect(html).toContain('srcdoc=');
+    expect(html).not.toContain('dangerouslySetInnerHTML');
   });
 
   it('merender label dan ruang cadangan untuk slot terisi', () => {
