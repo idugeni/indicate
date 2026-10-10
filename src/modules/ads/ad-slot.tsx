@@ -49,7 +49,7 @@ function AdImage({ creative, eager }: { readonly creative: Extract<AdCreative, {
 function AdHtml({ creative }: { readonly creative: Extract<AdCreative, { kind: 'html' }> }) {
   return (
     <iframe
-      title="Iklan"
+      aria-label="Iklan"
       sandbox="allow-popups allow-popups-to-escape-sandbox"
       referrerPolicy="no-referrer"
       loading="lazy"
