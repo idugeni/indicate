@@ -117,7 +117,7 @@ function formatPublishedAt(value: string | null): string {
   return moment === null ? 'Jadwal belum tercatat' : `Tayang ${moment}`;
 }
 
-export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles, organizationId, crossOrg }: {
+export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, articlesTotal, onLoadMoreArticles, crossOrg }: {
   readonly data: unknown;
   readonly onFilterApply?: ((query: string) => void) | undefined;
   readonly articlesNextCursor?: string | null | undefined;
