@@ -145,7 +145,6 @@ export function DashboardWorkspace({
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [crossOrg, setCrossOrg] = useState(() => (organizations[0]?.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin));
@@ -204,7 +203,6 @@ export function DashboardWorkspace({
   const fetchData = useCallback(
     async (targetView: View, targetOrg: string, query: string, signal?: AbortSignal) => {
       if (!targetOrg) return;
-      setBusy(true);
       setError(null);
 
       const endpoint = resolveApiEndpoint(targetView);
@@ -261,8 +259,7 @@ export function DashboardWorkspace({
         }
       } finally {
         if (activeOrgRef.current === targetOrg) {
-          setBusy(false);
-        }
+          }
       }
     },
     [fetchAnalytics, crossOrg]
@@ -272,7 +269,6 @@ export function DashboardWorkspace({
     if (!canAccessView(view, activePermissions)) {
       void Promise.resolve().then(() => {
         setPayload(null);
-        setBusy(false);
         setError(null);
       });
       return;
@@ -302,7 +298,6 @@ export function DashboardWorkspace({
     if (SELF_FETCHING_VIEWS.has(view)) {
       void Promise.resolve().then(() => {
         setPayload(null);
-        setBusy(false);
         setError(null);
       });
       return;
@@ -341,7 +336,6 @@ export function DashboardWorkspace({
 
   const command = useCallback(async (action: string, payload: unknown, options?: { readonly refresh?: boolean | undefined }): Promise<unknown> => {
     const targetOrg = organizationId;
-    setBusy(true);
     setError(null);
 
     const endpoint = resolveApiEndpoint(action);
@@ -390,7 +384,6 @@ export function DashboardWorkspace({
       return null;
     } finally {
       if (activeOrgRef.current === targetOrg) {
-        setBusy(false);
       }
     }
   }, [organizationId, view, filterQuery, fetchData]);
@@ -434,7 +427,6 @@ export function DashboardWorkspace({
     const cursor = current?.articlesNextCursor ?? null;
     if (cursor === null || articlesMoreInflightRef.current) return null;
     articlesMoreInflightRef.current = true;
-    setBusy(true);
     try {
       const endpoint = resolveApiEndpoint(targetView);
       const response = await fetch(`/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}&limit=50&cursor=${encodeURIComponent(cursor)}${scopeSuffix}`);
@@ -457,7 +449,6 @@ export function DashboardWorkspace({
       return null;
     } finally {
       articlesMoreInflightRef.current = false;
-      if (activeOrgRef.current === targetOrg) setBusy(false);
     }
   }, [organizationId, view, filterQuery, payload, crossOrg]);
 
@@ -490,7 +481,6 @@ export function DashboardWorkspace({
     const cursor = current?.auditNextCursor ?? null;
     if (cursor === null || moreInflightRef.current) return;
     moreInflightRef.current = true;
-    setBusy(true);
     try {
       const response = await fetch(`/api/dashboard/workspace?organizationId=${encodeURIComponent(targetOrg)}&view=audit${query}&limit=100&cursor=${encodeURIComponent(cursor)}`);
       const body = (await response.json()) as { readonly auditLogs?: readonly unknown[]; readonly auditNextCursor?: string | null };
@@ -504,7 +494,6 @@ export function DashboardWorkspace({
       if (activeOrgRef.current === targetOrg) setError('Gagal memuat riwayat lebih lama. Coba lagi.');
     } finally {
       moreInflightRef.current = false;
-      if (activeOrgRef.current === targetOrg) setBusy(false);
     }
   }, [organizationId, view, filterQuery, payload]);
 
