@@ -477,7 +477,7 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
                     )}
                   </div>
 
-                  <PublishedUrlBlock title={entry.title} urls={entry.urls} organizationId={organizationId} />
+                  <PublishedUrlBlock title={entry.title} urls={entry.urls} />
                 </div>
               </SectionCard>
             );
