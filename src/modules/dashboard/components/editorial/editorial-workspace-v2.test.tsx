@@ -117,15 +117,15 @@ describe('EditorialWorkspaceV2', () => {
     );
   });
   it('explains resource denials and preserves the request id', async () => {
-    command.mockResolvedValueOnce({
+    const deniedCommand = vi.fn(async () => ({
       error: { code: 'RESOURCE_UNAVAILABLE', message: 'The requested resource is unavailable.' },
       requestId: 'req-edit-1',
-    });
+    }));
     render(
       <EditorialWorkspaceV2
         data={{ regions: [] }}
         onSubmit={submit}
-        command={command}
+        command={deniedCommand}
         organizationId="org-1"
         editArticleId="article-1"
       />,
