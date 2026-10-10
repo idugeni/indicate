@@ -119,6 +119,17 @@ describe('Dashboard workspace', () => {
     expect(screen.getByRole('separator', { name: 'Bentangkan sidebar' })).toBeDefined();
   });
 
+  it('resets the document scroll to the top when the active view changes', async () => {
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    document.documentElement.scrollTop = 420;
+    document.body.scrollTop = 420;
+    act(() => setViewExternal?.('analytics'));
+    await waitFor(() => {
+      expect(document.documentElement.scrollTop).toBe(0);
+      expect(document.body.scrollTop).toBe(0);
+    });
+  });
+
   it('switches the title when an editorial module is selected', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
@@ -132,8 +143,8 @@ describe('Dashboard workspace', () => {
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
-    expect(footer?.className).toContain('sticky');
-    expect(footer?.className).toContain('bottom-0');
+    expect(footer?.className).toContain('mt-auto');
+    expect(footer?.className).not.toContain('sticky');
     expect(screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash')).toBeDefined();
   });
 
@@ -175,7 +186,7 @@ describe('Dashboard workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Network Infrastructure', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     act(() => setViewExternal?.('publishers'));
     expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
-    expect(await screen.findByRole('status', { name: 'Memuat data modul' })).toBeDefined();
+    expect(await screen.findByRole('status', { name: 'Memuat jaringan publisher' })).toBeDefined();
     expect(screen.queryByText(/Belum ada penerbit/i)).toBeNull();
     releasePublishers();
     expect((await screen.findAllByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).length).toBeGreaterThan(0);

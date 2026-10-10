@@ -9,6 +9,9 @@ import {
   createSupabaseSsrAuthAdapter,
 } from '@/integrations/supabase/supabase-ssr';
 import type * as schema from '@/data/schema';
+import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
+import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
 import {
@@ -103,6 +106,24 @@ export async function authorizeDashboardOrganization(
   const membership = await authorization
     .findActiveMembership(organizationId, user.localUserId)
     .catch(() => null);
+  const platformPermissions: ReadonlySet<string> = new Set<string>(membership?.platformPermissions
+    ?? await authorization.listPlatformPermissions(user.localUserId, organizationId).catch((): readonly string[] => []));
+  const isPlatformSuperAdmin = platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
+  if (isPlatformSuperAdmin) {
+    const organizations = await authorization.listActiveOrganizationsForUser(user.authUserId, organizationId).catch(() => []);
+    if (!organizations.some((organization) => organization.id === organizationId)) return null;
+    return {
+      actorType: 'user',
+      actorId: user.localUserId,
+      verifiedAuthUserId: user.authUserId,
+      organizationId,
+      permissionSet: new Set([...DASHBOARD_PERMISSION_NAMES, ...PUBLISHING_PERMISSION_NAMES, ...INTEGRATIONS_TENANT_PERMISSION_NAMES, INTEGRATIONS_PERMISSIONS.siteSettingsManage]),
+      platformPermissionSet: platformPermissions,
+      regionScopeId: null,
+      entryPoint: 'dashboard',
+      requestId,
+    };
+  }
   if (membership === null || !membership.roleActive) return null;
   return {
     actorType: 'user',

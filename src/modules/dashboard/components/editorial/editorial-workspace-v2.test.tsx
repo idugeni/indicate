@@ -105,14 +105,37 @@ describe('EditorialWorkspaceV2', () => {
         command={command}
         organizationId="org-1"
         editArticleId="article-1"
+        editOwnerOrganizationId="owner-org-2"
       />,
     );
 
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
         'article.edit.load',
-        { id: 'article-1', ownerOrganizationId: 'org-1' },
+        { id: 'article-1', ownerOrganizationId: 'owner-org-2' },
       ),
     );
   });
+  it('explains resource denials and preserves the request id', async () => {
+    const deniedCommand = vi.fn(async () => ({
+      error: { code: 'RESOURCE_UNAVAILABLE', message: 'The requested resource is unavailable.' },
+      requestId: 'req-edit-1',
+    }));
+    render(
+      <EditorialWorkspaceV2
+        data={{ regions: [] }}
+        onSubmit={submit}
+        command={deniedCommand}
+        organizationId="org-1"
+        editArticleId="article-1"
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain('ID permintaan: req-edit-1'),
+    );
+    expect(screen.getByRole('alert').textContent).toContain('organisasi yang dipilih');
+    expect(screen.getByRole('alert').textContent).not.toContain('Respons editor tak dikenali.');
+  });
+
 });

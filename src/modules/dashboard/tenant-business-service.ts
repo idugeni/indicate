@@ -1252,16 +1252,15 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   /**
    * Ubah detail artikel milik org lain untuk steward platform.
    *
-   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param actor - Platform super-admin tanpa kunci region; tenant-local article.manage tidak diperlukan untuk operasi lintas-org.
    * @param ownerOrgId - Organisasi pemilik artikel; validasi referensi, guard langganan, dan audit miliknya.
    * @param value - Payload update yang sudah tervalidasi.
    * @returns Artikel sesudah update.
    */
   private async updateArticleForOwner(actor: AuthorizedTenantActorContext, ownerOrgId: string, value: ArticleUpdateInput) {
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.update', 'article');
-    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.update', 'article');
     if (regionLock(actor) !== null) return this.denied(actor, 'article.update', 'article');
-    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: ownerOrgId, regionScopeId: null };
+    const ownerActor = this.platformOwnerActor(actor, ownerOrgId);
     try {
       const result = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
         const now = this.clock.now().toISOString();
@@ -1282,20 +1281,24 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
    * @param actor - Steward lintas-org, atau redaksi pemilik satu-org.
    * @param raw - Id artikel dan org pemiliknya.
    * @returns Artikel penuh (termasuk body) plus lookup kategori/penerbit/penulis/wilayah pemilik.
-   * @remarks Steward wajib super_admin tanpa kunci wilayah; pemilik satu-org cukup
-   * `article.manage`, dan bila terkunci wilayah hanya boleh memuat artikel dalam
-   * cakupannya.
+   * @remarks Steward lintas-org wajib super_admin tanpa kunci wilayah; pemilik satu-org
+   * tetap wajib memiliki `article.manage`, dan bila terkunci wilayah hanya boleh memuat
+   * artikel dalam cakupannya.
    */
   async readArticleForEdit(actor: AuthorizedTenantActorContext, raw: unknown) {
-    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.read', 'article');
     const parsed = articleEditLoadSchema.safeParse(raw);
     if (!parsed.success) return this.invalid(actor, parsed.error);
     const sameOrg = parsed.data.ownerOrganizationId === actor.organizationId;
-    if (!sameOrg) {
-      if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.read', 'article');
+    const isPlatformSuperAdmin = actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true;
+    if (sameOrg) {
+      if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.read', 'article');
+    } else {
+      if (!isPlatformSuperAdmin) return this.denied(actor, 'article.read', 'article');
       if (regionLock(actor) !== null) return this.denied(actor, 'article.read', 'article');
     }
-    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: parsed.data.ownerOrganizationId, regionScopeId: null };
+    const ownerActor = sameOrg
+      ? { ...actor, regionScopeId: null }
+      : this.platformOwnerActor(actor, parsed.data.ownerOrganizationId);
     try {
       const value = await this.repository.executeForOrganization(ownerActor, parsed.data.ownerOrganizationId, async (transaction) => {
         const found = transaction.state.articles.find((candidate) => candidate.id === parsed.data.id);
@@ -1400,7 +1403,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   /**
    * Arsipkan/pulihkan artikel milik org lain untuk steward platform.
    *
-   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param actor - Platform super-admin tanpa kunci region; tenant-local article.manage tidak diperlukan untuk operasi lintas-org.
    * @param ownerOrgId - Organisasi pemilik artikel; audit dan gate langganan miliknya.
    * @param value - Id artikel dan versi ekspektasian.
    * @param status - Status tujuan (`archived` atau `draft`).
@@ -1409,9 +1412,8 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
    */
   private async transitionArticleForOwner(actor: AuthorizedTenantActorContext, ownerOrgId: string, value: VersionInput, status: 'archived' | 'draft', action: string) {
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, action, 'article');
-    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, action, 'article');
     if (regionLock(actor) !== null) return this.denied(actor, action, 'article');
-    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: ownerOrgId, regionScopeId: null };
+    const ownerActor = this.platformOwnerActor(actor, ownerOrgId);
     try {
       const result = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
         const now = this.clock.now().toISOString();
@@ -1471,16 +1473,15 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   /**
    * Hapus permanen artikel milik org lain untuk steward platform.
    *
-   * @param actor - Steward pemanggil; wajib super_admin, article.manage aktif, tanpa kunci region.
+   * @param actor - Platform super-admin tanpa kunci region; tenant-local article.manage tidak diperlukan untuk operasi lintas-org.
    * @param ownerOrgId - Organisasi pemilik artikel; guard relasi dan audit miliknya.
    * @param value - Id artikel dan versi ekspektasian.
    * @returns Id artikel yang dihapus.
    */
   private async deleteArticleForOwner(actor: AuthorizedTenantActorContext, ownerOrgId: string, value: VersionInput) {
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return this.denied(actor, 'article.delete', 'article');
-    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return this.denied(actor, 'article.delete', 'article');
     if (regionLock(actor) !== null) return this.denied(actor, 'article.delete', 'article');
-    const ownerActor: AuthorizedTenantActorContext = { ...actor, organizationId: ownerOrgId, regionScopeId: null };
+    const ownerActor = this.platformOwnerActor(actor, ownerOrgId);
     try {
       const result = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
         const before = requireArticleInScope(transaction.state, value.id, ownerActor); requireVersion(before, value.expectedVersion);
@@ -1730,7 +1731,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   }
 
   /**
-   * Resolve an explicit owner-organization override for steward writes.
+   * Resolve an explicit owner-organization override for platform-super-admin writes.
    *
    * @param actor - Calling actor; ownership stays with the active org when unset.
    * @param ownerOrganizationId - Requested owner org, if any.
@@ -1740,9 +1741,23 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const ownerId = ownerOrganizationId ?? actor.organizationId;
     if (ownerId === actor.organizationId) return undefined;
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return null;
-    if (!actor.permissionSet.has(DASHBOARD_PERMISSIONS.articleManage)) return null;
     if (regionLock(actor) !== null) return null;
     return { organizationId: ownerId };
+  }
+
+  /**
+   * Build a tenant-scoped repository context after the platform super-admin
+   * and region-lock checks have authorized a cross-organization operation.
+   * The tenant permission is granted only on this internal owner-scoped actor;
+   * the caller's original permissions and organization remain unchanged.
+   */
+  private platformOwnerActor(actor: AuthorizedTenantActorContext, ownerOrganizationId: string): AuthorizedTenantActorContext {
+    return {
+      ...actor,
+      organizationId: ownerOrganizationId,
+      regionScopeId: null,
+      permissionSet: new Set([...actor.permissionSet, DASHBOARD_PERMISSIONS.articleManage]),
+    };
   }
 
   /**
@@ -1757,8 +1772,9 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     if (!parsed.success) return this.invalid(actor, parsed.error);
     const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
     if (owner === null) return this.denied(actor, 'article.updates.list', 'article');
+    const scopedActor = owner ? this.platformOwnerActor(actor, owner.organizationId) : actor;
     return this.summarize(actor, 'article.updates.list', 'article', (repository) =>
-      repository.listArticleUpdates(actor, DASHBOARD_PERMISSIONS.articleManage, { articleId: parsed.data.articleId }, owner ?? undefined));
+      repository.listArticleUpdates(scopedActor, DASHBOARD_PERMISSIONS.articleManage, { articleId: parsed.data.articleId }, owner ?? undefined));
   }
 
   /**
@@ -1774,7 +1790,8 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
     if (owner === null) return this.denied(actor, 'article.updates.create', 'article');
     try {
-      const value = await this.repository.createArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
+      const scopedActor = owner ? this.platformOwnerActor(actor, owner.organizationId) : actor;
+      const value = await this.repository.createArticleUpdate(scopedActor, DASHBOARD_PERMISSIONS.articleManage, {
         articleId: parsed.data.articleId,
         body: parsed.data.body,
       }, owner ?? undefined);
@@ -1801,7 +1818,8 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
     if (owner === null) return this.denied(actor, 'article.updates.update', 'article');
     try {
-      const value = await this.repository.updateArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
+      const scopedActor = owner ? this.platformOwnerActor(actor, owner.organizationId) : actor;
+      const value = await this.repository.updateArticleUpdate(scopedActor, DASHBOARD_PERMISSIONS.articleManage, {
         id: parsed.data.id,
         expectedVersion: parsed.data.expectedVersion,
         body: parsed.data.body,
@@ -1830,7 +1848,8 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const owner = this.ownerScope(actor, parsed.data.ownerOrganizationId);
     if (owner === null) return this.denied(actor, 'article.updates.delete', 'article');
     try {
-      const value = await this.repository.deleteArticleUpdate(actor, DASHBOARD_PERMISSIONS.articleManage, {
+      const scopedActor = owner ? this.platformOwnerActor(actor, owner.organizationId) : actor;
+      const value = await this.repository.deleteArticleUpdate(scopedActor, DASHBOARD_PERMISSIONS.articleManage, {
         id: parsed.data.id,
         expectedVersion: parsed.data.expectedVersion,
       }, owner ?? undefined);

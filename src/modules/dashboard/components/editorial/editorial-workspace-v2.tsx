@@ -229,19 +229,37 @@ function WorkspaceSurface({
   );
 }
 
+function toEditLoadError(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const envelope = value as { readonly error?: unknown; readonly requestId?: unknown };
+  if (typeof envelope.error !== 'object' || envelope.error === null) return null;
+  const error = envelope.error as { readonly code?: unknown; readonly message?: unknown };
+  const requestSuffix = typeof envelope.requestId === 'string' && envelope.requestId !== ''
+    ? ` (${/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(envelope.requestId) ? 'referensi permintaan tersedia di log diagnostik' : `ID permintaan: ${envelope.requestId}`})`
+    : '';
+  if (error.code === 'RESOURCE_UNAVAILABLE') {
+    return `Akses ke artikel ditolak atau artikel tidak berada dalam organisasi yang dipilih. Periksa organisasi pemilik dan izin akses Anda.${requestSuffix}`;
+  }
+  if (typeof error.message === 'string' && error.message.trim() !== '') return `${error.message}${requestSuffix}`;
+  return `Artikel gagal dimuat.${requestSuffix}`;
+}
+
 function EditorLoader({
   articleId,
   data,
   command,
   organizationId,
+  ownerOrganizationId,
   onExitEdit,
 }: {
   readonly articleId: string;
   readonly data: unknown;
   readonly command: DashboardCommand;
   readonly organizationId: string;
+  readonly ownerOrganizationId?: string | undefined;
   readonly onExitEdit?: (() => void) | undefined;
 }) {
+  const effectiveOwnerOrganizationId = ownerOrganizationId ?? organizationId;
   const [loaded, setLoaded] = useState<EditArticleInit | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -249,8 +267,13 @@ function EditorLoader({
     let cancelled = false;
     void (async () => {
       try {
-        const result = await command('article.edit.load', { id: articleId, ownerOrganizationId: organizationId });
+        const result = await command('article.edit.load', { id: articleId, ownerOrganizationId: effectiveOwnerOrganizationId });
         if (cancelled) return;
+        const loadError = toEditLoadError(result);
+        if (loadError !== null) {
+          setFailed(loadError);
+          return;
+        }
         const init = toEditArticleInit(result);
         if (init === null) {
           setFailed('Respons editor tak dikenali.');
@@ -263,7 +286,7 @@ function EditorLoader({
       }
     })();
     return () => { cancelled = true; };
-  }, [articleId, command, organizationId]);
+  }, [articleId, command, effectiveOwnerOrganizationId]);
 
   if (failed) {
     return (
@@ -358,6 +381,7 @@ export function EditorialWorkspaceV2({
   command,
   organizationId = '',
   editArticleId,
+  editOwnerOrganizationId,
   onExitEdit,
 }: {
   readonly data: unknown;
@@ -365,6 +389,7 @@ export function EditorialWorkspaceV2({
   readonly command: DashboardCommand;
   readonly organizationId?: string;
   readonly editArticleId?: string | undefined;
+  readonly editOwnerOrganizationId?: string | undefined;
   readonly onExitEdit?: () => void;
 }) {
   if (editArticleId) {
@@ -375,6 +400,7 @@ export function EditorialWorkspaceV2({
         data={data}
         command={command}
         organizationId={organizationId}
+        ownerOrganizationId={editOwnerOrganizationId}
         onExitEdit={onExitEdit}
       />
     );

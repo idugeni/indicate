@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CATEGORY_PALETTE, weekdayLabel, truncateLabel, categoryColor, hasAnalyticsSignal } from '@/modules/dashboard/components/analytics/chart-helpers';
+import { CATEGORY_PALETTE, weekdayLabel, truncateLabel, categoryColor, hasAnalyticsSignal, withLabels, siteLabel, labelFlows } from '@/modules/dashboard/components/analytics/chart-helpers';
 import type { AnalyticsProjection, TaskDay } from '@/modules/dashboard/models';
 
 describe('Fondasi warna dashboard', () => {
@@ -48,6 +48,24 @@ function projection(overrides: Partial<AnalyticsProjection> = {}): AnalyticsProj
     ...overrides,
   };
 }
+
+
+describe('Label dimensi dashboard', () => {
+  const uuid = '11111111-1111-4111-8111-111111111111';
+
+  it('tidak menampilkan UUID saat nama situs, penerbit, atau wilayah tidak tersedia', () => {
+    expect(withLabels([{ key: uuid, count: 1 }], {})[0]?.key).toBe('Entitas tidak tersedia');
+    expect(siteLabel(uuid, {})).toBe('Situs tidak tersedia');
+    expect(labelFlows([{ penerbit: uuid, situs: uuid, hasil: 'published', jumlah: 1 }], {}, {})[0]).toEqual({
+      penerbit: 'Penerbit tidak tersedia', situs: 'Situs tidak tersedia', hasil: 'published', jumlah: 1,
+    });
+  });
+
+  it('mempertahankan label domain dan slug yang dapat dibaca', () => {
+    expect(siteLabel('portal.example', {})).toBe('portal.example');
+    expect(withLabels([{ key: 'Jawa Tengah', count: 2 }], {})[0]?.key).toBe('Jawa Tengah');
+  });
+});
 
 describe('Deteksi sinyal analitik', () => {
   it('menyatakan tidak ada sinyal saat deret harian padat bernilai nol', () => {

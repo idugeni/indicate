@@ -198,7 +198,11 @@ export function MonetizationControlCenterV2({
     return matchesStatus && matchesQuery;
   });
 
-  const customerName = (id: string) => customers.find((c) => c.id === id)?.name ?? id;
+  const customerName = (id: string) => {
+    const customer = customers.find((c) => c.id === id);
+    if (customer !== undefined) return customer.name;
+    return 'Organisasi tidak tersedia';
+  };
 
   return (
     <div className="space-y-5">

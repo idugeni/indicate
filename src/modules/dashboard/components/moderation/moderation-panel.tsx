@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { DashboardSelect, DashboardSelectItem } from '@/modules/dashboard/components/shared/dashboard-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { AppTooltip } from '@/ui/app-tooltip';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
@@ -310,11 +309,9 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
                 </Badge>
               </div>
               <p className="m-0 mt-1 break-words font-sans text-[11px] leading-relaxed text-paper-dim">{report.details}</p>
-              <AppTooltip label={`${report.id} · ${report.reporterContact}`} side="top">
-                <p className="m-0 mt-1 truncate font-mono text-[10px] tabular-nums text-paper-faint">
-                  {report.id} · {report.reporterContact}
-                </p>
-              </AppTooltip>
+              <p className="m-0 mt-1 truncate font-sans text-[10px] text-paper-faint">
+                Pelapor: {report.reporterContact}
+              </p>
               {report.status === 'received' || report.status === 'under_review' ? (
                 <div className="mt-2 flex flex-col gap-1.5 border-t border-hairline/60 pt-2">
                   <AiModerationAssist

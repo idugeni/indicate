@@ -372,7 +372,7 @@ export function CustomerOperationsV2({
                         {selected.customer.name}
                       </p>
                       <p className="m-0 mt-1 font-mono text-[10px] text-paper-faint">
-                        {selected.customer.slug} · {selected.customer.id}
+                        {selected.customer.slug}
                       </p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">

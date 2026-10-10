@@ -50,7 +50,7 @@ describe('LiveblogUpdates', () => {
     const command = stubCommand();
     render(<LiveblogUpdates articleId="a-1" articleTitle="Live Skor" command={command} />);
     await screen.findByText('Gol pembuka.');
-    await user.click(screen.getByRole('button', { name: 'Hapus pembaruan u-1' }));
+    await user.click(screen.getByRole('button', { name: 'Hapus pembaruan nomor 1' }));
     await user.click(screen.getByRole('button', { name: 'Ya, hapus' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'article.updates.delete', { id: 'u-1', expectedVersion: 1 }, { refresh: true },
@@ -82,13 +82,13 @@ describe('LiveblogUpdates', () => {
     render(<LiveblogUpdates articleId="a-1" articleTitle="Live Skor" command={command} />);
     expect(await screen.findByText('Gol kedua.')).toBeDefined();
     await user.type(screen.getByLabelText('Pembaruan baru (baris pertama jadi judul)'), 'Gol ketiga.');
-    await user.click(screen.getByRole('button', { name: 'Hapus pembaruan u-1' }));
+    await user.click(screen.getByRole('button', { name: 'Hapus pembaruan nomor 2' }));
     await user.click(screen.getByRole('button', { name: 'Ya, hapus' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'article.updates.delete', { id: 'u-1', expectedVersion: 1 }, { refresh: true },
     ));
     expect(screen.getByRole('button', { name: 'Menghapus…' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Hapus pembaruan u-2' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Hapus pembaruan nomor 1' }).hasAttribute('disabled')).toBe(false);
     expect(screen.getByRole('button', { name: 'Tambah pembaruan' }).hasAttribute('disabled')).toBe(false);
     release();
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Ya, hapus' })).toBeNull());

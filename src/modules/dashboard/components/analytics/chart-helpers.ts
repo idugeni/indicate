@@ -81,11 +81,17 @@ function isQuietTaskDay(point: TaskDay): boolean {
  * @param labels - ID-to-name label map, or undefined when unavailable.
  * @returns Points whose keys are display labels, truncated to fit chart axes.
  */
+const INTERNAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function displayDimension(value: string, fallback: string): string {
+  return INTERNAL_UUID_PATTERN.test(value) ? fallback : truncateLabel(value, 24);
+}
+
 export function withLabels(
   rows: readonly AnalyticsPoint[] | undefined,
   labels: Readonly<Record<string, string>> | undefined,
 ): readonly AnalyticsPoint[] {
-  return (rows ?? []).map((point) => ({ key: labels?.[point.key] ?? truncateLabel(point.key, 24), count: point.count }));
+  return (rows ?? []).map((point) => ({ key: labels?.[point.key] ?? displayDimension(point.key, 'Entitas tidak tersedia'), count: point.count }));
 }
 
 /**
@@ -96,7 +102,7 @@ export function withLabels(
  * @returns Site display name, or a truncated id when the tenant has no label.
  */
 export function siteLabel(id: string, siteLabels: Readonly<Record<string, string>> | undefined): string {
-  return siteLabels?.[id] ?? truncateLabel(id, 18);
+  return siteLabels?.[id] ?? displayDimension(id, 'Situs tidak tersedia');
 }
 
 /**
@@ -112,7 +118,7 @@ export function labelOutcomes(
 ): readonly AnalyticsPoint[] {
   return (points ?? []).map((point) => {
     const separatorIndex = point.key.indexOf(':');
-    if (separatorIndex < 0) return point;
+    if (separatorIndex < 0) return { key: displayDimension(point.key, 'Entitas tidak tersedia'), count: point.count };
     return { key: `${siteLabel(point.key.slice(0, separatorIndex), siteLabels)}:${point.key.slice(separatorIndex + 1)}`, count: point.count };
   });
 }
@@ -131,7 +137,7 @@ export function labelFlows(
   siteLabels: Readonly<Record<string, string>> | undefined,
 ): readonly PublisherFlow[] {
   return (flows ?? []).map((flow) => ({
-    penerbit: publisherLabels?.[flow.penerbit] ?? truncateLabel(flow.penerbit, 16),
+    penerbit: publisherLabels?.[flow.penerbit] ?? displayDimension(flow.penerbit, 'Penerbit tidak tersedia'),
     situs: siteLabel(flow.situs, siteLabels),
     hasil: flow.hasil,
     jumlah: flow.jumlah,

@@ -15,6 +15,7 @@ import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteHeaders } from '@/core/security/mutation-guard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
+import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 const inputSchema = z.object({ organizationId: z.uuid() });
 
@@ -75,7 +76,13 @@ export async function switchActiveOrganization(
     const localUserResult = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
     if (!localUserResult.ok) return DENIED;
     const membership = await repository.findActiveMembership(organizationId, localUserResult.value.id);
-    if (membership === null || !membership.roleActive) {
+    const platformPermissions = new Set<string>(membership?.platformPermissions
+      ?? await repository.listPlatformPermissions(localUserResult.value.id, organizationId).catch((): readonly string[] => []));
+    const isPlatformSuperAdmin = platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
+    const accessibleOrganizations = await repository.listActiveOrganizationsForUser(identity.authUserId, organizationId).catch(() => []);
+    const targetIsActiveAndAccessible = accessibleOrganizations.some((organization) => organization.id === organizationId);
+    const hasActiveMembership = membership !== null && membership.roleActive;
+    if (!targetIsActiveAndAccessible || (!hasActiveMembership && !isPlatformSuperAdmin)) {
       try {
         await new DrizzleDashboardRepository(runtime.db).recordDenied(
           {

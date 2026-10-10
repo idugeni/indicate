@@ -5,6 +5,7 @@ import type { IdentifierGenerator } from '@/core/system/ports';
 import type { ExactObjectAuthorization, ObjectStoragePort } from '@/integrations/storage/ports';
 import { PublishingAccessDeniedError, PublishingConflictError, PublishingSubscriptionInactiveError, type MediaListPage, type PublishingRepository } from '@/modules/publishing/ports';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
+import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import { createNonDisclosingDenial, createPublicError, type PublicErrorEnvelope } from '@/core/errors';
 import { sanitizeError } from '@/core/security/redaction';
 import type { Result } from '@/core/result';
@@ -86,7 +87,7 @@ export class MediaService {
       return { denied: false, actor };
     }
     if (actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) !== true) return { denied: true };
-    return { denied: false, actor: { ...actor, organizationId: ownerOrganizationId, regionScopeId: null } };
+    return { denied: false, actor: { ...actor, organizationId: ownerOrganizationId, regionScopeId: null, permissionSet: new Set([...actor.permissionSet, PUBLISHING_PERMISSIONS.mediaRead, PUBLISHING_PERMISSIONS.mediaManage]) } };
   }
 
   async reserveUpload(actor: AuthorizedTenantActorContext, raw: unknown): Promise<Result<UploadReservationResult, PublicErrorEnvelope>> {

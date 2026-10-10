@@ -147,7 +147,10 @@ export function DashboardWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const [crossOrg, setCrossOrg] = useState(() => (organizations[0]?.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin));
+  const [crossOrg, setCrossOrg] = useState(() => {
+    const permissions = organizations[0]?.permissions ?? [];
+    return permissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
+  });
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
@@ -384,6 +387,20 @@ export function DashboardWorkspace({
 
   const dismissError = useCallback(() => setError(null), []);
 
+  const resetDashboardScroll = useCallback(() => {
+    if (typeof window !== 'undefined' && !window.navigator.userAgent.toLowerCase().includes('jsdom')) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, []);
+
+  useEffect(() => {
+    resetDashboardScroll();
+  }, [view, organizationId, resetDashboardScroll]);
+
   const selectView = useCallback((next: View) => {
     setView(next);
     setFilterQuery('');
@@ -513,7 +530,7 @@ export function DashboardWorkspace({
           onOrganizationSwitchFailed={handleSwitchFailed}
         />
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-screen supports-[min-height:100svh]:min-h-svh min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 flex-none items-center gap-3 border-b border-white/[0.07] bg-[#080d1a]/90 px-4 backdrop-blur-xl sm:px-6">
           <Button
             type="button"
@@ -651,6 +668,7 @@ export function DashboardWorkspace({
           displayName={displayName}
           data={data}
           organizationId={organizationId}
+          organizations={organizations}
           permissions={activePermissions}
           error={error}
           command={command}

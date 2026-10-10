@@ -23,7 +23,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 export class DrizzleAuthorizationRepository implements AuthorizationRepository {
   constructor(private readonly database: Database) {}
 
-  async listActiveOrganizationsForUser(verifiedAuthUserId: string) {
+  async listActiveOrganizationsForUser(verifiedAuthUserId: string, targetOrganizationId?: string) {
     return this.database.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${verifiedAuthUserId}, true)`);
       const localUser = await transaction.query.users.findFirst({
@@ -33,10 +33,43 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
       if (localUser === undefined) return [];
       await transaction.execute(sql`SELECT set_config('app.actor_id', ${localUser.id}, true)`);
       await transaction.execute(sql`SELECT indicate_private.set_verified_user_context(${verifiedAuthUserId}::uuid)`);
+      const platformRows = await transaction.execute<{ name: string }>(sql`
+        SELECT name FROM indicate_private.permission_list_platform(${localUser.id}::uuid)
+      `);
+      const platformPermissions = new Set(platformRows.map(({ name }) => name));
+      if (platformPermissions.has('platform.super_admin')) {
+        const allOrganizations: { id: string; name: string }[] = [];
+        let cursorCreatedAt: string | null = null;
+        let cursorId: string | null = null;
+        while (true) {
+          const allRows: { id: string; name: string; status: string; created_at_cursor: string }[] = await transaction.execute<{ id: string; name: string; status: string; created_at_cursor: string }>(sql`
+            SELECT id, name, status, created_at::text AS created_at_cursor
+            FROM indicate_private.customer_list(
+              ${localUser.id}::uuid, 1000,
+              ${cursorCreatedAt}::timestamptz,
+              ${cursorId}::uuid
+            )
+          `);
+          const activeRows = allRows.filter(({ status }) => status === 'active').map(({ id, name }) => ({ id, name }));
+          if (targetOrganizationId !== undefined) {
+            const target = activeRows.find(({ id }) => id === targetOrganizationId);
+            if (target !== undefined) return [target];
+          } else {
+            allOrganizations.push(...activeRows);
+          }
+          if (allRows.length < 1000) break;
+          const last: { id: string; created_at_cursor: string } | undefined = allRows[allRows.length - 1];
+          if (last === undefined) break;
+          cursorCreatedAt = last.created_at_cursor;
+          cursorId = last.id;
+        }
+        return allOrganizations;
+      }
       const rows = await transaction.execute<{ id: string; name: string }>(sql`
         SELECT id, name FROM indicate_private.list_active_organizations_for_verified_user()
       `);
-      return rows.map(({ id, name }) => ({ id, name }));
+      const accessible = rows.map(({ id, name }) => ({ id, name }));
+      return targetOrganizationId === undefined ? accessible : accessible.filter(({ id }) => id === targetOrganizationId);
     });
   }
 

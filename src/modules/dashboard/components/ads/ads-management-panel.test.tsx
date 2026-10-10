@@ -71,6 +71,24 @@ describe('AdsManagementPanel', () => {
     expect(saved).toBeDefined();
   });
 
+
+  it('mengganti referensi UUID yatim dengan label manusia pada cakupan penempatan', async () => {
+    const uuidCampaign = '11111111-1111-4111-8111-111111111111';
+    const uuidCreative = '22222222-2222-4222-8222-222222222222';
+    const uuidSite = '33333333-3333-4333-8333-333333333333';
+    const overview = {
+      ...OVERVIEW,
+      placements: [{ id: 'placement-1', campaignId: uuidCampaign, creativeId: uuidCreative, slotId: 'banner-leaderboard', siteId: uuidSite, templateId: null, device: null, priority: 1, startsAt: null, endsAt: null, active: true, version: 1 }],
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => overview })));
+    render(<AdsManagementPanel organizationId="org-1" />);
+    await waitFor(() => expect(screen.getByText(/Kampanye tidak tersedia · Kreatif tidak tersedia/)).toBeDefined());
+    expect(screen.getByText(/Situs tidak tersedia/)).toBeDefined();
+    expect(document.body.textContent).not.toContain(uuidCampaign);
+    expect(document.body.textContent).not.toContain(uuidCreative);
+    expect(document.body.textContent).not.toContain(uuidSite);
+  });
+
   it('menampilkan kesalahan saat API gagal', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down'); }));
     render(<AdsManagementPanel organizationId="org-1" />);

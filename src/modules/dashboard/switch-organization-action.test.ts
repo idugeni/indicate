@@ -61,6 +61,8 @@ const membershipState = vi.hoisted(() => ({
   membership: { roleActive: true } as { roleActive: boolean } | null,
   denialFailure: false,
   identityFailure: false,
+  platformPermissions: [] as string[],
+  accessibleOrganizations: [{ id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301', name: 'Org Utama' }],
 }));
 
 vi.mock('@/data/repos/tenancy/authorization', () => ({
@@ -76,6 +78,9 @@ vi.mock('@/data/repos/tenancy/authorization', () => ({
     async findActiveMembership(organizationId: string) {
       return organizationId === ORG_ID ? membershipState.membership : null;
     }
+
+    async listPlatformPermissions() { return membershipState.platformPermissions; }
+    async listActiveOrganizationsForUser() { return membershipState.accessibleOrganizations; }
   },
 }));
 
@@ -112,6 +117,8 @@ beforeEach(() => {
   membershipState.membership = { roleActive: true };
   membershipState.denialFailure = false;
   membershipState.identityFailure = false;
+  membershipState.platformPermissions = [];
+  membershipState.accessibleOrganizations = [{ id: ORG_ID, name: 'Org Utama' }];
   sameOriginHeaders();
 });
 
@@ -137,6 +144,18 @@ describe('switchActiveOrganization', () => {
 
     expect(result.status).toBe('ok');
     expect(revalidatedTags).toEqual([{ tag: `org:${ORG_ID}`, profile: 'max' }]);
+  });
+
+  it('mengizinkan platform super-admin beralih ke organisasi lain tanpa membership', async () => {
+    membershipState.platformPermissions = ['platform.super_admin'];
+    membershipState.accessibleOrganizations = [
+      { id: ORG_ID, name: 'Org Utama' },
+      { id: OTHER_ORG_ID, name: 'Org Lain' },
+    ];
+    const result = await switchActiveOrganization({ status: 'idle' }, formData(OTHER_ORG_ID));
+    expect(result).toEqual({ status: 'ok', organizationId: OTHER_ORG_ID });
+    expect(cookieWrites[0]).toMatchObject({ name: 'indicate-active-organization', value: OTHER_ORG_ID });
+    expect(recordedDenials).toHaveLength(0);
   });
 
   it('menolak permintaan lintas situs sebelum menyentuh cookie', async () => {
