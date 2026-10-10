@@ -149,7 +149,7 @@ export function DashboardWorkspace({
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [crossOrg, setCrossOrg] = useState(() => {
     const permissions = organizations[0]?.permissions ?? [];
-    return permissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin) || permissions.includes(INTEGRATIONS_PERMISSIONS.customerAdmin);
+    return permissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
   });
 
   useEffect(() => {

@@ -37,7 +37,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
         SELECT name FROM indicate_private.permission_list_platform(${localUser.id}::uuid)
       `);
       const platformPermissions = new Set(platformRows.map(({ name }) => name));
-      if (platformPermissions.has('platform.super_admin') || platformPermissions.has('platform.customer.admin')) {
+      if (platformPermissions.has('platform.super_admin')) {
         const allOrganizations: { id: string; name: string }[] = [];
         let cursorCreatedAt: string | null = null;
         let cursorId: string | null = null;

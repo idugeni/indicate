@@ -78,8 +78,7 @@ export async function switchActiveOrganization(
     const membership = await repository.findActiveMembership(organizationId, localUserResult.value.id);
     const platformPermissions = new Set<string>(membership?.platformPermissions
       ?? await repository.listPlatformPermissions(localUserResult.value.id, organizationId).catch((): readonly string[] => []));
-    const isPlatformSuperAdmin = platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin)
-      || platformPermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin);
+    const isPlatformSuperAdmin = platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
     const accessibleOrganizations = await repository.listActiveOrganizationsForUser(identity.authUserId, organizationId).catch(() => []);
     const targetIsActiveAndAccessible = accessibleOrganizations.some((organization) => organization.id === organizationId);
     const hasActiveMembership = membership !== null && membership.roleActive;

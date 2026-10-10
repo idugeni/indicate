@@ -108,8 +108,7 @@ export async function authorizeDashboardOrganization(
     .catch(() => null);
   const platformPermissions: ReadonlySet<string> = new Set<string>(membership?.platformPermissions
     ?? await authorization.listPlatformPermissions(user.localUserId, organizationId).catch((): readonly string[] => []));
-  const isPlatformSuperAdmin = platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin)
-    || platformPermissions.has(INTEGRATIONS_PERMISSIONS.customerAdmin);
+  const isPlatformSuperAdmin = platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
   if (isPlatformSuperAdmin) {
     const organizations = await authorization.listActiveOrganizationsForUser(user.authUserId, organizationId).catch(() => []);
     if (!organizations.some((organization) => organization.id === organizationId)) return null;

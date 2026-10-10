@@ -221,6 +221,22 @@ describe('authenticate-dashboard', () => {
     shared.accessibleOrganizations = [{ id: shared.orgId, name: 'Proof Org' }];
   });
 
+  it('tidak memperluas grant customer-admin lama menjadi akses tenant lintas organisasi', async () => {
+    shared.session = true;
+    shared.membership = false;
+    shared.platformPermissions = ['platform.customer.admin'];
+    shared.accessibleOrganizations = [
+      { id: shared.orgId, name: 'Proof Org' },
+      { id: shared.otherOrgId, name: 'Other Org' },
+    ];
+    const user = (await authenticateDashboardUser({} as unknown as Db, proofStore(), 'req-legacy-admin')) as DashboardUser;
+    const actor = await authorizeDashboardOrganization({} as unknown as Db, user, shared.otherOrgId, 'req-legacy-admin');
+    expect(actor).toBeNull();
+    shared.membership = true;
+    shared.platformPermissions = [];
+    shared.accessibleOrganizations = [{ id: shared.orgId, name: 'Proof Org' }];
+  });
+
   it('mengikat access-key hanya ke organisasi penerbit', async () => {
     shared.session = false;
     shared.bearer = true;
