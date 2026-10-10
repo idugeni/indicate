@@ -25,6 +25,7 @@ import { formatDate } from '@/modules/dashboard/components/shared/dashboard-date
 type Invoice = {
   readonly id: string;
   readonly organizationId: string;
+  readonly organizationName?: string;
   readonly number: string;
   readonly amountIdr: number;
   readonly status: 'paid' | 'voided' | 'unpaid';
@@ -406,8 +407,14 @@ export function MonetizationControlCenterV2({
                         {invoice.number}
                       </p>
                       <p className="m-0 mt-1 text-[11px] text-paper-dim">
-                        {formatDate(invoice.createdAt)} · {customerName(invoice.organizationId)}
+                        Diterbitkan {formatDate(invoice.createdAt)} · {invoice.organizationName || customerName(invoice.organizationId)}
                       </p>
+                      {invoice.dueAt ? (
+                        <p className="m-0 mt-1 text-[10px] text-paper-faint">Jatuh tempo {formatDate(invoice.dueAt)}</p>
+                      ) : null}
+                      {invoice.billingNote ? (
+                        <p className="m-0 mt-1 line-clamp-2 text-[11px] text-paper-dim">{invoice.billingNote}</p>
+                      ) : null}
                     </div>
                     <Badge variant="outline" className="capitalize">
                       {invoice.status}
@@ -432,6 +439,36 @@ export function MonetizationControlCenterV2({
                       >
                         <FileDown className="h-3.5 w-3.5" aria-hidden="true" /> Unduh
                       </Button>
+                      {isPlatform && invoice.status === 'unpaid' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => {
+                            const date = window.prompt(
+                              `Tanggal pembayaran ${invoice.number} (YYYY-MM-DD):`,
+                              localDateInputValue(),
+                            );
+                            if (!date || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return;
+                            const method = window.prompt('Metode pembayaran:', 'Transfer bank');
+                            if (!method?.trim()) return;
+                            if (!window.confirm(`Konfirmasi pembayaran ${invoice.number} sebesar ${money(invoice.amountIdr)}?`)) return;
+                            void runAction(
+                              'invoice.pay',
+                              {
+                                invoiceId: invoice.id,
+                                expectedVersion: invoice.version,
+                                paidAt: invoiceDateTime(date),
+                                paymentMethod: method.trim(),
+                              },
+                              'Pembayaran invoice berhasil dicatat.',
+                            );
+                          }}
+                        >
+                          Tandai lunas
+                        </Button>
+                      ) : null}
                       {isPlatform && invoice.status === 'paid' ? (
                         <Button
                           type="button"
