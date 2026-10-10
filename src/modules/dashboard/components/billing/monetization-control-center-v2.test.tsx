@@ -3,6 +3,38 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MonetizationControlCenterV2 } from './monetization-control-center-v2';
 
+vi.mock('@/modules/dashboard/components/shared/search-combobox', () => ({
+  SearchCombobox: ({
+    id,
+    value,
+    onValueChange,
+    options,
+    placeholder,
+  }: {
+    id?: string;
+    value: string;
+    onValueChange: (value: string | null) => void;
+    options: readonly { value: string; label: string }[];
+    placeholder: string;
+  }) => (
+    <select
+      id={id}
+      aria-label="Organisasi"
+      value={value}
+      onChange={(event) => onValueChange(event.target.value)}
+    >
+      <option value="">{placeholder}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  ),
+}));
+
+
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -238,10 +270,8 @@ describe('Monetization Control Center V2', () => {
     );
     render(<MonetizationControlCenterV2 organizationId="org-1" permissions={['platform.super_admin']} />);
     await screen.findByText('Platform Actions');
-    const organizationInput = screen.getByPlaceholderText('Pilih organisasi…');
-    fireEvent.click(organizationInput);
-    fireEvent.change(organizationInput, { target: { value: 'UPT Kendal' } });
-    fireEvent.click(await screen.findByText(/UPT Kendal/));
+    await waitFor(() => expect(screen.getByLabelText('Organisasi').querySelectorAll('option').length).toBeGreaterThan(1));
+    fireEvent.change(screen.getByLabelText('Organisasi'), { target: { value: 'org-1' } });
     fireEvent.change(screen.getByLabelText('Nominal (IDR)'), { target: { value: '725000' } });
     fireEvent.change(screen.getByLabelText('Tanggal jatuh tempo'), { target: { value: '2030-10-31' } });
     fireEvent.change(screen.getByLabelText('Keterangan / periode layanan'), { target: { value: 'Layanan UPT — Oktober 2030' } });
