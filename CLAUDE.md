@@ -1,6 +1,6 @@
-# Indicate (relaxed mode — conventions advisory, 2026-09-14)
+# Indicate (conventions advisory; safety requirements remain binding)
 
-Multi-tenant media syndication platform — one central Dashboard operating many news domains from a single shared deployment. Conventions below are recommended defaults; deviations are allowed with owner sign-off and a brief note.
+Multi-tenant media syndication platform — one central Dashboard operating many news domains from a single shared deployment. This reference card relaxes conventions only; it does not relax security, compliance, tenant-isolation, data-integrity, or required CI gates. Deviations from ordinary conventions may be allowed with owner sign-off and a brief note.
 
 > **This file is the reference card, not the rulebook.** It answers "where does
 > this live" — route groups, path aliases, file naming, the commands, the config
@@ -36,7 +36,7 @@ Exact pins live in `package.json`; the majors below are the contract.
 
 Hexagonal / ports-and-adapters modular monolith under `src/`. One application, one database, one deployment.
 
-The invariants in [docs/architecture.md](docs/architecture.md) §2 are defaults, not laws, and each records why the current shape was chosen. When the owner asks for a different shape, that request is the approval: build it, record the reason in the same commit as a `Deviates:` trailer, and update the section describing the old default. Do not answer "by design, so it cannot change" from the shape of a convention alone.
+The architecture choices in [docs/architecture.md](docs/architecture.md) §2 are documented defaults that may be changed with owner approval where safe. This flexibility never permits bypassing security, compliance, tenant isolation, data integrity, or other hard safety requirements in `AGENTS.md`. When an approved change alters a non-safety default, record the reason in the same commit as a `Deviates:` trailer and update the section describing the old default.
 
 **Dependency direction:**
 
@@ -166,12 +166,12 @@ Migrations in `src/data/migrations/` are applied manually in filename order agai
 - **Types/interfaces:** `PascalCase`
 - **Constants:** `UPPER_SNAKE_CASE`
 
-## Security invariants (recommended defaults — relaxed 2026-09-14)
+## Security invariants (binding safety requirements — see AGENTS.md)
 
-- Secrets should stay in server-only environment storage; avoid browser bundles, logs, fixtures, or error responses.
-- Every tenant operation should derive exactly one authorized `organizationId`.
-- Missing, malformed, or unauthorized inputs should receive non-disclosing denial.
-- RLS is currently enforced at the PostgreSQL level with a dedicated non-owner runtime role (code fact; changing it needs explicit owner approval).
+- Secrets must stay out of browser bundles, logs, fixtures, and error responses; follow the server-only storage rules in `AGENTS.md`.
+- Every tenant operation must derive exactly one authorized `organizationId`.
+- Missing, malformed, or unauthorized inputs must receive the required non-disclosing denial.
+- RLS is currently enforced at the PostgreSQL level with a dedicated non-owner runtime role. Changes to this security boundary require explicit owner approval and must preserve tenant isolation.
 
 ## Design system
 
