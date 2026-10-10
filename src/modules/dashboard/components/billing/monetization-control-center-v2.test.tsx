@@ -218,8 +218,8 @@ describe('Monetization Control Center V2', () => {
       <MonetizationControlCenterV2 organizationId="org-1" permissions={['platform.super_admin']} />,
     );
     expect(await screen.findByText('Platform Actions')).toBeDefined();
-    fireEvent.change(screen.getByLabelText('Nominal faktur'), { target: { value: '600000' } });
-    expect((screen.getByLabelText('Nominal faktur') as HTMLInputElement).value).toBe('600000');
+    fireEvent.change(screen.getByLabelText('Nominal (IDR)'), { target: { value: '600000' } });
+    expect((screen.getByLabelText('Nominal (IDR)') as HTMLInputElement).value).toBe('600000');
     expect(calls).toHaveLength(0);
   });
   it('menerbitkan tagihan dengan UPT, nominal, jatuh tempo, dan keterangan yang dipilih', async () => {
