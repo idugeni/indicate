@@ -1,6 +1,6 @@
 # Rilis production, kesiapan, dan rollback
 
-> **Status:** Advisory (longgar sejak 2026-09-14 — checklist yang direkomendasikan, bukan gate keras).
+> **Status:** Operational checklist; live readiness probes are advisory only where explicitly stated below. Required CI/branch-protection checks, security and data-integrity constraints, reviewed migrations, and explicit owner instructions remain hard gates; this document does not override AGENTS.md.
 > **Owner:** Platform team.
 > **Trigger:** setiap rilis dan setiap keputusan rollback.
 > **Related:** [migrations](migrations.md) · [cloudflare baseline](cloudflare-baseline.md) · [domains](domains.md) · [architecture](architecture.md)

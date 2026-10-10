@@ -1,5 +1,7 @@
 # AI CALL FLOW AUDIT — INDICATE
 
+> **Historical baseline — 2026-10-11:** This is a point-in-time, pre-remediation source audit, not the current verdict for main. The follow-up [AI_REMEDIATION_REPORT.md](AI_REMEDIATION_REPORT.md) records F-01/F-02 as fixed. Re-check every finding against current code and tests before treating it as open; the remediation report is also a point-in-time claim, not proof of present runtime behavior.
+
 > READ-ONLY, EVIDENCE-FIRST audit. No source, test, config, schema, Redis, provider, or deployment changes were made except creating this report file.
 > Every claim below is tagged `OBSERVED IN CODE`, `INFERRED FROM CALL GRAPH`, `MODELLED`, or `UNKNOWN`.
 > No AI providers were called. No tokens consumed. No secret values read or printed — env var NAMES only.

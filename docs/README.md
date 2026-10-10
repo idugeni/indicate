@@ -15,6 +15,12 @@ tanggal dan tanpa cara menghitungnya akan basi tanpa ada yang menyadarinya.
 Kalau butuh angka hari ini, hitung ulang dari sumber; jangan menyalin dari
 dokumen mana pun, termasuk dari sini.
 
+## Documentation health
+
+| Document | Status | Contents |
+|---|---|---|
+| [documentation health audit](audits/documentation-health-audit-2026-10-11.md) | Snapshot 2026-10-11 | Dated findings for stale audit status, authority conflicts, lifecycle rules, and evidence-based deletion. Re-run after major documentation or architecture changes. |
+
 ## Architecture and design
 
 | Document | Status | Contents |

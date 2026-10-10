@@ -1,5 +1,7 @@
 # INDICATE Dashboard V2 Deep Audit
 
+> **Historical audit snapshot (2026-10-09):** The source and CI evidence below refer to the recorded audit branch/head, not automatically to today's main. PR [#53](https://github.com/idugeni/indicate/pull/53) was merged on 2026-10-09; the older statements below that it remains open/draft are superseded. Runtime/browser, authenticated role-matrix, cross-tenant denial, and external-provider verification remain unverified unless separately evidenced.
+
 **Repository:** `idugeni/indicate`  
 **Base:** `main` at `d8fb3caaa9086ac010c136dd67d26ec053e7e6b0`  
 **Audit branch:** `audit/dashboard-v2-deep-audit`  
@@ -171,4 +173,4 @@ Automated code and CI gates are green. The remaining evidence is specifically ru
 3. Exercise external provider and publication delivery outcomes only in an approved non-production environment with valid credentials.
 4. Record screenshots/results and any defects from those scenarios; add regression tests and rerun the full gate for any fixes.
 
-No production data writes, schema migrations, production deployment, or merge to `main` were performed. PR #53 remains open and draft until the remaining runtime evidence is recorded. Do not describe browser, tenant-isolation, or live external-provider verification as passed based on unit tests or CI alone.
+This audit itself did not perform production data writes, schema migrations, or a production deployment. PR #53 was subsequently merged; see its [merged PR record](https://github.com/idugeni/indicate/pull/53). Do not describe browser, tenant-isolation, or live external-provider verification as passed based on unit tests or CI alone.
