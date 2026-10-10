@@ -217,8 +217,13 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     'editArticle',
     parseAsString.withOptions({ scroll: false, history: 'replace' }),
   );
+  const [editOwnerOrganizationId, setEditOwnerOrganizationId] = useQueryState(
+    'editOwnerOrganizationId',
+    parseAsString.withOptions({ scroll: false, history: 'replace' }),
+  );
   const exitEdit = () => {
     void setEditArticleId(null);
+    void setEditOwnerOrganizationId(null);
     onSelectView('articles');
   };
 
@@ -357,6 +362,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               command={command}
               organizationId={organizationId}
               editArticleId={editArticleId ?? undefined}
+              editOwnerOrganizationId={editOwnerOrganizationId ?? undefined}
               onExitEdit={exitEdit}
             />
           ) : null}
@@ -376,8 +382,9 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               articlesTotal={articlesTotal}
               onLoadMoreArticles={onLoadMoreArticles}
               crossOrg={crossOrg}
-              onEditArticle={(articleId) => {
+              onEditArticle={(articleId, ownerOrganizationId) => {
                 void setEditArticleId(articleId);
+                void setEditOwnerOrganizationId(ownerOrganizationId ?? null);
                 onSelectView('editorial');
               }}
             />
