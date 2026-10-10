@@ -68,7 +68,7 @@ describe('AdSlot', () => {
     expect(html).toContain('isolate');
     expect(html).toContain('<iframe');
     expect(html).toContain('sandbox="allow-popups allow-popups-to-escape-sandbox"');
-    expect(html).toContain('srcdoc=');
+    expect(html.toLowerCase()).toContain('srcdoc=');
     expect(html).not.toContain('dangerouslySetInnerHTML');
   });
 
