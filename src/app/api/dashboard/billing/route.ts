@@ -97,6 +97,8 @@ async function handlePOST(request: Request) {
         'invite.create': (payload) => service.createInvitation(session.actor, payload),
         'invite.redeem': (payload) => service.redeemInvitation(session.actor, payload),
         'invoice.create': (payload) => service.createInvoice(session.actor, payload),
+        'invoice.issue': (payload) => service.issueInvoice(session.actor, payload),
+        'invoice.pay': (payload) => service.payInvoice(session.actor, payload),
         'invoice.void': (payload) => service.voidInvoice(session.actor, payload),
         'invoice.reissue': (payload) => service.reissueInvoice(session.actor, payload),
       };
