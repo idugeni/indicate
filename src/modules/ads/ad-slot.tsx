@@ -48,9 +48,13 @@ function AdImage({ creative, eager }: { readonly creative: Extract<AdCreative, {
 
 function AdHtml({ creative }: { readonly creative: Extract<AdCreative, { kind: 'html' }> }) {
   return (
-    <div
-      className="min-w-0 [&_iframe]:max-w-full [&_img]:h-auto [&_img]:max-w-full [&_table]:max-w-full [&_video]:max-w-full"
-      dangerouslySetInnerHTML={{ __html: creative.html }}
+    <iframe
+      aria-label="Iklan"
+      sandbox="allow-popups allow-popups-to-escape-sandbox"
+      referrerPolicy="no-referrer"
+      loading="lazy"
+      srcDoc={creative.html}
+      className="absolute inset-0 block h-full w-full border-0"
     />
   );
 }
