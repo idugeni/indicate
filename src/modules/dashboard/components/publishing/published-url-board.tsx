@@ -123,7 +123,6 @@ export function PublishedUrlBoard({ data, onFilterApply, articlesNextCursor, art
   readonly articlesNextCursor?: string | null | undefined;
   readonly articlesTotal?: number | undefined;
   readonly onLoadMoreArticles?: (() => Promise<{ readonly loaded: number; readonly total: number; readonly nextCursor: string | null } | null>) | undefined;
-  readonly organizationId?: string | undefined;
   readonly crossOrg?: boolean | undefined;
 }) {
   const searchInputId = useId();
