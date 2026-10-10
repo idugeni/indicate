@@ -68,7 +68,7 @@ export function NetworkIntelligenceV2({ data, onFilterApply }: { readonly data: 
       {onFilterApply ? <DashboardV2FilterBar view="analytics" data={data} onApply={onFilterApply} /> : null}
 
       <Tabs defaultValue="network" className="w-full">
-        <TabsList aria-label="Network Intelligence sections" className="w-full max-w-full overflow-x-auto overflow-y-clip">
+        <TabsList aria-label="Network Intelligence sections" className="grid h-auto w-full max-w-full grid-cols-2 gap-1 overflow-visible sm:flex sm:flex-wrap">
           <TabsTrigger value="network" className="flex-1">Network</TabsTrigger>
           <TabsTrigger value="content" className="flex-1">Content</TabsTrigger>
           <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
