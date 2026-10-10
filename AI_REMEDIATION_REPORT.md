@@ -1,5 +1,7 @@
 # AI REMEDIATION REPORT — F-01 / F-02
 
+> **Point-in-time remediation record:** This report documents the original F-01/F-02 changes and the verification results available when it was written. The test counts and single flaky-test note below are historical, not current suite status. For the pre-fix evidence see [AI_CALL_FLOW_AUDIT.md](AI_CALL_FLOW_AUDIT.md); re-run current CI and review the current implementation before relying on these claims.
+
 > Scope: ONLY `F-01` (P0 embeddings unobserved) and `F-02` (P1 streaming weakened controls)
 > from `AI_CALL_FLOW_AUDIT.md`. No deployment. No production calls. No secrets read.
 > Audit evidence re-confirmed from code before each change (file/function/caller below).
