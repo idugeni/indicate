@@ -257,9 +257,6 @@ export function DashboardWorkspace({
         if (activeOrgRef.current === targetOrg) {
           setError('Gagal menghubungi server. Periksa koneksi internet, lalu coba lagi.');
         }
-      } finally {
-        if (activeOrgRef.current === targetOrg) {
-          }
       }
     },
     [fetchAnalytics, crossOrg]
@@ -382,9 +379,6 @@ export function DashboardWorkspace({
         );
       }
       return null;
-    } finally {
-      if (activeOrgRef.current === targetOrg) {
-      }
     }
   }, [organizationId, view, filterQuery, fetchData]);
 
