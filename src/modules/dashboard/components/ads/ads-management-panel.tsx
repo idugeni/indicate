@@ -35,10 +35,10 @@ interface Overview {
   readonly placements: readonly OverviewPlacement[];
 }
 
-async function apiGet(organizationId: string): Promise<Overview> {
+async function apiGet(organizationId: string, signal?: AbortSignal): Promise<Overview> {
   let response: Response;
   try {
-    response = await fetch(`/api/dashboard/ads?organizationId=${encodeURIComponent(organizationId)}&scope=overview`);
+    response = await fetch(`/api/dashboard/ads?organizationId=${encodeURIComponent(organizationId)}&scope=overview`, signal ? { signal } : undefined);
   } catch {
     throw new Error('Gagal memuat data iklan.');
   }
@@ -236,14 +236,14 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
     baselinesRef.current = baselines;
   }, [baselines]);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (signal?: AbortSignal) => {
     const request = requestRef.current + 1;
     requestRef.current = request;
     const targetOrg = organizationId;
     setBusy(true);
     setError(null);
     try {
-      const body = await apiGet(targetOrg);
+      const body = await apiGet(targetOrg, signal);
       if (requestRef.current !== request) return;
       setOverview(body);
       const nextBaselines: Record<string, SlotDraft> = {};
@@ -268,22 +268,25 @@ export function AdsManagementPanel({ organizationId }: { readonly organizationId
         return merged;
       });
     } catch (err) {
-      if (requestRef.current !== request) return;
+      if (signal?.aborted || requestRef.current !== request) return;
       setError(err instanceof Error ? err.message : 'Gagal memuat data iklan.');
     } finally {
-      if (requestRef.current === request) setBusy(false);
+      if (!signal?.aborted && requestRef.current === request) setBusy(false);
     }
   }, [organizationId]);
 
   useEffect(() => {
+    const controller = new AbortController();
     void Promise.resolve().then(() => {
+      if (controller.signal.aborted) return;
       setOverview(null);
       setBaselines({});
       setDrafts({});
       setEditing(null);
       setNotice(null);
-      void reload();
+      void reload(controller.signal);
     });
+    return () => controller.abort();
   }, [reload]);
 
   const mutate = useCallback(async (action: string, payload: Record<string, unknown>, success: string): Promise<boolean> => {

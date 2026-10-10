@@ -335,7 +335,7 @@ export function AiControlCenterV2({
 
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {busy && snapshot === null ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Skeleton className="h-28" />
           <Skeleton className="h-28" />
           <Skeleton className="h-28" />

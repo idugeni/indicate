@@ -122,7 +122,11 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
   }, []);
 
   useEffect(() => {
-    void Promise.resolve().then(() => reload());
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void reload();
+    });
+    return () => { cancelled = true; };
   }, [reload]);
 
   const decideReport = async (reportId: string, actionTaken: boolean) => {

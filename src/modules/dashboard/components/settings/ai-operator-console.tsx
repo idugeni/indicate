@@ -76,7 +76,13 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
     finally { setApprovalBusy(false); }
   }, [organizationId]);
 
-  useEffect(() => { void Promise.resolve().then(refreshApprovals); }, [refreshApprovals]);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void refreshApprovals();
+    });
+    return () => { cancelled = true; };
+  }, [refreshApprovals]);
 
   async function requestPublicationApproval(): Promise<void> {
     setApprovalBusy(true); setApprovalError(null); setApprovalNotice(null);

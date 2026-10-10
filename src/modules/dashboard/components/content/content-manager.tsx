@@ -127,24 +127,30 @@ export function ContentManager() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const requestSeq = useRef(0);
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (signal?: AbortSignal) => {
     const seq = ++requestSeq.current;
     setBusy(true); setError(null);
     try {
-      const response = await fetch('/api/dashboard/content');
+      const response = await fetch('/api/dashboard/content', signal ? { signal } : undefined);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const body = (await response.json()) as ContentBundle;
       if (seq !== requestSeq.current) return;
       setBundle(body); setDrafts({});
     } catch {
-      if (seq !== requestSeq.current) return;
+      if (signal?.aborted || seq !== requestSeq.current) return;
       setError('Gagal memuat konten website.');
     } finally {
-      if (seq === requestSeq.current) setBusy(false);
+      if (!signal?.aborted && seq === requestSeq.current) setBusy(false);
     }
   }, []);
 
-  useEffect(() => { void Promise.resolve().then(() => reload()); }, [reload]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.resolve().then(() => {
+      if (!controller.signal.aborted) void reload(controller.signal);
+    });
+    return () => controller.abort();
+  }, [reload]);
 
   const post = useCallback(async (action: string, payload: Record<string, unknown>, rowKey: string) => {
     setBusyRow(rowKey);
@@ -197,7 +203,7 @@ export function ContentManager() {
   return (
     <Tabs value={activeKind} onValueChange={setActiveKind} className="w-full space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <TabsList aria-label="Jenis konten website" className="max-w-full flex-1 overflow-x-auto overflow-y-clip">
+        <TabsList aria-label="Jenis konten website" className="grid h-auto w-full max-w-full grid-cols-2 gap-1 overflow-visible sm:flex sm:flex-wrap sm:flex-1">
           {TYPES.map((t) => {
             const KindIcon = KIND_ICONS[t.kind];
             return (

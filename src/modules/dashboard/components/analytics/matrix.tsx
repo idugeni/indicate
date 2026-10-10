@@ -47,7 +47,29 @@ export function StatusMatrix({ results }: { readonly results: readonly Analytics
       {sites.length === 0 ? (
         <EmptyState title="Belum ada hasil situs." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
-        <div className="mt-4 overflow-x-auto">
+        <>
+        <div className="mt-4 space-y-2 sm:hidden">
+          {sites.map(({ name, total }) => {
+            const row = matrix.get(name) ?? new Map<string, number>();
+            return (
+              <article key={name} className="rounded-md border border-hairline/70 bg-bg p-3">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <h3 className="m-0 min-w-0 break-words text-xs font-medium text-paper">{name}</h3>
+                  <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-paper">{total.toLocaleString('id-ID')}</span>
+                </div>
+                <dl className="mt-2 grid grid-cols-2 gap-2">
+                  {status.map((state) => (
+                    <div key={state} className="min-w-0 rounded bg-bg-raised px-2 py-1.5">
+                      <dt className="break-words font-mono text-[10px] uppercase text-paper-faint">{state}</dt>
+                      <dd className="m-0 mt-0.5 font-mono text-xs tabular-nums text-paper-dim">{(row.get(state) ?? 0).toLocaleString('id-ID')}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+            );
+          })}
+        </div>
+        <div className="mt-4 hidden overflow-x-auto sm:block">
           <Table className="w-full min-w-max text-sm">
             <caption className="sr-only">Kesehatan situs per status hasil</caption>
             <TableHeader>
@@ -92,6 +114,7 @@ export function StatusMatrix({ results }: { readonly results: readonly Analytics
             </TableBody>
           </Table>
         </div>
+        </>
       )}
     </section>
   );

@@ -71,7 +71,11 @@ export function ProfileForm() {
   }, []);
 
   useEffect(() => {
-    void Promise.resolve().then(() => reload());
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void reload();
+    });
+    return () => { cancelled = true; };
   }, [reload]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {

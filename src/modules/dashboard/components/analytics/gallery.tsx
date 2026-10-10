@@ -45,7 +45,7 @@ export function TelemetryGallery({ data }: { readonly data: AnalyticsProjection 
   }
   return (
     <Tabs defaultValue="ringkasan" className="w-full">
-      <TabsList aria-label="Bagian analitik" className="w-full max-w-full overflow-x-auto overflow-y-clip">
+      <TabsList aria-label="Bagian analitik" className="grid h-auto w-full max-w-full grid-cols-2 gap-1 overflow-visible sm:flex sm:flex-wrap">
         <TabsTrigger value="ringkasan" className="flex-1">Ringkasan</TabsTrigger>
         <TabsTrigger value="tren" className="flex-1">Tren</TabsTrigger>
         <TabsTrigger value="distribusi" className="flex-1">Distribusi</TabsTrigger>

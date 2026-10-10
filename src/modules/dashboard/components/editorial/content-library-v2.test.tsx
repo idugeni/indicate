@@ -35,12 +35,18 @@ describe('ContentLibraryV2', () => {
     render(<ContentLibraryV2 data={DATA} onFilterApply={onFilterApply} />);
 
     expect(screen.getByRole('region', { name: 'Content Library' })).toBeDefined();
-    expect(screen.getByText('Banjir Wonosobo')).toBeDefined();
+    expect(screen.getAllByText('Banjir Wonosobo').length).toBeGreaterThan(0);
     await user.type(screen.getByLabelText('Cari artikel'), 'apbd');
     await waitFor(
       () => expect(onFilterApply).toHaveBeenCalledWith('&sort=published-desc&search=apbd'),
       { timeout: 1500 },
     );
+  });
+
+  it('renders a compact mobile card alternative without relying on the wide table', () => {
+    render(<ContentLibraryV2 data={DATA} />);
+    expect(screen.getAllByText('Portal').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Ubah artikel Banjir Wonosobo' })).toHaveLength(2);
   });
 
   it('menggunakan hostname URL dan waktu tayang bridge ketika field utama kosong', () => {
@@ -100,9 +106,9 @@ describe('ContentLibraryV2', () => {
     const onEditArticle = vi.fn();
     render(<ContentLibraryV2 data={DATA} command={command} onEditArticle={onEditArticle} />);
 
-    await user.click(screen.getByRole('button', { name: 'Ubah artikel Banjir Wonosobo' }));
+    await user.click(screen.getAllByRole('button', { name: 'Ubah artikel Banjir Wonosobo' })[0]!);
     expect(onEditArticle).toHaveBeenCalledWith('a-1');
-    await user.click(screen.getByRole('button', { name: 'Arsipkan artikel Banjir Wonosobo' }));
+    await user.click(screen.getAllByRole('button', { name: 'Arsipkan artikel Banjir Wonosobo' })[0]!);
     await waitFor(() =>
       expect(command).toHaveBeenCalledWith(
         'article.archive',

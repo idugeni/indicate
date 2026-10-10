@@ -330,7 +330,42 @@ export function ContentLibraryV2({
           description="Ubah filter atau muat ulang data dari server."
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-hairline bg-bg-raised">
+        <>
+        <div className="space-y-2 md:hidden">
+          {visible.map((row) => {
+            const meta = resolveStatus(row.status);
+            const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames);
+            const isBusy = busy.includes(row.id);
+            const transition = row.status === 'archived' ? 'article.restore' : 'article.archive';
+            const statusTone = publication.isPublished ? STATUS_BADGE_TONE.ok : STATUS_BADGE_TONE[meta.tone];
+            const statusLabel = publication.isPublished ? 'Tayang' : meta.label;
+            const publicationLabel = publication.publishedAt ? dateLabel(publication.publishedAt) : publication.isPublished ? 'Tayang · waktu belum tercatat' : 'Belum tayang';
+            return (
+              <article key={row.id} className="rounded-lg border border-hairline bg-bg-raised p-3">
+                <div className="flex items-start gap-2">
+                  <Checkbox checked={selected.includes(row.id)} onCheckedChange={() => setSelected((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])} aria-label={`Pilih artikel ${row.title}`} disabled={isBusy} />
+                  <div className="min-w-0 flex-1">
+                    <button className="block w-full break-words text-left text-sm font-medium text-paper hover:text-brass" onClick={() => onEditArticle?.(row.id)}>{row.title}</button>
+                    <p className="m-0 break-all font-mono text-[10px] text-paper-faint">{row.slug}</p>
+                    {crossOrg && row.orgName ? <p className="m-0 mt-1 text-[11px] text-paper-dim">Organisasi pemilik: {row.orgName}</p> : null}
+                    {row.tags?.length ? <p className="m-0 mt-1 break-words text-[10px] text-paper-faint">{row.tags.slice(0, 3).join(' · ')}</p> : null}
+                  </div>
+                  <Badge variant="outline" className={statusTone}>{statusLabel}</Badge>
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded bg-bg px-2 py-1.5"><dt className="text-[10px] text-paper-faint">Portal</dt><dd className="m-0 text-xs text-paper-dim">{publication.portalCount}</dd></div>
+                  <div className="rounded bg-bg px-2 py-1.5"><dt className="text-[10px] text-paper-faint">Tayang</dt><dd className="m-0 break-words text-xs text-paper-dim">{publicationLabel}</dd></div>
+                </dl>
+                <div className="mt-3 flex flex-wrap justify-end gap-1">
+                  <Button variant="ghost" size="icon-xs" aria-label={`Ubah artikel ${row.title}`} onClick={() => onEditArticle?.(row.id)} disabled={isBusy}><ChevronRight className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon-xs" aria-label={`${row.status === 'archived' ? 'Pulihkan' : 'Arsipkan'} artikel ${row.title}`} onClick={() => void run(row, transition)} disabled={isBusy}>{isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : row.status === 'archived' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
+                  <Button variant="ghost" size="icon-xs" className="text-error" aria-label={`Hapus permanen artikel ${row.title}`} onClick={() => void run(row, 'article.delete')} disabled={isBusy}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="hidden overflow-x-auto rounded-lg border border-hairline bg-bg-raised md:block">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-hairline text-left font-mono text-[10px] uppercase text-paper-faint">
@@ -463,6 +498,7 @@ export function ContentLibraryV2({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <DashboardPager

@@ -257,7 +257,7 @@ export function MonetizationControlCenterV2({
 
       <section
         aria-label="Ringkasan finansial"
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5"
       >
         {[
           [

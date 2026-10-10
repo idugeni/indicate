@@ -138,7 +138,11 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
   }, []);
 
   useEffect(() => {
-    void Promise.resolve().then(() => reload());
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) void reload();
+    });
+    return () => { cancelled = true; };
   }, [reload]);
 
   const post = useCallback(
@@ -269,7 +273,7 @@ export function ModerationPanel({ organizationId }: { readonly organizationId: s
 
   return (
     <Tabs defaultValue="laporan" className="w-full">
-      <TabsList aria-label="Bagian moderasi" className="max-w-full overflow-x-auto overflow-y-clip">
+      <TabsList aria-label="Bagian moderasi" className="grid h-auto w-full max-w-full grid-cols-2 gap-1 overflow-visible sm:flex sm:flex-wrap">
         <TabsTrigger value="laporan" className="flex-none">
           <Flag className="h-3.5 w-3.5 text-brass" aria-hidden="true" />
           <span>Laporan</span>

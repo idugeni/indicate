@@ -39,7 +39,27 @@ export function ActivityHeatmap({ cells }: { readonly cells: readonly ActivityHo
       <p className="m-0 mt-0.5 font-sans text-xs text-paper-faint">
         Intensitas hasil per hari dan jam (WIB)
       </p>
-      <div className="mt-4 space-y-1 overflow-x-auto">
+      <div className="mt-4 space-y-2 sm:hidden">
+        {DAY_NAMES.map((name, day) => (
+          <article key={name} className="rounded-md border border-hairline/70 bg-bg p-3">
+            <h3 className="m-0 text-xs font-medium text-paper">{name}</h3>
+            <div className="mt-2 grid grid-cols-6 gap-1.5">
+              {hours.map((hour) => {
+                const count = cellMap.get(`${day}:${hour}`) ?? 0;
+                return (
+                  <ChartTip key={hour} tip={`${name} ${String(hour).padStart(2, '0')}:00 — ${count}`}>
+                    <div className="min-w-0 text-center">
+                      <span className="block h-4 w-full rounded-[3px]" style={count === 0 ? undefined : { backgroundColor: '#d8a94e', opacity: scale(count, max) }} />
+                      <span className="mt-0.5 block font-mono text-[9px] tabular-nums text-paper-faint">{String(hour).padStart(2, '0')}</span>
+                    </div>
+                  </ChartTip>
+                );
+              })}
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="mt-4 hidden space-y-1 sm:block sm:overflow-x-auto">
         <div className="grid min-w-[30rem] grid-cols-[3.5rem_repeat(24,minmax(0,1fr))] items-center gap-1">
           <span className="sticky left-0 bg-bg-raised" />
           {hours.map((value) =>
@@ -140,7 +160,17 @@ export function ActivityCalendar({ series }: { readonly series: readonly TaskDay
       {visible.length === 0 ? (
         <EmptyState title="Belum ada data deret waktu." description="Data akan tampil di sini setelah tersedia." className="mt-4" />
       ) : (
-        <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
+        <>
+        <div className="mt-4 grid grid-cols-7 gap-1 sm:hidden">
+          {padded.map((point, index) => point === null ? (
+            <span key={`empty-${index}`} className="aspect-square w-full rounded-[3px]" />
+          ) : (
+            <ChartTip key={point.hari} tip={`${weekdayLabel(point.hari)} — ${total(point)}`}>
+              <span className="block aspect-square w-full rounded-[3px] bg-bg-raised-2" style={total(point) === 0 ? undefined : { backgroundColor: '#5fcbb0', opacity: scale(total(point), max) }} />
+            </ChartTip>
+          ))}
+        </div>
+        <div className="mt-4 hidden gap-1 pb-1 sm:flex sm:overflow-x-auto">
           {columns.map((column, index) => (
             <div key={index} className="flex flex-1 flex-col gap-1">
               {column.map((point, row) =>
@@ -162,6 +192,7 @@ export function ActivityCalendar({ series }: { readonly series: readonly TaskDay
             </div>
           ))}
         </div>
+        </>
       )}
       <p className="m-0 mt-3 flex items-center gap-2 font-mono text-[11px] tabular-nums text-paper-faint">
         Sepi
