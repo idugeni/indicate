@@ -27,6 +27,7 @@ describe('BackToTop', () => {
     Object.defineProperty(window, 'scrollY', { value: 700, configurable: true, writable: true });
     fireEvent.scroll(window);
     expect(screen.getByRole('button', { name: 'Kembali ke atas' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Kembali ke atas' }).className).not.toContain('translateZ');
   });
 
   it('memanggil scrollToTop saat diklik', () => {
