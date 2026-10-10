@@ -235,7 +235,7 @@ function toEditLoadError(value: unknown): string | null {
   if (typeof envelope.error !== 'object' || envelope.error === null) return null;
   const error = envelope.error as { readonly code?: unknown; readonly message?: unknown };
   const requestSuffix = typeof envelope.requestId === 'string' && envelope.requestId !== ''
-    ? ` (ID permintaan: ${envelope.requestId})`
+    ? ` (${/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(envelope.requestId) ? 'referensi permintaan tersedia di log diagnostik' : `ID permintaan: ${envelope.requestId}`})`
     : '';
   if (error.code === 'RESOURCE_UNAVAILABLE') {
     return `Akses ke artikel ditolak atau artikel tidak berada dalam organisasi yang dipilih. Periksa organisasi pemilik dan izin akses Anda.${requestSuffix}`;

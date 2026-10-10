@@ -18,6 +18,9 @@ import { formatMoment } from '@/modules/dashboard/components/shared/format-momen
 import type { AuditRecord, RetentionRunRecord } from '@/modules/dashboard/models';
 import { DashboardV2FilterBar } from '@/modules/dashboard/components/dashboard-v2-filter-bar';
 
+const INTERNAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function displayAuditReference(value: string): string { return INTERNAL_UUID_PATTERN.test(value) ? 'Referensi internal' : value; }
+
 type AuditFocus = 'timeline' | 'risk' | 'retention';
 
 function isAuditRecord(value: unknown): value is AuditRecord {
@@ -210,7 +213,7 @@ export function AuditSecurityV2({
                           </span>
                           <span className="mt-0.5 block truncate font-sans text-[10px] text-paper-faint">
                             {row.targetType}
-                            {row.targetId ? ' · ' + row.targetId : ''} · {row.actorType} ·{' '}
+                            {row.targetId ? ' · ' + displayAuditReference(row.targetId) : ''} · {row.actorType} ·{' '}
                             {row.entryPoint}
                           </span>
                         </span>
@@ -240,7 +243,7 @@ export function AuditSecurityV2({
                         Request
                       </p>
                       <p className="m-0 mt-1 break-all font-mono text-[10px] text-paper">
-                        {selected.requestId}
+                        {displayAuditReference(selected.requestId)}
                       </p>
                     </div>
                     <div>
@@ -248,7 +251,7 @@ export function AuditSecurityV2({
                         Actor
                       </p>
                       <p className="m-0 mt-1 font-mono text-[10px] text-paper">
-                        {selected.actorType} · {selected.actorId}
+                        {selected.actorType} · {displayAuditReference(selected.actorId)}
                       </p>
                     </div>
                     <div>

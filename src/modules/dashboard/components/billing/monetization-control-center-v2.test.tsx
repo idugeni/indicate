@@ -84,6 +84,20 @@ describe('Monetization Control Center V2', () => {
     expect(screen.getByRole('button', { name: 'Terapkan status' })).toBeDefined();
   });
 
+
+  it('tidak menampilkan ID organisasi mentah jika nama organisasi tidak tersedia', async () => {
+    const organizationId = '11111111-1111-4111-8111-111111111111';
+    stub('active', [{
+      id: 'invoice-uuid-org', organizationId, number: 'INV-ORG-MISSING', amountIdr: 1000,
+      status: 'paid', paidAt: null, dueAt: null, billingNote: null, paymentMethod: 'Transfer',
+      version: 1, createdAt: '2026-10-01T00:00:00.000Z',
+    }]);
+    render(<MonetizationControlCenterV2 organizationId="org-1" permissions={['platform.super_admin']} />);
+    expect(await screen.findByText('INV-ORG-MISSING')).toBeDefined();
+    expect(screen.getByText(/Organisasi tidak tersedia/)).toBeDefined();
+    expect(document.body.textContent).not.toContain(organizationId);
+  });
+
   it('shows an explicit loading state before declaring the invoice ledger empty', async () => {
     let resolveSubscription: ((value: { ok: true; json: () => Promise<unknown> }) => void) | undefined;
     let resolveInvoices: ((value: { ok: true; json: () => Promise<unknown> }) => void) | undefined;

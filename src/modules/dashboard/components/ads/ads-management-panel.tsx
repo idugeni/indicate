@@ -77,11 +77,17 @@ async function apiUpload(organizationId: string, file: File, href: string, alt: 
   return { id: body.id, imageUrl: body.imageUrl };
 }
 
+const INTERNAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function displayReference(value: string, fallback: string): string {
+  return INTERNAL_UUID_PATTERN.test(value) ? fallback : value;
+}
+
 function creativeLabel(creative: OverviewCreative): string {
-  if (creative.kind === 'image') return creative.imageUrl ?? creative.id;
+  if (creative.kind === 'image') return creative.imageUrl ?? 'Kreatif gambar';
   if (creative.kind === 'html') return `HTML · ${(creative.html ?? '').slice(0, 42)}`;
-  const qualifier = creative.providerClientId ?? creative.providerSlotId ?? creative.id.slice(0, 8);
-  return `Adsense · ${qualifier}`;
+  const qualifier = creative.providerClientId ?? creative.providerSlotId;
+  return `Adsense · ${qualifier ? displayReference(qualifier, 'ID provider tersedia') : 'Konfigurasi provider'}`;
 }
 
 function isSafeAdUrl(value: string): boolean {
@@ -1217,15 +1223,15 @@ function PlacementSection({ overview, busy, onCreate, onUpdate, onDelete }: {
   const placements = overview?.placements ?? [];
   const sitesById = useMemo(() => new Map((overview?.sites ?? []).map((site) => [site.id, site])), [overview]);
   const editingPlacement = placements.find((placement) => placement.id === editingId) ?? null;
-  const campaignName = (id: string) => overview?.campaigns.find((campaign) => campaign.id === id)?.name ?? id.slice(0, 8);
+  const campaignName = (id: string) => overview?.campaigns.find((campaign) => campaign.id === id)?.name ?? displayReference(id, 'Kampanye tidak tersedia');
   const creativeName = (id: string) => {
     const creative = overview?.creatives.find((item) => item.id === id);
-    return creative === undefined ? id.slice(0, 8) : creativeLabel(creative).slice(0, 32);
+    return creative === undefined ? displayReference(id, 'Kreatif tidak tersedia') : creativeLabel(creative).slice(0, 32);
   };
   const siteName = (id: string | null) => {
     if (id === null) return 'semua situs';
     const site = sitesById.get(id);
-    return site === undefined ? id.slice(0, 8) : `${site.name} · ${site.hostname}`;
+    return site === undefined ? displayReference(id, 'Situs tidak tersedia') : `${site.name} · ${site.hostname}`;
   };
   return (
     <SectionCard icon={MousePointerClick} title="Penempatan" eyebrow="placement">
@@ -1342,16 +1348,16 @@ function PlacementSection({ overview, busy, onCreate, onUpdate, onDelete }: {
             <TableBody>
               {placements.map((placement) => (
                 <TableRow key={placement.id}>
-                  <TableCell className="font-mono text-xs text-paper">{placement.slotId}</TableCell>
+                  <TableCell className="font-mono text-xs text-paper">{displayReference(placement.slotId, 'Slot iklan')}</TableCell>
                   <TableCell className="font-sans text-[13px] text-paper">{`${campaignName(placement.campaignId)} · ${creativeName(placement.creativeId)}`}</TableCell>
                   <TableCell className="font-sans text-[11px] text-paper-dim">
-                    {`${siteName(placement.siteId)} · ${placement.templateId ?? 'semua template'} · ${placement.device === null ? 'semua perangkat' : `warisan ${placement.device} (tidak ditayangkan)`}`}
+                    {`${siteName(placement.siteId)} · ${placement.templateId ? displayReference(placement.templateId, 'template tidak tersedia') : 'semua template'} · ${placement.device === null ? 'semua perangkat' : `warisan ${placement.device} (tidak ditayangkan)`}`}
                   </TableCell>
                   <TableCell>
                     <Checkbox
                       checked={placement.active}
                       disabled={busy}
-                      aria-label={`Aktifkan penempatan ${placement.slotId}`}
+                      aria-label={`Aktifkan penempatan ${displayReference(placement.slotId, 'slot iklan')}`}
                       onCheckedChange={(checked) => {
                         void onUpdate({ id: placement.id, active: checked === true, expectedVersion: placement.version });
                       }}

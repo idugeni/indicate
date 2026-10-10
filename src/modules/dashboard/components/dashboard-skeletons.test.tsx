@@ -74,7 +74,7 @@ describe('Skeleton dashboard', () => {
     unmount();
     cleanup();
     render(<DashboardViewSkeleton view="dashboard" />);
-    expect(screen.getByRole('status', { name: 'Memuat data workspace' })).toBeDefined();
+    expect(screen.getByRole('status', { name: 'Memuat Command Center' })).toBeDefined();
   });
 
   it('meniru kisi media, kartu mini, dan form terpisah sesuai konten', () => {
@@ -131,15 +131,13 @@ describe('Skeleton dashboard', () => {
       const status = screen.getByRole('status');
       const label = status.getAttribute('aria-label');
       expect(label).toBeTruthy();
-      if (view !== 'dashboard') {
-        expect(label).not.toBe('Memuat data modul');
-        expect(labels.has(label ?? '')).toBe(false);
-        labels.add(label ?? '');
-      }
+      expect(label).not.toBe('Memuat data modul');
+      expect(labels.has(label ?? '')).toBe(false);
+      labels.add(label ?? '');
       unmount();
       cleanup();
     }
-    expect(labels.size).toBe(18);
+    expect(labels.size).toBe(19);
   });
 
   it('merender bilah tab sebagai murni dekoratif tanpa status', () => {

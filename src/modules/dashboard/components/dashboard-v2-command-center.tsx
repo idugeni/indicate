@@ -188,7 +188,9 @@ export function DashboardV2CommandCenter({
   const views = safeNumber(analytics?.totalViews);
   const activeWork = queued + processing;
   const attention = failed + retrying;
-  const siteName = (id: string): string => analytics?.siteLabels?.[id] ?? id.slice(0, 8);
+  const isUuid = (value: string): boolean => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  const siteName = (id: string): string => analytics?.siteLabels?.[id] ?? (isUuid(id) ? 'Situs tidak tersedia' : id);
+  const dimensionLabel = (id: string, labels: Readonly<Record<string, string>> | undefined, fallback: string): string => labels?.[id] ?? (isUuid(id) ? fallback : id);
   const topSites = analytics?.articlesBySite ?? [];
   const topPublishers = analytics?.articlesByPublisher ?? [];
   const topRegions = analytics?.articlesByRegion ?? [];
@@ -327,9 +329,9 @@ export function DashboardV2CommandCenter({
             <Surface className="xl:col-span-12" label="Network intelligence">
               <SectionHeading eyebrow="07 / Network intelligence" title="Who is driving the network?" detail="Ranking berdasarkan projection yang sudah tersedia; tidak ada data sintetis." />
               <div className="mt-5 grid gap-4 lg:grid-cols-3">
-                <TopRanked title="Top sites" rows={topSites.map((row) => ({ ...row, key: analytics.siteLabels?.[row.key] ?? row.key }))} />
-                <TopRanked title="Top publishers" rows={topPublishers.map((row) => ({ ...row, key: analytics.publisherLabels?.[row.key] ?? row.key }))} />
-                <TopRanked title="Top regions" rows={topRegions.map((row) => ({ ...row, key: analytics.regionLabels?.[row.key] ?? row.key }))} />
+                <TopRanked title="Top sites" rows={topSites.map((row) => ({ ...row, key: dimensionLabel(row.key, analytics.siteLabels, 'Situs tidak tersedia') }))} />
+                <TopRanked title="Top publishers" rows={topPublishers.map((row) => ({ ...row, key: dimensionLabel(row.key, analytics.publisherLabels, 'Penerbit tidak tersedia') }))} />
+                <TopRanked title="Top regions" rows={topRegions.map((row) => ({ ...row, key: dimensionLabel(row.key, analytics.regionLabels, 'Wilayah tidak tersedia') }))} />
               </div>
             </Surface>
           </>

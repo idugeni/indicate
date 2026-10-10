@@ -114,9 +114,9 @@ export function DashboardTableSkeleton() {
 }
 
 /** First-paint fallback for the dashboard view (metrics + panel, space-y-6). */
-export function DashboardContentSkeleton() {
+export function DashboardContentSkeleton({ label = 'Memuat data workspace' }: { readonly label?: string }) {
   return (
-    <ShimmerShell label="Memuat data workspace" rhythm="space-y-6">
+    <ShimmerShell label={label} rhythm="space-y-6">
       <DashboardStatsSkeleton />
       <DashboardPanelSkeleton />
     </ShimmerShell>
@@ -354,7 +354,7 @@ const VIEW_LOADING_LABELS: Readonly<Record<View, string>> = {
 
 /** First-paint fallback shaped like the active view instead of one generic stack. */
 export function DashboardViewSkeleton({ view }: { readonly view: View }) {
-  if (view === 'dashboard') return <DashboardContentSkeleton />;
+  if (view === 'dashboard') return <DashboardContentSkeleton label={VIEW_LOADING_LABELS.dashboard} />;
   return (
     <ShimmerShell label={VIEW_LOADING_LABELS[view]} rhythm="space-y-6">
       {view === 'configuration' ? (

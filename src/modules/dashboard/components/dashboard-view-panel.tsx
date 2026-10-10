@@ -14,9 +14,7 @@ import { isAnalyticsProjection } from '@/modules/dashboard/components/data-view-
 import { EmptyState } from '@/modules/dashboard/components/empty-state';
 import { PanelErrorBoundary } from '@/modules/dashboard/components/shared/panel-error-boundary';
 import {
-  DashboardFormsGridSkeleton,
   DashboardMediaSkeleton,
-  DashboardSplitFormSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
 import { canAccessView, VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
@@ -48,7 +46,7 @@ const EditorialWorkspaceV2 = dynamic(
     import('@/modules/dashboard/components/editorial/editorial-workspace-v2').then((module) => ({
       default: module.EditorialWorkspaceV2,
     })),
-  { loading: () => <DashboardSplitFormSkeleton /> },
+  { loading: () => <DashboardViewSkeleton view="editorial" /> },
 );
 const AccessIntegrationsV2 = dynamic(
   () =>
@@ -99,7 +97,7 @@ const DistributionControlV2 = dynamic(
     import('@/modules/dashboard/components/publishing/distribution-control-v2').then((module) => ({
       default: module.DistributionControlV2,
     })),
-  { loading: () => <DashboardFormsGridSkeleton columns={2} /> },
+  { loading: () => <DashboardViewSkeleton view="publishing" /> },
 );
 const LiveResultsV2 = dynamic(
   () =>

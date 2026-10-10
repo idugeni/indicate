@@ -186,7 +186,7 @@ export function LiveblogUpdates({
                       setEditBody(entry.body);
                       setConfirmingId(null);
                     }}
-                    aria-label={`Ubah pembaruan ${entry.id}`}
+                    aria-label={`Ubah pembaruan nomor ${updates.length - index}`}
                   >
                     <Pencil className="size-3.5" />
                   </Button>
@@ -212,7 +212,7 @@ export function LiveblogUpdates({
                         setConfirmingId(entry.id);
                         setEditingId(null);
                       }}
-                      aria-label={`Hapus pembaruan ${entry.id}`}
+                      aria-label={`Hapus pembaruan nomor ${updates.length - index}`}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
@@ -227,7 +227,7 @@ export function LiveblogUpdates({
                     disabled={busyKeys.includes(entry.id)}
                     maxLength={BODY_MAX}
                     rows={3}
-                    aria-label={`Isi pembaruan ${entry.id}`}
+                    aria-label={`Isi pembaruan nomor ${updates.length - index}`}
                     className="font-sans text-xs"
                   />
                   <div className="flex items-center gap-1.5">
