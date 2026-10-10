@@ -52,6 +52,22 @@ describe('AdSlot', () => {
     expect(html).not.toContain('href="/kontak"');
   });
 
+  it('membatasi paint kreatif iklan di dalam kotak slot agar tidak bocor saat scroll', () => {
+    const html = renderToStaticMarkup(
+      <AdSlot
+        site={siteFor('clean-blue', {
+          leaderboard: {
+            enabled: true,
+            creative: { kind: 'html', html: '<div>Creative</div>' },
+          },
+        })}
+        slot="leaderboard"
+      />,
+    );
+    expect(html).toContain('overflow-clip');
+    expect(html).toContain('isolate');
+  });
+
   it('merender label dan ruang cadangan untuk slot terisi', () => {
     const html = renderToStaticMarkup(
       <AdSlot
