@@ -233,7 +233,11 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             title="Akses tidak tersedia"
             description="Akun ini tidak memiliki izin untuk membuka area tersebut. Minta administrator memberikan izin yang sesuai."
             icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
-            action={<Button type="button" variant="outline" onClick={() => onSelectView('dashboard')}>Kembali ke Command Center</Button>}
+            action={
+              <Button type="button" variant="outline" onClick={() => onSelectView('dashboard')}>
+                Kembali ke Command Center
+              </Button>
+            }
           />
         </div>
       </main>
@@ -251,42 +255,53 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
                   title="Command Center belum tersedia"
                   description={error}
                   icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
-                  action={<Button type="button" variant="outline" onClick={onRefresh}>Coba lagi</Button>}
+                  action={
+                    <Button type="button" variant="outline" onClick={onRefresh}>
+                      Coba lagi
+                    </Button>
+                  }
                 />
-              ) : <DashboardViewSkeleton view="dashboard" />
-            ) : (() => {
-              const source = typeof data === 'object' && data !== null
-                ? data as Record<string, unknown>
-                : {};
-              const jobs = typeof source.jobsByState === 'object' && source.jobsByState !== null
-                ? source.jobsByState as Record<string, unknown>
-                : {};
-              const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0;
-              return (
-                <DashboardV2CommandCenter
-                  displayName={displayName}
-                  dashboard={{
-                    activeDomains: number(source.activeDomains),
-                    activeSubdomains: number(source.activeSubdomains),
-                    activeSites: number(source.activeSites),
-                    activeArticles: number(source.activeArticles),
-                    archivedArticles: number(source.archivedArticles),
-                    jobsByState: {
-                      queued: number(jobs.queued),
-                      processing: number(jobs.processing),
-                      published: number(jobs.published),
-                      failed: number(jobs.failed),
-                      retrying: number(jobs.retrying),
-                      unpublished: number(jobs.unpublished),
-                    },
-                    successfulSiteOutcomes: number(source.successfulSiteOutcomes),
-                    failedSiteOutcomes: number(source.failedSiteOutcomes),
-                  }}
-                  analytics={isAnalyticsProjection(source.analytics) ? source.analytics : null}
-                  onSelectView={onSelectView}
-                />
-              );
-            })()}
+              ) : (
+                <DashboardViewSkeleton view="dashboard" />
+              )
+            ) : (
+              (() => {
+                const source =
+                  typeof data === 'object' && data !== null
+                    ? (data as Record<string, unknown>)
+                    : {};
+                const jobs =
+                  typeof source.jobsByState === 'object' && source.jobsByState !== null
+                    ? (source.jobsByState as Record<string, unknown>)
+                    : {};
+                const number = (value: unknown) =>
+                  typeof value === 'number' && Number.isFinite(value) ? value : 0;
+                return (
+                  <DashboardV2CommandCenter
+                    displayName={displayName}
+                    dashboard={{
+                      activeDomains: number(source.activeDomains),
+                      activeSubdomains: number(source.activeSubdomains),
+                      activeSites: number(source.activeSites),
+                      activeArticles: number(source.activeArticles),
+                      archivedArticles: number(source.archivedArticles),
+                      jobsByState: {
+                        queued: number(jobs.queued),
+                        processing: number(jobs.processing),
+                        published: number(jobs.published),
+                        failed: number(jobs.failed),
+                        retrying: number(jobs.retrying),
+                        unpublished: number(jobs.unpublished),
+                      },
+                      successfulSiteOutcomes: number(source.successfulSiteOutcomes),
+                      failedSiteOutcomes: number(source.failedSiteOutcomes),
+                    }}
+                    analytics={isAnalyticsProjection(source.analytics) ? source.analytics : null}
+                    onSelectView={onSelectView}
+                  />
+                );
+              })()
+            )}
           </PanelErrorBoundary>
         </div>
       </main>
@@ -328,111 +343,124 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
                 title={metadata.title + ' belum tersedia'}
                 description="Data belum berhasil dimuat. Coba muat ulang sebelum melanjutkan pekerjaan."
                 icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
-                action={<Button type="button" variant="outline" onClick={onRefresh}>Coba lagi</Button>}
+                action={
+                  <Button type="button" variant="outline" onClick={onRefresh}>
+                    Coba lagi
+                  </Button>
+                }
               />
-            ) : <DashboardViewSkeleton view={view} />
-          ) : (
-          <>
-          {view === 'analytics' ? (
-            isAnalyticsProjection(data) ? (
-              <NetworkIntelligenceV2 data={data} onFilterApply={onFilterApply} />
             ) : (
-              <EmptyState
-                title="Telemetry belum siap ditampilkan"
-                description="Respons analitik belum memenuhi kontrak data V2. Muat ulang untuk mengambil proyeksi yang valid; data mentah tidak ditampilkan sebagai pengganti."
-                icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
-                action={<Button type="button" variant="outline" onClick={onRefresh}>Muat ulang analitik</Button>}
-              />
+              <DashboardViewSkeleton view={view} />
             )
-          ) : null}
-          {view === 'publishers' ? (
-            <PublisherNetworkV2
-              data={data}
-              command={command}
-              organizationId={organizationId}
-              onFilterApply={onFilterApply}
-            />
-          ) : null}
-          {view === 'editorial' ? (
-            <EditorialWorkspaceV2
-              data={data}
-              onSubmit={(payload) => command('article.create', payload, { refresh: true })}
-              command={command}
-              organizationId={organizationId}
-              editArticleId={editArticleId ?? undefined}
-              onExitEdit={exitEdit}
-            />
-          ) : null}
-          {view === 'taxonomy' ? (
-            <TaxonomyControlCenterV2
-              data={data}
-              command={command}
-              organizationId={organizationId}
-            />
-          ) : null}
-          {view === 'articles' ? (
-            <ContentLibraryV2
-              data={data}
-              command={command}
-              onFilterApply={onFilterApply}
-              articlesNextCursor={articlesNextCursor}
-              articlesTotal={articlesTotal}
-              onLoadMoreArticles={onLoadMoreArticles}
-              crossOrg={crossOrg}
-              onEditArticle={(articleId) => {
-                void setEditArticleId(articleId);
-                onSelectView('editorial');
-              }}
-            />
-          ) : null}
-          {view === 'configuration' ? (
-            <InfrastructureControlCenterV2
-              data={data}
-              command={command}
-              organizationId={organizationId}
-              onFilterApply={onFilterApply}
-            />
-          ) : null}
-          {view === 'media' ? (
-            <MediaLibraryV2 data={data} command={command} organizationId={organizationId} />
-          ) : null}
-          {view === 'published' ? (
-            <LiveResultsV2
-              data={data}
-              articlesNextCursor={articlesNextCursor}
-              articlesTotal={articlesTotal}
-              onLoadMoreArticles={onLoadMoreArticles}
-            />
-          ) : null}
-          {view === 'publishing' ? <DistributionControlV2 data={data} command={command} /> : null}
-          {view === 'settings' ? (
-            <AccessIntegrationsV2 data={data} command={command} permissions={permissions} />
-          ) : null}
-          {view === 'billing' ? (
-            <MonetizationControlCenterV2
-              organizationId={organizationId}
-              permissions={[...permissions]}
-            />
-          ) : null}
-          {view === 'audit' ? (
-            <AuditSecurityV2
-              data={data}
-              auditNextCursor={auditNextCursor}
-              onLoadMoreAudit={onLoadMoreAudit}
-              onFilterApply={onFilterApply}
-            />
-          ) : null}
-          {view === 'operations' ? <SystemOperationsV2 data={data} /> : null}
-          {view === 'moderation' ? <TrustModerationV2 organizationId={organizationId} /> : null}
-          {view === 'ads' ? <AdsControlCenterV2 organizationId={organizationId} /> : null}
-          {view === 'ai' ? (
-            <AiControlCenterV2 organizationId={organizationId} command={command} />
-          ) : null}
-          {view === 'customers' ? (
-            <CustomerOperationsV2 organizationId={organizationId} command={command} />
-          ) : null}
-          {view === 'content' ? <PublicWebContentV2 /> : null}
-          </>
+          ) : (
+            <>
+              {view === 'analytics' ? (
+                isAnalyticsProjection(data) ? (
+                  <NetworkIntelligenceV2 data={data} onFilterApply={onFilterApply} />
+                ) : (
+                  <EmptyState
+                    title="Telemetry belum siap ditampilkan"
+                    description="Respons analitik belum memenuhi kontrak data V2. Muat ulang untuk mengambil proyeksi yang valid; data mentah tidak ditampilkan sebagai pengganti."
+                    icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
+                    action={
+                      <Button type="button" variant="outline" onClick={onRefresh}>
+                        Muat ulang analitik
+                      </Button>
+                    }
+                  />
+                )
+              ) : null}
+              {view === 'publishers' ? (
+                <PublisherNetworkV2
+                  data={data}
+                  command={command}
+                  organizationId={organizationId}
+                  onFilterApply={onFilterApply}
+                />
+              ) : null}
+              {view === 'editorial' ? (
+                <EditorialWorkspaceV2
+                  data={data}
+                  onSubmit={(payload) => command('article.create', payload, { refresh: true })}
+                  command={command}
+                  organizationId={organizationId}
+                  editArticleId={editArticleId ?? undefined}
+                  onExitEdit={exitEdit}
+                />
+              ) : null}
+              {view === 'taxonomy' ? (
+                <TaxonomyControlCenterV2
+                  data={data}
+                  command={command}
+                  organizationId={organizationId}
+                />
+              ) : null}
+              {view === 'articles' ? (
+                <ContentLibraryV2
+                  data={data}
+                  command={command}
+                  onFilterApply={onFilterApply}
+                  articlesNextCursor={articlesNextCursor}
+                  articlesTotal={articlesTotal}
+                  onLoadMoreArticles={onLoadMoreArticles}
+                  crossOrg={crossOrg}
+                  onEditArticle={(articleId) => {
+                    void setEditArticleId(articleId);
+                    onSelectView('editorial');
+                  }}
+                />
+              ) : null}
+              {view === 'configuration' ? (
+                <InfrastructureControlCenterV2
+                  data={data}
+                  command={command}
+                  organizationId={organizationId}
+                  onFilterApply={onFilterApply}
+                />
+              ) : null}
+              {view === 'media' ? (
+                <MediaLibraryV2 data={data} command={command} organizationId={organizationId} />
+              ) : null}
+              {view === 'published' ? (
+                <LiveResultsV2
+                  data={data}
+                  articlesNextCursor={articlesNextCursor}
+                  articlesTotal={articlesTotal}
+                  onLoadMoreArticles={onLoadMoreArticles}
+                  crossOrg={crossOrg}
+                />
+              ) : null}
+              {view === 'publishing' ? (
+                <DistributionControlV2 data={data} command={command} />
+              ) : null}
+              {view === 'settings' ? (
+                <AccessIntegrationsV2 data={data} command={command} permissions={permissions} />
+              ) : null}
+              {view === 'billing' ? (
+                <MonetizationControlCenterV2
+                  organizationId={organizationId}
+                  permissions={[...permissions]}
+                />
+              ) : null}
+              {view === 'audit' ? (
+                <AuditSecurityV2
+                  data={data}
+                  auditNextCursor={auditNextCursor}
+                  onLoadMoreAudit={onLoadMoreAudit}
+                  onFilterApply={onFilterApply}
+                />
+              ) : null}
+              {view === 'operations' ? <SystemOperationsV2 data={data} /> : null}
+              {view === 'moderation' ? <TrustModerationV2 organizationId={organizationId} /> : null}
+              {view === 'ads' ? <AdsControlCenterV2 organizationId={organizationId} /> : null}
+              {view === 'ai' ? (
+                <AiControlCenterV2 organizationId={organizationId} command={command} />
+              ) : null}
+              {view === 'customers' ? (
+                <CustomerOperationsV2 organizationId={organizationId} command={command} />
+              ) : null}
+              {view === 'content' ? <PublicWebContentV2 /> : null}
+            </>
           )}
         </PanelErrorBoundary>
       </div>
