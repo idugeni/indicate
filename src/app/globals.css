@@ -202,16 +202,11 @@
   [data-template='black-lime'], [data-template='dark-navy'] { color-scheme: dark; }
   [data-template='clean-blue'], [data-template='glassy-blue'], [data-template='green-minimal'], [data-template='orange-modern'], [data-template='purple-editorial'], [data-template='red-editorial'], [data-template='soft-blue'], [data-template='warm-editorial'] { color-scheme: light; }
 
-  /* Below-fold tenant sections skip off-screen paint: on long article pages
-     a fast mobile fling rasterizes every card, badge, and gradient at once
-     and the compositor flashes unpainted (white) tiles over the viewport —
-     even over fixed UI like back-to-top — until scroll settles. Letting the
-     browser skip off-screen sections keeps the fling cheap; the intrinsic
-     size estimate holds scrollbar range so arrival does not jump. */
-  [data-template] .cv-auto {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 640px;
-  }
+  /* Do not apply content-visibility to tenant content during mobile scrolling.
+     The optimization can defer off-screen paint and has already been associated
+     with compositor tiles flashing during fast flings, including around fixed
+     UI. Prefer normal document painting until a browser-level regression test
+     proves this optimization is safe for all tenant templates. */
 
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-fraunces);
