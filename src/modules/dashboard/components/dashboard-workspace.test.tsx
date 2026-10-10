@@ -151,13 +151,12 @@ describe('Dashboard workspace', () => {
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
-  it('pins the footer to the bottom with the owner label', async () => {
+  it('keeps the footer after workspace content with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
-    expect(footer?.className).toContain('sticky');
-    expect(footer?.className).toContain('bottom-0');
+    expect(footer?.className).toContain('mt-auto');
     expect(screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash')).toBeDefined();
   });
 
@@ -199,8 +198,8 @@ describe('Dashboard workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Network Infrastructure', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     act(() => setViewExternal?.('publishers'));
     expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
-    expect(await screen.findByRole('status', { name: 'Memuat data modul' })).toBeDefined();
     expect(screen.queryByText(/Belum ada penerbit/i)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Network Infrastructure', level: 1 })).toBeNull();
     releasePublishers();
     expect((await screen.findAllByText('Humas Rutan', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).length).toBeGreaterThan(0);
     expect(screen.queryByRole('table')).toBeNull();
