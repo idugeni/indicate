@@ -200,7 +200,7 @@ export function ArticleDistributeForm({
           <>
             <input type="hidden" name="articleId" value={articleId} />
             <p className="m-0 font-mono text-xs text-paper-dim">
-              Artikel: <span className="text-paper">{lockedArticle?.title ?? articleId}</span>
+              Artikel: <span className="text-paper">{lockedArticle?.title ?? (articleId ? 'Artikel terpilih' : 'Belum dipilih')}</span>
             </p>
           </>
         )}

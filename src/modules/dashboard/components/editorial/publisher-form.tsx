@@ -401,7 +401,7 @@ export function PublisherForm({
                   {activePublisher.name}
                 </p>
                 <p className="font-mono text-[10px] text-paper-dim">
-                  ID: {activePublisher.id.slice(0, 12)}... · Versi {activePublisher.version}
+                  Versi {activePublisher.version}
                 </p>
               </div>
               <div

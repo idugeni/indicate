@@ -263,7 +263,7 @@ export function AccessManagementForm({
               placeholder="— pilih anggota —"
               allowEmpty
               emptyLabel="— pilih anggota —"
-              options={(model?.memberships ?? []).map((member) => ({ value: member.userId, label: `${member.displayName} · ${member.userId}` }))}
+              options={(model?.memberships ?? []).map((member) => ({ value: member.userId, label: member.displayName }))}
             />
           </div>
 

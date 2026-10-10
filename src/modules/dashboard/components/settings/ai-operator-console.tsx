@@ -22,6 +22,17 @@ function errorMessage(value: unknown): string {
   return 'Permintaan operator gagal.';
 }
 
+const DISPLAY_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function approvalInputForDisplay(input: unknown): string {
+  return JSON.stringify(
+    input,
+    (_key, value: unknown) =>
+      typeof value === 'string' && DISPLAY_UUID_PATTERN.test(value) ? '[referensi internal]' : value,
+    2,
+  );
+}
+
 export function AiOperatorConsole({ organizationId }: { readonly organizationId: string }) {
   const [request, setRequest] = useState('');
   const [plan, setPlan] = useState<OperatorPlan | null>(null);
@@ -256,9 +267,9 @@ export function AiOperatorConsole({ organizationId }: { readonly organizationId:
             <p className="m-0 text-[11px] text-paper-dim">Versi diverifikasi ulang sebelum perubahan diterapkan. Artikel arsip harus dipulihkan terlebih dahulu.</p>
           </div> : null}
           {approvals.length === 0 && !approvalBusy ? <p className="m-0 text-xs text-paper-dim">Belum ada permintaan persetujuan yang dapat ditampilkan.</p> : null}
-          <ul className="m-0 space-y-2 p-0">{approvals.map((approval) => <li key={approval.id} className="list-none rounded-md border border-hairline p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 space-y-1"><code className="break-all text-xs text-paper">{approval.toolId}</code><p className="m-0 text-xs text-paper-dim">Status: {approval.state} · Kedaluwarsa: {new Date(approval.expiresAt).toLocaleString()}</p><pre className="max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-bg p-2 text-[11px] text-paper-dim">{JSON.stringify(approval.input, null, 2)}</pre></div><div className="flex shrink-0 flex-wrap gap-2">{canReview && !approval.isRequester && approval.state === 'pending' ? <><Button type="button" size="sm" onClick={() => void decideApproval(approval.id, 'approved')} disabled={approvalBusy}><Check className="mr-1 h-3.5 w-3.5" /> Setujui</Button><Button type="button" size="sm" variant="destructive" onClick={() => void decideApproval(approval.id, 'rejected')} disabled={approvalBusy}><X className="mr-1 h-3.5 w-3.5" /> Tolak</Button></> : null}{approval.isRequester && approval.state === 'approved' ? <Button type="button" size="sm" onClick={() => void executeApproved(approval)} disabled={approvalBusy}>Jalankan yang disetujui</Button> : null}</div></div></li>)}</ul>
+          <ul className="m-0 space-y-2 p-0">{approvals.map((approval) => <li key={approval.id} className="list-none rounded-md border border-hairline p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 space-y-1"><code className="break-all text-xs text-paper">{approval.toolId}</code><p className="m-0 text-xs text-paper-dim">Status: {approval.state} · Kedaluwarsa: {new Date(approval.expiresAt).toLocaleString()}</p><pre className="max-h-28 overflow-auto whitespace-pre-wrap break-words rounded bg-bg p-2 text-[11px] text-paper-dim">{approvalInputForDisplay(approval.input)}</pre></div><div className="flex shrink-0 flex-wrap gap-2">{canReview && !approval.isRequester && approval.state === 'pending' ? <><Button type="button" size="sm" onClick={() => void decideApproval(approval.id, 'approved')} disabled={approvalBusy}><Check className="mr-1 h-3.5 w-3.5" /> Setujui</Button><Button type="button" size="sm" variant="destructive" onClick={() => void decideApproval(approval.id, 'rejected')} disabled={approvalBusy}><X className="mr-1 h-3.5 w-3.5" /> Tolak</Button></> : null}{approval.isRequester && approval.state === 'approved' ? <Button type="button" size="sm" onClick={() => void executeApproved(approval)} disabled={approvalBusy}>Jalankan yang disetujui</Button> : null}</div></div></li>)}</ul>
         </div>
-        {results !== null ? <pre className="max-h-80 overflow-auto rounded-md border border-hairline bg-bg p-3 text-xs text-paper-dim">{JSON.stringify(results, null, 2)}</pre> : null}
+        {results !== null ? <pre className="max-h-80 overflow-auto rounded-md border border-hairline bg-bg p-3 text-xs text-paper-dim">{approvalInputForDisplay(results)}</pre> : null}
         {busy ? <p role="status" className="m-0 text-xs text-paper-dim">Memproses permintaan…</p> : null}
       </CardContent>
     </Card>

@@ -1077,8 +1077,7 @@ export function AiManagementPanel({
               <caption className="sr-only">Direktori provider AI control plane</caption>
               <TableHeader>
                 <TableRow>
-                  <TableHead scope="col">ID</TableHead>
-                  <TableHead scope="col">Nama</TableHead>
+                  <TableHead scope="col">Provider</TableHead>
                   <TableHead scope="col">Status</TableHead>
                   <TableHead scope="col">Chat</TableHead>
                 </TableRow>
@@ -1086,7 +1085,6 @@ export function AiManagementPanel({
               <TableBody>
                 {(overview?.providers ?? []).map((provider) => (
                   <TableRow key={provider.id}>
-                    <TableCell className="font-mono text-[11px] text-paper">{provider.id}</TableCell>
                     <TableCell className="font-sans text-xs text-paper-dim">{provider.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`font-mono text-[10px] uppercase ${statusTone(provider.isActive ? 'success' : 'open')}`}>{provider.isActive ? 'active' : 'inactive'}</Badge>
@@ -1123,7 +1121,7 @@ export function AiManagementPanel({
               <TableBody>
                 {(overview?.tokenUsageByOrg ?? []).map((row) => (
                   <TableRow key={row.organizationId ?? 'global'}>
-                    <TableCell className="font-mono text-[11px] text-paper">{row.organizationId ?? 'global (pra-atribusi)'}</TableCell>
+                    <TableCell className="font-mono text-[11px] text-paper">{row.organizationId ? 'Organisasi tertentu' : 'Global (pra-atribusi)'}</TableCell>
                     <TableCell className="font-mono text-xs text-paper-dim">{row.requests.toLocaleString('id-ID')}</TableCell>
                     <TableCell className="font-mono text-xs text-paper-dim">{row.tokens.toLocaleString('id-ID')}</TableCell>
                     <TableCell className="font-mono text-xs text-paper-dim">{row.blocked.toLocaleString('id-ID')}</TableCell>

@@ -70,7 +70,7 @@ describe('Skeleton dashboard', () => {
 
   it('membentuk skeleton sesuai view aktif', () => {
     const { unmount } = render(<DashboardViewSkeleton view="configuration" />);
-    expect(screen.getByRole('status', { name: 'Memuat data modul' })).toBeDefined();
+    expect(screen.getByRole('status', { name: 'Memuat konfigurasi infrastruktur' })).toBeDefined();
     unmount();
     cleanup();
     render(<DashboardViewSkeleton view="dashboard" />);
@@ -116,6 +116,30 @@ describe('Skeleton dashboard', () => {
       unmount();
       cleanup();
     }
+  });
+
+
+  it('memberi label loading khusus untuk setiap view termasuk iklan', () => {
+    const views = [
+      'dashboard', 'configuration', 'publishers', 'editorial', 'taxonomy', 'articles',
+      'media', 'publishing', 'published', 'ads', 'analytics', 'audit', 'operations',
+      'settings', 'customers', 'content', 'billing', 'moderation', 'ai',
+    ] as const;
+    const labels = new Set<string>();
+    for (const view of views) {
+      const { unmount } = render(<DashboardViewSkeleton view={view} />);
+      const status = screen.getByRole('status');
+      const label = status.getAttribute('aria-label');
+      expect(label).toBeTruthy();
+      if (view !== 'dashboard') {
+        expect(label).not.toBe('Memuat data modul');
+        expect(labels.has(label ?? '')).toBe(false);
+        labels.add(label ?? '');
+      }
+      unmount();
+      cleanup();
+    }
+    expect(labels.size).toBe(18);
   });
 
   it('merender bilah tab sebagai murni dekoratif tanpa status', () => {

@@ -330,11 +330,33 @@ export function DashboardMediaSkeleton() {
   );
 }
 
+const VIEW_LOADING_LABELS: Readonly<Record<View, string>> = {
+  dashboard: 'Memuat Command Center',
+  configuration: 'Memuat konfigurasi infrastruktur',
+  publishers: 'Memuat jaringan publisher',
+  editorial: 'Memuat ruang redaksi',
+  taxonomy: 'Memuat kategori dan tag',
+  articles: 'Memuat pustaka artikel',
+  media: 'Memuat pustaka media',
+  publishing: 'Memuat antrean publikasi',
+  published: 'Memuat hasil publikasi',
+  ads: 'Memuat kampanye dan penempatan iklan',
+  analytics: 'Memuat analitik jaringan',
+  audit: 'Memuat audit dan keamanan',
+  operations: 'Memuat operasi sistem',
+  settings: 'Memuat pengaturan workspace',
+  customers: 'Memuat operasi pelanggan',
+  content: 'Memuat konten web publik',
+  billing: 'Memuat billing dan monetisasi',
+  moderation: 'Memuat trust dan moderasi',
+  ai: 'Memuat kontrol AI',
+};
+
 /** First-paint fallback shaped like the active view instead of one generic stack. */
 export function DashboardViewSkeleton({ view }: { readonly view: View }) {
   if (view === 'dashboard') return <DashboardContentSkeleton />;
   return (
-    <ShimmerShell label="Memuat data modul" rhythm="space-y-6">
+    <ShimmerShell label={VIEW_LOADING_LABELS[view]} rhythm="space-y-6">
       {view === 'configuration' ? (
         <>
           <DashboardTabsSkeleton />
@@ -377,6 +399,19 @@ export function DashboardViewSkeleton({ view }: { readonly view: View }) {
         <>
           <DashboardPanelSkeleton />
           <DashboardTilesSkeleton />
+        </>
+      ) : null}
+      {view === 'ads' ? (
+        <>
+          <DashboardStatsSkeleton count={4} />
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <TablesGridBare columns={1} count={1} />
+            <div className="space-y-4">
+              <DashboardFormCardSkeleton />
+              <DashboardPanelSkeleton />
+            </div>
+          </div>
+          <TablesGridBare columns={2} count={2} />
         </>
       ) : null}
       {view === 'taxonomy' ? (

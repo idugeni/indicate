@@ -401,8 +401,7 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
                           {row.details}
                         </p>
                         <p className="m-0 mt-1 font-mono text-[9px] text-paper-faint">
-                          {row.orgId}
-                          {row.articleId ? ' · article ' + row.articleId : ''}
+                          {row.siteId ? 'Situs terkait' : 'Organisasi terkait'}{row.articleId ? ' · Artikel terkait' : ''}
                         </p>
                       </button>
                     ))}
@@ -421,7 +420,7 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
                       <p className="m-0 text-[9px] uppercase tracking-wider text-paper-faint">
                         Report
                       </p>
-                      <p className="m-0 mt-1 font-mono text-xs text-paper">{selected.id}</p>
+                      <p className="m-0 mt-1 text-xs text-paper-dim">Laporan dipilih untuk peninjauan</p>
                     </div>
                     <p className="m-0 text-xs leading-5 text-paper-dim">{selected.details}</p>
                     <AiModerationAssist
@@ -592,7 +591,7 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
                   {activeHolds.map((row) => (
                     <div key={row.id} className="rounded-lg border border-hairline bg-bg p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="font-mono text-xs text-paper">{row.orgId}</span>
+                        <span className="font-mono text-xs text-paper">Organisasi terkait</span>
                         <Button
                           type="button"
                           size="sm"
@@ -634,7 +633,7 @@ export function TrustModerationV2({ organizationId }: { readonly organizationId:
                   {pendingErasures.map((row) => (
                     <div key={row.id} className="rounded-lg border border-hairline bg-bg p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="font-mono text-xs text-paper">{row.orgId}</span>
+                        <span className="font-mono text-xs text-paper">Organisasi terkait</span>
                         <Badge variant="outline" className="font-mono text-[9px] uppercase">
                           {row.status}
                         </Badge>

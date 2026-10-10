@@ -518,7 +518,7 @@ export function AdsControlCenterV2({ organizationId }: { readonly organizationId
                   >
                     <div>
                       <p className="m-0 text-sm font-medium text-paper">{campaign.name}</p>
-                      <p className="m-0 mt-1 text-xs text-paper-dim">Campaign ID: {campaign.id}</p>
+                      <p className="m-0 mt-1 text-xs text-paper-dim">Kampanye aktif perlu ditinjau karena belum memiliki placement aktif.</p>
                     </div>
                     <Badge variant="destructive">Periksa placement</Badge>
                   </div>

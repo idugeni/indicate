@@ -541,7 +541,7 @@ export function PublishingForm({
         {jobStatus !== null ? (
           <div className="mt-3 space-y-3">
             <p className="m-0 font-mono text-xs text-paper-dim">
-              Pengiriman <span className="text-paper">{jobStatus.job.id}</span> · {STATE_LABELS[jobStatus.job.state] ?? jobStatus.job.state} · {jobStatus.targets.length} situs
+              Pengiriman { /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobStatus.job.id) ? '' : <span className="text-paper">{jobStatus.job.id}</span> } · {STATE_LABELS[jobStatus.job.state] ?? jobStatus.job.state} · {jobStatus.targets.length} situs
               {scheduledLabel !== null ? <span className="text-brass"> · {scheduledLabel}</span> : null}
             </p>
             <div className="divide-y divide-hairline border-y border-hairline">

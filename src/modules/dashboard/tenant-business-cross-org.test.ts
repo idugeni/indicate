@@ -147,6 +147,37 @@ describe('TenantBusinessService cross-org steward', () => {
     expect(targetOrg).toBe(OWNER);
   });
 
+  it('platform super-admin mendapat akses editorial lintas-org tanpa grant article.manage tenant', async () => {
+    const platformAdmin = { ...steward, permissionSet: new Set<string>(['article.read']) };
+    const { repository, service } = harness();
+
+    const loaded = await service.readArticleForEdit(platformAdmin, { id: ARTICLE, ownerOrganizationId: OWNER });
+    expect(loaded.ok).toBe(true);
+    const loadActor = (repository.executeForOrganization as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { permissionSet: Set<string> };
+    expect(loadActor.permissionSet.has('article.manage')).toBe(true);
+
+    const updated = await service.updateArticle(platformAdmin, {
+      id: ARTICLE, expectedVersion: 2, title: 'Artikel admin', slug: 'berita-upt',
+      regionId: null, status: 'active', ownerOrganizationId: OWNER,
+    });
+    expect(updated.ok).toBe(true);
+
+    const archived = await service.archiveArticle(platformAdmin, {
+      id: ARTICLE, expectedVersion: 3, ownerOrganizationId: OWNER,
+    });
+    expect(archived.ok).toBe(true);
+  });
+
+  it('platform super-admin tanpa grant tenant dapat menghapus artikel lintas-org yang sudah diarsipkan', async () => {
+    const platformAdmin = { ...steward, permissionSet: new Set<string>(['article.read']) };
+    const { service, ownerState } = harness({ hasPublishedBridges: vi.fn(async () => false) });
+    ownerState.articles![0] = { ...ownerArticle, status: 'archived', archivedAt: NOW.toISOString() };
+    const result = await service.deleteArticle(platformAdmin, {
+      id: ARTICLE, expectedVersion: 2, ownerOrganizationId: OWNER,
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it('arsip se-org tetap lewat jalur normal', async () => {
     const { repository, service } = harness();
     await service.archiveArticle(steward, { id: ARTICLE, expectedVersion: 2 });
@@ -183,12 +214,14 @@ describe('TenantBusinessService cross-org steward', () => {
     const listed = await service.listArticleUpdates(steward, { articleId: ARTICLE, ownerOrganizationId: OWNER });
     expect(listed.ok).toBe(true);
     expect(listArticleUpdates).toHaveBeenCalledWith(
-      steward, 'article.manage', { articleId: ARTICLE }, { organizationId: OWNER },
+      expect.objectContaining({ organizationId: OWNER, permissionSet: expect.any(Set) }),
+      'article.manage', { articleId: ARTICLE }, { organizationId: OWNER },
     );
     const created = await service.createArticleUpdate(steward, { articleId: ARTICLE, body: 'Skor 1-0.', ownerOrganizationId: OWNER });
     expect(created.ok).toBe(true);
     expect(createArticleUpdate).toHaveBeenCalledWith(
-      steward, 'article.manage', { articleId: ARTICLE, body: 'Skor 1-0.' }, { organizationId: OWNER },
+      expect.objectContaining({ organizationId: OWNER, permissionSet: expect.any(Set) }),
+      'article.manage', { articleId: ARTICLE, body: 'Skor 1-0.' }, { organizationId: OWNER },
     );
   });
 

@@ -1042,7 +1042,7 @@ export function MediaLibrary({ data, command, organizationId }: MediaLibraryProp
 
             <div className="flex items-center justify-between border-t border-hairline bg-bg-raised px-4 py-2.5">
               <span className="font-mono text-[10px] text-paper-dim">
-                ID: {inspectedMedia.id}
+                Referensi media internal
               </span>
               <Button
                 type="button"
