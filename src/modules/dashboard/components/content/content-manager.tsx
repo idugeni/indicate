@@ -137,10 +137,10 @@ export function ContentManager() {
       if (seq !== requestSeq.current) return;
       setBundle(body); setDrafts({});
     } catch {
-      if (seq !== requestSeq.current) return;
+      if (signal?.aborted || seq !== requestSeq.current) return;
       setError('Gagal memuat konten website.');
     } finally {
-      if (seq === requestSeq.current) setBusy(false);
+      if (!signal?.aborted && seq === requestSeq.current) setBusy(false);
     }
   }, []);
 
