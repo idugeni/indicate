@@ -19,7 +19,7 @@ import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
 import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
-import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_PLATFORM_PERMISSION_NAMES, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { buttonVariants } from '@/components/ui/button';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
@@ -76,8 +76,9 @@ async function DashboardBody({
   const repository = new DrizzleAuthorizationRepository(runtime.db);
   const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in?auth=inactive');
   const localUser = discovery.value.localUser;
-  const platformPermissions: readonly string[] = await repository.listPlatformPermissions(localUser.id).catch((): readonly string[] => []);
-  const isPlatformSuperAdmin = platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
+  const resolvedPlatformPermissions: readonly string[] = await repository.listPlatformPermissions(localUser.id).catch((): readonly string[] => []);
+  const isPlatformSuperAdmin = resolvedPlatformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
+  const platformPermissions: readonly string[] = isPlatformSuperAdmin ? INTEGRATIONS_PLATFORM_PERMISSION_NAMES : resolvedPlatformPermissions;
   const memberships: ReadonlyMap<string, MembershipAuthorization> = isPlatformSuperAdmin
     ? new Map<string, MembershipAuthorization>()
     : await repository.findActiveMemberships(
