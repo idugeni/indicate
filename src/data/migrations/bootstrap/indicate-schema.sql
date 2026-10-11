@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (279 migrations):
+-- Reviewed sources, in journal order (280 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -293,6 +293,7 @@
 --   277  20261006110000_articles_tags_gin_single  ledger sha256:ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6
 --   278  20261009120000_ai_operator_approvals  ledger sha256:cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1
 --   279  20261010000000_seo_vercel_gateway_model  ledger sha256:c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7
+--   280  20261011000000_platform_superadmin_permission_implies_all  ledger sha256:79a2304b77a8c116e25357bb4ae549f9d44fefc3a3e21fa87086d30d1007455b
 
 BEGIN;
 
@@ -23129,4 +23130,41 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (278, 'seo_vercel_gateway_model', 'sha256:1002d8de1cd5a040f13c167874bc49d689c7f728f606077bfe1f89dd37e7f5de');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7', 1791586717648);
+-- ----------------------------------------------------------------------
+-- 20261011000000_platform_superadmin_permission_implies_all
+-- ----------------------------------------------------------------------
+-- Platform super-admin implies every registered platform permission.
+-- Keep identity verification and actor binding mandatory; only the grant predicate broadens.
+CREATE OR REPLACE FUNCTION indicate_private.permission_has_platform(p_actor_id uuid, p_permission text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $function$
+  SELECT COALESCE(
+    indicate_private.current_verified_user_id() = p_actor_id
+      AND nullif(current_setting('app.actor_id', true), '')::uuid = p_actor_id
+      AND EXISTS (
+        SELECT 1
+        FROM public.platform_user_permissions AS grant_row
+        JOIN public.permissions AS p ON p.id = grant_row.permission_id
+        JOIN public.users AS u ON u.id = grant_row.user_id AND u.status = 'active'
+        WHERE grant_row.user_id = p_actor_id
+          AND p.scope = 'platform'
+          AND p.organization_id IS NULL
+          AND (
+            p.name = p_permission
+            OR p.name = 'platform.super_admin'
+          )
+      ),
+    false
+  )
+$function$;
+REVOKE ALL ON FUNCTION indicate_private.permission_has_platform(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.permission_has_platform(uuid, text) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (278, 'platform_superadmin_permission_implies_all', 'sha256:66a79b53dabef152302d395cfeda0a4c81120b76343682b41120371797a0323a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('79a2304b77a8c116e25357bb4ae549f9d44fefc3a3e21fa87086d30d1007455b', 1791689700000);
 COMMIT;
