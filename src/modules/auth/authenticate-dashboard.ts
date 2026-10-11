@@ -168,6 +168,7 @@ export async function authorizeDashboardPlatform(
 ): Promise<ActorContext | null> {
   if (user.accessKey !== null) {
     const keyActor = user.accessKey.actor;
+    if (keyActor.actorType !== 'user' || keyActor.verifiedAuthUserId === undefined) return null;
     if ((keyActor.platformPermissionSet?.size ?? 0) === 0) return null;
     return {
       actorType: 'user',
