@@ -101,8 +101,9 @@ export async function authorizeDashboardOrganization(
 ): Promise<AuthorizedTenantActorContext | null> {
   if (user.accessKey !== null) {
     const keyActor = user.accessKey.actor;
-    if (keyActor.organizationId === organizationId) return keyActor;
-    if (!keyActor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin)) return null;
+    if (!keyActor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin)) {
+      return keyActor.organizationId === organizationId ? keyActor : null;
+    }
     const authorization = new DrizzleAuthorizationRepository(database);
     const organizations = await authorization.listActiveOrganizationsForUser(user.authUserId, organizationId).catch(() => []);
     if (!organizations.some((organization) => organization.id === organizationId)) return null;
