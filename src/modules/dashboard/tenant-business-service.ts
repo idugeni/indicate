@@ -988,7 +988,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   async createArticle(actor: AuthorizedTenantActorContext, raw: unknown) {
     const forOrg = await this.tryCreateArticleForOwnerOrg(actor, raw);
     const parsed = articleCreateSchema.safeParse(raw);
-    const localRaw = parsed.success && parsed.data.ownerOrganizationId === actor.organizationId
+    const localRaw = parsed.success
       ? (() => { const { ownerOrganizationId: _ownerOrganizationId, ...value } = parsed.data; return value; })()
       : raw;
     const result = forOrg ?? await this.mutate({ actor, raw: localRaw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'], execute: (transaction, value, now) => this.insertArticleRecord(transaction, actor, value, now) });
