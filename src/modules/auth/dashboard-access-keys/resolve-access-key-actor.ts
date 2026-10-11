@@ -80,7 +80,7 @@ export async function resolveAccessKeyActor(
       verifiedAuthUserId: identity.authUserId,
       organizationId: identity.organizationId,
       permissionSet: new Set(membership.orgPermissions),
-      platformPermissionSet: new Set(isPlatformSuperAdmin ? platformPermissions : membership.platformPermissions),
+      platformPermissionSet: new Set(platformPermissions),
       regionScopeId: membership.regionId ?? null,
       entryPoint: 'dashboard',
       requestId,
