@@ -989,7 +989,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const forOrg = await this.tryCreateArticleForOwnerOrg(actor, raw);
     const parsed = articleCreateSchema.safeParse(raw);
     const localRaw = parsed.success
-      ? (() => { const { ownerOrganizationId: _ownerOrganizationId, ...value } = parsed.data; return value; })()
+      ? (() => { const { ownerOrganizationId, ...value } = parsed.data; void ownerOrganizationId; return value; })()
       : raw;
     const result = forOrg ?? await this.mutate({ actor, raw: localRaw, schema: articleCreateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'article.create', targetType: 'article', scope: ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites'], execute: (transaction, value, now) => this.insertArticleRecord(transaction, actor, value, now) });
     if (result.ok && this.notifier !== null) {
@@ -1095,7 +1095,8 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       return { ok: false, error: createPublicError('INVALID_INPUT', 'Penerbit yang dipilih tidak aktif atau tidak tersedia.', actor.requestId, { publisherId: ['Pilih penerbit aktif yang tersedia.'] }) };
     }
 
-    const { ownerOrganizationId: _ownerOrganizationId, ...rest } = parsed.data;
+    const { ownerOrganizationId, ...rest } = parsed.data;
+    void ownerOrganizationId;
     const categorySlugs: string[] = [];
     for (const categoryId of rest.categoryIds ?? []) {
       const category = scope.categories.find((candidate) => candidate.id === categoryId && candidate.status === 'active');
