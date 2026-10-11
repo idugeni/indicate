@@ -23129,6 +23129,4 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (278, 'seo_vercel_gateway_model', 'sha256:1002d8de1cd5a040f13c167874bc49d689c7f728f606077bfe1f89dd37e7f5de');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7', 1791586717648);
-
-
 COMMIT;
