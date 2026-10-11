@@ -29,6 +29,7 @@ describe('mapArticleForOrg', () => {
         {
           publisherId: 'pub-op',
           authorId: 'aut-op',
+          authorName: 'Redaksi',
           categoryIds: ['cat-op'],
           regionId: 'reg-op',
           publisherName: 'RUTAN KELAS II B WONOSOBO',
@@ -52,6 +53,7 @@ describe('mapArticleForOrg', () => {
         {
           publisherId: 'pub-op',
           authorId: null,
+          authorName: null,
           categoryIds: [],
           regionId: null,
           publisherName: 'Indicate Newsroom',
@@ -63,7 +65,7 @@ describe('mapArticleForOrg', () => {
     ).toBeNull();
   });
 
-  it('menoleransi kategori dan wilayah yang tak cocok', () => {
+  it('menolak kategori dan wilayah yang tidak tersedia di organisasi tujuan', () => {
     expect(
       mapArticleForOrg(
         {
@@ -77,6 +79,6 @@ describe('mapArticleForOrg', () => {
         },
         TARGET,
       ),
-    ).toMatchObject({ publisherId: 'pub-upt', categoryIds: [], regionId: null });
+    ).toBeNull();
   });
 });
