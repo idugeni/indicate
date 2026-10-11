@@ -293,7 +293,7 @@
 --   277  20261006110000_articles_tags_gin_single  ledger sha256:ed4db9c12e7942616529bde2daba3913ff1b69a8f3c133d4938aa385ac5292f6
 --   278  20261009120000_ai_operator_approvals  ledger sha256:cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1
 --   279  20261010000000_seo_vercel_gateway_model  ledger sha256:c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7
---   280  20261011000000_platform_superadmin_permission_implies_all  ledger sha256:04ef61da5001df437a0b235afac4b915671b3aa473030b6c264a1f60fd1e30f3
+--   280  20261011000000_platform_superadmin_permission_implies_all  ledger sha256:ad480c5386b816245af2433f06d3fe721861f566140513942446bbb10d46c941
 
 BEGIN;
 
@@ -23172,7 +23172,7 @@ $function$;
 REVOKE ALL ON FUNCTION indicate_private.permission_has_platform(uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.permission_has_platform(uuid, text) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (278, 'platform_superadmin_permission_implies_all', 'sha256:19900cbdedcfe1e594dcf2c19b2527158ac8e8529a8ef08b22a2112f2bd39d66');
+VALUES (279, 'platform_superadmin_permission_implies_all', 'sha256:b10b24a04f98784ee2ae77bfbaa523aab5a89d65c407ea34bf531d230974728e');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('04ef61da5001df437a0b235afac4b915671b3aa473030b6c264a1f60fd1e30f3', 1791689700000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ad480c5386b816245af2433f06d3fe721861f566140513942446bbb10d46c941', 1791689700000);
 COMMIT;
