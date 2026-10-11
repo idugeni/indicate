@@ -145,7 +145,9 @@ export function DashboardWorkspace({
   const [view, setView] = useDashboardView();
   const [payload, setPayload] = useState<{ readonly key: string; readonly body: unknown } | null>(null);
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
-  const [filterQuery, setFilterQuery] = useState('');
+  const [filterQuery, setFilterQuery] = useState(
+    view === 'articles' || view === 'published' ? '&sort=published-desc' : '',
+  );
   const [error, setError] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
@@ -380,12 +382,12 @@ export function DashboardWorkspace({
 
   const selectView = useCallback((next: View) => {
     setView(next);
-    setFilterQuery('');
+    setFilterQuery(next === 'articles' || next === 'published' ? '&sort=published-desc' : '');
   }, [setView]);
 
   const selectMobileNavView = useCallback((next: View) => {
     setView(next);
-    setFilterQuery('');
+    setFilterQuery(next === 'articles' || next === 'published' ? '&sort=published-desc' : '');
     setNavOpen(false);
   }, [setView]);
 
