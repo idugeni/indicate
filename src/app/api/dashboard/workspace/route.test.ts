@@ -41,8 +41,7 @@ vi.mock('@/modules/auth/authenticate-dashboard', () => ({
       },
     },
   }),
-  authorizeDashboardOrganization: async (_db: unknown, user: { accessKey?: { actor: { organizationId: string } } | null }, organizationId: string) =>
-    user.accessKey?.actor.organizationId === organizationId ? user.accessKey.actor : null,
+  authorizeDashboardOrganization: async () => null,
 }));
 
 vi.mock('@/modules/dashboard/tenant-business-service', () => ({
