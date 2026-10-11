@@ -54,7 +54,9 @@ function proofResolved(): ResolvedAccessKeyActor {
       verifiedAuthUserId: shared.authUserId,
       organizationId: shared.orgId,
       permissionSet: new Set(membership.orgPermissions),
-      platformPermissionSet: new Set(membership.platformPermissions),
+      platformPermissionSet: new Set(shared.platformPermissions.includes('platform.super_admin')
+        ? ['platform.super_admin', 'platform.customer.admin', 'platform.content.manage', 'platform.ai.manage', 'platform.runtime_config.manage']
+        : membership.platformPermissions),
       regionScopeId: null,
       entryPoint: 'dashboard',
       requestId: 'proof',
@@ -289,6 +291,28 @@ describe('authenticate-dashboard', () => {
       shared.otherOrgId,
     );
     expect(foreign?.platformPermissionSet?.has('platform.customer.admin')).toBe(true);
+    shared.session = true;
+    shared.platformPermissions = [];
+  });
+
+  it('memperluas superadmin access key ke seluruh grant platform terdaftar', async () => {
+    shared.session = false;
+    shared.bearer = true;
+    shared.platformPermissions = ['platform.super_admin'];
+    const user = (await authenticateDashboardUser(
+      {} as unknown as Db,
+      proofStore(),
+      'req-platform-superadmin',
+    )) as DashboardUser;
+    const actor = await authorizeDashboardPlatform(
+      {} as unknown as Db,
+      user,
+      'req-platform-superadmin',
+    );
+    expect(actor?.platformPermissionSet?.has('platform.customer.admin')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.content.manage')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.ai.manage')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.runtime_config.manage')).toBe(true);
     shared.session = true;
     shared.platformPermissions = [];
   });
