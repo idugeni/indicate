@@ -138,10 +138,10 @@ describe('Dashboard workspace', () => {
         permissions: [INTEGRATIONS_PERMISSIONS.superAdmin],
       },
     ] as never;
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ articles: [], total: 0, articlesNextCursor: null }),
-    }));
+    const fetchMock = vi.fn(async (url: unknown) => {
+      void url;
+      return { ok: true, json: async () => ({ articles: [], total: 0, articlesNextCursor: null }) };
+    });
     vi.stubGlobal('fetch', fetchMock);
     render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} />);
 
