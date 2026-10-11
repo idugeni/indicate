@@ -11,7 +11,7 @@ import {
 import type * as schema from '@/data/schema';
 import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
-import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_PLATFORM_PERMISSION_NAMES, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
 import {
@@ -197,7 +197,7 @@ export async function authorizeDashboardPlatform(
     verifiedAuthUserId: user.authUserId,
     organizationId: null,
     permissionSet: new Set(),
-    platformPermissionSet: new Set(platformPermissions),
+    platformPermissionSet: new Set(platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin) ? INTEGRATIONS_PLATFORM_PERMISSION_NAMES : platformPermissions),
     entryPoint: 'dashboard',
     requestId,
   };
