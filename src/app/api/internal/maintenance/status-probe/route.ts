@@ -158,7 +158,7 @@ async function handleGET(request: Request) {
   const latencyCounts = new Map<string, number>();
   for (const check of typedChecks) {
     counts.set(check.component, (counts.get(check.component) ?? 0) + 1);
-    if (check.latencyMs !== null && Number.isFinite(check.latencyMs)) {
+    if (check.latencyMs !== null && Number.isFinite(check.latencyMs) && check.latencyMs >= 0) {
       latencySums.set(check.component, (latencySums.get(check.component) ?? 0) + check.latencyMs);
       latencyCounts.set(check.component, (latencyCounts.get(check.component) ?? 0) + 1);
     }
