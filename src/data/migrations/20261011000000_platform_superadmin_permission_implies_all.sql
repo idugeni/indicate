@@ -36,4 +36,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.permission_has_platform(uuid, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.permission_has_platform(uuid, text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (278, 'platform_superadmin_permission_implies_all', 'sha256:19900cbdedcfe1e594dcf2c19b2527158ac8e8529a8ef08b22a2112f2bd39d66');
+VALUES (279, 'platform_superadmin_permission_implies_all', 'sha256:b10b24a04f98784ee2ae77bfbaa523aab5a89d65c407ea34bf531d230974728e');
