@@ -30,9 +30,14 @@ export async function resolveAiOperatorDashboardContext(
   const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
   if (user === null) return null;
 
-  const actor: AuthorizedTenantActorContext | null =
-    await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
-  if (actor === null) return null;
+  let actor: AuthorizedTenantActorContext | null;
+  if (user.accessKey !== null) {
+    actor = user.accessKey.actor;
+    if (actor.organizationId !== organizationId) return null;
+  } else {
+    actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
+    if (actor === null) return null;
+  }
 
   if (isPlatformOnlyWithoutTicket({
     orgPermissionCount: actor.permissionSet.size,
