@@ -128,7 +128,9 @@ const JOB_TARGET_MAX_ROWS = 500;
  *
  * @remarks The status predicate flips a draft or scheduled article to active, so
  * this fires once per article; the IS NULL predicate keeps a publication date an
- * editor already set. `stampedAt` is the scheduled-or-now instant the live target
+ * editor already set. It also repairs legacy/corrupt active rows whose publication
+ * timestamp is missing, so they become visible to readers that require a valid
+ * `published_at`. `stampedAt` is the scheduled-or-now instant the live target
  * received, which keeps the article time equal to its earliest `article_sites`
  * stamp. A later target publishing the same article must not rewrite it.
  */
@@ -138,7 +140,7 @@ export function firstPublicationUpdate(input: { readonly organizationId: string;
     where: and(
       eq(articles.organizationId, input.organizationId),
       eq(articles.id, input.articleId),
-      inArray(articles.status, ['draft', 'scheduled']),
+      inArray(articles.status, ['draft', 'scheduled', 'active']),
       isNull(articles.publishedAt),
     ),
   };
