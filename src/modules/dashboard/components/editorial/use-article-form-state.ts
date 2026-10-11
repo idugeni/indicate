@@ -80,6 +80,7 @@ export function useArticleFormState({
   command,
   organizationId = '',
   initialArticle,
+  ownerOrganizationId,
   onEditSaved,
 }: {
   readonly data: unknown;
@@ -87,6 +88,7 @@ export function useArticleFormState({
   readonly command?: DashboardCommand;
   readonly organizationId?: string | undefined;
   readonly initialArticle?: EditArticleInit | undefined;
+  readonly ownerOrganizationId?: string | undefined;
   readonly onEditSaved?: (() => void) | undefined;
 }) {
   const model = data as {
@@ -400,7 +402,7 @@ export function useArticleFormState({
     () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
     [model?.publishers, publisherId],
   );
-  const effectiveOwnerOrg = selectedPublisher?.ownerOrganizationId ?? null;
+  const effectiveOwnerOrg = ownerOrganizationId ?? selectedPublisher?.ownerOrganizationId ?? null;
   const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
 
   const effectiveArticleOrg = foreignOwnerOrg ?? (organizationId === '' ? '' : organizationId);

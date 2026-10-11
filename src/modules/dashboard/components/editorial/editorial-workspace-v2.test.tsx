@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorialWorkspaceV2 } from './editorial-workspace-v2';
+import { useArticleFormState } from '@/modules/dashboard/components/editorial/use-article-form-state';
 
 const submit = vi.fn(async () => ({ id: 'article-1', slug: 'artikel-1', organizationId: 'org-1' }));
 const command = vi.fn(async () => ({
@@ -113,6 +114,11 @@ describe('EditorialWorkspaceV2', () => {
       expect(command).toHaveBeenCalledWith(
         'article.edit.load',
         { id: 'article-1', ownerOrganizationId: 'owner-org-2' },
+      ),
+    );
+    await waitFor(() =>
+      expect(vi.mocked(useArticleFormState)).toHaveBeenCalledWith(
+        expect.objectContaining({ ownerOrganizationId: 'owner-org-2' }),
       ),
     );
   });
