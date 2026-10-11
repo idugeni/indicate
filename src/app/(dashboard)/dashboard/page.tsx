@@ -158,12 +158,21 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
   const organizationsForUser = await repository.listActiveOrganizationsForUser(resolved.identity.authUserId);
   const bound = organizationsForUser.find(({ id }) => id === resolved.actor.organizationId);
   if (bound === undefined) redirect('/sign-in?auth=inactive');
+  const isPlatformSuperAdmin = resolved.membership.platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
+  const platformAdminTenantPermissions = [
+    ...DASHBOARD_PERMISSION_NAMES,
+    ...PUBLISHING_PERMISSION_NAMES,
+    ...INTEGRATIONS_TENANT_PERMISSION_NAMES,
+    INTEGRATIONS_PERMISSIONS.siteSettingsManage,
+  ];
   const organizations: readonly OrganizationOption[] = [
     {
       id: bound.id,
       name: bound.name,
-      role: resolved.membership.roleTier,
-      permissions: [...resolved.membership.orgPermissions],
+      role: isPlatformSuperAdmin ? 'superadmin' : resolved.membership.roleTier,
+      permissions: isPlatformSuperAdmin
+        ? [...platformAdminTenantPermissions, ...resolved.membership.platformPermissions]
+        : [...resolved.membership.orgPermissions, ...resolved.membership.platformPermissions],
     },
   ];
   const sessionIdentity = {
