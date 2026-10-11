@@ -317,6 +317,24 @@ describe('authenticate-dashboard', () => {
     shared.platformPermissions = [];
   });
 
+  it('menolak access key tenant biasa untuk endpoint platform tanpa grant platform', async () => {
+    shared.session = false;
+    shared.bearer = true;
+    shared.platformPermissions = [];
+    const user = (await authenticateDashboardUser(
+      {} as unknown as Db,
+      proofStore(),
+      'req-ordinary-platform-denied',
+    )) as DashboardUser;
+    const actor = await authorizeDashboardPlatform(
+      {} as unknown as Db,
+      user,
+      'req-ordinary-platform-denied',
+    );
+    expect(actor).toBeNull();
+    shared.session = true;
+  });
+
   it('memberi access key superadmin akses tenant lintas organisasi dan tetap membatasi key biasa', async () => {
     shared.session = false;
     shared.bearer = true;
