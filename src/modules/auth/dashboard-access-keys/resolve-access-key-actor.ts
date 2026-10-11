@@ -3,6 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { LocalUserIdentity, MembershipAuthorization } from '@/modules/auth/rbac';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_PLATFORM_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import {
   DrizzleDashboardAccessKeyRepository,
   type DashboardAccessKeyIdentity,
@@ -80,7 +81,7 @@ export async function resolveAccessKeyActor(
       verifiedAuthUserId: identity.authUserId,
       organizationId: identity.organizationId,
       permissionSet: new Set(membership.orgPermissions),
-      platformPermissionSet: new Set(platformPermissions),
+      platformPermissionSet: new Set(platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin) ? INTEGRATIONS_PLATFORM_PERMISSION_NAMES : platformPermissions),
       regionScopeId: membership.regionId ?? null,
       entryPoint: 'dashboard',
       requestId,
