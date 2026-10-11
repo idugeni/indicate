@@ -118,6 +118,20 @@ describe('ContentLibraryV2', () => {
     );
   });
 
+  it('meneruskan organisasi pemilik ketika edit artikel lintas organisasi', async () => {
+    const user = userEvent.setup();
+    const onEditArticle = vi.fn();
+    const data = {
+      ...DATA,
+      articles: [{ ...DATA.articles[0]!, organizationId: 'org-upt', orgName: 'RUTAN WONOSOBO' }],
+    };
+    render(<ContentLibraryV2 data={data} crossOrg onEditArticle={onEditArticle} />);
+
+    await user.click(screen.getAllByRole('button', { name: 'Ubah artikel Banjir Wonosobo' })[0]!);
+
+    expect(onEditArticle).toHaveBeenCalledWith('a-1', 'org-upt');
+  });
+
   it('hanya me-refresh sekali setelah arsip massal', async () => {
     const command = vi.fn(async () => ({ ok: true }));
     const articles = [
