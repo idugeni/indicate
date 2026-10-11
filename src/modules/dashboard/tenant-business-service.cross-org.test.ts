@@ -89,4 +89,58 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
     expect(result.value.articles).toEqual(scope.articles);
     expect(result.value.articlesNextCursor).toBe('next-page');
   });
+  it('fails closed when an explicitly targeted cross-org create cannot read the source editorial scope', async () => {
+    const execute = vi.fn(async () => { throw new Error('local tenant write must not run'); });
+    const executeForOrganization = vi.fn(async () => { throw new Error('target write must not run'); });
+    const readEditorialScope = vi.fn(async () => { throw new Error('source scope unavailable'); });
+    const recordDenied = vi.fn(async () => undefined);
+    const service = serviceWithRepository({ execute, executeForOrganization, readEditorialScope, recordDenied });
+
+    const result = await service.createArticle(
+      actor({
+        permissionSet: new Set(['article.manage']),
+        platformPermissionSet: new Set([INTEGRATIONS_PERMISSIONS.superAdmin]),
+      }),
+      {
+        ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+        regionId: null,
+        publisherId: '11111111-1111-4111-8111-111111111111',
+        categoryIds: [],
+        authorId: null,
+        slug: 'artikel-lintas-org',
+        title: 'Artikel lintas organisasi',
+        body: 'Isi artikel lintas organisasi.',
+        status: 'draft',
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(readEditorialScope).toHaveBeenCalledTimes(1);
+    expect(executeForOrganization).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('denies a cross-org owner override for a non-platform actor without falling back to a local write', async () => {
+    const execute = vi.fn(async () => ({ id: 'local-article' }));
+    const recordDenied = vi.fn(async () => undefined);
+    const service = serviceWithRepository({ execute, recordDenied });
+
+    const result = await service.createArticle(
+      actor({ permissionSet: new Set(['article.manage']) }),
+      {
+        ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+        regionId: null,
+        publisherId: '11111111-1111-4111-8111-111111111111',
+        slug: 'artikel-lintas-org',
+        title: 'Artikel lintas organisasi',
+        body: 'Isi artikel lintas organisasi.',
+        status: 'draft',
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(execute).not.toHaveBeenCalled();
+    expect(recordDenied).toHaveBeenCalledWith(expect.objectContaining({ requestId: 'cross-org-test' }), 'article.create', 'article');
+  });
+
 });

@@ -685,6 +685,7 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
   const T_CAT = '0199a2b3-4c5d-7e8f-9012-3456789ab007';
   const T_REG = '0199a2b3-4c5d-7e8f-9012-3456789ab008';
   const forOrgPayload = {
+    ownerOrganizationId: OWNER_ORG,
     regionId: OP_REG,
     publisherId: OP_PUB,
     categoryIds: [OP_CAT],
