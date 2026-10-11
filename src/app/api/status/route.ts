@@ -14,6 +14,14 @@ import {
 
 /** Hari uptime yang disajikan; selaras retensi agregat harian. */
 const HISTORY_DAYS = 90;
+
+function validUptime(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100 ? value : null;
+}
+
+function validLatency(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
 /** Existing probe runs every 30 minutes; never expose older observations as current. */
 const STATUS_STALE_AFTER_MS = 60 * 60 * 1000;
 
@@ -37,7 +45,7 @@ async function loadSnapshot() {
     const at = row.checkedAt instanceof Date ? row.checkedAt.toISOString() : String(row.checkedAt);
     const current = newest.get(row.component);
     if (current === undefined || current.checkedAt < at) {
-      newest.set(row.component, { health: row.health, latencyMs: row.latencyMs, checkedAt: at });
+      newest.set(row.component, { health: row.health, latencyMs: validLatency(row.latencyMs), checkedAt: at });
     }
   }
   const components = STATUS_COMPONENTS.map((component: StatusComponent) => {
@@ -53,7 +61,7 @@ async function loadSnapshot() {
       checkedAt,
       days: daily
         .filter((row) => row.component === component && component !== 'api' && row.checks > 0)
-        .map((row) => ({ day: row.day, uptimePct: row.uptimePct })),
+        .map((row) => ({ day: row.day, uptimePct: validUptime(row.uptimePct) })),
     };
   });
   return {

@@ -57,6 +57,18 @@ describe('runProbes', () => {
       detail: 'batas waktu terlampaui',
     });
   });
+
+  it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(
+    'menolak hasil probe dengan latensi tidak valid (%s)',
+    async (latencyMs) => {
+      const results = await runProbes(deps({ checkAuth: async () => latencyMs }));
+      expect(results.find((result) => result.component === 'auth')).toMatchObject({
+        health: 'down',
+        latencyMs: null,
+        detail: 'latensi probe tidak valid',
+      });
+    },
+  );
 });
 
 describe('evaluateIncidents', () => {

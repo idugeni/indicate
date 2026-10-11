@@ -72,6 +72,9 @@ async function runOne(
         timer = setTimeout(() => reject(new Error('batas waktu terlampaui')), timeoutMs);
       }),
     ]);
+    if (!Number.isFinite(latencyMs) || latencyMs < 0) {
+      return { component, health: 'down', latencyMs: null, detail: 'latensi probe tidak valid', checkedAt };
+    }
     if (latencyMs >= SLOW_MS) {
       return { component, health: 'degraded', latencyMs, detail: 'respons lambat', checkedAt };
     }
