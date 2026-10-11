@@ -15,6 +15,7 @@ export interface ForOrgTargetState {
 export interface ForOrgCreateValue {
   readonly publisherId: string | null;
   readonly authorId: string | null;
+  readonly authorName?: string | null;
   readonly categoryIds: readonly string[] | undefined;
   readonly regionId: string | null;
 }
@@ -57,22 +58,28 @@ export function mapArticleForOrg(
     (candidate) => candidate.status === 'active' && candidate.name === reference.publisherName,
   );
   if (publisher === undefined) return null;
-  const author =
-    target.authors.find((candidate) => candidate.status === 'active' && candidate.displayName === 'Redaksi')?.id
-    ?? null;
+  const requestedAuthorName = reference.authorName?.trim() || null;
+  const author = requestedAuthorName === null
+    ? target.authors.find((candidate) => candidate.status === 'active' && candidate.displayName === 'Redaksi')
+    : target.authors.find((candidate) => candidate.status === 'active' && candidate.displayName === requestedAuthorName);
+  if (requestedAuthorName !== null && author === undefined) return null;
+
   const categoryIds = reference.categorySlugs.flatMap((slug) => {
     const match = target.categories.find((candidate) => candidate.status === 'active' && candidate.slug === slug);
     return match === undefined ? [] : [match.id];
   });
-  const regionId =
+  if (categoryIds.length !== reference.categorySlugs.length) return null;
+
+  const region =
     reference.regionSlug === null
       ? null
-      : (target.regions.find((candidate) => candidate.status === 'active' && candidate.slug === reference.regionSlug)?.id
-        ?? null);
+      : target.regions.find((candidate) => candidate.status === 'active' && candidate.slug === reference.regionSlug);
+  if (reference.regionSlug !== null && region === undefined) return null;
+  const regionId = region?.id ?? null;
   return {
     ownerOrgSlug: resolveOwnerOrgSlug(reference.publisherName),
     publisherId: publisher.id,
-    authorId: author,
+    authorId: author?.id ?? null,
     categoryIds,
     regionId,
   };
