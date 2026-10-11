@@ -1154,9 +1154,6 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
             authorId: mapped.authorId,
             categoryIds: mapped.categoryIds,
             regionId: mapped.regionId,
-            // Media-library IDs are tenant-scoped; never reuse an operator's
-            // media foreign key in the destination organization.
-            leadMediaId: null,
           },
           this.clock.now().toISOString(),
         );
