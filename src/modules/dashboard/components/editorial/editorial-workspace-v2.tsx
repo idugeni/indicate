@@ -78,11 +78,13 @@ function WorkspaceSurface({
   onExitEdit,
   initialArticle,
   command,
+  ownerOrganizationId,
 }: {
   readonly form: ArticleFormState;
   readonly onExitEdit?: (() => void) | undefined;
   readonly initialArticle?: EditArticleInit | undefined;
   readonly command?: DashboardCommand;
+  readonly ownerOrganizationId?: string | undefined;
 }) {
   const {
     status,
@@ -223,7 +225,7 @@ function WorkspaceSurface({
       </div>
 
       {isEditing && initialArticle && normalizeArticleType(initialArticle.type) === 'liveblog' && command ? (
-        <LiveblogUpdates articleId={initialArticle.id} articleTitle={initialArticle.title} command={command} />
+        <LiveblogUpdates articleId={initialArticle.id} articleTitle={initialArticle.title} command={command} ownerOrganizationId={ownerOrganizationId} />
       ) : null}
     </form>
   );
@@ -261,6 +263,7 @@ function EditorLoader({
 }) {
   const effectiveOwnerOrganizationId = ownerOrganizationId ?? organizationId;
   const [loaded, setLoaded] = useState<EditArticleInit | null>(null);
+  const [ownerLookups, setOwnerLookups] = useState<Record<string, unknown> | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
@@ -278,6 +281,10 @@ function EditorLoader({
         if (init === null) {
           setFailed('Respons editor tak dikenali.');
           return;
+        }
+        const lookups = (result as { readonly lookups?: unknown }).lookups;
+        if (typeof lookups === 'object' && lookups !== null) {
+          setOwnerLookups(lookups as Record<string, unknown>);
         }
         setLoaded(init);
       } catch (error) {
@@ -306,7 +313,10 @@ function EditorLoader({
     );
   }
 
-  const regionsReady = typeof data === 'object' && data !== null && Array.isArray((data as { readonly regions?: unknown }).regions);
+  const editorData = ownerLookups === null
+    ? data
+    : { ...(typeof data === 'object' && data !== null ? data : {}), ...ownerLookups };
+  const regionsReady = typeof editorData === 'object' && editorData !== null && Array.isArray((editorData as { readonly regions?: unknown }).regions);
   if (!regionsReady) {
     return (
       <div role="status" className="flex items-center gap-2 rounded-2xl border border-hairline bg-bg-raised p-5 text-sm text-paper-dim">
@@ -318,9 +328,10 @@ function EditorLoader({
 
   return (
     <LoadedEditor
-      data={data}
+      data={editorData}
       command={command}
       organizationId={organizationId}
+      ownerOrganizationId={effectiveOwnerOrganizationId}
       initialArticle={loaded}
       onExitEdit={onExitEdit}
     />
@@ -332,12 +343,14 @@ function LoadedEditor({
   command,
   organizationId,
   initialArticle,
+  ownerOrganizationId,
   onExitEdit,
 }: {
   readonly data: unknown;
   readonly command: DashboardCommand;
   readonly organizationId: string;
   readonly initialArticle: EditArticleInit;
+  readonly ownerOrganizationId?: string | undefined;
   readonly onExitEdit?: (() => void) | undefined;
 }) {
   const form = useArticleFormState({
@@ -346,10 +359,11 @@ function LoadedEditor({
     command,
     organizationId,
     initialArticle,
+    ownerOrganizationId,
     onEditSaved: onExitEdit,
   });
 
-  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} initialArticle={initialArticle} command={command} />;
+  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} initialArticle={initialArticle} command={command} ownerOrganizationId={ownerOrganizationId} />;
 }
 
 function CreateEditor({
