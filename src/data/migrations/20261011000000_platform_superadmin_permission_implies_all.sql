@@ -12,6 +12,13 @@ AS $function$
       AND nullif(current_setting('app.actor_id', true), '')::uuid = p_actor_id
       AND EXISTS (
         SELECT 1
+        FROM public.permissions AS target_permission
+        WHERE target_permission.name = p_permission
+          AND target_permission.scope = 'platform'
+          AND target_permission.organization_id IS NULL
+      )
+      AND EXISTS (
+        SELECT 1
         FROM public.platform_user_permissions AS grant_row
         JOIN public.permissions AS p ON p.id = grant_row.permission_id
         JOIN public.users AS u ON u.id = grant_row.user_id AND u.status = 'active'
@@ -29,4 +36,4 @@ $function$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.permission_has_platform(uuid, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.permission_has_platform(uuid, text) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (278, 'platform_superadmin_permission_implies_all', 'sha256:66a79b53dabef152302d395cfeda0a4c81120b76343682b41120371797a0323a');
+VALUES (278, 'platform_superadmin_permission_implies_all', 'sha256:19900cbdedcfe1e594dcf2c19b2527158ac8e8529a8ef08b22a2112f2bd39d66');
