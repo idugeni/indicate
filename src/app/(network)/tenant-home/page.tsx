@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
 import { ListingPage } from '@/modules/site/components/network/network-listing';
@@ -10,14 +11,21 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Render portal tenant tanpa fallback pemuatan.
+ * Keep hostname-dependent tenant resolution behind a stable streaming boundary.
  *
- * @returns Halaman daftar tenant.
- * @remarks Tanpa `Suspense` ber-fallback: tidak ada loader template maupun
- * `RootLoading` domain utama yang boleh ter-cat di segmen ini. Resolusi situs
- * tetap di dalam render agar 404 milik halaman.
+ * The null fallback avoids showing a global loading template on tenant domains
+ * while preventing the async request-bound subtree from shifting the route's
+ * initial resumable tree during hydration.
  */
-export default async function TenantHomePage() {
+export default function TenantHomePage() {
+  return (
+    <Suspense fallback={null}>
+      <TenantHomeContent />
+    </Suspense>
+  );
+}
+
+async function TenantHomeContent() {
   const site = await resolveNetworkSite({}, '/');
   return <ListingPage site={site} title={site.settings.name} />;
 }
