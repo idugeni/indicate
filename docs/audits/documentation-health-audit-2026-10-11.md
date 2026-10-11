@@ -33,7 +33,7 @@ This audit intentionally does **not** delete archived third-party reference mate
 **Files:** [`AGENTS.md`](../../AGENTS.md), [`CLAUDE.md`](../../CLAUDE.md), [`docs/release.md`](../release.md)  
 **Severity:** High process risk  
 **Evidence:** `AGENTS.md` requires verification and says not to claim completion while relevant P0/P1/P2 findings remain unresolved. `CLAUDE.md` and `docs/release.md` describe portions of the workflow as relaxed/advisory.  
-**Action:** Clarify that repository CI/required checks and task-specific safety constraints are hard gates, while the release checklist's live production readiness probes are advisory only when explicitly described as read-only, unavailable, or owner-operated. An advisory checklist must never override required CI, security, data-integrity, or an explicit owner instruction.
+**Action:** Clarify that repository CI/required checks and task-specific safety constraints are hard gates, while the release checklist's live production readiness probes are advisory only when explicitly described as read-only, unavailable, or owner-operated. An advisory checklist must never override required CI, security, data-integrity, or an explicit owner instruction. `docs/release.md` now states this boundary; the relaxed-mode title and security section in `CLAUDE.md` still needed an explicit safety exception and were corrected in the follow-up PR.
 
 ### DOC-004 — Documentation index needs an explicit audit register
 
@@ -86,3 +86,4 @@ This is a source/documentation consistency audit, not a full semantic proof of e
 - [x] Compare all `docs/**/*.md` paths against the index and add missing links for active operations and audit documents.
 - [ ] Inspect inbound references before deleting or consolidating any file.
 - [ ] Keep runtime/browser/tenant isolation status explicitly marked unverified until supported by test evidence.
+- [x] Make `CLAUDE.md` distinguish relaxed conventions from binding security, tenant-isolation, data-integrity, and required-CI gates.
