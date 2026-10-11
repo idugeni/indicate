@@ -1,4 +1,4 @@
--- One-time production data repair: move 13 UPT-owned articles to their real
+-- One-time production data repair: move 14 UPT-owned articles to their real
 -- tenant owners and convert the 134 platform-local publication rows per article
 -- into cross-organization portal assignments. Original article_sites and
 -- publishing-job targets are retained as inactive history; existing slugs and
@@ -29,7 +29,8 @@ BEGIN
       ('d38ea52a-77fd-4a38-a609-eb0a355950ec'::uuid, 'rutan-kelas-ii-b-kudus'),
       ('38d77abf-6325-4333-bfe0-93f319ac4218'::uuid, 'rutan-kelas-ii-b-purbalingga'),
       ('8a23deef-6ebd-44e6-ada3-2181674b0c73'::uuid, 'rutan-kelas-ii-b-rembang'),
-      ('51c20cde-6887-40fc-adbc-31f485a60ac1'::uuid, 'rutan-kelas-ii-b-temanggung')
+      ('51c20cde-6887-40fc-adbc-31f485a60ac1'::uuid, 'rutan-kelas-ii-b-temanggung'),
+      ('0a2c3af4-69ec-4961-8d39-872c36cd6257'::uuid, 'rutan-kelas-ii-b-wonosobo')
   )
   SELECT
     source.id AS legacy_article_id,
@@ -85,8 +86,8 @@ BEGIN
    AND target_region.status = 'active';
 
   SELECT count(*) INTO v_candidate_count FROM _rehome_cross_org_articles;
-  IF v_candidate_count <> 13 THEN
-    RAISE EXCEPTION 'Expected 13 source articles with active target organizations; found %', v_candidate_count;
+  IF v_candidate_count <> 14 THEN
+    RAISE EXCEPTION 'Expected 14 source articles with active target organizations; found %', v_candidate_count;
   END IF;
 
   IF EXISTS (
@@ -275,8 +276,8 @@ BEGIN
    AND old_site.published_at IS NOT NULL;
 
   GET DIAGNOSTICS v_assignment_count = ROW_COUNT;
-  IF v_assignment_count <> 1742 THEN
-    RAISE EXCEPTION 'Expected 1742 portal assignments; inserted %; rolling back', v_assignment_count;
+  IF v_assignment_count <> 1876 THEN
+    RAISE EXCEPTION 'Expected 1876 portal assignments; inserted %; rolling back', v_assignment_count;
   END IF;
 
   UPDATE public.article_sites old_site
@@ -289,8 +290,8 @@ BEGIN
     AND old_site.active;
 
   GET DIAGNOSTICS v_inactive_site_count = ROW_COUNT;
-  IF v_inactive_site_count <> 1742 THEN
-    RAISE EXCEPTION 'Expected 1742 legacy site rows to be retained as inactive history; updated %; rolling back', v_inactive_site_count;
+  IF v_inactive_site_count <> 1876 THEN
+    RAISE EXCEPTION 'Expected 1876 legacy site rows to be retained as inactive history; updated %; rolling back', v_inactive_site_count;
   END IF;
 
   UPDATE public.articles source
