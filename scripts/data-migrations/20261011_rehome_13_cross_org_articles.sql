@@ -208,7 +208,7 @@ BEGIN
   ON CONFLICT DO NOTHING;
 
   INSERT INTO public.article_categories (organization_id, article_id, category_id, position)
-  SELECT m.target_organization_id, m.new_article_id, m.target_category_id, 0
+  SELECT m.target_organization_id, m.new_article_id, m.target_category_id, 1
   FROM _rehome_cross_org_articles m
   WHERE NOT EXISTS (
     SELECT 1 FROM public.article_categories ac
