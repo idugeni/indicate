@@ -166,7 +166,7 @@ export function ContentLibraryV2({
       } | null>)
     | undefined;
   readonly crossOrg?: boolean | undefined;
-  readonly onEditArticle?: ((id: string) => void) | undefined;
+  readonly onEditArticle?: ((id: string, ownerOrganizationId?: string | undefined) => void) | undefined;
 }) {
   const model = (data ?? {}) as ContentLibraryModel;
   const rows = useMemo(() => [...(model.articles ?? [])], [model.articles]);
@@ -345,7 +345,7 @@ export function ContentLibraryV2({
                 <div className="flex items-start gap-2">
                   <Checkbox checked={selected.includes(row.id)} onCheckedChange={() => setSelected((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])} aria-label={`Pilih artikel ${row.title}`} disabled={isBusy} />
                   <div className="min-w-0 flex-1">
-                    <button className="block w-full break-words text-left text-sm font-medium text-paper hover:text-brass" onClick={() => onEditArticle?.(row.id)}>{row.title}</button>
+                    <button className="block w-full break-words text-left text-sm font-medium text-paper hover:text-brass" onClick={() => crossOrg === true && row.organizationId ? onEditArticle?.(row.id, row.organizationId) : onEditArticle?.(row.id)}>{row.title}</button>
                     <p className="m-0 break-all font-mono text-[10px] text-paper-faint">{row.slug}</p>
                     {crossOrg && row.orgName ? <p className="m-0 mt-1 text-[11px] text-paper-dim">Organisasi pemilik: {row.orgName}</p> : null}
                     {row.tags?.length ? <p className="m-0 mt-1 break-words text-[10px] text-paper-faint">{row.tags.slice(0, 3).join(' · ')}</p> : null}
