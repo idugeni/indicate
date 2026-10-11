@@ -42,13 +42,7 @@ import { StatusLiveIndicator } from '@/app/status/live-indicator';
 import { getControlHosts } from '@/core/config/edge-hosts';
 import './status-redesign.css';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -127,20 +121,24 @@ const OVERALL_SYSTEM_COPY: Readonly<
   Record<ComponentHealth | 'unknown', { readonly headline: string; readonly description: string }>
 > = {
   ok: {
-    headline: 'Komponen Terpantau Beroperasi Normal',
-    description: 'Semua komponen dengan pemeriksaan terbaru yang valid merespons normal. Komponen tanpa bukti pemeriksaan terbaru ditandai terpisah.',
+    headline: 'Seluruh Layanan Beroperasi Normal',
+    description:
+      'Semua komponen dengan pemeriksaan terbaru yang valid merespons normal. Komponen tanpa bukti pemeriksaan terbaru ditandai terpisah.',
   },
   degraded: {
     headline: 'Sebagian Layanan Mengalami Penurunan Performa',
-    description: 'Satu atau lebih komponen merespons di luar ambang latensi yang ditetapkan. Lihat matriks layanan untuk detail yang terukur.',
+    description:
+      'Satu atau lebih komponen merespons di luar ambang latensi yang ditetapkan. Lihat matriks layanan untuk detail yang terukur.',
   },
   down: {
     headline: 'Gangguan Layanan Terdeteksi',
-    description: 'Satu atau lebih komponen gagal dalam pemeriksaan terakhir. Lihat detail komponen dan insiden yang tercatat.',
+    description:
+      'Satu atau lebih komponen gagal dalam pemeriksaan terakhir. Lihat detail komponen dan insiden yang tercatat.',
   },
   unknown: {
-    headline: 'Status Layanan Belum Dapat Dipastikan',
-    description: 'Belum ada hasil pemeriksaan yang cukup untuk menyatakan layanan normal atau terganggu. Data akan ditampilkan setelah pemeriksaan tersedia.',
+    headline: 'Status Layanan Belum Diketahui',
+    description:
+      'Belum ada hasil pemeriksaan yang cukup untuk menyatakan layanan normal atau terganggu. Data akan ditampilkan setelah pemeriksaan tersedia.',
   },
 };
 
@@ -156,33 +154,22 @@ function getComponentIcon(component: StatusComponent): IconType {
   return LuServer;
 }
 
+function validUptime(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100
+    ? value
+    : null;
+}
+
+function validLatency(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
 function barTone(uptimePct: number | null): string {
   if (uptimePct === null) return 'bg-paper-faint/20';
   if (uptimePct >= 99.9) return 'bg-signal';
   if (uptimePct >= 99.0) return 'bg-signal/60';
   if (uptimePct >= 95.0) return 'bg-brass';
   return 'bg-error';
-}
-
-function rollupDays(
-  days: readonly { readonly day: string; readonly uptimePct: number | null }[],
-  size: number
-): readonly { readonly day: string; readonly endDay: string; readonly uptimePct: number | null }[] {
-  const rolled: { day: string; endDay: string; uptimePct: number | null }[] = [];
-  for (let i = 0; i < days.length; i += size) {
-    const chunk = days.slice(i, i + size);
-    const first = chunk[0];
-    const last = chunk[chunk.length - 1];
-    if (first === undefined || last === undefined) continue;
-    const known = chunk.filter((cell) => cell.uptimePct !== null);
-    rolled.push({
-      day: first.day,
-      endDay: last.day,
-      uptimePct:
-        known.length === 0 ? null : Math.min(...known.map((cell) => cell.uptimePct ?? 0)),
-    });
-  }
-  return rolled;
 }
 
 function formatMoment(value: string): string {
@@ -247,7 +234,9 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
   const [latest, incidents, daily] = await Promise.all([
     repository.lastTwoPerComponent(),
     repository.recentIncidents(20),
-    repository.dailySince(new Date(Date.now() - STATUS_HISTORY_DAYS * 86_400_000).toISOString().slice(0, 10)),
+    repository.dailySince(
+      new Date(Date.now() - STATUS_HISTORY_DAYS * 86_400_000).toISOString().slice(0, 10),
+    ),
   ]);
 
   const newest = new Map<
@@ -261,7 +250,7 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
     if (current === undefined || current.checkedAt < at) {
       newest.set(row.component, {
         health: row.health,
-        latencyMs: row.latencyMs,
+        latencyMs: validLatency(row.latencyMs),
         checkedAt: at,
       });
     }
@@ -279,13 +268,20 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
     const current = newest.get(component);
     const checkedAt = current?.checkedAt ?? null;
     const checkedAtMs = checkedAt === null ? Number.NaN : Date.parse(checkedAt);
-    const isFresh = Number.isFinite(checkedAtMs) && Date.now() - checkedAtMs <= STATUS_STALE_AFTER_MS;
-    const health = isFresh ? (current?.health ?? 'unknown') as ComponentHealth | 'unknown' : 'unknown';
+    const isFresh =
+      Number.isFinite(checkedAtMs) && Date.now() - checkedAtMs <= STATUS_STALE_AFTER_MS;
+    const health = isFresh
+      ? ((current?.health ?? 'unknown') as ComponentHealth | 'unknown')
+      : 'unknown';
     const byDay = new Map(
-      daily.filter((row) => row.component === component && component !== 'api' && row.checks > 0).map((row) => [row.day, row.uptimePct] as const)
+      daily
+        .filter((row) => row.component === component && component !== 'api' && row.checks > 0)
+        .map((row) => [row.day, validUptime(row.uptimePct)] as const),
     );
     const latencyByDay = new Map(
-      daily.filter((row) => row.component === component && component !== 'api' && row.checks > 0).map((row) => [row.day, row.avgLatencyMs] as const)
+      daily
+        .filter((row) => row.component === component && component !== 'api' && row.checks > 0)
+        .map((row) => [row.day, validLatency(row.avgLatencyMs)] as const),
     );
     const cells = days.map((day) => ({ day, uptimePct: byDay.get(day) ?? null }));
     const known = cells.filter((cell) => cell.uptimePct !== null);
@@ -293,7 +289,7 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
     return {
       component,
       health,
-      latencyMs: isFresh ? current?.latencyMs ?? null : null,
+      latencyMs: isFresh ? (current?.latencyMs ?? null) : null,
       checkedAt,
       uptime90:
         known.length === 0
@@ -314,7 +310,7 @@ async function loadSnapshot(): Promise<StatusSnapshot> {
         latencyMs: item.latencyMs,
         detail: null,
         checkedAt: item.checkedAt ?? new Date(0).toISOString(),
-      }))
+      })),
     ),
     components,
     incidents: incidents.map((incident) => ({
@@ -348,7 +344,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
   const OverallIcon = overallConfig.icon;
 
   const validLatencies = snapshot.components
-    .map((c) => c.latencyMs)
+    .map((c) => validLatency(c.latencyMs))
     .filter((l): l is number => l !== null);
   const avgLatency =
     validLatencies.length > 0
@@ -356,12 +352,10 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
       : null;
 
   const validUptimes = snapshot.components
-    .map((c) => c.uptime90)
+    .map((c) => validUptime(c.uptime90))
     .filter((u): u is number => u !== null);
   const aggregateUptime =
-    validUptimes.length > 0
-      ? validUptimes.reduce((a, b) => a + b, 0) / validUptimes.length
-      : null;
+    validUptimes.length > 0 ? validUptimes.reduce((a, b) => a + b, 0) / validUptimes.length : null;
 
   const activeProbes = snapshot.components.filter((c) => c.health === 'ok').length;
 
@@ -394,7 +388,7 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
                 {overallConfig.label}
               </Badge>
               <Badge variant="outline" className="border-hairline text-paper-dim font-mono text-xs">
-                KOMPONEN TERDAFTAR: {snapshot.components.length}
+                LAYANAN TERDAFTAR: {snapshot.components.length}
               </Badge>
             </div>
 
@@ -412,14 +406,20 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
             <Card className="status-metric-card border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
-                  <LuShieldCheck className="size-3 text-signal" /> Availability 90 Hari
+                  <LuShieldCheck className="size-3 text-signal" /> Ketersediaan 90 Hari
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
-                  {aggregateUptime !== null ? <CountUp value={aggregateUptime} decimals={2} suffix="%" /> : '---'}
+                  {aggregateUptime !== null ? (
+                    <CountUp value={aggregateUptime} decimals={2} suffix="%" />
+                  ) : (
+                    '---'
+                  )}
                 </div>
-                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Komponen dengan data</div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">
+                  Komponen dengan data
+                </div>
               </CardContent>
             </Card>
 
@@ -440,14 +440,16 @@ function ObservabilityHeader({ snapshot }: { readonly snapshot: StatusSnapshot }
             <Card className="status-metric-card col-span-2 sm:col-span-1 border-hairline bg-bg shadow-none rounded-lg">
               <CardHeader className="p-3.5 pb-1">
                 <CardDescription className="font-mono text-[10px] uppercase tracking-wider text-paper-faint flex items-center gap-1.5">
-                  <LuRadio className="size-3 text-paper-dim" /> Komponen Normal
+                  <LuRadio className="size-3 text-paper-dim" /> Layanan Normal
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-3.5 pt-0">
                 <div className="font-mono text-xl sm:text-2xl font-semibold tabular-nums text-paper">
                   <CountUp value={activeProbes} />/{snapshot.components.length}
                 </div>
-                <div className="font-mono text-[10px] text-paper-faint mt-0.5">Status pemeriksaan terbaru</div>
+                <div className="font-mono text-[10px] text-paper-faint mt-0.5">
+                  Status pemeriksaan terbaru
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -475,8 +477,7 @@ function BarsStrip({
       aria-label={`Uptime 90 hari untuk ${componentLabel}`}
     >
       {days.map((cell, dayIndex) => {
-        const uptimeText =
-          cell.uptimePct !== null ? `${cell.uptimePct.toFixed(1)}%` : 'Tanpa data';
+        const uptimeText = cell.uptimePct !== null ? `${cell.uptimePct.toFixed(1)}%` : 'Tanpa data';
         const range =
           cell.endDay === cell.day
             ? formatDayLabel(cell.day)
@@ -513,21 +514,17 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
         </div>
       </div>
 
-      <div className="status-service-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 grid-flow-dense">
+      <div className="status-service-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {snapshot.components.map((item, index) => {
           const config = HEALTH_CONFIG[item.health];
           const CompIcon = getComponentIcon(item.component);
           const NodeIcon = config.icon;
           const nodeIndex = String(index + 1).padStart(2, '0');
-          const featured =
-            index === 0 ||
-            index === snapshot.components.length - 1 ||
-            (item.health !== 'ok' && item.health !== 'unknown');
 
           return (
             <Card
               key={item.component}
-              className={`status-component-card border ${config.borderClass} bg-bg-raised shadow-none transition-all duration-200 hover:border-paper-faint/60 flex flex-col justify-between ${featured ? 'sm:col-span-2 xl:col-span-2' : ''}`}
+              className={`status-component-card border ${config.borderClass} bg-bg-raised shadow-none transition-all duration-200 hover:border-paper-faint/60 flex flex-col justify-between`}
             >
               <CardHeader className="p-5 pb-3">
                 <div className="flex items-start justify-between gap-3">
@@ -555,24 +552,18 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
                 </div>
               </CardHeader>
 
-              <CardContent
-                className={
-                  featured
-                    ? 'p-5 pt-0 flex-1 grid gap-5 md:grid-cols-[170px_1fr] md:items-center'
-                    : 'p-5 pt-0 space-y-4'
-                }
-              >
-                <div
-                  className={
-                    featured
-                      ? 'grid grid-cols-2 md:grid-cols-1 gap-3 font-mono text-xs'
-                      : 'grid grid-cols-2 gap-2 border-y border-hairline py-2.5 font-mono text-xs'
-                  }
-                >
+              <CardContent className="p-5 pt-0 flex-1 space-y-4">
+                <div className="grid grid-cols-2 gap-3 border-y border-hairline py-3 font-mono text-xs">
                   <div>
-                    <span className="block text-[10px] uppercase text-paper-faint">Latensi Node</span>
+                    <span className="block text-[10px] uppercase text-paper-faint">
+                      Latensi Node
+                    </span>
                     <span className="font-medium tabular-nums text-paper">
-                      {item.latencyMs !== null ? <CountUp value={item.latencyMs} suffix=" ms" /> : 'N/A'}
+                      {item.latencyMs !== null ? (
+                        <CountUp value={item.latencyMs} suffix=" ms" />
+                      ) : (
+                        'N/A'
+                      )}
                     </span>
                     <LatencySparkline
                       points={item.latencyTrend}
@@ -583,7 +574,11 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
                   <div>
                     <span className="block text-[10px] uppercase text-paper-faint">Uptime 90H</span>
                     <span className="font-medium tabular-nums text-paper">
-                      {item.uptime90 !== null ? <CountUp value={item.uptime90} decimals={2} suffix="%" /> : 'Data Baru'}
+                      {item.uptime90 !== null ? (
+                        <CountUp value={item.uptime90} decimals={2} suffix="%" />
+                      ) : (
+                        'Data Baru'
+                      )}
                     </span>
                   </div>
                 </div>
@@ -591,15 +586,16 @@ function ComponentTelemetryGrid({ snapshot }: { readonly snapshot: StatusSnapsho
                 <div>
                   <BarsStrip
                     componentLabel={COMPONENT_LABELS[item.component]}
-                    days={featured ? item.days.map((cell) => ({ ...cell, endDay: cell.day })) : rollupDays(item.days, 3)}
+                    days={item.days.map((cell) => ({ ...cell, endDay: cell.day }))}
                   />
                   <div className="mt-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-paper-faint">
                     <span>-90 HARI</span>
-                    <span>SLI AKTIVITAS</span>
+                    <span>DISPONIBILITAS HARIAN</span>
                     <span>SEKARANG</span>
                   </div>
                   <p className="mt-2 mb-0 font-sans text-xs text-paper-faint">
-                    Pemeriksaan terakhir: {item.checkedAt !== null ? formatMoment(item.checkedAt) : 'Belum tersedia'}
+                    Pemeriksaan terakhir:{' '}
+                    {item.checkedAt !== null ? formatMoment(item.checkedAt) : 'Belum tersedia'}
                   </p>
                 </div>
               </CardContent>
@@ -678,7 +674,10 @@ function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
                       Dimulai: {formatMoment(incident.startedAt)}
                     </AlertDescription>
                   </div>
-                  <Badge variant="destructive" className="font-mono text-[10px] tracking-wider uppercase">
+                  <Badge
+                    variant="destructive"
+                    className="font-mono text-[10px] tracking-wider uppercase"
+                  >
                     OPEN
                   </Badge>
                 </div>
@@ -693,9 +692,12 @@ function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
                 <div className="mx-auto flex size-9 items-center justify-center rounded-full border border-signal/30 bg-signal/10 text-signal mb-3">
                   <LuCircleCheck className="size-5" />
                 </div>
-                <CardTitle className="font-sans text-sm font-medium text-paper">Tidak Ada Insiden Terbuka</CardTitle>
+                <CardTitle className="font-sans text-sm font-medium text-paper">
+                  Tidak Ada Insiden Terbuka
+                </CardTitle>
                 <CardDescription className="font-sans text-xs text-paper-dim">
-                  Tidak ada insiden terbuka yang tercatat pada snapshot ini. Status komponen tetap perlu diperiksa secara terpisah.
+                  Tidak ada insiden terbuka yang tercatat pada snapshot ini. Status komponen tetap
+                  perlu diperiksa secara terpisah.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -720,13 +722,18 @@ function IncidentSection({ snapshot }: { readonly snapshot: StatusSnapshot }) {
                       <CardTitle className="text-base font-semibold text-paper">
                         {incident.title}
                       </CardTitle>
-                      <Badge variant="outline" className="border-hairline font-mono text-[10px] text-paper-dim">
+                      <Badge
+                        variant="outline"
+                        className="border-hairline font-mono text-[10px] text-paper-dim"
+                      >
                         RESOLVED
                       </Badge>
                     </div>
                     <CardDescription className="font-mono text-xs tabular-nums text-paper-faint mt-1">
                       {formatMoment(incident.startedAt)}
-                      {incident.resolvedAt !== null ? ` → ${formatMoment(incident.resolvedAt)}` : ''}
+                      {incident.resolvedAt !== null
+                        ? ` → ${formatMoment(incident.resolvedAt)}`
+                        : ''}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 pt-1">
@@ -760,7 +767,10 @@ function IncidentUpdates({
   return (
     <div className="space-y-2.5 pt-1">
       {updates.map((update, index) => (
-        <div key={`${update.at}-${index}`} className="flex items-start gap-2.5 text-xs leading-relaxed text-paper-dim">
+        <div
+          key={`${update.at}-${index}`}
+          className="flex items-start gap-2.5 text-xs leading-relaxed text-paper-dim"
+        >
           <span className="mt-1.5 size-1 shrink-0 rounded-full bg-paper-faint" />
           <div>
             <span className="font-mono text-[11px] tabular-nums text-paper-faint mr-1.5">
