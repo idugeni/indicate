@@ -128,6 +128,35 @@ describe('Dashboard workspace', () => {
     },
   );
 
+  it('uses the default article sort on the first request without a redundant filter reload', async () => {
+    initialView = 'articles';
+    const organizations = [
+      {
+        id: 'org-platform',
+        name: 'Pengelola Platform',
+        role: 'superadmin',
+        permissions: [INTEGRATIONS_PERMISSIONS.superAdmin],
+      },
+    ] as never;
+    const fetchMock = vi.fn(async (url: unknown) => {
+      void url;
+      return { ok: true, json: async () => ({ articles: [], total: 0, articlesNextCursor: null }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} />);
+
+    await waitFor(() => {
+      const articleRequests = fetchMock.mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url.includes('view=articles'));
+      expect(articleRequests).toHaveLength(1);
+      expect(articleRequests[0]).toContain('&sort=published-desc');
+      expect(articleRequests[0]).toContain('&scope=all');
+    }, { timeout: LAZY_MODULE_TIMEOUT_MS });
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('view=articles'))).toHaveLength(1);
+  });
+
   it('does not restore the global Refresh action after navigation changes', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
