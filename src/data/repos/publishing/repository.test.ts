@@ -290,11 +290,12 @@ describe('Penodymenan publikasi pertama pada baris artikel kanonik', () => {
     expect(set.updatedAt).toBe(NOW);
   });
 
-  it('hanya menyentuh draf dan jadwal, tidak artikel yang sudah aktif', () => {
+  it('memulihkan tanggal artikel aktif yang hilang tanpa menimpa tanggal yang sudah ada', () => {
     const { text, params } = compileCondition(firstPublicationUpdate({ organizationId: 'o1', articleId: 'a1', stampedAt: STAMPED_AT, now: NOW }).where);
     expect(text).toContain('"status"');
-    expect(params).toEqual(expect.arrayContaining(['draft', 'scheduled']));
-    expect(params).not.toContain('active');
+    expect(params).toEqual(expect.arrayContaining(['draft', 'scheduled', 'active']));
+    expect(text).toContain('"published_at"');
+    expect(text.toLowerCase()).toContain('is null');
   });
 
   it('tidak menimpa tanggal terbit yang sudah diisi editor', () => {
