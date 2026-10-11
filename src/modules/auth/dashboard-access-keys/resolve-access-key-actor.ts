@@ -56,9 +56,10 @@ export async function resolveAccessKeyActor(
   const authorization = new DrizzleAuthorizationRepository(database);
   const membership = await authorization.findActiveMembership(identity.organizationId, identity.userId);
   if (membership === null || !membership.roleActive) return null;
-  // A valid access key authenticates its owner. Platform scope is granted only
-  // when the same active owner has an explicit platform.super_admin grant.
-  // Ordinary access keys remain bound to their issuing organization.
+  // A valid access key authenticates its owner. Platform grants are resolved
+  // from the authoritative platform permission function, independently from
+  // tenant membership grants. Cross-tenant access is still restricted to the
+  // explicit platform.super_admin grant in authorizeDashboardOrganization.
   const platformPermissions = await authorization.listPlatformPermissions(identity.userId).catch((): readonly string[] => []);
   const localUser: LocalUserIdentity = {
     id: identity.userId,
