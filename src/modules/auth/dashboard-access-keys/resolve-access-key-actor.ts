@@ -60,7 +60,6 @@ export async function resolveAccessKeyActor(
   // when the same active owner has an explicit platform.super_admin grant.
   // Ordinary access keys remain bound to their issuing organization.
   const platformPermissions = await authorization.listPlatformPermissions(identity.userId).catch((): readonly string[] => []);
-  const isPlatformSuperAdmin = platformPermissions.includes('platform.super_admin');
   const localUser: LocalUserIdentity = {
     id: identity.userId,
     authUserId: identity.authUserId,
