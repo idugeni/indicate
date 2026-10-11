@@ -178,15 +178,16 @@ export async function authorizeDashboardPlatform(
 ): Promise<ActorContext | null> {
   const authorization = new DrizzleAuthorizationRepository(database);
   if (user.accessKey !== null) {
-    if (organizationId !== undefined && user.accessKey.actor.organizationId !== organizationId) {
-      const platformPermissions = await authorization
-        .listPlatformPermissions(user.localUserId)
-        .catch((): readonly string[] => []);
-      if (!platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin)) return null;
-      const organizations = await authorization
-        .listActiveOrganizationsForUser(user.authUserId, organizationId)
-        .catch(() => []);
-      if (!organizations.some((organization) => organization.id === organizationId)) return null;
+    const platformPermissions = await authorization
+      .listPlatformPermissions(user.localUserId)
+      .catch((): readonly string[] => []);
+    if (platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin)) {
+      if (organizationId !== undefined) {
+        const organizations = await authorization
+          .listActiveOrganizationsForUser(user.authUserId, organizationId)
+          .catch(() => []);
+        if (!organizations.some((organization) => organization.id === organizationId)) return null;
+      }
       return {
         actorType: 'user',
         actorId: user.localUserId,
@@ -198,19 +199,11 @@ export async function authorizeDashboardPlatform(
         requestId,
       };
     }
-    const platformPermissions = await authorization
-      .listPlatformPermissions(user.localUserId)
-      .catch((): readonly string[] => []);
-    return {
-      actorType: 'user',
-      actorId: user.localUserId,
-      verifiedAuthUserId: user.authUserId,
-      organizationId: null,
-      permissionSet: new Set(),
-      platformPermissionSet: new Set(platformPermissions),
-      entryPoint: 'dashboard',
-      requestId,
-    };
+    if (organizationId !== undefined && user.accessKey.actor.organizationId !== organizationId) {
+      return null;
+    }
+    // Keep ordinary keys tenant-bound; do not convert them into a platform actor.
+    return user.accessKey.actor;
   }
   let platformPermissions: readonly string[];
   try {
