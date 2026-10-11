@@ -56,6 +56,11 @@ export async function resolveAccessKeyActor(
   const authorization = new DrizzleAuthorizationRepository(database);
   const membership = await authorization.findActiveMembership(identity.organizationId, identity.userId);
   if (membership === null || !membership.roleActive) return null;
+  // A valid access key authenticates its owner. Platform scope is granted only
+  // when the same active owner has an explicit platform.super_admin grant.
+  // Ordinary access keys remain bound to their issuing organization.
+  const platformPermissions = await authorization.listPlatformPermissions(identity.userId).catch((): readonly string[] => []);
+  const isPlatformSuperAdmin = platformPermissions.includes('platform.super_admin');
   const localUser: LocalUserIdentity = {
     id: identity.userId,
     authUserId: identity.authUserId,
@@ -75,7 +80,7 @@ export async function resolveAccessKeyActor(
       verifiedAuthUserId: identity.authUserId,
       organizationId: identity.organizationId,
       permissionSet: new Set(membership.orgPermissions),
-      platformPermissionSet: new Set(membership.platformPermissions),
+      platformPermissionSet: new Set(isPlatformSuperAdmin ? platformPermissions : membership.platformPermissions),
       regionScopeId: membership.regionId ?? null,
       entryPoint: 'dashboard',
       requestId,
