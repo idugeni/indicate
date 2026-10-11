@@ -3,6 +3,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 import type { LocalUserIdentity, MembershipAuthorization } from '@/modules/auth/rbac';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_PLATFORM_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import {
   DrizzleDashboardAccessKeyRepository,
   type DashboardAccessKeyIdentity,
@@ -56,6 +57,11 @@ export async function resolveAccessKeyActor(
   const authorization = new DrizzleAuthorizationRepository(database);
   const membership = await authorization.findActiveMembership(identity.organizationId, identity.userId);
   if (membership === null || !membership.roleActive) return null;
+  // A valid access key authenticates its owner. Platform grants are resolved
+  // from the authoritative platform permission function, independently from
+  // tenant membership grants. Cross-tenant access is still restricted to the
+  // explicit platform.super_admin grant in authorizeDashboardOrganization.
+  const platformPermissions = await authorization.listPlatformPermissions(identity.userId).catch((): readonly string[] => []);
   const localUser: LocalUserIdentity = {
     id: identity.userId,
     authUserId: identity.authUserId,
@@ -75,7 +81,7 @@ export async function resolveAccessKeyActor(
       verifiedAuthUserId: identity.authUserId,
       organizationId: identity.organizationId,
       permissionSet: new Set(membership.orgPermissions),
-      platformPermissionSet: new Set(membership.platformPermissions),
+      platformPermissionSet: new Set(platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin) ? INTEGRATIONS_PLATFORM_PERMISSION_NAMES : platformPermissions),
       regionScopeId: membership.regionId ?? null,
       entryPoint: 'dashboard',
       requestId,

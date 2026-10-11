@@ -54,7 +54,9 @@ function proofResolved(): ResolvedAccessKeyActor {
       verifiedAuthUserId: shared.authUserId,
       organizationId: shared.orgId,
       permissionSet: new Set(membership.orgPermissions),
-      platformPermissionSet: new Set(membership.platformPermissions),
+      platformPermissionSet: new Set(shared.platformPermissions.includes('platform.super_admin')
+        ? ['platform.super_admin', 'platform.customer.admin', 'platform.content.manage', 'platform.ai.manage', 'platform.runtime_config.manage']
+        : membership.platformPermissions),
       regionScopeId: null,
       entryPoint: 'dashboard',
       requestId: 'proof',
@@ -257,7 +259,7 @@ describe('authenticate-dashboard', () => {
     expect(foreign).toBeNull();
   });
 
-  it('membangun aktor platform untuk kedua kondisi', async () => {
+  it('membangun aktor platform dari grant terverifikasi pada sesi dan access key', async () => {
     shared.session = true;
     shared.platformPermissions = ['platform.customer.admin'];
     const sessionUser = (await authenticateDashboardUser(
@@ -281,14 +283,96 @@ describe('authenticate-dashboard', () => {
       shared.orgId,
     );
     expect(keyActor?.platformPermissionSet?.has('platform.customer.admin')).toBe(true);
+    expect(keyActor?.organizationId).toBeNull();
     const foreign = await authorizeDashboardPlatform(
       {} as unknown as Db,
       keyUser,
       'req-1',
       shared.otherOrgId,
     );
-    expect(foreign).toBeNull();
+    expect(foreign?.platformPermissionSet?.has('platform.customer.admin')).toBe(true);
     shared.session = true;
     shared.platformPermissions = [];
+  });
+
+  it('memperluas superadmin access key ke seluruh grant platform terdaftar', async () => {
+    shared.session = false;
+    shared.bearer = true;
+    shared.platformPermissions = ['platform.super_admin'];
+    const user = (await authenticateDashboardUser(
+      {} as unknown as Db,
+      proofStore(),
+      'req-platform-superadmin',
+    )) as DashboardUser;
+    const actor = await authorizeDashboardPlatform(
+      {} as unknown as Db,
+      user,
+      'req-platform-superadmin',
+    );
+    expect(actor?.platformPermissionSet?.has('platform.customer.admin')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.content.manage')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.ai.manage')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.runtime_config.manage')).toBe(true);
+    shared.session = true;
+    shared.platformPermissions = [];
+  });
+
+  it('menolak access key tenant biasa untuk endpoint platform tanpa grant platform', async () => {
+    shared.session = false;
+    shared.bearer = true;
+    shared.platformPermissions = [];
+    const user = (await authenticateDashboardUser(
+      {} as unknown as Db,
+      proofStore(),
+      'req-ordinary-platform-denied',
+    )) as DashboardUser;
+    const actor = await authorizeDashboardPlatform(
+      {} as unknown as Db,
+      user,
+      'req-ordinary-platform-denied',
+    );
+    expect(actor).toBeNull();
+    shared.session = true;
+  });
+
+  it('memberi access key superadmin akses tenant lintas organisasi dan tetap membatasi key biasa', async () => {
+    shared.session = false;
+    shared.bearer = true;
+    shared.platformPermissions = ['platform.super_admin'];
+    shared.accessibleOrganizations = [
+      { id: shared.orgId, name: 'Proof Org' },
+      { id: shared.otherOrgId, name: 'Other Org' },
+    ];
+    const user = (await authenticateDashboardUser(
+      {} as unknown as Db,
+      proofStore(),
+      'req-key-superadmin',
+    )) as DashboardUser;
+    const actor = await authorizeDashboardOrganization(
+      {} as unknown as Db,
+      user,
+      shared.otherOrgId,
+      'req-key-superadmin',
+    );
+    expect(actor?.organizationId).toBe(shared.otherOrgId);
+    expect(actor?.permissionSet.has('article.manage')).toBe(true);
+    expect(actor?.platformPermissionSet?.has('platform.super_admin')).toBe(true);
+
+    shared.platformPermissions = [];
+    const ordinaryUser = (await authenticateDashboardUser(
+      {} as unknown as Db,
+      proofStore(),
+      'req-key-tenant',
+    )) as DashboardUser;
+    const denied = await authorizeDashboardOrganization(
+      {} as unknown as Db,
+      ordinaryUser,
+      shared.otherOrgId,
+      'req-key-tenant',
+    );
+    expect(denied).toBeNull();
+    shared.session = true;
+    shared.platformPermissions = [];
+    shared.accessibleOrganizations = [{ id: shared.orgId, name: 'Proof Org' }];
   });
 });

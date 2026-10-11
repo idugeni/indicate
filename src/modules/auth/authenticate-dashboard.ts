@@ -11,7 +11,7 @@ import {
 import type * as schema from '@/data/schema';
 import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
-import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_PLATFORM_PERMISSION_NAMES, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
 import {
@@ -100,7 +100,20 @@ export async function authorizeDashboardOrganization(
   requestId: string,
 ): Promise<AuthorizedTenantActorContext | null> {
   if (user.accessKey !== null) {
-    return user.accessKey.actor.organizationId === organizationId ? user.accessKey.actor : null;
+    const keyActor = user.accessKey.actor;
+    if (!keyActor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin)) {
+      return keyActor.organizationId === organizationId ? keyActor : null;
+    }
+    const authorization = new DrizzleAuthorizationRepository(database);
+    const organizations = await authorization.listActiveOrganizationsForUser(user.authUserId, organizationId).catch(() => []);
+    if (!organizations.some((organization) => organization.id === organizationId)) return null;
+    return {
+      ...keyActor,
+      organizationId,
+      permissionSet: new Set([...DASHBOARD_PERMISSION_NAMES, ...PUBLISHING_PERMISSION_NAMES, ...INTEGRATIONS_TENANT_PERMISSION_NAMES, INTEGRATIONS_PERMISSIONS.siteSettingsManage]),
+      regionScopeId: null,
+      requestId,
+    };
   }
   const authorization = new DrizzleAuthorizationRepository(database);
   const membership = await authorization
@@ -154,10 +167,20 @@ export async function authorizeDashboardPlatform(
   organizationId?: string,
 ): Promise<ActorContext | null> {
   if (user.accessKey !== null) {
-    if (organizationId !== undefined && user.accessKey.actor.organizationId !== organizationId) {
-      return null;
-    }
-    return user.accessKey.actor;
+    const keyActor = user.accessKey.actor;
+    if (keyActor.actorType !== 'user' || keyActor.verifiedAuthUserId === undefined) return null;
+    if ((keyActor.platformPermissionSet?.size ?? 0) === 0) return null;
+    return {
+      actorType: 'user',
+      actorId: keyActor.actorId,
+      verifiedAuthUserId: keyActor.verifiedAuthUserId,
+      organizationId: null,
+      permissionSet: new Set(),
+      platformPermissionSet: new Set(keyActor.platformPermissionSet),
+      regionScopeId: null,
+      entryPoint: 'dashboard',
+      requestId,
+    };
   }
   const authorization = new DrizzleAuthorizationRepository(database);
   let platformPermissions: readonly string[];
@@ -175,7 +198,7 @@ export async function authorizeDashboardPlatform(
     verifiedAuthUserId: user.authUserId,
     organizationId: null,
     permissionSet: new Set(),
-    platformPermissionSet: new Set(platformPermissions),
+    platformPermissionSet: new Set(platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin) ? INTEGRATIONS_PLATFORM_PERMISSION_NAMES : platformPermissions),
     entryPoint: 'dashboard',
     requestId,
   };

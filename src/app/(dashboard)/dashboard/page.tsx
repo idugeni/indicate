@@ -19,7 +19,7 @@ import { UuidGenerator } from '@/core/system/uuid-generator';
 import { DashboardWorkspace, type OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
 import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
-import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
+import { INTEGRATIONS_PERMISSIONS, INTEGRATIONS_PLATFORM_PERMISSION_NAMES, INTEGRATIONS_TENANT_PERMISSION_NAMES } from '@/modules/integrations/permissions';
 import { buttonVariants } from '@/components/ui/button';
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { RedeemInviteForm } from '@/modules/dashboard/components/billing/redeem-invite-form';
@@ -76,8 +76,9 @@ async function DashboardBody({
   const repository = new DrizzleAuthorizationRepository(runtime.db);
   const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in?auth=inactive');
   const localUser = discovery.value.localUser;
-  const platformPermissions: readonly string[] = await repository.listPlatformPermissions(localUser.id).catch((): readonly string[] => []);
-  const isPlatformSuperAdmin = platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
+  const resolvedPlatformPermissions: readonly string[] = await repository.listPlatformPermissions(localUser.id).catch((): readonly string[] => []);
+  const isPlatformSuperAdmin = resolvedPlatformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
+  const platformPermissions: readonly string[] = isPlatformSuperAdmin ? INTEGRATIONS_PLATFORM_PERMISSION_NAMES : resolvedPlatformPermissions;
   const memberships: ReadonlyMap<string, MembershipAuthorization> = isPlatformSuperAdmin
     ? new Map<string, MembershipAuthorization>()
     : await repository.findActiveMemberships(
@@ -155,17 +156,29 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
   const resolved = await resolveAccessKeyActor(runtime.db, bearer, crypto.randomUUID(), new Date()).catch(() => null);
   if (resolved === null) redirect('/sign-in?auth=required');
   const repository = new DrizzleAuthorizationRepository(runtime.db);
+  const isPlatformSuperAdmin = resolved.actor.platformPermissionSet?.has(INTEGRATIONS_PERMISSIONS.superAdmin) === true;
   const organizationsForUser = await repository.listActiveOrganizationsForUser(resolved.identity.authUserId);
   const bound = organizationsForUser.find(({ id }) => id === resolved.actor.organizationId);
   if (bound === undefined) redirect('/sign-in?auth=inactive');
-  const organizations: readonly OrganizationOption[] = [
-    {
+  const platformAdminTenantPermissions = [
+    ...DASHBOARD_PERMISSION_NAMES,
+    ...PUBLISHING_PERMISSION_NAMES,
+    ...INTEGRATIONS_TENANT_PERMISSION_NAMES,
+    INTEGRATIONS_PERMISSIONS.siteSettingsManage,
+  ];
+  const organizations: readonly OrganizationOption[] = isPlatformSuperAdmin
+    ? organizationsForUser.map(({ id, name }) => ({
+      id,
+      name,
+      role: 'superadmin' as const,
+      permissions: [...platformAdminTenantPermissions, ...(resolved.actor.platformPermissionSet ?? [])],
+    }))
+    : [{
       id: bound.id,
       name: bound.name,
       role: resolved.membership.roleTier,
       permissions: [...resolved.membership.orgPermissions],
-    },
-  ];
+    }];
   const sessionIdentity = {
     authUserId: resolved.identity.authUserId,
     displayName: resolved.displayName,
@@ -175,7 +188,7 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
   const resolvedParams = searchParams === undefined ? undefined : await searchParams;
   const rawView = Array.isArray(resolvedParams?.view) ? resolvedParams?.view[0] : resolvedParams?.view;
   const needsSnapshot = rawView === undefined || rawView === 'dashboard';
-  const initialDashboard = !needsSnapshot
+  const initialDashboard = !needsSnapshot || isPlatformSuperAdmin
     ? null
     : await getDashboardSnapshot(bound.id, sessionIdentity, {
       localUser: resolved.localUser,

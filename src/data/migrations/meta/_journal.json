@@ -1954,6 +1954,13 @@
       "when": 1791586717648,
       "tag": "20261010000000_seo_vercel_gateway_model",
       "breakpoints": true
+    },
+    {
+      "idx": 279,
+      "version": "7",
+      "when": 1791689700000,
+      "tag": "20261011000000_platform_superadmin_permission_implies_all",
+      "breakpoints": true
     }
   ]
 }

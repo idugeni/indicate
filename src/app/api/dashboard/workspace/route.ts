@@ -48,16 +48,6 @@ async function contextFor(organizationId: string, requestId: string, headers: He
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
   if (user === null) return createNonDisclosingDenial(requestId);
-  if (user.accessKey !== null) {
-    if (user.accessKey.actor.organizationId !== organizationId) return createNonDisclosingDenial(requestId);
-    if (isPlatformOnlyWithoutTicket({ orgPermissionCount: user.accessKey.actor.permissionSet.size, platformPermissionCount: user.accessKey.actor.platformPermissionSet?.size ?? 0, headers })) {
-      return createNonDisclosingDenial(requestId);
-    }
-    return {
-      actor: user.accessKey.actor,
-      service: new TenantBusinessService(new DrizzleDashboardRepository(runtime.db), new UuidGenerator(), undefined, undefined, new NextDashboardCacheInvalidator()),
-    };
-  }
   const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId);
   if (actor === null) {
     const deniedActor: AuthorizedTenantActorContext = { actorType: 'user', actorId: user.localUserId, verifiedAuthUserId: user.authUserId, organizationId, permissionSet: new Set(), platformPermissionSet: new Set(), entryPoint: 'dashboard', requestId };
