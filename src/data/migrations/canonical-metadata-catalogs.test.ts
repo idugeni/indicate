@@ -52,3 +52,23 @@ describe('Global taxonomy binding integrity migration', () => {
     expect(taxonomyIntegrityMigration).toContain('EXECUTE FUNCTION indicate_private.sync_category_catalog_binding()');
   });
 });
+
+
+const globalMetadataReadersMigration = readFileSync(
+  join(process.cwd(), 'src', 'data', 'migrations', '20261012170000_global_metadata_readers.sql'),
+  'utf8',
+);
+
+describe('Canonical global metadata readers migration', () => {
+  it('uses article_tags and tag_catalog instead of articles.tags', () => {
+    expect(globalMetadataReadersMigration).toContain('public.article_tags AS at');
+    expect(globalMetadataReadersMigration).toContain('public.tag_catalog AS tc');
+    expect(globalMetadataReadersMigration).not.toMatch(/a\\.tags/);
+  });
+
+  it('resolves category display names through category_catalog', () => {
+    expect(globalMetadataReadersMigration).toContain('public.category_catalog AS cc');
+    expect(globalMetadataReadersMigration).toContain('ARRAY_AGG(cc.name ORDER BY ac.position)');
+    expect(globalMetadataReadersMigration).toContain('cc.slug, cc.name');
+  });
+});
