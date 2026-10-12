@@ -18,7 +18,8 @@ RETURNS TABLE(
   publisher_bio text, publisher_verified boolean, publisher_type text,
   author_display text, author_bio text, author_avatar text, author_url text,
   cover_image_url text, published_at timestamp with time zone,
-  updated_at timestamp with time zone, body text, body_json jsonb
+  updated_at timestamp with time zone, body text, body_json jsonb,
+  lead_media_id uuid
 )
 LANGUAGE sql
 STABLE
@@ -81,7 +82,8 @@ AS $$
     a.published_at,
     a.updated_at,
     a.body,
-    a.body_json
+    a.body_json,
+    a.lead_media_id
   FROM public.articles AS a
   LEFT JOIN public.publishers AS p
     ON p.organization_id = a.organization_id
@@ -99,4 +101,4 @@ $$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (286, 'global_category_delivery', 'sha256:ca1dd9339d03512356bb840d3ecc0006dbbcb376d7630a45b4f88c5de10ff9ce');
+VALUES (286, 'global_category_delivery', 'sha256:5e802d197c25854a5ee65752949eb8af9b7f5ddf60f35733958c3920878168f1');
