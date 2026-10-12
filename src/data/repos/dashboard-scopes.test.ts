@@ -39,6 +39,18 @@ const ACTOR = {
 
 type RecordedSelect = { readonly table: string; readonly projection: readonly string[] };
 
+function renderSqlChunk(chunk: unknown): string {
+  if (typeof chunk === 'string') return chunk;
+  if (typeof chunk !== 'object' || chunk === null) return '?';
+  const record = chunk as Record<string, unknown>;
+  if (Array.isArray(record.queryChunks)) return record.queryChunks.map(renderSqlChunk).join(' ');
+  if ('value' in record) {
+    const value = record.value;
+    return Array.isArray(value) ? value.map((part) => typeof part === 'string' ? part : '?').join('') : '?';
+  }
+  return '?';
+}
+
 function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Promise<readonly unknown[]>) {
   const selections: RecordedSelect[] = [];
   const fromTables: string[] = [];
@@ -79,14 +91,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
         const chunks = (query as { readonly queryChunks?: readonly unknown[]; readonly strings?: readonly string[] }).queryChunks
           ?? (query as { readonly strings?: readonly string[] }).strings;
         if (chunks !== undefined) {
-          text = chunks.map((chunk) => {
-            if (typeof chunk === 'string') return chunk;
-            if (typeof chunk === 'object' && chunk !== null && 'value' in chunk) {
-              const value = (chunk as { readonly value: unknown }).value;
-              return Array.isArray(value) ? value.map((part) => typeof part === 'string' ? part : '?').join('') : '?';
-            }
-            return '?';
-          }).join(' ');
+          text = chunks.map(renderSqlChunk).join(' ');
           executedSql.push(text);
         }
       }
@@ -159,6 +164,16 @@ describe('scoped dashboard reads', () => {
     for (const forbidden of ['media', 'publishingJobs', 'publishingJobTargets', 'siteSettings']) {
       expect(fromTables).not.toContain(forbidden);
     }
+  });
+
+  it('readEditorialScope filters tags through the canonical tenant-scoped relation', async () => {
+    const { repository, executedSql } = scopeHarness({ organizations: ORG, memberships: MEMBER }, async () => []);
+    await repository.readEditorialScope(ACTOR as never, 'article.read', { tag: 'apbd' });
+    const articleQuery = executedSql.find((statement) => statement.includes('FROM articles a') && statement.includes('ORDER BY'));
+    expect(articleQuery).toBeDefined();
+    expect(articleQuery).toContain('FROM article_tags at');
+    expect(articleQuery).toContain('INNER JOIN tag_catalog tc');
+    expect(articleQuery).not.toContain('a.tags @>');
   });
 
   it('readNetworkArticlesScope tidak memuat assignment penuh maupun media', async () => {
@@ -258,5 +273,3 @@ describe('analyticsSummary bounded transfers', () => {
         !/LIMIT/i.test(statement),
     );
     expect(rawJoins).toEqual([]);
-  });
-});
