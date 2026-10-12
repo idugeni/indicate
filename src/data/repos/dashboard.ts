@@ -1216,7 +1216,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         sql`(${lock}::uuid IS NULL OR (a.region_id IS NOT NULL AND (a.region_id = ${lock}::uuid OR a.region_id IN (
           SELECT r.id FROM regions r WHERE r.organization_id = ${organizationId} AND r.parent_region_id = ${lock}::uuid))))`,
         ...(filter.regionId === undefined ? [] : [sql`a.region_id = ${filter.regionId}::uuid`]),
-        ...(filter.categoryId === undefined ? [] : [sql`a.category_id = ${filter.categoryId}::uuid`]),
+        ...(filter.categoryId === undefined ? [] : [sql`EXISTS (SELECT 1 FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id AND ac.category_id = ${filter.categoryId}::uuid)`]),
         ...(filter.publisherId === undefined ? [] : [sql`a.publisher_id = ${filter.publisherId}::uuid`]),
         ...(filter.authorId === undefined ? [] : [sql`a.author_id = ${filter.authorId}::uuid`]),
         ...(filter.status === undefined ? [] : [sql`a.status = ${filter.status}`]),
@@ -1274,8 +1274,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       };
       const [articleRows, totalRows, tagRows, categoryRows, authorRows, publisherRows, regionRows, siteRows, domainRows] = await Promise.all([
         limit === 0 ? [] : transaction.execute<ArticleRow>(sql`
-          SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
-            a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.type, a.is_sponsored,
+          SELECT a.id, a.region_id, a.publisher_id, (SELECT ac.category_id FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS category_id, a.author_id, a.lead_media_id, a.cover_image_url,
+            a.slug, a.title, a.excerpt, a.canonical_url, a.source, (SELECT COALESCE(array_agg(tc.slug ORDER BY at.position), ARRAY[]::text[]) FROM article_tags at INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS tags, a.status, a.type, a.is_sponsored,
             a.video_url, a.audio_url, a.duration_seconds,
             a.published_at, a.scheduled_at,
             a.archived_at, a.version, a.created_at, a.updated_at
@@ -1458,8 +1458,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         published_at: Date | null;
         scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
       }>(sql`
-        SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
-          a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.type, a.is_sponsored,
+        SELECT a.id, a.region_id, a.publisher_id, (SELECT ac.category_id FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS category_id, a.author_id, a.lead_media_id, a.cover_image_url,
+          a.slug, a.title, a.excerpt, a.canonical_url, a.source, (SELECT COALESCE(array_agg(tc.slug ORDER BY at.position), ARRAY[]::text[]) FROM article_tags at INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS tags, a.status, a.type, a.is_sponsored,
           a.published_at, a.scheduled_at,
           a.archived_at, a.version, a.created_at, a.updated_at
         FROM articles a
@@ -1470,7 +1470,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           AND (a.region_id IS NULL OR EXISTS (
             SELECT 1 FROM regions r WHERE r.organization_id = ${organizationId} AND r.id = a.region_id AND r.status = 'active'))
           AND (${filter.regionId ?? null}::uuid IS NULL OR a.region_id = ${filter.regionId ?? null}::uuid)
-          AND (${filter.categoryId ?? null}::uuid IS NULL OR a.category_id = ${filter.categoryId ?? null}::uuid)
+          AND (${filter.categoryId ?? null}::uuid IS NULL OR EXISTS (SELECT 1 FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id AND ac.category_id = ${filter.categoryId ?? null}::uuid))
           AND (${filter.publisherId ?? null}::uuid IS NULL OR a.publisher_id = ${filter.publisherId ?? null}::uuid)
           AND (${filter.authorId ?? null}::uuid IS NULL OR a.author_id = ${filter.authorId ?? null}::uuid)
           AND (${needle} IS NULL OR (a.title ILIKE ${needle} ESCAPE '\\' OR a.source ILIKE ${needle} ESCAPE '\\' OR a.body ILIKE ${needle} ESCAPE '\\'))
