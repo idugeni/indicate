@@ -11,16 +11,18 @@ export function ArticleCategoryLabel({
   categorySlug,
   className,
   style,
+  linked = true,
 }: {
   readonly categoryName: string | null;
   readonly categorySlug: string | null;
   readonly className?: string;
   readonly style?: CSSProperties;
+  readonly linked?: boolean;
 }) {
   const label = categoryName?.trim() || 'Berita';
   const slug = categorySlug?.trim();
 
-  if (!slug) {
+  if (!slug || !linked) {
     return <span className={className} style={style}>{label}</span>;
   }
 
