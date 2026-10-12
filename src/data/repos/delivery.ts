@@ -719,18 +719,19 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    */
   private async readCategories(transaction: Transaction, context: ResolvedSiteContext, limit: number): Promise<readonly SiteCategory[]> {
       const rows = await transaction.select({
-        slug: categories.slug,
-        name: categories.name,
+        slug: categoryCatalog.slug,
+        name: categoryCatalog.name,
         articleCount: sql<number>`count(${articleSites.id})::int`,
         lastUpdatedAt: sql<Date | null>`max(${articles.updatedAt})`,
       })
         .from(categories)
+        .innerJoin(categoryCatalog, and(eq(categoryCatalog.id, categories.catalogId), eq(categoryCatalog.status, 'active')))
         .leftJoin(articleCategories, and(eq(articleCategories.organizationId, categories.organizationId), eq(articleCategories.categoryId, categories.id)))
         .leftJoin(articles, and(eq(articles.organizationId, articleCategories.organizationId), eq(articles.id, articleCategories.articleId), eq(articles.status, 'active')))
         .leftJoin(articleSites, and(eq(articleSites.organizationId, categories.organizationId), eq(articleSites.articleId, articles.id), eq(articleSites.state, 'published'), eq(articleSites.active, true), isNotNull(articleSites.publishedAt), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`))
         .where(and(eq(categories.organizationId, context.organizationId), eq(categories.status, 'active')))
-        .groupBy(categories.slug, categories.name)
-        .orderBy(sql`${categories.name} ASC`)
+        .groupBy(categoryCatalog.slug, categoryCatalog.name)
+        .orderBy(sql`${categoryCatalog.name} ASC`)
         .limit(limit);
       return rows.map((row) => ({ slug: row.slug, name: row.name, articleCount: row.articleCount, lastUpdatedAt: row.lastUpdatedAt === null ? null : iso(row.lastUpdatedAt) }));
   }
@@ -882,6 +883,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         .innerJoin(feedOrigin, and(eq(feedOrigin.organizationId, articleSites.organizationId), eq(feedOrigin.id, articleSites.siteId)))
         .leftJoin(articleCategories, and(eq(articleCategories.organizationId, articles.organizationId), eq(articleCategories.articleId, articles.id), eq(articleCategories.position, 1)))
         .leftJoin(categories, and(eq(categories.organizationId, articleCategories.organizationId), eq(categories.id, articleCategories.categoryId), eq(categories.status, 'active')))
+        .leftJoin(categoryCatalog, and(eq(categoryCatalog.id, categories.catalogId), eq(categoryCatalog.status, 'active')))
         .leftJoin(media, and(eq(media.organizationId, articles.organizationId), eq(media.id, articles.leadMediaId), eq(media.state, 'active')))
         .leftJoin(customMedia, and(eq(customMedia.organizationId, articles.organizationId), eq(customMedia.id, articleSites.customImageMediaId), eq(customMedia.state, 'active')))
         .where(and(eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)))
