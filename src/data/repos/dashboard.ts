@@ -2297,6 +2297,46 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const contentTrusted = row.body !== '' || (row.bodyJson !== null && row.bodyJson !== undefined);
       const hydratedContent = contentTrusted ? { body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null } : {};
       await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+      await transaction.execute(sql`DELETE FROM article_tags WHERE organization_id = ${state.organizationId} AND article_id = ${row.id}`);
+      await transaction.execute(sql`
+        WITH raw_tags AS (
+          SELECT raw_tag, ord
+          FROM unnest(${sqlStringArray(row.tags)}::text[]) WITH ORDINALITY AS u(raw_tag, ord)
+        ),
+        normalized AS (
+          SELECT
+            rtrim(left(trim(both '-' FROM regexp_replace(
+              regexp_replace(regexp_replace(lower(trim(raw_tag)), '[^a-z0-9\\s_-]', '', 'g'),
+                '[\\s_]+', '-', 'g'),
+              '-+', '-', 'g')), 60), '-') AS slug,
+            min(ord)::integer AS position
+          FROM raw_tags
+          WHERE raw_tag ~ '[a-zA-Z0-9]'
+          GROUP BY 1
+        ),
+        valid_tags AS (
+          SELECT slug, position FROM normalized WHERE slug <> ''
+        ),
+        inserted_catalog AS (
+          INSERT INTO tag_catalog (name, slug, status)
+          SELECT slug, slug, 'active'::record_status FROM valid_tags
+          ON CONFLICT (slug) DO NOTHING
+          RETURNING id, slug
+        ),
+        catalog_ids AS (
+          SELECT id, slug FROM inserted_catalog
+          UNION
+          SELECT tc.id, tc.slug
+          FROM tag_catalog tc
+          INNER JOIN valid_tags vt ON vt.slug = tc.slug
+        )
+        INSERT INTO article_tags (organization_id, article_id, tag_id, position)
+        SELECT ${state.organizationId}, ${row.id}, ci.id, vt.position
+        FROM valid_tags vt
+        INNER JOIN catalog_ids ci ON ci.slug = vt.slug
+        ON CONFLICT (organization_id, article_id, tag_id)
+        DO UPDATE SET position = EXCLUDED.position
+      `);
     }
     if (want('articleCategories') && !sameJson(
       [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
