@@ -302,8 +302,8 @@ export function ArticleComposerFields({ state }: { readonly state: ArticleFormSt
               {foreignMediaIds.length === 0 ? null : (
                 <p className="m-0 font-mono text-[11px] text-brass" role="alert">
                   {foreignMediaIds.length === 1
-                    ? '1 gambar milik organisasi lain masih tertanam — tetap tayang via bridge, atau unggah ulang setelah penerbit dipilih.'
-                    : `${foreignMediaIds.length} gambar milik organisasi lain masih tertanam — tetap tayang via bridge, atau unggah ulang setelah penerbit dipilih.`}
+                    ? '1 gambar masih dimiliki organisasi lain. Untuk artikel lintas organisasi, unggah ulang setelah memilih penerbit tujuan.'
+                    : `${foreignMediaIds.length} gambar masih dimiliki organisasi lain. Untuk artikel lintas organisasi, unggah ulang setelah memilih penerbit tujuan.`}
                 </p>
               )}
               {aiAction === 'polish' && polished === '' ? <AiPending label="Memoles alur dan EYD" /> : null}
