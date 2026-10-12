@@ -24389,7 +24389,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, public, indicate_private
-AS $
+AS $$
   SELECT
     a.id,
     a.slug,
@@ -24461,7 +24461,7 @@ AS $
     AND a.id = ANY (requested_article_ids)
     AND a.status = 'active'
     AND a.published_at IS NOT NULL
-$;
+$$;
 REVOKE ALL ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) TO indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
