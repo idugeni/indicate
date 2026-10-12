@@ -876,9 +876,10 @@ describe('loadNetworkFeed', () => {  it('menyertakan body penuh untuk RSS', asyn
 
 
 describe('canonical category slug filtering', () => {
-  it('filters by category_catalog because the listing query joins the canonical catalog', () => {
+  it('filters by any assigned canonical category, not only the primary category', () => {
     const source = readFileSync(join(process.cwd(), 'src', 'data', 'repos', 'delivery.ts'), 'utf8');
-    expect(source).toContain('conditions.push(eq(categoryCatalog.slug, query.categorySlug))');
+    expect(source).toContain('category_filter_catalog.slug = ${query.categorySlug}');
+    expect(source).toContain('category_filter.article_id = ${articles.id}');
     expect(source).not.toContain('conditions.push(eq(categories.slug, query.categorySlug))');
   });
 });
