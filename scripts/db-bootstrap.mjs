@@ -97,6 +97,10 @@ function main() {
   const journal = JSON.parse(readFileSync(JOURNAL_PATH, 'utf8'));
   const entries = [...(journal.entries ?? [])].sort((a, b) => a.idx - b.idx);
   if (entries.length === 0) fail('journal has no entries');
+  const journalTags = new Set(entries.map((entry) => `${entry.tag}.sql`));
+  const unjournaled = readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith('.sql') && !journalTags.has(name));
+  if (unjournaled.length > 0) fail(`migration files missing from journal: ${unjournaled.join(', ')}`);
   const scoped = args.through === null ? entries : entries.slice(0, entries.findIndex((entry) => entry.tag === args.through) + 1);
   if (scoped.length === 0 || (args.through !== null && scoped[scoped.length - 1].tag !== args.through)) {
     fail(`tag not found in journal: ${args.through}`);
