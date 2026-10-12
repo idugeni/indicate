@@ -5,7 +5,6 @@ import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
-import { badgeStyle } from '@/modules/site/components/network/templates/dark-navy/theme';
 import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 import { SectionHeading } from '@/modules/site/components/network/templates/dark-navy/ui/section-heading';
 
@@ -38,9 +37,8 @@ export function DarkNavyLatest({
         ) : null}
       </div>
       <ul className="m-0 mt-2 list-none divide-y divide-[var(--tpl-ring,#1b2c4f)] p-0">
-        {articles.map((article, index) => {
-          const src = articleImage(article);
-          const badge = badgeStyle(index);
+        {articles.map((article) => {
+            const src = articleImage(article);
           return (
             <li key={article.id} className="m-0 flex gap-4 p-0 py-5">
               <Link
