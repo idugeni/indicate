@@ -299,7 +299,7 @@
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
 --   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504
---   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:5b052a879e1259afc5c546271cb6acf8d2bcfda835d6858c28ca2067ad8519e1
+--   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 
 BEGIN;
 
@@ -24353,6 +24353,8 @@ ALTER TABLE public.articles DROP CONSTRAINT IF EXISTS articles_category_fk;
 ALTER TABLE public.articles
   DROP COLUMN category_id,
   DROP COLUMN tags;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (285, 'drop_legacy_article_taxonomy', 'sha256:e36a14bdbcaaeb8405f787e6c944e0eef309c77eade14c9840bb2bb5dac28daa');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5b052a879e1259afc5c546271cb6acf8d2bcfda835d6858c28ca2067ad8519e1', 1791849600000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080', 1791849600000);
 COMMIT;

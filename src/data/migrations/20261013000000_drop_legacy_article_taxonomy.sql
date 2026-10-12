@@ -69,4 +69,6 @@ DROP INDEX IF EXISTS public.articles_tags_gin_idx;
 ALTER TABLE public.articles DROP CONSTRAINT IF EXISTS articles_category_fk;
 ALTER TABLE public.articles
   DROP COLUMN category_id,
-  DROP COLUMN tags;
+  DROP COLUMN tags;--> statement-breakpoint
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (285, 'drop_legacy_article_taxonomy', 'sha256:e36a14bdbcaaeb8405f787e6c944e0eef309c77eade14c9840bb2bb5dac28daa');

@@ -21,6 +21,7 @@ describe('Legacy article taxonomy contraction migration', () => {
     expect(migration).toContain('DROP CONSTRAINT IF EXISTS articles_category_fk');
     expect(migration).toContain('DROP COLUMN category_id');
     expect(migration).toContain('DROP COLUMN tags');
+    expect(migration).toContain("VALUES (285, 'drop_legacy_article_taxonomy'");
     expect(migration).not.toMatch(/DROP TABLE\s+(?:public\.)?(?:categories|article_categories|category_catalog|tag_catalog|article_tags)/i);
   });
 });
