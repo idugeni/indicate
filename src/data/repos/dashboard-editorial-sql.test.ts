@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 
@@ -136,5 +138,15 @@ describe('canonical editorial taxonomy reads', () => {
     expect(captured.some((query) => query.includes('article_tags at') && query.includes('tag_catalog tc'))).toBe(true);
     expect(captured.some((query) => query.includes('a.tags'))).toBe(false);
     expect(captured.some((query) => query.includes('a.category_id ='))).toBe(false);
+  });
+});
+
+
+describe('legacy taxonomy rollback projections', () => {
+  it('keeps category and tag projections synchronized while legacy columns remain', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'data', 'repos', 'dashboard.ts'), 'utf8');
+    expect(source).toContain('categoryId: row.categoryId');
+    expect(source).toContain('tags: [...row.tags]');
+    expect(source).toContain('indicate_private.replace_article_tags');
   });
 });

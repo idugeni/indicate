@@ -140,6 +140,8 @@ export const articles = pgTable('articles', {
   id: uuid('id').notNull(),
   regionId: uuid('region_id'),
   publisherId: uuid('publisher_id'),
+  /** Legacy primary-category projection retained for rollback compatibility until contraction. */
+  categoryId: uuid('category_id'),
   authorId: uuid('author_id'),
   leadMediaId: uuid('lead_media_id'),
   /** External cover URL (e.g. editorial hotlink); used when no R2 media exists. */
