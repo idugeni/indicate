@@ -1,4 +1,3 @@
-import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
 export interface ForOrgPublisherRef {
@@ -47,16 +46,13 @@ export function resolveOwnerOrgSlug(publisherName: string): string {
 }
 
 /**
- * Petakan referensi artikel org operator ke baris setara di org pemilik.
+ * Petakan referensi artikel operator ke metadata yang benar-benar dimiliki tenant tujuan.
  *
- * Kategori yang tidak tersedia pada tenant tujuan menggunakan kategori lokal
- * "Berita". Penulis yang tidak tersedia menggunakan penulis "Redaksi", sama
- * seperti proses pemindahan artikel UPT yang sudah digunakan saat ini. ID dari
- * tenant sumber tidak pernah disimpan di tenant tujuan.
+ * Metadata yang hilang harus disediakan lebih dahulu dalam transaksi penulisan
+ * tenant oleh service pemanggil. Fungsi ini tidak pernah mengganti kategori,
+ * memilih penulis bawaan, atau memakai ID dari tenant sumber.
  *
- * @param reference - Id operator (penerbit terpilih, penulis, kategori, wilayah) plus slug pendampingnya.
- * @param target - Baris org pemilik untuk dicocokkan.
- * @returns Nilai siap tulis di org pemilik, atau field yang benar-benar gagal dipetakan.
+ * @returns Referensi tujuan yang cocok, atau satu field spesifik yang gagal dipetakan.
  */
 export function mapArticleForOrg(
   reference: ForOrgCreateValue & {
@@ -72,40 +68,40 @@ export function mapArticleForOrg(
   if (publisher === undefined) return { ok: false, field: 'publisherId' };
 
   const requestedAuthorName = reference.authorName?.trim() || null;
-  const matchingAuthor = requestedAuthorName === null
-    ? undefined
-    : target.authors.find((candidate) => candidate.status === 'active' && candidate.displayName === requestedAuthorName);
-  const defaultAuthor = target.authors.find(
-    (candidate) => candidate.status === 'active' && candidate.displayName === 'Redaksi',
-  );
-  const author = matchingAuthor ?? defaultAuthor;
-  if (author === undefined) return { ok: false, field: 'authorId' };
+  const author = requestedAuthorName === null
+    ? null
+    : target.authors.find(
+      (candidate) => candidate.status === 'active' && candidate.displayName === requestedAuthorName,
+    );
+  if (requestedAuthorName !== null && author === undefined) return { ok: false, field: 'authorId' };
 
-  const activeCategories = target.categories.filter((candidate) => candidate.status === 'active');
-  const defaultCategory = activeCategories.find((candidate) => candidate.slug === DEFAULT_CATEGORY_SLUG);
-  const categoriesBySlug = new Map(activeCategories.map((category) => [category.slug, category.id] as const));
+  const categoriesBySlug = new Map(
+    target.categories
+      .filter((candidate) => candidate.status === 'active')
+      .map((category) => [category.slug, category.id] as const),
+  );
   const categoryIds: string[] = [];
   for (const slug of new Set(reference.categorySlugs)) {
-    const categoryId = categoriesBySlug.get(slug) ?? defaultCategory?.id;
+    const categoryId = categoriesBySlug.get(slug);
     if (categoryId === undefined) return { ok: false, field: 'categoryIds' };
     if (!categoryIds.includes(categoryId)) categoryIds.push(categoryId);
   }
 
-  const region =
-    reference.regionSlug === null
-      ? null
-      : target.regions.find((candidate) => candidate.status === 'active' && candidate.slug === reference.regionSlug);
+  const region = reference.regionSlug === null
+    ? null
+    : target.regions.find(
+      (candidate) => candidate.status === 'active' && candidate.slug === reference.regionSlug,
+    );
   if (reference.regionSlug !== null && region === undefined) return { ok: false, field: 'regionId' };
-  const regionId = region?.id ?? null;
 
   return {
     ok: true,
     value: {
       ownerOrgSlug: resolveOwnerOrgSlug(reference.publisherName),
       publisherId: publisher.id,
-      authorId: author.id,
+      authorId: author?.id ?? null,
       categoryIds,
-      regionId,
+      regionId: region?.id ?? null,
     },
   };
 }
