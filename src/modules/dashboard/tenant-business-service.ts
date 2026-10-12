@@ -9,7 +9,7 @@ import type {
 } from '@/modules/dashboard/models';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
-import { mapArticleForOrg, resolveOwnerOrgSlug } from '@/modules/dashboard/for-org-create';
+import { mapArticleForOrg, resolveOwnerOrgSlug, resolveRegionCanonicalKey, type ForOrgMappingField } from '@/modules/dashboard/for-org-create';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   buildNetworkPublisherClaim,
@@ -1095,6 +1095,27 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       return { ok: false, error: createPublicError('INVALID_INPUT', 'Penerbit yang dipilih tidak aktif atau tidak tersedia.', actor.requestId, { publisherId: ['Pilih penerbit aktif yang tersedia.'] }) };
     }
 
+    // The requested owner must match the organization derived from the selected
+    // publisher mirror. Never create the article under an unrelated tenant.
+    let resolvedOwnerId: string | null;
+    try {
+      resolvedOwnerId = await this.repository.findOrganizationBySlug(actor, resolveOwnerOrgSlug(publisher.name));
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.create', 'article');
+      return this.internal(actor, error, 'dashboard.query.failed', 'article.create.owner-identity', 'article', DASHBOARD_PERMISSIONS.articleRead);
+    }
+    if (resolvedOwnerId === null || resolvedOwnerId !== ownerOrgId) {
+      return {
+        ok: false,
+        error: createPublicError(
+          'INVALID_INPUT',
+          'Penerbit yang dipilih tidak mengidentifikasi organisasi tujuan yang diminta.',
+          actor.requestId,
+          { publisherId: ['Pilih penerbit yang terhubung ke organisasi tujuan yang benar.'] },
+        ),
+      };
+    }
+
     const { ownerOrganizationId, ...rest } = parsed.data;
     void ownerOrganizationId;
     const categorySlugs: string[] = [];
@@ -1103,16 +1124,19 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       if (category === undefined) {
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Kategori tidak valid untuk organisasi sumber.', actor.requestId, { categoryIds: ['Muat ulang kategori lalu pilih ulang.'] }) };
       }
-      categorySlugs.push(category.slug);
+      if (!categorySlugs.includes(category.slug)) categorySlugs.push(category.slug);
     }
 
-    let regionSlug: string | null = null;
+    let regionKey: string | null = null;
     if (rest.regionId !== null) {
       const region = scope.regions.find((candidate) => candidate.id === rest.regionId && candidate.status === 'active');
       if (region === undefined) {
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Wilayah tidak valid untuk organisasi sumber.', actor.requestId, { regionId: ['Muat ulang wilayah lalu pilih ulang.'] }) };
       }
-      regionSlug = region.slug;
+      regionKey = resolveRegionCanonicalKey(region, scope.regions);
+      if (regionKey === null) {
+        return { ok: false, error: createPublicError('INVALID_INPUT', 'Identitas kanonis wilayah tidak valid.', actor.requestId, { regionId: ['Muat ulang wilayah lalu pilih ulang.'] }) };
+      }
     }
 
     const selectedAuthor = rest.authorId === null
@@ -1125,7 +1149,12 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const ownerActor = this.platformOwnerActor(actor, ownerOrgId);
     try {
       const record = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
-        const mapped = mapArticleForOrg(
+        const now = this.clock.now().toISOString();
+
+        // Cross-organization creation may map only metadata already available
+        // in the destination tenant. Never clone categories or authors from the
+        // source tenant as an implicit side effect of creating an article.
+        const mapping = mapArticleForOrg(
           {
             publisherId: rest.publisherId,
             authorId: rest.authorId,
@@ -1134,17 +1163,22 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
             regionId: rest.regionId,
             publisherName: publisher.name,
             categorySlugs,
-            regionSlug,
+            regionKey,
           },
           transaction.state,
         );
-        if (mapped === null) {
-          throw new DashboardValidationError({
-            publisherId: ['Penerbit tidak tersedia di organisasi tujuan.'],
-            ...(selectedAuthor !== null ? { authorId: ['Penulis dengan nama yang dipilih tidak tersedia di organisasi tujuan.'] } : {}),
-            ...(categorySlugs.length > 0 ? { categoryIds: ['Satu atau beberapa kategori tidak tersedia di organisasi tujuan.'] } : {}),
-            ...(regionSlug !== null ? { regionId: ['Wilayah tidak tersedia di organisasi tujuan.'] } : {}),
-          });
+        if (!mapping.ok) {
+          const mappingMessages: Record<ForOrgMappingField, string> = {
+            publisherId: 'Penerbit tidak tersedia di organisasi tujuan.',
+            authorId: 'Penulis tidak tersedia di organisasi tujuan.',
+            categoryIds: 'Kategori tidak tersedia di organisasi tujuan.',
+            regionId: 'Wilayah tidak tersedia di organisasi tujuan.',
+          };
+          throw new DashboardValidationError({ [mapping.field]: [mappingMessages[mapping.field]] });
+        }
+        const mapped = mapping.value;
+        if (mapped.categoryIds.length === 0) {
+          throw new DashboardValidationError({ categoryIds: ['Pilih minimal satu kategori sebelum menyimpan artikel lintas organisasi.'] });
         }
         return this.insertArticleRecord(
           transaction,
@@ -1156,14 +1190,14 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
             categoryIds: mapped.categoryIds,
             regionId: mapped.regionId,
           },
-          this.clock.now().toISOString(),
+          now,
         );
       }, ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites']);
       await this.invalidateActorOrganization(actor, 'createArticleForOwnerOrg');
       await this.invalidateActorOrganization(ownerActor, 'createArticleForOwnerOrg');
       return { ok: true, value: record } as const;
     } catch (error) {
-      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Periksa kembali penerbit, penulis, kategori, wilayah, dan media untuk organisasi tujuan.', actor.requestId, error.fields) };
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Metadata yang ditandai tidak tersedia atau tidak aktif di organisasi tujuan.', actor.requestId, error.fields) };
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.create', 'article');
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan organisasi tujuan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };

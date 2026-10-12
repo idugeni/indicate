@@ -85,11 +85,25 @@ export const publishers = pgTable('publishers', {
   check('publishers_version_positive', sql`${table.version} > 0`),
 ]);
 
+export const categoryCatalog = pgTable('category_catalog', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  status: recordStatus('status').default('active').notNull(),
+  version: integer('version').default(1).notNull(),
+  ...timestamps,
+}, (table) => [
+  unique('category_catalog_slug_unique').on(table.slug),
+  index('category_catalog_status_idx').on(table.status),
+  check('category_catalog_version_positive', sql`${table.version} > 0`),
+]);
+
 export const categories = pgTable('categories', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   id: uuid('id').notNull(),
   name: text('name').notNull(),
   slug: text('slug').notNull(),
+  catalogId: uuid('catalog_id').notNull().defaultRandom().references(() => categoryCatalog.id, { onDelete: 'restrict' }),
   status: recordStatus('status').default('active').notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
@@ -97,6 +111,8 @@ export const categories = pgTable('categories', {
   primaryKey({ name: 'categories_pk', columns: [table.organizationId, table.id] }),
   unique('categories_id_unique').on(table.id),
   unique('categories_organization_slug_unique').on(table.organizationId, table.slug),
+  unique('categories_organization_catalog_unique').on(table.organizationId, table.catalogId),
+  index('categories_catalog_id_idx').on(table.catalogId),
   index('categories_organization_status_idx').on(table.organizationId, table.status),
 ]);
 
@@ -234,6 +250,19 @@ export const portalAssignments = pgTable('portal_assignments', {
   check('portal_assignments_view_count_nonnegative', sql`${table.viewCount} >= 0`),
 ]);
 
+export const tagCatalog = pgTable('tag_catalog', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  status: recordStatus('status').default('active').notNull(),
+  version: integer('version').default(1).notNull(),
+  ...timestamps,
+}, (table) => [
+  unique('tag_catalog_slug_unique').on(table.slug),
+  index('tag_catalog_status_idx').on(table.status),
+  check('tag_catalog_version_positive', sql`${table.version} > 0`),
+]);
+
 export const articleCategories = pgTable('article_categories', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   articleId: uuid('article_id').notNull(),
@@ -245,6 +274,20 @@ export const articleCategories = pgTable('article_categories', {
   foreignKey({ name: 'article_categories_category_fk', columns: [table.organizationId, table.categoryId], foreignColumns: [categories.organizationId, categories.id] }).onDelete('restrict'),
   index('article_categories_category_idx').on(table.organizationId, table.categoryId),
   check('article_categories_position_positive', sql`${table.position} >= 1`),
+]);
+
+export const articleTags = pgTable('article_tags', {
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
+  articleId: uuid('article_id').notNull(),
+  tagId: uuid('tag_id').notNull().references(() => tagCatalog.id, { onDelete: 'restrict' }),
+  position: integer('position').notNull(),
+}, (table) => [
+  primaryKey({ name: 'article_tags_pk', columns: [table.organizationId, table.articleId, table.tagId] }),
+  foreignKey({ name: 'article_tags_organization_fk', columns: [table.organizationId], foreignColumns: [organizations.id] }).onDelete('restrict'),
+  unique('article_tags_organization_article_position_unique').on(table.organizationId, table.articleId, table.position),
+  foreignKey({ name: 'article_tags_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('cascade'),
+  index('article_tags_tag_idx').on(table.tagId, table.organizationId),
+  check('article_tags_position_positive', sql`${table.position} >= 1`),
 ]);
 
 /**

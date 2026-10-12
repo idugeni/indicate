@@ -542,7 +542,12 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), scope, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
       if (query.categorySlug !== undefined) conditions.push(eq(categories.slug, query.categorySlug));
-      if (query.tag !== undefined) conditions.push(sql`${articles.tags} @> ARRAY[${query.tag}]::text[]`);
+      if (query.tag !== undefined) conditions.push(sql`EXISTS (
+        SELECT 1 FROM article_tags at
+        INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active'
+        WHERE at.organization_id = ${articles.organizationId}
+          AND at.article_id = ${articles.id}
+          AND tc.slug = ${query.tag})`);
       if (query.search !== undefined) conditions.push(or(sql`${articles.title} ILIKE ${`%${query.search}%`}`, sql`${articles.body} ILIKE ${`%${query.search}%`}`)!);
       const customMedia = aliasedTable(media, 'custom_media');
       const originSite = aliasedTable(sites, 'origin_site');

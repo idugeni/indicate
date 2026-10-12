@@ -169,6 +169,26 @@ export const domains = pgTable('domains', {
   check('domains_versions_positive', sql`${table.routingVersion} > 0 AND ${table.version} > 0`),
 ]);
 
+export const regionCatalog = pgTable('region_catalog', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  canonicalKey: text('canonical_key').notNull(),
+  name: text('name').notNull(),
+  shortName: text('short_name'),
+  slug: text('slug').notNull(),
+  kind: text('kind').notNull(),
+  parentRegionId: uuid('parent_region_id'),
+  status: recordStatus('status').default('active').notNull(),
+  version: integer('version').default(1).notNull(),
+  ...timestamps,
+}, (table) => [
+  unique('region_catalog_canonical_key_unique').on(table.canonicalKey),
+  index('region_catalog_status_idx').on(table.status),
+  check('region_catalog_version_positive', sql`${table.version} > 0`),
+  check('region_catalog_kind_check', sql`${table.kind} IN ('region', 'city')`),
+  check('region_catalog_parent_kind_check', sql`(${table.kind} = 'city') = (${table.parentRegionId} IS NOT NULL)`),
+  check('region_catalog_slug_shape', sql`${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
+]);
+
 export const regions = pgTable('regions', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   id: uuid('id').notNull(),
@@ -177,6 +197,7 @@ export const regions = pgTable('regions', {
   /** Familiar public label for dense UI (Jateng, Jabar); null falls back to `name`. */
   shortName: text('short_name'),
   slug: text('slug').notNull(),
+  catalogId: uuid('catalog_id').notNull().defaultRandom().references(() => regionCatalog.id, { onDelete: 'restrict' }),
   status: recordStatus('status').default('active').notNull(),
   kind: regionKind('kind').default('region').notNull(),
   parentRegionId: uuid('parent_region_id'),
@@ -187,6 +208,8 @@ export const regions = pgTable('regions', {
   unique('regions_id_unique').on(table.id),
   unique('regions_organization_external_key_unique').on(table.organizationId, table.externalKey),
   unique('regions_organization_slug_unique').on(table.organizationId, table.slug),
+  unique('regions_organization_catalog_unique').on(table.organizationId, table.catalogId),
+  index('regions_catalog_id_idx').on(table.catalogId),
   index('regions_organization_status_idx').on(table.organizationId, table.status),
   index('regions_parent_idx').on(table.organizationId, table.parentRegionId),
   foreignKey({ name: 'regions_parent_fk', columns: [table.organizationId, table.parentRegionId], foreignColumns: [table.organizationId, table.id] }).onDelete('restrict'),

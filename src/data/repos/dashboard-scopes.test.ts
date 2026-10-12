@@ -8,6 +8,7 @@ import {
   auditLogs,
   authors,
   categories,
+  categoryCatalog,
   domains,
   media,
   memberships,
@@ -16,6 +17,7 @@ import {
   publishers,
   publishingJobs,
   publishingJobTargets,
+  regionCatalog,
   regions,
   rolePermissions,
   roles,
@@ -35,14 +37,27 @@ const ACTOR = {
 
 type RecordedSelect = { readonly table: string; readonly projection: readonly string[] };
 
+function renderSqlChunk(chunk: unknown): string {
+  if (typeof chunk === 'string') return chunk;
+  if (typeof chunk !== 'object' || chunk === null) return '?';
+  const record = chunk as Record<string, unknown>;
+  if (Array.isArray(record.queryChunks)) return record.queryChunks.map(renderSqlChunk).join(' ');
+  if ('value' in record) {
+    const value = record.value;
+    return Array.isArray(value) ? value.map((part) => typeof part === 'string' ? part : '?').join('') : '?';
+  }
+  return '?';
+}
+
 function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Promise<readonly unknown[]>) {
   const selections: RecordedSelect[] = [];
   const fromTables: string[] = [];
+  const joinedTables: string[] = [];
   const executedSql: string[] = [];
   const nameOf = new Map<unknown, string>(
     Object.entries({
       organizations, domains, regions, sites, siteSettings, roles, rolePermissions, memberships,
-      publishers, officialAffiliations, categories, authors, articles, articleCategories, articleSites,
+      publishers, officialAffiliations, categories, categoryCatalog, authors, articles, articleCategories, regionCatalog, articleSites,
       media, publishingJobs, publishingJobTargets, auditLogs,
     }).map(([name, table]) => [table, name]),
   );
@@ -60,6 +75,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
           selections.push({ table, projection: pendingProjection });
           rows = results[table] ?? [];
         }
+        if (method === 'innerJoin') joinedTables.push(nameOf.get(args[0]) ?? 'unknown');
         if (method === 'limit') return chain;
         return chain;
       };
@@ -73,18 +89,12 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
         const chunks = (query as { readonly queryChunks?: readonly unknown[]; readonly strings?: readonly string[] }).queryChunks
           ?? (query as { readonly strings?: readonly string[] }).strings;
         if (chunks !== undefined) {
-          text = chunks.map((chunk) => {
-            if (typeof chunk === 'string') return chunk;
-            if (typeof chunk === 'object' && chunk !== null && 'value' in chunk) {
-              const value = (chunk as { readonly value: unknown }).value;
-              return Array.isArray(value) ? value.map((part) => typeof part === 'string' ? part : '?').join('') : '?';
-            }
-            return '?';
-          }).join(' ');
+          text = chunks.map(renderSqlChunk).join(' ');
           executedSql.push(text);
         }
       }
       if (text.includes('subscription_access_state')) return [{ state: 'active' }];
+      if (text.includes('FROM article_tags at')) return results.articleTags ?? [];
       if (executeImpl !== undefined) return executeImpl();
       return [{ user_id: 'u-1', display_name: 'Operator', avatar_url: null }];
     },
@@ -95,7 +105,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
   };
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
   const repository = new DrizzleDashboardRepository(database as never);
-  return { repository, selections, fromTables, executedSql };
+  return { repository, selections, fromTables, joinedTables, executedSql };
 }
 
 const ORG = [{ id: 'org-1', name: 'Org' }];
@@ -122,8 +132,8 @@ describe('scoped dashboard reads', () => {
     expect(fromTables).toContain('officialAffiliations');
   });
 
-  it('readTaxonomyScope memproyeksikan artikel tanpa body', async () => {
-    const { repository, selections } = scopeHarness({ memberships: MEMBER });
+  it('readTaxonomyScope uses normalized global tag relations and projects articles without body', async () => {
+    const { repository, selections, joinedTables, executedSql } = scopeHarness({ memberships: MEMBER });
     await repository.readTaxonomyScope(ACTOR as never, 'article.read');
     const articleSelections = selections.filter((selection) => selection.table === 'articles');
     expect(articleSelections.length).toBeGreaterThan(0);
@@ -131,7 +141,12 @@ describe('scoped dashboard reads', () => {
       expect(selection.projection).not.toContain('body');
       expect(selection.projection).not.toContain('bodyJson');
       expect(selection.projection).not.toContain('title');
+      expect(selection.projection).not.toContain('tags');
     }
+    expect(executedSql.some((statement) => statement.includes('FROM article_tags at'))).toBe(true);
+    expect(executedSql.some((statement) => statement.includes('INNER JOIN tag_catalog tc'))).toBe(true);
+    expect(joinedTables).toContain('categoryCatalog');
+    expect(joinedTables).toContain('regionCatalog');
   });
 
   it('readEditorialScope memproyeksikan artikel tanpa body dan melewatkan koleksi berat', async () => {
@@ -148,6 +163,16 @@ describe('scoped dashboard reads', () => {
     for (const forbidden of ['media', 'publishingJobs', 'publishingJobTargets', 'siteSettings']) {
       expect(fromTables).not.toContain(forbidden);
     }
+  });
+
+  it('readEditorialScope filters tags through the canonical tenant-scoped relation', async () => {
+    const { repository, executedSql } = scopeHarness({ organizations: ORG, memberships: MEMBER }, async () => []);
+    await repository.readEditorialScope(ACTOR as never, 'article.read', { tag: 'apbd' });
+    const articleQuery = executedSql.find((statement) => statement.includes('FROM articles a') && statement.includes('ORDER BY'));
+    expect(articleQuery).toBeDefined();
+    expect(articleQuery).toContain('FROM article_tags at');
+    expect(articleQuery).toContain('INNER JOIN tag_catalog tc');
+    expect(articleQuery).not.toContain('a.tags @>');
   });
 
   it('readNetworkArticlesScope tidak memuat assignment penuh maupun media', async () => {

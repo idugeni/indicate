@@ -143,4 +143,121 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
     expect(recordDenied).toHaveBeenCalledWith(expect.objectContaining({ requestId: 'cross-org-test' }), 'article.create', 'article');
   });
 
+
+
+  it('rejects missing destination metadata without cloning source categories or authors', async () => {
+    const PLATFORM_ORG = '10000000-0000-4000-8000-000000000001';
+    const TARGET_ORG = '10000000-0000-4000-8000-000000000002';
+    const SOURCE_PUBLISHER = '10000000-0000-4000-8000-000000000003';
+    const SOURCE_AUTHOR = '10000000-0000-4000-8000-000000000004';
+    const SOURCE_CATEGORY = '10000000-0000-4000-8000-000000000005';
+    const SOURCE_REGION = '10000000-0000-4000-8000-000000000006';
+    const SOURCE_PROVINCE = '10000000-0000-4000-8000-000000000012';
+    const TARGET_PUBLISHER = '10000000-0000-4000-8000-000000000007';
+    const TARGET_PROVINCE = '10000000-0000-4000-8000-000000000008';
+    const TARGET_CITY = '10000000-0000-4000-8000-000000000009';
+    const TARGET_CATEGORY = '10000000-0000-4000-8000-000000000010';
+    const TARGET_AUTHOR = '10000000-0000-4000-8000-000000000011';
+    const generated = [
+      '40000000-0000-4000-8000-000000000001',
+      '40000000-0000-4000-8000-000000000002',
+      '40000000-0000-4000-8000-000000000003',
+    ];
+    let generatedIndex = 0;
+    const identifiers = { create: () => generated[generatedIndex++] ?? '40000000-0000-4000-8000-000000000099' };
+    const now = '2026-10-12T08:00:00.000Z';
+    const targetState = {
+      organizationId: TARGET_ORG,
+      organizationName: 'RUTAN KELAS II B WONOSOBO',
+      domains: [],
+      regions: [
+        { id: TARGET_PROVINCE, organizationId: TARGET_ORG, externalKey: 'jawa-tengah', name: 'Jawa Tengah', shortName: 'Jateng', slug: 'jawa-tengah', status: 'active', kind: 'region', parentRegionId: null, version: 1, createdAt: now, updatedAt: now },
+        { id: TARGET_CITY, organizationId: TARGET_ORG, externalKey: 'wonosobo', name: 'Wonosobo', shortName: null, slug: 'wonosobo', status: 'active', kind: 'city', parentRegionId: TARGET_PROVINCE, version: 1, createdAt: now, updatedAt: now },
+      ],
+      sites: [],
+      siteSettings: [],
+      roles: [],
+      memberships: [],
+      publishers: [
+        { id: TARGET_PUBLISHER, organizationId: TARGET_ORG, name: 'RUTAN KELAS II B WONOSOBO', status: 'active', version: 1, createdAt: now, updatedAt: now },
+      ],
+      affiliations: [],
+      categories: [
+        { id: TARGET_CATEGORY, organizationId: TARGET_ORG, name: 'Berita', slug: 'berita', status: 'active', version: 1, createdAt: now, updatedAt: now },
+      ],
+      authors: [
+        { id: TARGET_AUTHOR, organizationId: TARGET_ORG, displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active', version: 1, createdAt: now, updatedAt: now },
+      ],
+      articles: [],
+      articleCategories: [],
+      articleSites: [],
+      media: [],
+      publishingJobs: [],
+    };
+    const audits: unknown[] = [];
+    const transaction = {
+      state: targetState,
+      appendAudit: (event: unknown) => audits.push(event),
+      resolveUserDisplayName: async () => 'Administrator Platform',
+      refreshArticleContent: async () => false,
+      articleContentTouched: new Set<string>(),
+    };
+    const readEditorialScope = vi.fn(async () => ({
+      publishers: [{ id: SOURCE_PUBLISHER, name: 'RUTAN KELAS II B WONOSOBO', status: 'active' }],
+      categories: [{ id: SOURCE_CATEGORY, name: 'Keamanan dan Ketertiban', slug: 'keamanan-dan-ketertiban', status: 'active' }],
+      authors: [{ id: SOURCE_AUTHOR, displayName: 'Humas Rutan', byline: 'Humas Rutan Wonosobo', status: 'active' }],
+      regions: [
+        { id: SOURCE_PROVINCE, name: 'Jawa Tengah', slug: 'jawa-tengah', status: 'active', kind: 'region', parentRegionId: null },
+        { id: SOURCE_REGION, name: 'Wonosobo', slug: 'wonosobo', status: 'active', kind: 'city', parentRegionId: SOURCE_PROVINCE },
+      ],
+    }));
+    const execute = vi.fn(async () => { throw new Error('cross-org write must not use active org'); });
+    const findOrganizationBySlug = vi.fn(async (_ownerActor: unknown, slug: string) => {
+      expect(slug).toBe('rutan-kelas-ii-b-wonosobo');
+      return TARGET_ORG;
+    });
+    const executeForOrganization = vi.fn(async (_ownerActor: unknown, ownerId: string, operation: (tx: unknown) => unknown) => {
+      expect(ownerId).toBe(TARGET_ORG);
+      return operation(transaction);
+    });
+    const service = new TenantBusinessService({
+      readEditorialScope,
+      findOrganizationBySlug,
+      execute,
+      executeForOrganization,
+    } as never, identifiers);
+
+    const result = await service.createArticle(
+      actor({
+        organizationId: PLATFORM_ORG,
+        permissionSet: new Set(['article.read', 'article.manage']),
+        platformPermissionSet: new Set([INTEGRATIONS_PERMISSIONS.superAdmin]),
+      }),
+      {
+        ownerOrganizationId: TARGET_ORG,
+        regionId: SOURCE_REGION,
+        publisherId: SOURCE_PUBLISHER,
+        categoryIds: [SOURCE_CATEGORY],
+        authorId: SOURCE_AUTHOR,
+        slug: 'pengamanan-blok-hunian',
+        title: 'Pengamanan Blok Hunian Rutan Wonosobo',
+        body: 'Petugas melaksanakan pengamanan blok hunian secara teratur.',
+        source: 'Humas Rutan Wonosobo',
+        status: 'draft',
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected missing destination author/category to be rejected');
+    expect(JSON.stringify(result.error)).toContain('authorId');
+    expect(execute).not.toHaveBeenCalled();
+    expect(executeForOrganization).toHaveBeenCalledTimes(1);
+    expect(targetState.categories).toHaveLength(1);
+    expect(targetState.categories[0]?.slug).toBe('berita');
+    expect(targetState.authors).toHaveLength(1);
+    expect(targetState.authors[0]?.displayName).toBe('Redaksi');
+    expect(targetState.articles).toHaveLength(0);
+    expect(audits).toEqual([]);
+  });
+
 });

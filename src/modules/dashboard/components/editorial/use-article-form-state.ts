@@ -180,11 +180,13 @@ export function useArticleFormState({
   const coverRemoteRef = useRef<{ readonly url: string; readonly mimeType: string } | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryItems, setLibraryItems] = useState<readonly CoverLibraryItem[] | null>(null);
+  const [libraryOrganizationId, setLibraryOrganizationId] = useState<string | null>(null);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryQuery, setLibraryQuery] = useState('');
   const [libraryShown, setLibraryShown] = useState(LIBRARY_PAGE);
   const [libraryPreviews, setLibraryPreviews] = useState<Readonly<Record<string, string>>>({});
+  const libraryOwnerRequest = useRef<string | null>(null);
   const libraryAuthInFlight = useRef<Set<string>>(new Set());
   const libraryExpiry = useRef<ReadonlyMap<string, number>>(new Map());
   const librarySearchInputId = useId();
@@ -323,6 +325,15 @@ export function useArticleFormState({
   /** Mode ubah tidak pernah menerapkan penulis bawaan; nilai awal adalah kebenaran. */
   const touchedAuthor = useRef(isEditing);
 
+  const selectedPublisher = useMemo(
+    () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
+    [model?.publishers, publisherId],
+  );
+  const effectiveOwnerOrg = ownerOrganizationId ?? selectedPublisher?.ownerOrganizationId ?? null;
+  const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
+
+  const effectiveArticleOrg = foreignOwnerOrg ?? (organizationId === '' ? '' : organizationId);
+
   useEffect(() => {
     if (!touchedAuthor.current && publisherId === null && authorId === null && defaultAuthorId !== null) {
       setAuthorId(defaultAuthorId);
@@ -341,7 +352,10 @@ export function useArticleFormState({
     coverPreviewRequested.current = true;
     void (async () => {
       try {
-        const result = (await command('media.readMany', { mediaIds: [mediaId] })) as {
+        const result = (await command('media.readMany', {
+          mediaIds: [mediaId],
+          ...(effectiveArticleOrg !== '' && effectiveArticleOrg !== organizationId ? { ownerOrganizationId: effectiveArticleOrg } : {}),
+        })) as {
           readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown }[];
         } | null;
         const url = result?.items?.find((item) => item?.mediaId === mediaId)?.url;
@@ -350,7 +364,7 @@ export function useArticleFormState({
         /* Pratinjau sampul best-effort; id media tetap tersimpan. */
       }
     })();
-  }, [isEditing, initialArticle, command, featuredId, featuredPreviewUrl]);
+  }, [isEditing, initialArticle, command, featuredId, featuredPreviewUrl, effectiveArticleOrg, organizationId]);
 
   /**
    * Lengkapi nama/versi/alt/caption sampul artikel yang diubah dari pustaka.
@@ -398,14 +412,20 @@ export function useArticleFormState({
     [articleType, bodyText, bodyJsonDraft, featuredId, coverUrl, videoUrl, audioUrl],
   );
 
-  const selectedPublisher = useMemo(
-    () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
-    [model?.publishers, publisherId],
-  );
-  const effectiveOwnerOrg = ownerOrganizationId ?? selectedPublisher?.ownerOrganizationId ?? null;
-  const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
+  const mediaLibraryOwnerOrg = effectiveArticleOrg === '' ? organizationId : effectiveArticleOrg;
 
-  const effectiveArticleOrg = foreignOwnerOrg ?? (organizationId === '' ? '' : organizationId);
+  useEffect(() => {
+    if (libraryOwnerRequest.current === null || libraryOwnerRequest.current === mediaLibraryOwnerOrg) return;
+    libraryOwnerRequest.current = null;
+    setLibraryOpen(false);
+    setLibraryItems(null);
+    setLibraryOrganizationId(null);
+    setLibraryLoading(false);
+    setLibraryError(null);
+    setLibraryPreviews({});
+    setLibraryShown(LIBRARY_PAGE);
+    setLibraryQuery('');
+  }, [mediaLibraryOwnerOrg]);
 
   /**
    * Catat org tiap gambar inline dan ingatkan bila penerbit belum dipilih.
@@ -414,9 +434,11 @@ export function useArticleFormState({
    * @param ownerOrg - Org target unggahan (null = org sesi saat itu).
    */
   const handleInlineStored = (mediaId: string, ownerOrg: string | null): void => {
-    setInlineMediaOrgs((prev) => (prev[mediaId] === (ownerOrg ?? organizationId) ? prev : { ...prev, [mediaId]: ownerOrg }));
+    // Null from the uploader means the active tenant, not an unknown owner.
+    const actualOwnerOrg = ownerOrg ?? (organizationId === '' ? null : organizationId);
+    setInlineMediaOrgs((prev) => (prev[mediaId] === actualOwnerOrg ? prev : { ...prev, [mediaId]: actualOwnerOrg }));
     if (publisherId === null || publisherId === '') {
-      toast.warning('Penerbit belum dipilih — gambar masuk organisasi aktif. Memilih penerbit beda org nanti memicu peringatan.');
+      toast.warning('Penerbit belum dipilih — gambar masuk organisasi aktif. Jika nanti memilih penerbit organisasi lain, unggah ulang gambar setelah penerbit tujuan dipilih.');
     }
   };
 
@@ -713,19 +735,30 @@ export function useArticleFormState({
       toast.error('Pustaka media tidak tersedia di pratinjau.');
       return;
     }
+    const mediaOwnerOrg = effectiveArticleOrg === '' ? organizationId : effectiveArticleOrg;
     setLibraryOpen((open) => !open);
-    if (libraryItems !== null || libraryLoading) return;
+    if (libraryItems !== null && libraryOrganizationId === mediaOwnerOrg) return;
+    if (libraryLoading && libraryOwnerRequest.current === mediaOwnerOrg) return;
+
+    libraryOwnerRequest.current = mediaOwnerOrg;
+    setLibraryItems(null);
+    setLibraryOrganizationId(null);
+    setLibraryPreviews({});
     setLibraryLoading(true);
     setLibraryError(null);
     void (async () => {
       try {
-        const items = await fetchCoverLibrary(organizationId);
+        const items = await fetchCoverLibrary(mediaOwnerOrg);
+        if (libraryOwnerRequest.current !== mediaOwnerOrg) return;
         setLibraryItems(items);
-        if (items.length === 0) toast.info('Pustaka media belum berisi gambar.');
+        setLibraryOrganizationId(mediaOwnerOrg);
+        if (items.length === 0) toast.info('Pustaka media organisasi tujuan belum berisi gambar.');
       } catch {
-        setLibraryError('Gagal memuat pustaka media. Coba lagi.');
+        if (libraryOwnerRequest.current === mediaOwnerOrg) {
+          setLibraryError('Gagal memuat pustaka media organisasi tujuan. Coba lagi.');
+        }
       } finally {
-        setLibraryLoading(false);
+        if (libraryOwnerRequest.current === mediaOwnerOrg) setLibraryLoading(false);
       }
     })();
   };
@@ -754,7 +787,10 @@ export function useArticleFormState({
       const run = command;
       void (async () => {
         try {
-          const result = (await run('media.readMany', { mediaIds: missing.map((item) => item.id) })) as {
+          const result = (await run('media.readMany', {
+            mediaIds: missing.map((item) => item.id),
+            ...(effectiveArticleOrg !== '' && effectiveArticleOrg !== organizationId ? { ownerOrganizationId: effectiveArticleOrg } : {}),
+          })) as {
             readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown; readonly expiresAt?: unknown }[];
           } | null;
           if (!Array.isArray(result?.items)) return;
@@ -776,7 +812,7 @@ export function useArticleFormState({
       });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [libraryOpen, libraryVisible, command, libraryPreviews]);
+  }, [libraryOpen, libraryVisible, command, libraryPreviews, effectiveArticleOrg, organizationId]);
 
   const pickLibraryCover = (item: CoverLibraryItem) => {
     const url = libraryPreviews[item.id];
@@ -786,8 +822,12 @@ export function useArticleFormState({
     }
     coverBlobRef.current = null;
     coverRemoteRef.current = { url, mimeType: item.mediaType };
+    if (libraryOrganizationId === null || libraryOrganizationId !== (effectiveArticleOrg === '' ? organizationId : effectiveArticleOrg)) {
+      toast.error('Pustaka media berubah organisasi. Muat ulang lalu pilih gambar dari organisasi tujuan.');
+      return;
+    }
     setFeaturedId(item.id);
-    setFeaturedOrgId(null);
+    setFeaturedOrgId(libraryOrganizationId);
     setFeaturedName(fileNameOf(item.objectKey));
     setFeaturedVersion(item.version);
     setFeaturedFocal(null);
@@ -931,7 +971,7 @@ export function useArticleFormState({
       });
       coverBlobRef.current = { blob: compressedBlob, mimeType: compressedMediaType };
       setFeaturedId(mediaId);
-      setFeaturedOrgId(foreignOwnerOrg);
+      setFeaturedOrgId(foreignOwnerOrg ?? (organizationId === '' ? null : organizationId));
       setFeaturedName(file.name);
       setFeaturedVersion(version);
       setFeaturedAlt('');
@@ -1136,6 +1176,10 @@ export function useArticleFormState({
     });
     if (typeProblem !== null) {
       toast.error(typeProblem);
+      return;
+    }
+    if (foreignOwnerOrg !== null && foreignMediaIds.length > 0) {
+      toast.error('Artikel lintas organisasi hanya boleh memakai media milik organisasi tujuan. Unggah ulang gambar yang masih dimiliki organisasi lain.');
       return;
     }
     if (durationInput.trim() !== '') {
