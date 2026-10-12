@@ -74,8 +74,8 @@ BEGIN
     FROM unnest(COALESCE(p_tags, ARRAY[]::text[])) WITH ORDINALITY AS u(raw_tag, ord)
     CROSS JOIN LATERAL (
       SELECT rtrim(left(trim(both '-' FROM regexp_replace(
-        regexp_replace(regexp_replace(lower(trim(u.raw_tag)), '[^a-z0-9\\s_-]', '', 'g'),
-          '[\\s_]+', '-', 'g'),
+        regexp_replace(regexp_replace(lower(trim(u.raw_tag)), '[^a-z0-9\s_-]', '', 'g'),
+          '[\s_]+', '-', 'g'),
         '-+', '-', 'g')), 60), '-') AS tag
     ) AS normalized
     WHERE u.raw_tag ~ '[a-zA-Z0-9]' AND normalized.tag <> ''
@@ -111,4 +111,4 @@ ALTER TABLE public.articles DROP CONSTRAINT articles_category_fk;--> statement-b
 ALTER TABLE public.articles DROP COLUMN tags;--> statement-breakpoint
 ALTER TABLE public.articles DROP COLUMN category_id;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (283, 'article_taxonomy_legacy_contraction', 'sha256:558457c59ef033a54eb49eb88fdd131767212bd2ac36d40fa78ea978b3b342c5');
+VALUES (283, 'article_taxonomy_legacy_contraction', 'sha256:9bb914a2b14c561898a72551ad8e02bd31b1a904b61418008c89f994c657faef');
