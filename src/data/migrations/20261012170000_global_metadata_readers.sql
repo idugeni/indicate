@@ -95,7 +95,7 @@ BEGIN
     WITH base AS (
       SELECT
         a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
-        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, (SELECT ac.category_id FROM public.article_categories AS ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS b_category,
         a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
         a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
         a.source AS b_source, (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS b_tags, a.status AS b_status, a.type::text AS b_type,
@@ -152,7 +152,7 @@ BEGIN
     WITH base AS (
       SELECT
         a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
-        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, (SELECT ac.category_id FROM public.article_categories AS ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS b_category,
         a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
         a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
         a.source AS b_source, (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS b_tags, a.status AS b_status, a.type::text AS b_type,
@@ -210,7 +210,7 @@ BEGIN
     WITH base AS (
       SELECT
         a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
-        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, (SELECT ac.category_id FROM public.article_categories AS ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS b_category,
         a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
         a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
         a.source AS b_source, (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS b_tags, a.status AS b_status, a.type::text AS b_type,
@@ -268,7 +268,7 @@ BEGIN
     WITH base AS (
       SELECT
         a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
-        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, (SELECT ac.category_id FROM public.article_categories AS ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS b_category,
         a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
         a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
         a.source AS b_source, (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS b_tags, a.status AS b_status, a.type::text AS b_type,
@@ -328,7 +328,7 @@ BEGIN
     WITH base AS (
       SELECT
         a.organization_id AS b_org, o.slug AS b_org_slug, o.name AS b_org_name,
-        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, a.category_id AS b_category,
+        a.id AS b_id, a.region_id AS b_region, a.publisher_id AS b_publisher, (SELECT ac.category_id FROM public.article_categories AS ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS b_category,
         a.author_id AS b_author, a.lead_media_id AS b_lead_media, a.cover_image_url AS b_cover,
         a.slug AS b_slug, a.title AS b_title, a.excerpt AS b_excerpt, a.canonical_url AS b_canonical,
         a.source AS b_source, (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS b_tags, a.status AS b_status, a.type::text AS b_type,
@@ -446,8 +446,10 @@ AS $$
     ON p.organization_id = a.organization_id AND p.id = a.publisher_id AND p.status = 'active'
   LEFT JOIN public.authors AS au
     ON au.organization_id = a.organization_id AND au.id = a.author_id AND au.status = 'active'
+  LEFT JOIN public.article_categories AS ac
+    ON ac.organization_id = a.organization_id AND ac.article_id = a.id AND ac.position = 1
   LEFT JOIN public.categories AS c
-    ON c.organization_id = a.organization_id AND c.id = a.category_id AND c.status = 'active'
+    ON c.organization_id = ac.organization_id AND c.id = ac.category_id AND c.status = 'active'
   LEFT JOIN public.category_catalog AS cc
     ON cc.id = c.catalog_id AND cc.status = 'active'
   WHERE a.organization_id = requested_organization_id
@@ -475,7 +477,7 @@ AS $$
   SELECT a.id, a.slug, a.title, a.excerpt, a.canonical_url,
     (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id), a.status, a.type::text, a.is_sponsored,
     a.video_url, a.audio_url, a.duration_seconds,
-    a.region_id, a.category_id, a.publisher_id, a.author_id,
+    a.region_id, (SELECT ac.category_id FROM public.article_categories AS ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS category_id, a.publisher_id, a.author_id,
     a.lead_media_id, a.cover_image_url, a.published_at,
     a.updated_at
   FROM public.articles AS a
@@ -485,4 +487,4 @@ AS $$
     AND a.published_at IS NOT NULL
 $$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (281, 'global_metadata_readers', 'sha256:80f78c743628d1f747b843965629b8cbcc8bd6e55ffb8a0d26d3e44ad4c9ca71');
+VALUES (281, 'global_metadata_readers', 'sha256:ba0f559896555a63936fda62fc7c403e76a15a629e9442c3c4218658a248b143');
