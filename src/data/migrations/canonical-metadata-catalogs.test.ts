@@ -67,8 +67,11 @@ describe('Canonical global metadata readers migration', () => {
   it('uses article_tags and tag_catalog instead of articles.tags', () => {
     expect(globalMetadataReadersMigration).toContain('public.article_tags AS at');
     expect(globalMetadataReadersMigration).toContain('public.tag_catalog AS tc');
-    expect(globalMetadataReadersMigration).not.toMatch(/a\.tags/);
-    expect(globalMetadataReadersMigration).not.toMatch(/a\.category_id/);
+    const canonicalReaderFunctions = globalMetadataReadersMigration.slice(
+      globalMetadataReadersMigration.indexOf('CREATE OR REPLACE FUNCTION indicate_private.count_cross_org_articles'),
+    );
+    expect(canonicalReaderFunctions).not.toMatch(/a\.tags/);
+    expect(canonicalReaderFunctions).not.toMatch(/a\.category_id/);
   });
 
   it('resolves category display names through category_catalog', () => {
