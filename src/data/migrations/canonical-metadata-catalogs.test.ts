@@ -63,7 +63,7 @@ describe('Canonical global metadata readers migration', () => {
   it('uses article_tags and tag_catalog instead of articles.tags', () => {
     expect(globalMetadataReadersMigration).toContain('public.article_tags AS at');
     expect(globalMetadataReadersMigration).toContain('public.tag_catalog AS tc');
-    expect(globalMetadataReadersMigration).not.toMatch(/a\\.tags/);
+    expect(globalMetadataReadersMigration).not.toMatch(/a\.tags/);
   });
 
   it('resolves category display names through category_catalog', () => {
