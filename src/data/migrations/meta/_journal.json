@@ -1968,6 +1968,13 @@
       "when": 1791797441913,
       "tag": "20261012160000_global_taxonomy_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 281,
+      "version": "7",
+      "when": 1791797441914,
+      "tag": "20261012170000_global_metadata_readers",
+      "breakpoints": true
     }
   ]
 }
