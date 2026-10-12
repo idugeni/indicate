@@ -2317,23 +2317,10 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         valid_tags AS (
           SELECT slug, position FROM normalized WHERE slug <> ''
         ),
-        inserted_catalog AS (
-          INSERT INTO tag_catalog (name, slug, status)
-          SELECT slug, slug, 'active'::record_status FROM valid_tags
-          ON CONFLICT (slug) DO NOTHING
-          RETURNING id, slug
-        ),
-        catalog_ids AS (
-          SELECT id, slug FROM inserted_catalog
-          UNION
-          SELECT tc.id, tc.slug
-          FROM tag_catalog tc
-          INNER JOIN valid_tags vt ON vt.slug = tc.slug
-        )
         INSERT INTO article_tags (organization_id, article_id, tag_id, position)
-        SELECT ${state.organizationId}, ${row.id}, ci.id, vt.position
+        SELECT ${state.organizationId}, ${row.id}, tc.id, vt.position
         FROM valid_tags vt
-        INNER JOIN catalog_ids ci ON ci.slug = vt.slug
+        INNER JOIN tag_catalog tc ON tc.slug = vt.slug AND tc.status = 'active'
         ON CONFLICT (organization_id, article_id, tag_id)
         DO UPDATE SET position = EXCLUDED.position
       `);
