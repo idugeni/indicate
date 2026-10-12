@@ -11,8 +11,8 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import { redact } from '@/core/security/redaction';
 import { DashboardValidationError } from '@/modules/dashboard/tenant-service-errors';
 import {
-  apiKeys, articleCategories, articleRevisions, articleSites, articleTags, articleUpdates, articles, auditLogs, authors, cacheBypasses, categories, categoryCatalog, contentReports, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
-  permissions, portalAssignments, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regionCatalog, regions, rolePermissions, roles, sites, siteSettings, tagCatalog, users, webhookReplayClaims,
+  apiKeys, articleCategories, articleRevisions, articleSites, articleUpdates, articles, auditLogs, authors, cacheBypasses, categories, categoryCatalog, contentReports, domainActivationAttempts, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks, officialAffiliations, organizations,
+  permissions, portalAssignments, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regionCatalog, regions, rolePermissions, roles, sites, siteSettings, users, webhookReplayClaims,
 } from '@/data/schema';
 import type * as schema from '@/data/schema';
 import { completeInvalidationValues } from '@/data/repos/shared/delivery-invalidation-values';
@@ -1120,11 +1120,12 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const [articleRows, linkRows, tagRows, categoryRows, regionRows] = await Promise.all([
         transaction.select({ id: articles.id, regionId: articles.regionId, categoryId: articles.categoryId }).from(articles).where(eq(articles.organizationId, organizationId)),
         transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)),
-        transaction.select({ articleId: articleTags.articleId, tag: tagCatalog.slug, position: articleTags.position })
-          .from(articleTags)
-          .innerJoin(tagCatalog, eq(articleTags.tagId, tagCatalog.id))
-          .where(eq(articleTags.organizationId, organizationId))
-          .orderBy(articleTags.position),
+        transaction.execute<{ article_id: string; tag: string; position: number }>(sql`
+          SELECT at.article_id, tc.slug AS tag, at.position
+          FROM article_tags at
+          INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active'
+          WHERE at.organization_id = ${organizationId}
+          ORDER BY at.article_id, at.position`),
         transaction.select({ id: categories.id, name: categories.name, slug: categoryCatalog.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt })
           .from(categories).innerJoin(categoryCatalog, eq(categories.catalogId, categoryCatalog.id)).where(eq(categories.organizationId, organizationId)),
         transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId }).from(regions)
@@ -1138,9 +1139,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       }
       const tagsByArticle = new Map<string, string[]>();
       for (const tagRow of tagRows) {
-        const tags = tagsByArticle.get(tagRow.articleId) ?? [];
+        const tags = tagsByArticle.get(tagRow.article_id) ?? [];
         tags.push(tagRow.tag);
-        tagsByArticle.set(tagRow.articleId, tags);
+        tagsByArticle.set(tagRow.article_id, tags);
       }
       return {
         articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, categoryId: row.categoryId, categoryIds: linksByArticle.get(row.id) ?? [], tags: tagsByArticle.get(row.id) ?? [] })),
