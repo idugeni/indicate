@@ -10,33 +10,20 @@ DO $article_taxonomy_contraction_guard$
 BEGIN
   IF EXISTS (
     SELECT 1
-    FROM public.articles AS a
-    WHERE a.category_id IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM public.article_categories AS ac
-        WHERE ac.organization_id = a.organization_id
-          AND ac.article_id = a.id
-          AND ac.category_id = a.category_id
-      )
+    FROM public.article_categories AS ac
+    LEFT JOIN public.category_catalog AS cc ON cc.id = ac.catalog_id
+    WHERE cc.id IS NULL
   ) THEN
-    RAISE EXCEPTION 'legacy_primary_category_not_migrated';
+    RAISE EXCEPTION 'article_category_global_reference_missing';
   END IF;
 
   IF EXISTS (
     SELECT 1
-    FROM public.articles AS a
-    CROSS JOIN LATERAL unnest(COALESCE(a.tags, ARRAY[]::text[])) AS u(tag)
-    WHERE u.tag <> ''
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.article_tags AS at
-        JOIN public.tag_catalog AS tc ON tc.id = at.tag_id
-        WHERE at.organization_id = a.organization_id
-          AND at.article_id = a.id
-          AND tc.slug = u.tag
-      )
+    FROM public.article_tags AS at
+    LEFT JOIN public.tag_catalog AS tc ON tc.id = at.tag_id
+    WHERE tc.id IS NULL
   ) THEN
-    RAISE EXCEPTION 'legacy_article_tags_not_migrated';
+    RAISE EXCEPTION 'article_tag_global_reference_missing';
   END IF;
 END
 $article_taxonomy_contraction_guard$;--> statement-breakpoint
@@ -48,4 +35,4 @@ ALTER TABLE public.articles DROP CONSTRAINT articles_category_fk;--> statement-b
 ALTER TABLE public.articles DROP COLUMN tags;--> statement-breakpoint
 ALTER TABLE public.articles DROP COLUMN category_id;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (284, 'article_taxonomy_legacy_contraction', 'sha256:a2b2487b92e95e80513f235aed99aa48bbcb5e95b4aab3d6db3eeac09df2b4eb');
+VALUES (284, 'article_taxonomy_legacy_contraction', 'sha256:245205083437411b577683c6da5b70a34d324543ab1cb01f9480319275fafc1d');
