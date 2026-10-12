@@ -74,3 +74,23 @@ describe('Canonical global metadata readers migration', () => {
     expect(globalMetadataReadersMigration).toContain('cc.slug, cc.name');
   });
 });
+
+
+const articleCategoryGlobalIdentityMigration = readFileSync(
+  join(process.cwd(), 'src', 'data', 'migrations', '20261012180000_article_category_global_identity.sql'),
+  'utf8',
+);
+
+describe('Global article-category identity migration', () => {
+  it('backfills article-category relations to global catalog IDs and prevents duplicate global assignments', () => {
+    expect(articleCategoryGlobalIdentityMigration).toContain('SET catalog_id = c.catalog_id');
+    expect(articleCategoryGlobalIdentityMigration).toContain('article_categories_global_category_unique');
+    expect(articleCategoryGlobalIdentityMigration).toContain('duplicate_global_category_for_article');
+  });
+
+  it('keeps tenant category bindings compatible while enforcing catalog identity', () => {
+    expect(articleCategoryGlobalIdentityMigration).toContain('article_categories_catalog_fk');
+    expect(articleCategoryGlobalIdentityMigration).toContain('article_category_catalog_mismatch');
+    expect(articleCategoryGlobalIdentityMigration).toContain('BEFORE INSERT OR UPDATE OF category_id, catalog_id ON public.article_categories');
+  });
+});
