@@ -7,6 +7,7 @@ import { CommentCountSlot } from '@/modules/site/components/network/disqus/comme
 import { SectionHeading } from '@/modules/site/components/network/templates/glassy-blue/ui/section-heading';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/glassy-blue/theme';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 
 /**
  * Seksi Berita Terbaru gaya contoh: list thumb kiri plus kartu Perspektif kanan.
@@ -120,6 +121,9 @@ export function GlassyBlueLatestNews({
             <div className="relative flex min-h-80 flex-col justify-end gap-2.5 p-6">
               <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">
                 Perspektif
+              </p>
+              <p className="m-0">
+                <ArticleCategoryLabel categoryName={spotlight.categoryName} categorySlug={spotlight.categorySlug} className="inline-block rounded-md bg-white/15 px-2 py-1 font-sans text-xs font-bold text-white" />
               </p>
               <h3 className="m-0 font-sans text-2xl font-extrabold leading-tight tracking-tight text-white">
                 <span className="mb-1 block text-xs font-bold uppercase tracking-[0.14em] text-white/80">
