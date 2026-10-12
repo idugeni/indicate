@@ -9,7 +9,7 @@ import type {
 } from '@/modules/dashboard/models';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
-import { mapArticleForOrg, resolveOwnerOrgSlug, type ForOrgMappingField } from '@/modules/dashboard/for-org-create';
+import { mapArticleForOrg, resolveOwnerOrgSlug, resolveRegionCanonicalKey, type ForOrgMappingField } from '@/modules/dashboard/for-org-create';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   buildNetworkPublisherClaim,
@@ -1127,13 +1127,16 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       if (!categorySlugs.includes(category.slug)) categorySlugs.push(category.slug);
     }
 
-    let regionSlug: string | null = null;
+    let regionKey: string | null = null;
     if (rest.regionId !== null) {
       const region = scope.regions.find((candidate) => candidate.id === rest.regionId && candidate.status === 'active');
       if (region === undefined) {
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Wilayah tidak valid untuk organisasi sumber.', actor.requestId, { regionId: ['Muat ulang wilayah lalu pilih ulang.'] }) };
       }
-      regionSlug = region.slug;
+      regionKey = resolveRegionCanonicalKey(region, scope.regions);
+      if (regionKey === null) {
+        return { ok: false, error: createPublicError('INVALID_INPUT', 'Identitas kanonis wilayah tidak valid.', actor.requestId, { regionId: ['Muat ulang wilayah lalu pilih ulang.'] }) };
+      }
     }
 
     const selectedAuthor = rest.authorId === null
@@ -1160,7 +1163,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
             regionId: rest.regionId,
             publisherName: publisher.name,
             categorySlugs,
-            regionSlug,
+            regionKey,
           },
           transaction.state,
         );
