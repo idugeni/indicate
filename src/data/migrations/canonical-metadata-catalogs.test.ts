@@ -97,8 +97,13 @@ describe('Global article-category identity migration', () => {
 });
 
 
+const articleTagWriterMigration = readFileSync(
+  join(process.cwd(), 'src', 'data', 'migrations', '20261012190000_article_tag_writer.sql'),
+  'utf8',
+);
+
 const articleTaxonomyContractionMigration = readFileSync(
-  join(process.cwd(), 'src', 'data', 'migrations', '20261012190000_article_taxonomy_legacy_contraction.sql'),
+  join(process.cwd(), 'src', 'data', 'migrations', '20261012200000_article_taxonomy_legacy_contraction.sql'),
   'utf8',
 );
 
@@ -109,8 +114,8 @@ describe('Legacy article taxonomy contraction migration', () => {
   });
 
   it('replaces the legacy tag trigger with a tenant-checked canonical writer', () => {
-    expect(articleTaxonomyContractionMigration).toContain('indicate_private.replace_article_tags');
-    expect(articleTaxonomyContractionMigration).toContain('p_organization_id IS DISTINCT FROM indicate_private.current_organization_id()');
+    expect(articleTagWriterMigration).toContain('indicate_private.replace_article_tags');
+    expect(articleTagWriterMigration).toContain('p_organization_id IS DISTINCT FROM indicate_private.current_organization_id()');
     expect(articleTaxonomyContractionMigration).toContain('DROP TRIGGER articles_tag_catalog_sync ON public.articles');
   });
 
