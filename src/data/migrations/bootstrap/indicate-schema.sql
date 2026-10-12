@@ -23912,7 +23912,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, public, indicate_private
-AS $
+AS $$
   SELECT COUNT(*)::int
   FROM public.articles AS a
   JOIN public.organizations AS o ON o.id = a.organization_id
@@ -23927,7 +23927,7 @@ AS $
     AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
       SELECT 1 FROM public.article_sites AS s
       WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state))
-$;
+$$;
 CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_article_details(
   requested_organization_id uuid,
   requested_article_ids uuid[]
@@ -23947,7 +23947,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, public, indicate_private
-AS $
+AS $$
   SELECT a.id, a.slug, a.title, a.excerpt, a.canonical_url,
     (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id), a.status, a.type::text, a.is_sponsored,
     a.video_url, a.audio_url, a.duration_seconds,
@@ -23973,7 +23973,7 @@ AS $
     AND a.id = ANY (requested_article_ids)
     AND a.status = 'active'
     AND a.published_at IS NOT NULL
-$;
+$$;
 CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_articles(
   requested_organization_id uuid,
   requested_article_ids uuid[]
@@ -23990,7 +23990,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, public, indicate_private
-AS $
+AS $$
   SELECT a.id, a.slug, a.title, a.excerpt, a.canonical_url,
     (SELECT COALESCE(ARRAY_AGG(tc.slug ORDER BY at.position), '{}'::text[]) FROM public.article_tags AS at JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id), a.status, a.type::text, a.is_sponsored,
     a.video_url, a.audio_url, a.duration_seconds,
@@ -24002,7 +24002,7 @@ AS $
     AND a.id = ANY (requested_article_ids)
     AND a.status = 'active'
     AND a.published_at IS NOT NULL
-$;
+$$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (281, 'global_metadata_readers', 'sha256:ba0f559896555a63936fda62fc7c403e76a15a629e9442c3c4218658a248b143');
 
