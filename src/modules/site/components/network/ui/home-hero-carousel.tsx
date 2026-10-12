@@ -10,6 +10,7 @@ import { CommentCountSlot } from '@/modules/site/components/network/disqus/comme
 import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import type { AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
 import { AuthorAvatar } from '@/modules/site/components/network/ui/author-avatar';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 
 const ROTATE_MS = 6000;
 
@@ -79,16 +80,14 @@ export function HomeHeroCarousel({
       />
       <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
       <div className="relative flex min-h-[24rem] flex-col justify-end p-5 sm:min-h-[28rem] sm:p-8">
-        {article.categoryName === null ? null : (
-          <p className="m-0">
-            <span
-              className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold text-white shadow-md"
-              style={{ backgroundColor: skin.accent }}
-            >
-              {article.categoryName}
-            </span>
-          </p>
-        )}
+        <p className="m-0">
+          <ArticleCategoryLabel
+            categoryName={article.categoryName}
+            categorySlug={article.categorySlug}
+            className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold text-white shadow-md"
+            style={{ backgroundColor: skin.accent }}
+          />
+        </p>
         <h1 className="m-0 mt-3 max-w-3xl line-clamp-3 font-sans text-2xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-4xl">
           <Link href={article.href} className="transition-opacity hover:opacity-85">
             {article.title}

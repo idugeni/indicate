@@ -5,7 +5,7 @@ import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
-import { badgeStyle } from '@/modules/site/components/network/templates/dark-navy/theme';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 import { SectionHeading } from '@/modules/site/components/network/templates/dark-navy/ui/section-heading';
 
 export function DarkNavyLatest({
@@ -37,9 +37,8 @@ export function DarkNavyLatest({
         ) : null}
       </div>
       <ul className="m-0 mt-2 list-none divide-y divide-[var(--tpl-ring,#1b2c4f)] p-0">
-        {articles.map((article, index) => {
-          const src = articleImage(article);
-          const badge = badgeStyle(index);
+        {articles.map((article) => {
+            const src = articleImage(article);
           return (
             <li key={article.id} className="m-0 flex gap-4 p-0 py-5">
               <Link
@@ -63,11 +62,7 @@ export function DarkNavyLatest({
               <div className="min-w-0 flex-1">
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px]">
                   <span className="max-w-[16rem] truncate font-bold text-[var(--tpl-ink,#eaf0fb)]/80">{article.attribution}</span>
-                  {article.categoryName === null ? null : (
-                    <span className="inline-block rounded-md px-2 py-0.5 font-bold" style={badge}>
-                      {article.categoryName}
-                    </span>
-                  )}
+                  <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="font-sans text-xs font-bold text-[var(--tpl-primary)]" />
                   <span className="inline-flex items-center gap-1 tabular-nums text-[#8fa1bd]">
                     <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
                     {formatDate(article.publishedAt, 'short')}

@@ -8,6 +8,7 @@ import { CommentCountSlot } from '@/modules/site/components/network/disqus/comme
 import { AuthorAvatar, type AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
 import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readingMinutes, readableTextOnAccent } from '@/modules/site/components/network/ui/format';
 import { HomeHeroCarousel } from '@/modules/site/components/network/ui/home-hero-carousel';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 
 /** Varian hero homepage yang disepakati dari 5 mockup. */
 export type HomeHeroVariant = 'split' | 'overlay' | 'carousel' | 'mosaic' | 'serif';
@@ -90,16 +91,16 @@ function HeroMeta({
   );
 }
 
-function CategoryBadge({ article, skin }: { readonly article: ArticleListItem; readonly skin: HomeHeroSkin }) {
-  if (article.categoryName === null) return null;
+function CategoryBadge({ article, skin, linked = true }: { readonly article: ArticleListItem; readonly skin: HomeHeroSkin; readonly linked?: boolean }) {
   return (
     <p className="m-0">
-      <span
+      <ArticleCategoryLabel
+        categoryName={article.categoryName}
+        categorySlug={article.categorySlug}
+        linked={linked}
         className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold shadow-md"
         style={{ backgroundColor: skin.accent, color: readableTextOnAccent(skin.accent) }}
-      >
-        {article.categoryName}
-      </span>
+      />
     </p>
   );
 }
@@ -120,12 +121,10 @@ function SplitHero({
   return (
     <section className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12" aria-label="Sorotan utama">
       <div className="order-2 min-w-0 lg:order-1">
-        {article.categoryName === null ? null : (
-          <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold" style={{ color: skin.accent }}>
-            <span aria-hidden="true" className="h-1 w-8 rounded-full" style={{ backgroundColor: skin.accent }} />
-            {article.categoryName}
-          </p>
-        )}
+        <p className="m-0 flex items-center gap-2 font-sans text-sm font-semibold" style={{ color: skin.accent }}>
+          <span aria-hidden="true" className="h-1 w-8 rounded-full" style={{ backgroundColor: skin.accent }} />
+          <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} />
+        </p>
         <h1 className="m-0 mt-3 font-sans text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl" style={{ color: skin.ink }}>
           <Link href={article.href} className="transition-opacity hover:opacity-80">
             {article.title}
@@ -252,7 +251,7 @@ function MosaicHero({
         />
         <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none" />
         <span className="absolute inset-x-0 bottom-0 block p-5 sm:p-6">
-          <CategoryBadge article={feature} skin={skin} />
+          <CategoryBadge article={feature} skin={skin} linked={false} />
           <span className="mt-2 line-clamp-3 block font-sans text-xl font-extrabold leading-tight text-white sm:text-2xl">
             {feature.title}
           </span>
@@ -320,7 +319,7 @@ function SerifHero({
   return (
     <section aria-label="Sorotan utama">
       <p className="m-0 font-sans text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: skin.accent }}>
-        {article.categoryName ?? 'Laporan Khusus'}
+        <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} />
       </p>
       <h1 className="m-0 mt-3 max-w-4xl font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl" style={{ color: skin.ink }}>
         <Link href={article.href} className="transition-opacity hover:opacity-85">

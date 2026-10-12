@@ -7,6 +7,7 @@ import { CommentCountSlot } from '@/modules/site/components/network/disqus/comme
 import { RedEditorialPickCard } from '@/modules/site/components/network/templates/red-editorial/cards/pick-card';
 import { SectionHeading } from '@/modules/site/components/network/templates/red-editorial/ui/section-heading';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 
 const GRID_SIZE = 4;
 const POPULAR_SIZE = 5;
@@ -75,6 +76,7 @@ export function RedEditorialPicks({
                         {String(position + 1).padStart(2, '0')}
                       </span>
                       <span className="min-w-0 flex-1">
+                        <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="mb-1 inline-block font-sans text-[11px] font-bold uppercase tracking-wide text-[var(--tpl-primary,#b91c1c)]" />
                         <Link
                           href={article.href}
                           className="line-clamp-2 block text-sm font-bold leading-snug text-[var(--tpl-ink,#230d0d)] transition-colors hover:text-[var(--tpl-primary,#b91c1c)]"

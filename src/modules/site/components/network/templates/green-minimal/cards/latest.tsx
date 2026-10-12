@@ -5,6 +5,7 @@ import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 import { SectionHeading } from '@/modules/site/components/network/templates/green-minimal/ui/section-heading';
 
 export function GreenMinimalLatest({
@@ -61,9 +62,7 @@ export function GreenMinimalLatest({
               <div className="min-w-0">
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px] font-bold uppercase tracking-wider">
                   <span className="max-w-[16rem] truncate normal-case tracking-normal text-slate-800">{article.attribution}</span>
-                  {article.categoryName === null ? null : (
-                    <span className="text-[var(--tpl-primary,#1d7a38)]">{article.categoryName}</span>
-                  )}
+                  <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="font-sans text-xs font-bold text-[var(--tpl-primary)]" />
                   <span className="inline-flex items-center gap-1 font-medium normal-case tracking-normal text-slate-500">
                     <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
                     {formatDate(article.publishedAt, 'short')}

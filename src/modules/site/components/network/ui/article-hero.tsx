@@ -7,6 +7,7 @@ import { ArticleActionStrip } from '@/modules/site/components/network/ui/article
 import { ArticleBylineMeta } from '@/modules/site/components/network/ui/article-byline-meta';
 import { AuthorAvatar, type AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
 import { authorDisplayName, formatDate } from '@/modules/site/components/network/ui/format';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 import { youtubeThumbnailFallbackUrl } from '@/modules/site/article-type';
 import type { ShareButtonsSkin } from '@/modules/site/components/network/cards/share-buttons';
 
@@ -78,14 +79,10 @@ function Breadcrumb({ article, light = false }: { readonly article: NetworkArtic
         Beranda
       </Link>
       <ChevronRight className="h-3 w-3" aria-hidden="true" />
-      {article.categorySlug ? (
-        <>
-          <Link href={`/categories/${article.categorySlug}`} className="transition-colors hover:opacity-80">
-            {article.categoryName}
-          </Link>
-          <ChevronRight className="h-3 w-3" aria-hidden="true" />
-        </>
-      ) : null}
+      <>
+        <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="transition-colors hover:opacity-80" />
+        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+      </>
       <span className={`min-w-0 flex-1 truncate ${current}`} aria-current="page">
         {article.title}
       </span>
@@ -94,11 +91,10 @@ function Breadcrumb({ article, light = false }: { readonly article: NetworkArtic
 }
 
 function CategoryEyebrow({ article, skin }: { readonly article: NetworkArticle; readonly skin: ArticleHeroSkin }) {
-  if (article.categoryName === null) return null;
   return (
     <p className="m-0 mt-6 flex items-center gap-2 font-sans text-sm font-semibold" style={{ color: skin.accent }}>
       <span aria-hidden="true" className="h-1 w-8 rounded-full" style={{ backgroundColor: skin.accent }} />
-      {article.categoryName}
+      <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} />
     </p>
   );
 }
@@ -368,9 +364,9 @@ function ViewportHero(props: Omit<ArticleHeroProps, 'variant'>) {
         />
         <span aria-hidden="true" className="absolute inset-0 bg-slate-950/55" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-          {article.categoryName === null ? null : (
-            <p className="m-0 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-white/70">{article.categoryName}</p>
-          )}
+          <p className="m-0 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+            <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} />
+          </p>
           <h1 className="m-0 mt-3 max-w-3xl font-serif text-2xl font-medium uppercase leading-snug tracking-[0.15em] text-white sm:text-3xl">
             {article.title}
           </h1>

@@ -5,6 +5,7 @@ import { Clock3, Eye, Flame } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 
 export function DarkNavyMostRead({ articles }: { readonly articles: readonly ArticleListItem[] }) {
   const items = articles.slice(0, 5);
@@ -39,6 +40,7 @@ export function DarkNavyMostRead({ articles }: { readonly articles: readonly Art
                     {article.title}
                   </Link>
                 </h3>
+                <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="mt-1 inline-block font-sans text-[11px] font-bold uppercase tracking-wide text-[var(--tpl-primary)]" />
                 <p className="m-0 mt-1 flex flex-wrap items-center gap-x-1.5 font-sans text-xs text-[#8fa1bd]">
                   <span className="max-w-full truncate font-bold text-[var(--tpl-ink,#eaf0fb)]/80">{article.attribution}</span>
                   <span className="inline-flex items-center gap-1 tabular-nums">
