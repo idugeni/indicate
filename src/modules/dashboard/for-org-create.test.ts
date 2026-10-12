@@ -15,6 +15,18 @@ const TARGET = {
   ],
 };
 
+const reference = (overrides: Record<string, unknown> = {}) => ({
+  publisherId: 'pub-op',
+  authorId: 'aut-op',
+  authorName: 'Redaksi',
+  categoryIds: ['cat-op'],
+  regionId: 'reg-op',
+  publisherName: 'RUTAN KELAS II B WONOSOBO',
+  categorySlugs: ['berita'],
+  regionSlug: 'wonosobo',
+  ...overrides,
+});
+
 describe('resolveOwnerOrgSlug', () => {
   it('menurunkan slug org dari nama penerbit cermin', () => {
     expect(resolveOwnerOrgSlug('RUTAN KELAS II B WONOSOBO')).toBe('rutan-kelas-ii-b-wonosobo');
@@ -24,61 +36,52 @@ describe('resolveOwnerOrgSlug', () => {
 
 describe('mapArticleForOrg', () => {
   it('memetakan referensi operator ke baris org pemilik', () => {
-    expect(
-      mapArticleForOrg(
-        {
-          publisherId: 'pub-op',
-          authorId: 'aut-op',
-          authorName: 'Redaksi',
-          categoryIds: ['cat-op'],
-          regionId: 'reg-op',
-          publisherName: 'RUTAN KELAS II B WONOSOBO',
-          categorySlugs: ['berita'],
-          regionSlug: 'wonosobo',
-        },
-        TARGET,
-      ),
-    ).toEqual({
-      ownerOrgSlug: 'rutan-kelas-ii-b-wonosobo',
-      publisherId: 'pub-upt',
-      authorId: 'aut-redaksi',
-      categoryIds: ['cat-berita'],
-      regionId: 'reg-kota',
+    expect(mapArticleForOrg(reference(), TARGET)).toEqual({
+      ok: true,
+      value: {
+        ownerOrgSlug: 'rutan-kelas-ii-b-wonosobo',
+        publisherId: 'pub-upt',
+        authorId: 'aut-redaksi',
+        categoryIds: ['cat-berita'],
+        regionId: 'reg-kota',
+      },
     });
   });
 
-  it('mengembalikan null bila penerbit cermin tak ada di org tujuan', () => {
-    expect(
-      mapArticleForOrg(
-        {
-          publisherId: 'pub-op',
-          authorId: null,
-          authorName: null,
-          categoryIds: [],
-          regionId: null,
-          publisherName: 'Indicate Newsroom',
-          categorySlugs: [],
-          regionSlug: null,
-        },
-        TARGET,
-      ),
-    ).toBeNull();
+  it('memetakan kategori yang tidak disediakan tenant ke kategori lokal Berita', () => {
+    expect(mapArticleForOrg(reference({
+      authorName: 'Indicate Newsroom',
+      categorySlugs: ['keamanan', 'pemasyarakatan', 'berita', 'keamanan'],
+    }), TARGET)).toEqual({
+      ok: true,
+      value: {
+        ownerOrgSlug: 'rutan-kelas-ii-b-wonosobo',
+        publisherId: 'pub-upt',
+        authorId: 'aut-redaksi',
+        categoryIds: ['cat-berita'],
+        regionId: 'reg-kota',
+      },
+    });
   });
 
-  it('menolak kategori dan wilayah yang tidak tersedia di organisasi tujuan', () => {
-    expect(
-      mapArticleForOrg(
-        {
-          publisherId: 'pub-op',
-          authorId: null,
-          categoryIds: ['cat-op'],
-          regionId: 'reg-op',
-          publisherName: 'RUTAN KELAS II B WONOSOBO',
-          categorySlugs: ['tidak-ada'],
-          regionSlug: 'tidak-ada',
-        },
-        TARGET,
-      ),
-    ).toBeNull();
+  it('melaporkan hanya publisherId bila penerbit cermin tak ada di org tujuan', () => {
+    expect(mapArticleForOrg(reference({
+      publisherName: 'Indicate Newsroom',
+      categorySlugs: [],
+      regionSlug: null,
+    }), TARGET)).toEqual({ ok: false, field: 'publisherId' });
+  });
+
+  it('melaporkan categoryIds bila kategori tujuan tak ada dan kategori default Berita juga tidak tersedia', () => {
+    expect(mapArticleForOrg(reference({
+      categorySlugs: ['keamanan'],
+    }), { ...TARGET, categories: [] })).toEqual({ ok: false, field: 'categoryIds' });
+  });
+
+  it('melaporkan regionId bila wilayah tidak ada di organisasi tujuan', () => {
+    expect(mapArticleForOrg(reference({
+      categorySlugs: [],
+      regionSlug: 'kabupaten-tidak-ada',
+    }), TARGET)).toEqual({ ok: false, field: 'regionId' });
   });
 });
