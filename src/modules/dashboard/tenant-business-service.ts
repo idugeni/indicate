@@ -1095,6 +1095,27 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       return { ok: false, error: createPublicError('INVALID_INPUT', 'Penerbit yang dipilih tidak aktif atau tidak tersedia.', actor.requestId, { publisherId: ['Pilih penerbit aktif yang tersedia.'] }) };
     }
 
+    // The requested owner must match the organization derived from the selected
+    // publisher mirror. Never create the article under an unrelated tenant.
+    let resolvedOwnerId: string | null;
+    try {
+      resolvedOwnerId = await this.repository.findOrganizationBySlug(actor, resolveOwnerOrgSlug(publisher.name));
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.create', 'article');
+      return this.internal(actor, error, 'dashboard.query.failed', 'article.create.owner-identity', 'article', DASHBOARD_PERMISSIONS.articleRead);
+    }
+    if (resolvedOwnerId === null || resolvedOwnerId !== ownerOrgId) {
+      return {
+        ok: false,
+        error: createPublicError(
+          'INVALID_INPUT',
+          'Penerbit yang dipilih tidak mengidentifikasi organisasi tujuan yang diminta.',
+          actor.requestId,
+          { publisherId: ['Pilih penerbit yang terhubung ke organisasi tujuan yang benar.'] },
+        ),
+      };
+    }
+
     const { ownerOrganizationId, ...rest } = parsed.data;
     void ownerOrganizationId;
     const categoryReferences: Array<{ readonly name: string; readonly slug: string }> = [];
