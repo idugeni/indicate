@@ -298,7 +298,7 @@
 --   282  20261012170000_global_metadata_readers  ledger sha256:e8f414eee3f987e28eb8b9cb63697fea9f48ab16be87235bbe1c93c69bf96f81
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
---   285  20261012200000_article_taxonomy_legacy_contraction  ledger sha256:a40e45680b7f526115eea54d0a119acb8cd0e4127fa1b7923b381065eede5f3b
+--   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:2312bef7551cc9daad040b0e662b9479518883b5d8facf4913fbab83f8970290
 
 BEGIN;
 
@@ -24196,13 +24196,14 @@ VALUES (283, 'article_tag_writer', 'sha256:45ebe1f7eba483682c45fed354ebc4267ef7b
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2', 1791797441916);
 
 -- ----------------------------------------------------------------------
--- 20261012200000_article_taxonomy_legacy_contraction
+-- 20261012200000_article_taxonomy_contraction_preflight
 -- ----------------------------------------------------------------------
--- Contract legacy article taxonomy columns after the updated application is deployed.
+-- Preflight canonical taxonomy references before legacy contraction.
 --
--- This migration is intentionally separate from the writer expansion. Apply only
--- after the deployed application uses article_categories/article_tags exclusively.
--- The guards fail closed if legacy data is not represented in canonical relations.
+-- This migration is deliberately additive. It does not drop legacy columns,
+-- triggers, constraints, or indexes: the destructive contraction must be a
+-- separate later migration after the new application is deployed and verified.
+-- These guards fail closed if canonical relations do not cover existing data.
 --
 -- Body digest: LF-normalize this file and replace its own checksum with zeros.
 
@@ -24227,15 +24228,8 @@ BEGIN
   END IF;
 END
 $article_taxonomy_contraction_guard$;
-DROP TRIGGER articles_tag_catalog_sync ON public.articles;
-DROP FUNCTION indicate_private.sync_article_tag_catalog();
-DROP INDEX public.articles_tags_gin_idx;
-DROP INDEX public.articles_organization_category_idx;
-ALTER TABLE public.articles DROP CONSTRAINT articles_category_fk;
-ALTER TABLE public.articles DROP COLUMN tags;
-ALTER TABLE public.articles DROP COLUMN category_id;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (284, 'article_taxonomy_legacy_contraction', 'sha256:245205083437411b577683c6da5b70a34d324543ab1cb01f9480319275fafc1d');
+VALUES (284, 'article_taxonomy_contraction_preflight', 'sha256:18296db334cfae888f90dc9f689095ad50718abd1a603fca0a46a8775c78f916');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a40e45680b7f526115eea54d0a119acb8cd0e4127fa1b7923b381065eede5f3b', 1791797441917);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2312bef7551cc9daad040b0e662b9479518883b5d8facf4913fbab83f8970290', 1791797441917);
 COMMIT;
