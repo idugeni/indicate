@@ -94,3 +94,28 @@ describe('Global article-category identity migration', () => {
     expect(articleCategoryGlobalIdentityMigration).toContain('BEFORE INSERT OR UPDATE OF category_id, catalog_id ON public.article_categories');
   });
 });
+
+
+const articleTaxonomyContractionMigration = readFileSync(
+  join(process.cwd(), 'src', 'data', 'migrations', '20261012190000_article_taxonomy_legacy_contraction.sql'),
+  'utf8',
+);
+
+describe('Legacy article taxonomy contraction migration', () => {
+  it('fails closed if legacy categories or tags are not represented canonically', () => {
+    expect(articleTaxonomyContractionMigration).toContain('legacy_primary_category_not_migrated');
+    expect(articleTaxonomyContractionMigration).toContain('legacy_article_tags_not_migrated');
+  });
+
+  it('replaces the legacy tag trigger with a tenant-checked canonical writer', () => {
+    expect(articleTaxonomyContractionMigration).toContain('indicate_private.replace_article_tags');
+    expect(articleTaxonomyContractionMigration).toContain('p_organization_id IS DISTINCT FROM indicate_private.current_organization_id()');
+    expect(articleTaxonomyContractionMigration).toContain('DROP TRIGGER articles_tag_catalog_sync ON public.articles');
+  });
+
+  it('drops legacy article metadata only after canonical read/write paths exist', () => {
+    expect(articleTaxonomyContractionMigration).toContain('ALTER TABLE public.articles DROP COLUMN tags');
+    expect(articleTaxonomyContractionMigration).toContain('ALTER TABLE public.articles DROP COLUMN category_id');
+    expect(articleTaxonomyContractionMigration).toContain('DROP FUNCTION indicate_private.sync_article_tag_catalog()');
+  });
+});
