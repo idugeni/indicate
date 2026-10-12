@@ -76,11 +76,7 @@ export function GlassyBlueLatestNews({
                   <span className="grid min-w-0 content-center gap-1.5">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px]">
                       <span className="max-w-[16rem] truncate font-bold text-slate-800">{article.attribution}</span>
-                      {article.categoryName === null ? null : (
-                        <span className="rounded-md px-1.5 py-0.5 font-bold" style={badge}>
-                          {article.categoryName}
-                        </span>
-                      )}
+                      <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="rounded-md px-1.5 py-0.5 font-bold" style={badge} />
                       <span className="inline-flex items-center gap-1 tabular-nums text-slate-500">
                         <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
                         {formatDate(article.publishedAt, 'short')}
