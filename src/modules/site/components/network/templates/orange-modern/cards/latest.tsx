@@ -5,7 +5,6 @@ import { ArrowRight, CalendarDays, Clock3, Eye } from 'lucide-react';
 import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
-import { badgeStyle } from '@/modules/site/components/network/templates/orange-modern/theme';
 import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 import { SectionHeading } from '@/modules/site/components/network/templates/orange-modern/ui/section-heading';
 
@@ -79,9 +78,8 @@ export function OrangeModernLatest({
       </div>
       <div className="mt-5 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_300px] lg:grid-cols-[minmax(0,1fr)_320px]">
         <ul className="m-0 list-none divide-y divide-slate-200/70 p-0">
-          {articles.map((article, index) => {
+          {articles.map((article) => {
             const src = articleImage(article);
-            const badge = badgeStyle(index);
             return (
               <li key={article.id} className="m-0 flex gap-4 p-0 py-4 first:pt-0 last:pb-0">
                 <Link
