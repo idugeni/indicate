@@ -52,7 +52,8 @@
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
     "check:bootstrap-identity": "node scripts/check-bootstrap-identity.mjs",
-    "check:no-any": "node scripts/check-no-any.mjs",    "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
+    "check:no-any": "node scripts/check-no-any.mjs",
+    "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
     "hygiene:network": "node scripts/db-network-coverage.mjs",
     "audit:gsc": "node scripts/gsc-verification-audit.mjs",
     "audit:gsc:verify": "node scripts/gsc-verification-audit.mjs --verify",
@@ -98,7 +99,7 @@
     "heic2any": "^0.0.4",
     "input-otp": "^1.5.0",
     "lucide-react": "^1.53.0",
-    "next": "16.4.0-canary.56",
+    "next": "16.4.0",
     "nuqs": "^2.10.2",
     "postgres": "^3.4.9",
     "prop-types": "^15.8.1",
@@ -154,6 +155,6 @@
     "@google/genai@2.27.0": true
   },
   "overrides": {
-    "next": "16.4.0-canary.56"
+    "next": "16.4.0"
   }
 }
