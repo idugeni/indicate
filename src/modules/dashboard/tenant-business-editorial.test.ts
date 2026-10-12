@@ -685,6 +685,8 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
   const T_AUT = '0199a2b3-4c5d-7e8f-9012-3456789ab006';
   const T_CAT = '0199a2b3-4c5d-7e8f-9012-3456789ab007';
   const T_REG = '0199a2b3-4c5d-7e8f-9012-3456789ab008';
+  const T_PROV = '0199a2b3-4c5d-7e8f-9012-3456789ab010';
+  const OP_PROV = '0199a2b3-4c5d-7e8f-9012-3456789ab011';
   const forOrgPayload = {
     ownerOrganizationId: OWNER_ORG,
     regionId: OP_REG,
@@ -700,7 +702,10 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
   function forOrgHarness(target: Record<string, unknown[]> = {}) {
     const operatorScope = {
       publishers: [{ id: OP_PUB, name: 'RUTAN KELAS II B WONOSOBO', attributionLabel: 'Humas', status: 'active' }],
-      regions: [{ id: OP_REG, name: 'Wonosobo', slug: 'wonosobo', status: 'active' }],
+      regions: [
+        { id: OP_PROV, name: 'Jawa Tengah', slug: 'jawa-tengah', status: 'active', kind: 'region', parentRegionId: null },
+        { id: OP_REG, name: 'Wonosobo', slug: 'wonosobo', status: 'active', kind: 'city', parentRegionId: OP_PROV },
+      ],
       categories: [{ id: OP_CAT, name: 'Berita', slug: 'berita', status: 'active' }],
       authors: [{ id: OP_AUT, displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active' }],
     };
@@ -709,7 +714,10 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
       publishers: [{ id: T_PUB, name: 'RUTAN KELAS II B WONOSOBO', status: 'active' }],
       authors: [{ id: T_AUT, displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active' }],
       categories: [{ id: T_CAT, name: 'Berita', slug: 'berita', status: 'active' }],
-      regions: [{ id: T_REG, name: 'Wonosobo', slug: 'wonosobo', status: 'active' }],
+      regions: [
+        { id: T_PROV, name: 'Jawa Tengah', slug: 'jawa-tengah', status: 'active', kind: 'region', parentRegionId: null },
+        { id: T_REG, name: 'Wonosobo', slug: 'wonosobo', status: 'active', kind: 'city', parentRegionId: T_PROV },
+      ],
       articles: [],
       articleCategories: [],
       articleSites: [],
