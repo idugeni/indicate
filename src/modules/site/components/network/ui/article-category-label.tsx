@@ -19,8 +19,9 @@ export function ArticleCategoryLabel({
   readonly style?: CSSProperties;
   readonly linked?: boolean;
 }) {
-  const label = categoryName?.trim() || 'Berita';
-  const slug = categorySlug?.trim();
+  const normalizedName = categoryName?.trim() || '';
+  const label = normalizedName || 'Berita';
+  const slug = normalizedName ? categorySlug?.trim() : null;
 
   if (!slug || !linked) {
     return <span className={className} style={style}>{label}</span>;
