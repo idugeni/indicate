@@ -1173,7 +1173,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
           }
         }
 
-        if (selectedAuthor !== null) {
+        if (selectedAuthor !== null && selectedAuthor !== undefined) {
           const existing = transaction.state.authors.find((candidate) => candidate.displayName === selectedAuthor.displayName);
           if (existing === undefined) {
             const author: AuthorRecord = {
