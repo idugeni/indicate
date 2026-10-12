@@ -15,7 +15,18 @@ const TARGET = {
   ],
 };
 
-const reference = (overrides: Record<string, unknown> = {}) => ({
+interface ReferenceOverrides {
+  readonly publisherId?: string | null;
+  readonly authorId?: string | null;
+  readonly authorName?: string | null;
+  readonly categoryIds?: readonly string[];
+  readonly regionId?: string | null;
+  readonly publisherName?: string;
+  readonly categorySlugs?: readonly string[];
+  readonly regionSlug?: string | null;
+}
+
+const reference = (overrides: ReferenceOverrides = {}) => ({
   publisherId: 'pub-op',
   authorId: 'aut-op',
   authorName: 'Redaksi',
