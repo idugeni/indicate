@@ -414,9 +414,11 @@ export function useArticleFormState({
    * @param ownerOrg - Org target unggahan (null = org sesi saat itu).
    */
   const handleInlineStored = (mediaId: string, ownerOrg: string | null): void => {
-    setInlineMediaOrgs((prev) => (prev[mediaId] === (ownerOrg ?? organizationId) ? prev : { ...prev, [mediaId]: ownerOrg }));
+    // Null from the uploader means the active tenant, not an unknown owner.
+    const actualOwnerOrg = ownerOrg ?? (organizationId === '' ? null : organizationId);
+    setInlineMediaOrgs((prev) => (prev[mediaId] === actualOwnerOrg ? prev : { ...prev, [mediaId]: actualOwnerOrg }));
     if (publisherId === null || publisherId === '') {
-      toast.warning('Penerbit belum dipilih — gambar masuk organisasi aktif. Memilih penerbit beda org nanti memicu peringatan.');
+      toast.warning('Penerbit belum dipilih — gambar masuk organisasi aktif. Jika nanti memilih penerbit organisasi lain, unggah ulang gambar setelah penerbit tujuan dipilih.');
     }
   };
 
@@ -931,7 +933,7 @@ export function useArticleFormState({
       });
       coverBlobRef.current = { blob: compressedBlob, mimeType: compressedMediaType };
       setFeaturedId(mediaId);
-      setFeaturedOrgId(foreignOwnerOrg);
+      setFeaturedOrgId(foreignOwnerOrg ?? (organizationId === '' ? null : organizationId));
       setFeaturedName(file.name);
       setFeaturedVersion(version);
       setFeaturedAlt('');
@@ -1136,6 +1138,10 @@ export function useArticleFormState({
     });
     if (typeProblem !== null) {
       toast.error(typeProblem);
+      return;
+    }
+    if (foreignOwnerOrg !== null && foreignMediaIds.length > 0) {
+      toast.error('Artikel lintas organisasi hanya boleh memakai media milik organisasi tujuan. Unggah ulang gambar yang masih dimiliki organisasi lain.');
       return;
     }
     if (durationInput.trim() !== '') {
