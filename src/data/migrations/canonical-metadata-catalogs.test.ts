@@ -50,6 +50,8 @@ describe('Global taxonomy binding integrity migration', () => {
   it('rechecks the canonical binding when a category catalog ID changes', () => {
     expect(taxonomyIntegrityMigration).toContain('BEFORE INSERT OR UPDATE OF name, slug, catalog_id ON public.categories');
     expect(taxonomyIntegrityMigration).toContain('EXECUTE FUNCTION indicate_private.sync_category_catalog_binding()');
+    expect(taxonomyIntegrityMigration).toContain('NEW.name := v_catalog_name');
+    expect(taxonomyIntegrityMigration).toContain('NEW.slug := v_catalog_slug');
   });
 });
 
