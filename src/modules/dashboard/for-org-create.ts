@@ -1,3 +1,4 @@
+import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 
 export interface ForOrgPublisherRef {
@@ -29,6 +30,12 @@ export interface ForOrgMappedValue {
   readonly regionId: string | null;
 }
 
+export type ForOrgMappingField = 'publisherId' | 'authorId' | 'categoryIds' | 'regionId';
+
+export type ForOrgMappingResult =
+  | { readonly ok: true; readonly value: ForOrgMappedValue }
+  | { readonly ok: false; readonly field: ForOrgMappingField };
+
 /**
  * Petakan nama penerbit cermin ke slug org pemiliknya.
  *
@@ -42,9 +49,14 @@ export function resolveOwnerOrgSlug(publisherName: string): string {
 /**
  * Petakan referensi artikel org operator ke baris setara di org pemilik.
  *
+ * Kategori yang tidak tersedia pada tenant tujuan menggunakan kategori lokal
+ * "Berita". Penulis yang tidak tersedia menggunakan penulis "Redaksi", sama
+ * seperti proses pemindahan artikel UPT yang sudah digunakan saat ini. ID dari
+ * tenant sumber tidak pernah disimpan di tenant tujuan.
+ *
  * @param reference - Id operator (penerbit terpilih, penulis, kategori, wilayah) plus slug pendampingnya.
  * @param target - Baris org pemilik untuk dicocokkan.
- * @returns Nilai siap tulis di org pemilik, atau null bila penerbit cermin tak ada di sana.
+ * @returns Nilai siap tulis di org pemilik, atau field yang benar-benar gagal dipetakan.
  */
 export function mapArticleForOrg(
   reference: ForOrgCreateValue & {
@@ -53,34 +65,47 @@ export function mapArticleForOrg(
     readonly regionSlug: string | null;
   },
   target: ForOrgTargetState,
-): ForOrgMappedValue | null {
+): ForOrgMappingResult {
   const publisher = target.publishers.find(
     (candidate) => candidate.status === 'active' && candidate.name === reference.publisherName,
   );
-  if (publisher === undefined) return null;
-  const requestedAuthorName = reference.authorName?.trim() || null;
-  const author = requestedAuthorName === null
-    ? target.authors.find((candidate) => candidate.status === 'active' && candidate.displayName === 'Redaksi')
-    : target.authors.find((candidate) => candidate.status === 'active' && candidate.displayName === requestedAuthorName);
-  if (requestedAuthorName !== null && author === undefined) return null;
+  if (publisher === undefined) return { ok: false, field: 'publisherId' };
 
-  const categoryIds = reference.categorySlugs.flatMap((slug) => {
-    const match = target.categories.find((candidate) => candidate.status === 'active' && candidate.slug === slug);
-    return match === undefined ? [] : [match.id];
-  });
-  if (categoryIds.length !== reference.categorySlugs.length) return null;
+  const requestedAuthorName = reference.authorName?.trim() || null;
+  const matchingAuthor = requestedAuthorName === null
+    ? undefined
+    : target.authors.find((candidate) => candidate.status === 'active' && candidate.displayName === requestedAuthorName);
+  const defaultAuthor = target.authors.find(
+    (candidate) => candidate.status === 'active' && candidate.displayName === 'Redaksi',
+  );
+  const author = matchingAuthor ?? defaultAuthor;
+  if (author === undefined) return { ok: false, field: 'authorId' };
+
+  const activeCategories = target.categories.filter((candidate) => candidate.status === 'active');
+  const defaultCategory = activeCategories.find((candidate) => candidate.slug === DEFAULT_CATEGORY_SLUG);
+  const categoriesBySlug = new Map(activeCategories.map((category) => [category.slug, category.id] as const));
+  const categoryIds = [...new Set(reference.categorySlugs.map(
+    (slug) => categoriesBySlug.get(slug) ?? defaultCategory?.id,
+  ).filter((id): id is string => id !== undefined))];
+  if (categoryIds.length !== new Set(reference.categorySlugs).size && defaultCategory === undefined) {
+    return { ok: false, field: 'categoryIds' };
+  }
 
   const region =
     reference.regionSlug === null
       ? null
       : target.regions.find((candidate) => candidate.status === 'active' && candidate.slug === reference.regionSlug);
-  if (reference.regionSlug !== null && region === undefined) return null;
+  if (reference.regionSlug !== null && region === undefined) return { ok: false, field: 'regionId' };
   const regionId = region?.id ?? null;
+
   return {
-    ownerOrgSlug: resolveOwnerOrgSlug(reference.publisherName),
-    publisherId: publisher.id,
-    authorId: author?.id ?? null,
-    categoryIds,
-    regionId,
+    ok: true,
+    value: {
+      ownerOrgSlug: resolveOwnerOrgSlug(reference.publisherName),
+      publisherId: publisher.id,
+      authorId: author.id,
+      categoryIds,
+      regionId,
+    },
   };
 }
