@@ -385,6 +385,7 @@ function SplitFeatureRelated({
           <ArticleCategoryLabel
             categoryName={feature.categoryName}
             categorySlug={feature.categorySlug}
+            linked={false}
             className="mt-4 inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
             style={{ color: skin.accent, backgroundColor: `${skin.accent}1A` }}
           />
@@ -485,6 +486,7 @@ function OverlayRelated({
                 <ArticleCategoryLabel
                   categoryName={article.categoryName}
                   categorySlug={article.categorySlug}
+                  linked={false}
                   className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
                   style={{ color: readableTextOnAccent(skin.accent), backgroundColor: skin.accent }}
                 />
@@ -533,7 +535,7 @@ function MinimalRelated({
           <li key={article.id} className="m-0 border-b p-0 py-4 last:border-b-0" style={{ borderColor: skin.ring }}>
             <Link href={article.href} className="group flex min-w-0 items-center gap-4">
               <span className="min-w-0 flex-1">
-                <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="block font-sans text-[11px] font-bold uppercase tracking-wider" style={{ color: skin.accent }} />
+                <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} linked={false} className="block font-sans text-[11px] font-bold uppercase tracking-wider" style={{ color: skin.accent }} />
                 <span
                   className={`mt-0.5 line-clamp-2 block font-sans text-[17px] font-bold leading-snug tracking-tight transition-opacity group-hover:opacity-80 ${dark ? 'text-slate-100' : 'text-slate-900'}`}
                 >
