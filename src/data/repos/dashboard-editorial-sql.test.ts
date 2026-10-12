@@ -143,15 +143,19 @@ describe('canonical editorial taxonomy reads', () => {
 });
 
 
-describe('legacy taxonomy rollback projections', () => {
-  it('keeps category and tag projections synchronized while legacy columns remain', () => {
+describe('canonical taxonomy persistence', () => {
+  it('writes category and tag assignments through canonical relations, not article projections', () => {
     const source = readFileSync(join(process.cwd(), 'src', 'data', 'repos', 'dashboard.ts'), 'utf8');
-    expect(source).toContain('categoryId: row.categoryId');
-    expect(source).toContain('tags: [...row.tags]');
+    const insertStart = source.indexOf('await transaction.insert(articles).values({');
+    const insertEnd = source.indexOf('if (prior === undefined || !sameJson(prior.tags, row.tags))', insertStart);
+    const articleWrite = source.slice(insertStart, insertEnd);
+
     expect(source).toContain('indicate_private.replace_article_tags');
+    expect(source).toContain('INSERT INTO article_categories');
+    expect(articleWrite).not.toContain('categoryId: row.categoryId');
+    expect(articleWrite).not.toContain('tags: [...row.tags]');
   });
 });
-
 
 describe('Skema taksonomi artikel kanonis', () => {
   it('tidak lagi memodelkan proyeksi kategori dan tag legacy pada articles', () => {
