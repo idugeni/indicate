@@ -24358,6 +24358,7 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (285, 'drop_legacy_article_taxonomy', 'sha256:e36a14bdbcaaeb8405f787e6c944e0eef309c77eade14c9840bb2bb5dac28daa');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080', 1791849600000);
+
 -- ----------------------------------------------------------------------
 -- 20261013100000_global_category_delivery
 -- ----------------------------------------------------------------------
