@@ -5,11 +5,31 @@ export interface ForOrgPublisherRef {
   readonly name: string;
 }
 
+export interface ForOrgRegionRef {
+  readonly id: string;
+  readonly slug: string;
+  readonly kind: 'region' | 'city';
+  readonly parentRegionId: string | null;
+}
+
 export interface ForOrgTargetState {
   readonly publishers: readonly { readonly id: string; readonly name: string; readonly status: string }[];
   readonly authors: readonly { readonly id: string; readonly displayName: string; readonly status: string }[];
   readonly categories: readonly { readonly id: string; readonly slug: string; readonly status: string }[];
-  readonly regions: readonly { readonly id: string; readonly slug: string; readonly status: string }[];
+  readonly regions: readonly (ForOrgRegionRef & { readonly status: string })[];
+}
+
+/** Resolve the same canonical geography key used by `region_catalog`. */
+export function resolveRegionCanonicalKey(
+  region: ForOrgRegionRef,
+  regions: readonly ForOrgRegionRef[],
+): string | null {
+  if (region.kind === 'region') return region.parentRegionId === null ? `region:${region.slug}` : null;
+  if (region.parentRegionId === null) return null;
+  const parent = regions.find((candidate) => candidate.id === region.parentRegionId && candidate.kind === 'region');
+  if (parent === undefined) return null;
+  const parentKey = resolveRegionCanonicalKey(parent, regions);
+  return parentKey === null ? null : `city:${parentKey}:${region.slug}`;
 }
 
 export interface ForOrgCreateValue {
@@ -58,7 +78,7 @@ export function mapArticleForOrg(
   reference: ForOrgCreateValue & {
     readonly publisherName: string;
     readonly categorySlugs: readonly string[];
-    readonly regionSlug: string | null;
+    readonly regionKey: string | null;
   },
   target: ForOrgTargetState,
 ): ForOrgMappingResult {
@@ -87,12 +107,13 @@ export function mapArticleForOrg(
     if (!categoryIds.includes(categoryId)) categoryIds.push(categoryId);
   }
 
-  const region = reference.regionSlug === null
+  const region = reference.regionKey === null
     ? null
     : target.regions.find(
-      (candidate) => candidate.status === 'active' && candidate.slug === reference.regionSlug,
+      (candidate) => candidate.status === 'active'
+        && resolveRegionCanonicalKey(candidate, target.regions) === reference.regionKey,
     );
-  if (reference.regionSlug !== null && region === undefined) return { ok: false, field: 'regionId' };
+  if (reference.regionKey !== null && region === undefined) return { ok: false, field: 'regionId' };
 
   return {
     ok: true,
