@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (285 migrations):
+-- Reviewed sources, in journal order (286 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -299,6 +299,7 @@
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
 --   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504
+--   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:5b052a879e1259afc5c546271cb6acf8d2bcfda835d6858c28ca2067ad8519e1
 
 BEGIN;
 
@@ -24276,4 +24277,81 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (284, 'article_taxonomy_contraction_preflight', 'sha256:d1f82375d82d2ea4b71960d61671d3f5afd4dfc81b1480b79429e95efb5aa540');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504', 1791797441917);
+-- ----------------------------------------------------------------------
+-- 20261013000000_drop_legacy_article_taxonomy
+-- ----------------------------------------------------------------------
+-- Contract legacy article-level taxonomy projections after canonical writers/readers are deployed.
+-- This migration intentionally removes only articles.category_id and articles.tags.
+-- public.categories and article_categories.category_id remain tenant-scoped bindings.
+
+DO $article_taxonomy_contraction$
+DECLARE
+  v_category_mismatches bigint;
+  v_tag_mismatches bigint;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'articles' AND column_name = 'category_id'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'articles' AND column_name = 'tags'
+  ) THEN
+    RAISE EXCEPTION 'article_taxonomy_legacy_columns_missing';
+  END IF;
+
+  SELECT count(*) INTO v_category_mismatches
+  FROM public.articles AS a
+  WHERE a.category_id IS DISTINCT FROM (
+    SELECT ac.category_id
+    FROM public.article_categories AS ac
+    WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id
+    ORDER BY ac.position
+    LIMIT 1
+  );
+
+  SELECT count(*) INTO v_tag_mismatches
+  FROM public.articles AS a
+  WHERE a.tags IS DISTINCT FROM COALESCE((
+    SELECT array_agg(tc.slug ORDER BY at.position)
+    FROM public.article_tags AS at
+    JOIN public.tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active'
+    WHERE at.organization_id = a.organization_id AND at.article_id = a.id
+  ), ARRAY[]::text[]);
+
+  IF v_category_mismatches <> 0 OR v_tag_mismatches <> 0 THEN
+    RAISE EXCEPTION 'article_taxonomy_legacy_projection_drift: category mismatches %, tag mismatches %',
+      v_category_mismatches, v_tag_mismatches;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.article_categories AS ac
+    LEFT JOIN public.category_catalog AS cc ON cc.id = ac.catalog_id
+    WHERE cc.id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'article_category_global_reference_missing';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.article_tags AS at
+    LEFT JOIN public.tag_catalog AS tc ON tc.id = at.tag_id
+    WHERE tc.id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'article_tag_global_reference_missing';
+  END IF;
+END
+$article_taxonomy_contraction$;
+
+DROP TRIGGER IF EXISTS articles_tag_catalog_sync ON public.articles;
+DROP FUNCTION IF EXISTS indicate_private.sync_article_tag_catalog();
+
+DROP INDEX IF EXISTS public.articles_organization_category_idx;
+DROP INDEX IF EXISTS public.articles_tags_gin_idx;
+ALTER TABLE public.articles DROP CONSTRAINT IF EXISTS articles_category_fk;
+ALTER TABLE public.articles
+  DROP COLUMN category_id,
+  DROP COLUMN tags;
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('5b052a879e1259afc5c546271cb6acf8d2bcfda835d6858c28ca2067ad8519e1', 1791849600000);
 COMMIT;

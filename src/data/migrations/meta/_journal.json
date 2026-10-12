@@ -1996,6 +1996,13 @@
       "when": 1791797441917,
       "tag": "20261012200000_article_taxonomy_contraction_preflight",
       "breakpoints": true
+    },
+    {
+      "idx": 285,
+      "version": "7",
+      "when": 1791849600000,
+      "tag": "20261013000000_drop_legacy_article_taxonomy",
+      "breakpoints": true
     }
   ]
 }
