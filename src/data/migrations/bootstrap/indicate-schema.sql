@@ -23447,6 +23447,7 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (279, 'canonical_metadata_catalogs', 'sha256:9befb4cfcb791579f19d6ca4f6739fc3da8b8c3b6ede02dd54396aa1e646ac13');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3676ba2b39998a9f3b8110bb9129a773519f50ba604f2a88132d6fc6eff71de5', 1791797441912);
+
 -- ----------------------------------------------------------------------
 -- 20261012160000_global_taxonomy_integrity
 -- ----------------------------------------------------------------------
