@@ -29,4 +29,4 @@ BEGIN
 END
 $article_taxonomy_contraction_guard$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (284, 'article_taxonomy_contraction_preflight', 'sha256:18296db334cfae888f90dc9f689095ad50718abd1a603fca0a46a8775c78f916');
+VALUES (284, 'article_taxonomy_contraction_preflight', 'sha256:d1f82375d82d2ea4b71960d61671d3f5afd4dfc81b1480b79429e95efb5aa540');

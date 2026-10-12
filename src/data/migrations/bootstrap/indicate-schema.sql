@@ -298,7 +298,7 @@
 --   282  20261012170000_global_metadata_readers  ledger sha256:e8f414eee3f987e28eb8b9cb63697fea9f48ab16be87235bbe1c93c69bf96f81
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
---   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:2312bef7551cc9daad040b0e662b9479518883b5d8facf4913fbab83f8970290
+--   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504
 
 BEGIN;
 
@@ -24229,7 +24229,7 @@ BEGIN
 END
 $article_taxonomy_contraction_guard$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (284, 'article_taxonomy_contraction_preflight', 'sha256:18296db334cfae888f90dc9f689095ad50718abd1a603fca0a46a8775c78f916');
+VALUES (284, 'article_taxonomy_contraction_preflight', 'sha256:d1f82375d82d2ea4b71960d61671d3f5afd4dfc81b1480b79429e95efb5aa540');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('2312bef7551cc9daad040b0e662b9479518883b5d8facf4913fbab83f8970290', 1791797441917);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504', 1791797441917);
 COMMIT;
