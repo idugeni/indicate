@@ -357,22 +357,26 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, viewAnalyticsRows] = await Promise.all([
         transaction.execute<{ dimension: 'region' | 'category' | 'publisher' | 'status'; key: string | null; count: number }>(sql`
           SELECT
-            CASE GROUPING(region_id, category_id, publisher_id, status)
-              WHEN 7 THEN 'region'
-              WHEN 11 THEN 'category'
-              WHEN 13 THEN 'publisher'
-              WHEN 14 THEN 'status'
+            CASE GROUPING(region_id, publisher_id, status)
+              WHEN 3 THEN 'region'
+              WHEN 5 THEN 'publisher'
+              WHEN 6 THEN 'status'
             END AS dimension,
-            CASE GROUPING(region_id, category_id, publisher_id, status)
-              WHEN 7 THEN region_id::text
-              WHEN 11 THEN category_id::text
-              WHEN 13 THEN publisher_id::text
-              WHEN 14 THEN status::text
+            CASE GROUPING(region_id, publisher_id, status)
+              WHEN 3 THEN region_id::text
+              WHEN 5 THEN publisher_id::text
+              WHEN 6 THEN status::text
             END AS key,
             count(*)::int AS count
           FROM articles
           WHERE organization_id = ${orgId} AND ${inArticleRange}
-          GROUP BY GROUPING SETS ((region_id), (category_id), (publisher_id), (status))`),
+          GROUP BY GROUPING SETS ((region_id), (publisher_id), (status))
+          UNION ALL
+          SELECT 'category' AS dimension, ac.category_id::text AS key, count(*)::int AS count
+          FROM article_categories ac
+          INNER JOIN articles a ON a.organization_id = ac.organization_id AND a.id = ac.article_id
+          WHERE a.organization_id = ${orgId} AND ${inArticleRange}
+          GROUP BY ac.category_id`),
         transaction.execute<{ key: string; count: number }>(sql`
           SELECT state AS key, count(*)::int AS count FROM publishing_jobs
           WHERE organization_id = ${orgId}
@@ -1125,7 +1129,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       await this.authorize(transaction, actor, permission);
       const organizationId = actor.organizationId;
       const [articleRows, linkRows, tagRows, categoryRows, regionRows] = await Promise.all([
-        transaction.select({ id: articles.id, regionId: articles.regionId, categoryId: articles.categoryId }).from(articles).where(eq(articles.organizationId, organizationId)),
+        transaction.select({ id: articles.id, regionId: articles.regionId }).from(articles).where(eq(articles.organizationId, organizationId)),
         transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)),
         transaction.execute<{ article_id: string; tag: string; position: number }>(sql`
           SELECT at.article_id, tc.slug AS tag, at.position
@@ -1151,7 +1155,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         tagsByArticle.set(tagRow.article_id, tags);
       }
       return {
-        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, categoryId: row.categoryId, categoryIds: linksByArticle.get(row.id) ?? [], tags: tagsByArticle.get(row.id) ?? [] })),
+        articles: articleRows.map((row) => { const categoryIds = linksByArticle.get(row.id) ?? []; return { id: row.id, organizationId, regionId: row.regionId, categoryId: categoryIds[0] ?? null, categoryIds, tags: tagsByArticle.get(row.id) ?? [] }; }),
         categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         regions: regionRows.map((row) => ({ id: row.id, kind: row.kind, parentRegionId: row.parentRegionId })),
       };
