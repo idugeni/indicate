@@ -680,6 +680,7 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
   const OP_PUB = '0199a2b3-4c5d-7e8f-9012-3456789ab001';
   const OP_REG = '0199a2b3-4c5d-7e8f-9012-3456789ab002';
   const OP_CAT = '0199a2b3-4c5d-7e8f-9012-3456789ab003';
+  const OP_AUT = '0199a2b3-4c5d-7e8f-9012-3456789ab009';
   const T_PUB = '0199a2b3-4c5d-7e8f-9012-3456789ab005';
   const T_AUT = '0199a2b3-4c5d-7e8f-9012-3456789ab006';
   const T_CAT = '0199a2b3-4c5d-7e8f-9012-3456789ab007';
@@ -689,7 +690,7 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
     regionId: OP_REG,
     publisherId: OP_PUB,
     categoryIds: [OP_CAT],
-    authorId: null,
+    authorId: OP_AUT,
     slug: 'berita-upt',
     title: 'Judul Artikel Yang Cukup Panjang',
     body: 'Isi artikel yang cukup panjang untuk lolos validasi.',
@@ -701,6 +702,7 @@ describe('TenantBusinessService createArticle untuk org pemilik', () => {
       publishers: [{ id: OP_PUB, name: 'RUTAN KELAS II B WONOSOBO', attributionLabel: 'Humas', status: 'active' }],
       regions: [{ id: OP_REG, name: 'Wonosobo', slug: 'wonosobo', status: 'active' }],
       categories: [{ id: OP_CAT, name: 'Berita', slug: 'berita', status: 'active' }],
+      authors: [{ id: OP_AUT, displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active' }],
     };
     const targetState: Record<string, unknown> = {
       organizationId: OWNER_ORG,
