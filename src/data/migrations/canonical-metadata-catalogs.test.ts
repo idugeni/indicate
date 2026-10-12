@@ -104,27 +104,26 @@ const articleTagWriterMigration = readFileSync(
   'utf8',
 );
 
-const articleTaxonomyContractionMigration = readFileSync(
-  join(process.cwd(), 'src', 'data', 'migrations', '20261012200000_article_taxonomy_legacy_contraction.sql'),
+const articleTaxonomyPreflightMigration = readFileSync(
+  join(process.cwd(), 'src', 'data', 'migrations', '20261012200000_article_taxonomy_contraction_preflight.sql'),
   'utf8',
 );
 
-describe('Legacy article taxonomy contraction migration', () => {
+describe('Legacy article taxonomy contraction preflight', () => {
   it('fails closed if legacy categories or tags are not represented canonically', () => {
-    expect(articleTaxonomyContractionMigration).toContain('article_category_global_reference_missing');
-    expect(articleTaxonomyContractionMigration).toContain('article_tag_global_reference_missing');
+    expect(articleTaxonomyPreflightMigration).toContain('article_category_global_reference_missing');
+    expect(articleTaxonomyPreflightMigration).toContain('article_tag_global_reference_missing');
   });
 
-  it('replaces the legacy tag trigger with a tenant-checked canonical writer', () => {
+  it('provides a tenant-checked canonical tag writer without requiring column contraction', () => {
     expect(articleTagWriterMigration).toContain('indicate_private.replace_article_tags');
     expect(articleTagWriterMigration).toContain('p_organization_id IS DISTINCT FROM indicate_private.current_organization_id()');
-    expect(articleTaxonomyContractionMigration).toContain('DROP TRIGGER articles_tag_catalog_sync ON public.articles');
+    expect(articleTaxonomyPreflightMigration).not.toMatch(/DROP TRIGGER|DROP FUNCTION|DROP COLUMN|DROP INDEX/);
   });
 
-  it('drops legacy article metadata only after canonical read/write paths exist', () => {
-    expect(articleTaxonomyContractionMigration).toContain('ALTER TABLE public.articles DROP COLUMN tags');
-    expect(articleTaxonomyContractionMigration).toContain('ALTER TABLE public.articles DROP COLUMN category_id');
-    expect(articleTaxonomyContractionMigration).toContain('DROP FUNCTION indicate_private.sync_article_tag_catalog()');
+  it('keeps legacy columns and trigger until a later verified contraction', () => {
+    expect(articleTaxonomyPreflightMigration).toContain('article_taxonomy_contraction_preflight');
+    expect(articleTaxonomyPreflightMigration).not.toMatch(/DROP TRIGGER|DROP FUNCTION|DROP COLUMN|DROP INDEX/);
   });
 });
 
