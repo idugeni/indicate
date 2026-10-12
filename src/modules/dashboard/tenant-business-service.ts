@@ -1118,17 +1118,14 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
 
     const { ownerOrganizationId, ...rest } = parsed.data;
     void ownerOrganizationId;
-    const categoryReferences: Array<{ readonly name: string; readonly slug: string }> = [];
+    const categorySlugs: string[] = [];
     for (const categoryId of rest.categoryIds ?? []) {
       const category = scope.categories.find((candidate) => candidate.id === categoryId && candidate.status === 'active');
       if (category === undefined) {
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Kategori tidak valid untuk organisasi sumber.', actor.requestId, { categoryIds: ['Muat ulang kategori lalu pilih ulang.'] }) };
       }
-      if (!categoryReferences.some((candidate) => candidate.slug === category.slug)) {
-        categoryReferences.push({ name: category.name, slug: category.slug });
-      }
+      if (!categorySlugs.includes(category.slug)) categorySlugs.push(category.slug);
     }
-    const categorySlugs = categoryReferences.map(({ slug }) => slug);
 
     let regionSlug: string | null = null;
     if (rest.regionId !== null) {
@@ -1151,46 +1148,9 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       const record = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
         const now = this.clock.now().toISOString();
 
-        // Materialize metadata selected in the operator workspace under the
-        // destination tenant, within the same transaction as the article.
-        // Nothing is silently replaced: missing categories/authors are created
-        // with their selected names; inactive conflicting metadata is rejected.
-        for (const reference of categoryReferences) {
-          const existing = transaction.state.categories.find((candidate) => candidate.slug === reference.slug);
-          if (existing === undefined) {
-            const category: CategoryRecord = {
-              ...this.base(ownerActor, now),
-              name: reference.name,
-              slug: reference.slug,
-              status: 'active',
-            };
-            transaction.state.categories.push(category);
-            this.audit(transaction, 'category.create', 'category', category.id, null, category);
-          } else if (existing.status !== 'active') {
-            throw new DashboardValidationError({
-              categoryIds: [`Kategori "${reference.name}" sudah ada di organisasi tujuan tetapi berstatus ${existing.status}. Aktifkan kategori itu terlebih dahulu.`],
-            });
-          }
-        }
-
-        if (selectedAuthor !== null && selectedAuthor !== undefined) {
-          const existing = transaction.state.authors.find((candidate) => candidate.displayName === selectedAuthor.displayName);
-          if (existing === undefined) {
-            const author: AuthorRecord = {
-              ...this.base(ownerActor, now),
-              displayName: selectedAuthor.displayName,
-              byline: selectedAuthor.byline,
-              status: 'active',
-            };
-            transaction.state.authors.push(author);
-            this.audit(transaction, 'author.create', 'author', author.id, null, author);
-          } else if (existing.status !== 'active') {
-            throw new DashboardValidationError({
-              authorId: [`Penulis "${selectedAuthor.displayName}" sudah ada di organisasi tujuan tetapi tidak aktif. Aktifkan penulis itu terlebih dahulu.`],
-            });
-          }
-        }
-
+        // Cross-organization creation may map only metadata already available
+        // in the destination tenant. Never clone categories or authors from the
+        // source tenant as an implicit side effect of creating an article.
         const mapping = mapArticleForOrg(
           {
             publisherId: rest.publisherId,
