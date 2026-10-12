@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
+import { articles } from '@/data/schema/editorial';
 
 const ORG = '0199a2b3-4c5d-7e8f-9012-3456789abcde';
 
@@ -148,5 +149,14 @@ describe('legacy taxonomy rollback projections', () => {
     expect(source).toContain('categoryId: row.categoryId');
     expect(source).toContain('tags: [...row.tags]');
     expect(source).toContain('indicate_private.replace_article_tags');
+  });
+});
+
+
+describe('Skema taksonomi artikel kanonis', () => {
+  it('tidak lagi memodelkan proyeksi kategori dan tag legacy pada articles', () => {
+    const columns = getTableConfig(articles).columns.map((column) => column.name);
+    expect(columns).not.toContain('category_id');
+    expect(columns).not.toContain('tags');
   });
 });

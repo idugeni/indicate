@@ -140,8 +140,6 @@ export const articles = pgTable('articles', {
   id: uuid('id').notNull(),
   regionId: uuid('region_id'),
   publisherId: uuid('publisher_id'),
-  /** Legacy primary-category projection retained for rollback compatibility until contraction. */
-  categoryId: uuid('category_id'),
   authorId: uuid('author_id'),
   leadMediaId: uuid('lead_media_id'),
   /** External cover URL (e.g. editorial hotlink); used when no R2 media exists. */
@@ -156,8 +154,6 @@ export const articles = pgTable('articles', {
   /** Structured TipTap JSON (expand phase: nullable, legacy `body` stays canonical for search/RSS). */
   bodyJson: jsonb('body_json').$type<Record<string, unknown> | null>(),
   source: text('source').notNull(),
-  /** Legacy tag projection retained for rollback compatibility until contraction. */
-  tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
   status: articleStatus('status').default('draft').notNull(),
   /** Presentation mode; `standard` for legacy rows backfilled by migration 252. */
   type: articleType('type').default('standard').notNull(),
@@ -181,11 +177,9 @@ export const articles = pgTable('articles', {
   unique('articles_organization_slug_unique').on(table.organizationId, table.slug),
   foreignKey({ name: 'articles_region_fk', columns: [table.organizationId, table.regionId], foreignColumns: [regions.organizationId, regions.id] }).onDelete('restrict'),
   foreignKey({ name: 'articles_publisher_fk', columns: [table.organizationId, table.publisherId], foreignColumns: [publishers.organizationId, publishers.id] }).onDelete('restrict'),
-  foreignKey({ name: 'articles_category_fk', columns: [table.organizationId, table.categoryId], foreignColumns: [categories.organizationId, categories.id] }).onDelete('restrict'),
   foreignKey({ name: 'articles_author_fk', columns: [table.organizationId, table.authorId], foreignColumns: [authors.organizationId, authors.id] }).onDelete('restrict'),
   index('articles_organization_status_date_idx').on(table.organizationId, table.status, table.publishedAt),
   index('articles_organization_region_idx').on(table.organizationId, table.regionId),
-  index('articles_organization_category_idx').on(table.organizationId, table.categoryId),
   index('articles_organization_lead_media_idx').on(table.organizationId, table.leadMediaId).where(sql`${table.leadMediaId} IS NOT NULL`),
   index('articles_organization_type_idx').on(table.organizationId, table.type),
   check('articles_version_positive', sql`${table.version} > 0`),
