@@ -1982,6 +1982,13 @@
       "when": 1791797441915,
       "tag": "20261012180000_article_category_global_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
+      "when": 1791797441916,
+      "tag": "20261012190000_article_taxonomy_legacy_contraction",
+      "breakpoints": true
     }
   ]
 }
