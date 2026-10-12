@@ -152,6 +152,7 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
     const SOURCE_AUTHOR = '10000000-0000-4000-8000-000000000004';
     const SOURCE_CATEGORY = '10000000-0000-4000-8000-000000000005';
     const SOURCE_REGION = '10000000-0000-4000-8000-000000000006';
+    const SOURCE_PROVINCE = '10000000-0000-4000-8000-000000000012';
     const TARGET_PUBLISHER = '10000000-0000-4000-8000-000000000007';
     const TARGET_PROVINCE = '10000000-0000-4000-8000-000000000008';
     const TARGET_CITY = '10000000-0000-4000-8000-000000000009';
@@ -205,7 +206,10 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
       publishers: [{ id: SOURCE_PUBLISHER, name: 'RUTAN KELAS II B WONOSOBO', status: 'active' }],
       categories: [{ id: SOURCE_CATEGORY, name: 'Keamanan dan Ketertiban', slug: 'keamanan-dan-ketertiban', status: 'active' }],
       authors: [{ id: SOURCE_AUTHOR, displayName: 'Humas Rutan', byline: 'Humas Rutan Wonosobo', status: 'active' }],
-      regions: [{ id: SOURCE_REGION, name: 'Wonosobo', slug: 'wonosobo', status: 'active' }],
+      regions: [
+        { id: SOURCE_PROVINCE, name: 'Jawa Tengah', slug: 'jawa-tengah', status: 'active', kind: 'region', parentRegionId: null },
+        { id: SOURCE_REGION, name: 'Wonosobo', slug: 'wonosobo', status: 'active', kind: 'city', parentRegionId: SOURCE_PROVINCE },
+      ],
     }));
     const execute = vi.fn(async () => { throw new Error('cross-org write must not use active org'); });
     const findOrganizationBySlug = vi.fn(async (_ownerActor: unknown, slug: string) => {
