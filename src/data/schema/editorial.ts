@@ -103,7 +103,7 @@ export const categories = pgTable('categories', {
   id: uuid('id').notNull(),
   name: text('name').notNull(),
   slug: text('slug').notNull(),
-  catalogId: uuid('catalog_id').notNull().defaultRandom().references(() => categoryCatalog.id, { onDelete: 'restrict' }),
+  catalogId: uuid('catalog_id').notNull().references(() => categoryCatalog.id, { onDelete: 'restrict' }),
   status: recordStatus('status').default('active').notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
