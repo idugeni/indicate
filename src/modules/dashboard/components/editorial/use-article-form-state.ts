@@ -789,7 +789,7 @@ export function useArticleFormState({
     coverBlobRef.current = null;
     coverRemoteRef.current = { url, mimeType: item.mediaType };
     setFeaturedId(item.id);
-    setFeaturedOrgId(null);
+    setFeaturedOrgId(effectiveArticleOrg === '' ? null : effectiveArticleOrg);
     setFeaturedName(fileNameOf(item.objectKey));
     setFeaturedVersion(item.version);
     setFeaturedFocal(null);
