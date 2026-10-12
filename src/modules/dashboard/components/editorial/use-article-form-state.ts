@@ -325,6 +325,15 @@ export function useArticleFormState({
   /** Mode ubah tidak pernah menerapkan penulis bawaan; nilai awal adalah kebenaran. */
   const touchedAuthor = useRef(isEditing);
 
+  const selectedPublisher = useMemo(
+    () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
+    [model?.publishers, publisherId],
+  );
+  const effectiveOwnerOrg = ownerOrganizationId ?? selectedPublisher?.ownerOrganizationId ?? null;
+  const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
+
+  const effectiveArticleOrg = foreignOwnerOrg ?? (organizationId === '' ? '' : organizationId);
+
   useEffect(() => {
     if (!touchedAuthor.current && publisherId === null && authorId === null && defaultAuthorId !== null) {
       setAuthorId(defaultAuthorId);
@@ -355,7 +364,7 @@ export function useArticleFormState({
         /* Pratinjau sampul best-effort; id media tetap tersimpan. */
       }
     })();
-  }, [isEditing, initialArticle, command, featuredId, featuredPreviewUrl]);
+  }, [isEditing, initialArticle, command, featuredId, featuredPreviewUrl, effectiveArticleOrg, organizationId]);
 
   /**
    * Lengkapi nama/versi/alt/caption sampul artikel yang diubah dari pustaka.
@@ -403,14 +412,6 @@ export function useArticleFormState({
     [articleType, bodyText, bodyJsonDraft, featuredId, coverUrl, videoUrl, audioUrl],
   );
 
-  const selectedPublisher = useMemo(
-    () => (model?.publishers ?? []).find((p) => p.id === publisherId) ?? null,
-    [model?.publishers, publisherId],
-  );
-  const effectiveOwnerOrg = ownerOrganizationId ?? selectedPublisher?.ownerOrganizationId ?? null;
-  const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
-
-  const effectiveArticleOrg = foreignOwnerOrg ?? (organizationId === '' ? '' : organizationId);
   const mediaLibraryOwnerOrg = effectiveArticleOrg === '' ? organizationId : effectiveArticleOrg;
 
   useEffect(() => {
@@ -811,7 +812,7 @@ export function useArticleFormState({
       });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [libraryOpen, libraryVisible, command, libraryPreviews]);
+  }, [libraryOpen, libraryVisible, command, libraryPreviews, effectiveArticleOrg, organizationId]);
 
   const pickLibraryCover = (item: CoverLibraryItem) => {
     const url = libraryPreviews[item.id];
