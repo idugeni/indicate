@@ -33,3 +33,22 @@ describe('Canonical metadata catalog migration', () => {
     expect(migration).toContain('CREATE POLICY tenant_isolation_select ON public.article_tags');
   });
 });
+
+
+const taxonomyIntegrityMigration = readFileSync(
+  join(process.cwd(), 'src', 'data', 'migrations', '20261012160000_global_taxonomy_integrity.sql'),
+  'utf8',
+);
+
+describe('Global taxonomy binding integrity migration', () => {
+  it('prevents random category catalog IDs and validates existing canonical bindings', () => {
+    expect(taxonomyIntegrityMigration).toContain('ALTER TABLE public.categories ALTER COLUMN catalog_id DROP DEFAULT');
+    expect(taxonomyIntegrityMigration).toContain('category_catalog_binding_inconsistent');
+    expect(taxonomyIntegrityMigration).toContain('cc.slug <> c.slug OR cc.name <> c.name');
+  });
+
+  it('rechecks the canonical binding when a category catalog ID changes', () => {
+    expect(taxonomyIntegrityMigration).toContain('BEFORE INSERT OR UPDATE OF name, slug, catalog_id ON public.categories');
+    expect(taxonomyIntegrityMigration).toContain('EXECUTE FUNCTION indicate_private.sync_category_catalog_binding()');
+  });
+});
