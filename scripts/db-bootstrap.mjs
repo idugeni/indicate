@@ -16,7 +16,7 @@
  * emitted SQL itself must be applied with one, never a runtime credential.
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -97,6 +97,10 @@ function main() {
   const journal = JSON.parse(readFileSync(JOURNAL_PATH, 'utf8'));
   const entries = [...(journal.entries ?? [])].sort((a, b) => a.idx - b.idx);
   if (entries.length === 0) fail('journal has no entries');
+  const journalTags = new Set(entries.map((entry) => `${entry.tag}.sql`));
+  const unjournaled = readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith('.sql') && !journalTags.has(name));
+  if (unjournaled.length > 0) fail(`migration files missing from journal: ${unjournaled.join(', ')}`);
   const scoped = args.through === null ? entries : entries.slice(0, entries.findIndex((entry) => entry.tag === args.through) + 1);
   if (scoped.length === 0 || (args.through !== null && scoped[scoped.length - 1].tag !== args.through)) {
     fail(`tag not found in journal: ${args.through}`);
@@ -130,7 +134,13 @@ function main() {
   const output = `${header}\n${sections.map((section) => section.block).join('\n')}COMMIT;\n`;
   if (args.check) {
     const current = readFileSync(args.out, 'utf8');
-    if (current !== output) fail(`bootstrap drift detected: regenerate with npm run db:bootstrap (${args.out})`);
+    if (current !== output) {
+      const currentLines = current.split('\n');
+      const expectedLines = output.split('\n');
+      let line = 0;
+      while (line < currentLines.length && line < expectedLines.length && currentLines[line] === expectedLines[line]) line += 1;
+      fail(`bootstrap drift detected at line ${line + 1}: expected ${JSON.stringify(expectedLines[line])}, found ${JSON.stringify(currentLines[line])}; regenerate with npm run db:bootstrap (${args.out})`);
+    }
     console.log(`db:bootstrap: in sync (${sections.length} migrations)`);
     return;
   }
