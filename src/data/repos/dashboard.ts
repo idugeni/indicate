@@ -2314,19 +2314,15 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       [...before.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
     )) {
       await transaction.delete(articleCategories).where(eq(articleCategories.organizationId, state.organizationId));
-      const categoryBindings = await transaction.select({ id: categories.id, catalogId: categories.catalogId })
-        .from(categories)
-        .where(eq(categories.organizationId, state.organizationId));
-      const catalogIdByCategoryId = new Map(categoryBindings.map((row) => [row.id, row.catalogId]));
       for (const chunk of insertChunks(state.articleCategories)) {
-        const values = chunk.map((row) => {
-          const catalogId = catalogIdByCategoryId.get(row.categoryId);
-          if (catalogId === undefined) {
-            throw new DashboardValidationError({ articleCategories: ['Kategori tidak terhubung ke katalog global.'] });
-          }
-          return { organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, catalogId, position: row.position };
-        });
-        await transaction.insert(articleCategories).values(values).onConflictDoNothing();
+        const tuples = chunk.map((row) => sql`(${row.articleId}::uuid, ${row.categoryId}::uuid, ${row.position}::integer)`);
+        await transaction.execute(sql`
+          INSERT INTO article_categories (organization_id, article_id, category_id, catalog_id, position)
+          SELECT ${state.organizationId}::uuid, v.article_id, v.category_id, c.catalog_id, v.position
+          FROM (VALUES ${sql.join(tuples, sql`, `)}) AS v(article_id, category_id, position)
+          LEFT JOIN categories AS c
+            ON c.organization_id = ${state.organizationId}::uuid AND c.id = v.category_id
+        `);
       }
     }
     const removedArticleIds = want('articles') ? [...index.priorArticles.keys()].filter((id) => !index.currentArticles.has(id)) : [];
