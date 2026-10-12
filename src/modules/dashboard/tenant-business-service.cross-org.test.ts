@@ -145,7 +145,7 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
 
 
 
-  it('creates missing selected taxonomy and author metadata inside the destination organization', async () => {
+  it('rejects missing destination metadata without cloning source categories or authors', async () => {
     const PLATFORM_ORG = '10000000-0000-4000-8000-000000000001';
     const TARGET_ORG = '10000000-0000-4000-8000-000000000002';
     const SOURCE_PUBLISHER = '10000000-0000-4000-8000-000000000003';
@@ -243,33 +243,17 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
       },
     );
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error(JSON.stringify(result.error));
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected missing destination author/category to be rejected');
+    expect(JSON.stringify(result.error)).toContain('authorId');
     expect(execute).not.toHaveBeenCalled();
     expect(executeForOrganization).toHaveBeenCalledTimes(1);
-    expect(result.value.organizationId).toBe(TARGET_ORG);
-    expect(result.value.publisherId).toBe(TARGET_PUBLISHER);
-    expect(result.value.regionId).toBe(TARGET_CITY);
-    expect(result.value.categoryIds).toHaveLength(1);
-    expect(result.value.categoryIds[0]).toBe(generated[0]);
-    expect(result.value.authorId).toBe(generated[1]);
-    expect(targetState.categories).toContainEqual(expect.objectContaining({
-      id: generated[0],
-      organizationId: TARGET_ORG,
-      name: 'Keamanan dan Ketertiban',
-      slug: 'keamanan-dan-ketertiban',
-    }));
-    expect(targetState.authors).toContainEqual(expect.objectContaining({
-      id: generated[1],
-      organizationId: TARGET_ORG,
-      displayName: 'Humas Rutan',
-      byline: 'Humas Rutan Wonosobo',
-    }));
-    expect(audits).toEqual(expect.arrayContaining([
-      expect.objectContaining({ action: 'category.create', targetType: 'category' }),
-      expect.objectContaining({ action: 'author.create', targetType: 'author' }),
-      expect.objectContaining({ action: 'article.create', targetType: 'article' }),
-    ]));
+    expect(targetState.categories).toHaveLength(1);
+    expect(targetState.categories[0]?.slug).toBe('berita');
+    expect(targetState.authors).toHaveLength(1);
+    expect(targetState.authors[0]?.displayName).toBe('Redaksi');
+    expect(targetState.articles).toHaveLength(0);
+    expect(audits).toEqual([]);
   });
 
 });
