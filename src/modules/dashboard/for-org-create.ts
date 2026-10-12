@@ -84,11 +84,11 @@ export function mapArticleForOrg(
   const activeCategories = target.categories.filter((candidate) => candidate.status === 'active');
   const defaultCategory = activeCategories.find((candidate) => candidate.slug === DEFAULT_CATEGORY_SLUG);
   const categoriesBySlug = new Map(activeCategories.map((category) => [category.slug, category.id] as const));
-  const categoryIds = [...new Set(reference.categorySlugs.map(
-    (slug) => categoriesBySlug.get(slug) ?? defaultCategory?.id,
-  ).filter((id): id is string => id !== undefined))];
-  if (categoryIds.length !== new Set(reference.categorySlugs).size && defaultCategory === undefined) {
-    return { ok: false, field: 'categoryIds' };
+  const categoryIds: string[] = [];
+  for (const slug of new Set(reference.categorySlugs)) {
+    const categoryId = categoriesBySlug.get(slug) ?? defaultCategory?.id;
+    if (categoryId === undefined) return { ok: false, field: 'categoryIds' };
+    if (!categoryIds.includes(categoryId)) categoryIds.push(categoryId);
   }
 
   const region =
