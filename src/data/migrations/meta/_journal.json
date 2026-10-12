@@ -1954,6 +1954,13 @@
       "when": 1791586717648,
       "tag": "20261010000000_seo_vercel_gateway_model",
       "breakpoints": true
+    },
+    {
+      "idx": 279,
+      "version": "7",
+      "when": 1791797441912,
+      "tag": "20261012000000_canonical_metadata_catalogs",
+      "breakpoints": true
     }
   ]
 }
