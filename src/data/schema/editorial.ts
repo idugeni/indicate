@@ -156,6 +156,8 @@ export const articles = pgTable('articles', {
   /** Structured TipTap JSON (expand phase: nullable, legacy `body` stays canonical for search/RSS). */
   bodyJson: jsonb('body_json').$type<Record<string, unknown> | null>(),
   source: text('source').notNull(),
+  /** Legacy tag projection retained for rollback compatibility until contraction. */
+  tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
   status: articleStatus('status').default('draft').notNull(),
   /** Presentation mode; `standard` for legacy rows backfilled by migration 252. */
   type: articleType('type').default('standard').notNull(),
