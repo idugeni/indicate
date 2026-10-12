@@ -1134,7 +1134,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           WHERE at.organization_id = ${organizationId}
           ORDER BY at.article_id, at.position`),
         transaction.select({ id: categories.id, name: categoryCatalog.name, slug: categoryCatalog.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt })
-          .from(categories).innerJoin(categoryCatalog, eq(categories.catalogId, categoryCatalog.id)).where(eq(categories.organizationId, organizationId)),
+          .from(categories).innerJoin(categoryCatalog, and(eq(categories.catalogId, categoryCatalog.id), eq(categoryCatalog.status, 'active'))).where(eq(categories.organizationId, organizationId)),
         transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId }).from(regions)
           .innerJoin(regionCatalog, eq(regions.catalogId, regionCatalog.id)).where(eq(regions.organizationId, organizationId)),
       ]);
