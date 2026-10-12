@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (286 migrations):
+-- Reviewed sources, in journal order (287 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -300,6 +300,7 @@
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
 --   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
+--   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 
 BEGIN;
 
@@ -24357,4 +24358,113 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (285, 'drop_legacy_article_taxonomy', 'sha256:e36a14bdbcaaeb8405f787e6c944e0eef309c77eade14c9840bb2bb5dac28daa');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080', 1791849600000);
+-- ----------------------------------------------------------------------
+-- 20261013100000_global_category_delivery
+-- ----------------------------------------------------------------------
+-- Read syndicated article taxonomy exclusively from the canonical global catalogs.
+-- This replaces the pre-contraction reader that referenced articles.category_id and
+-- articles.tags, both of which were removed by drop_legacy_article_taxonomy.
+-- Missing categories remain null at the data layer; the UI has one shared "Berita"
+-- presentation fallback and does not invent a category catalog row.
+-- Body digest: LF-normalize this file and replace its own checksum with zeros.
+
+CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_article_details(
+  requested_organization_id uuid,
+  requested_article_ids uuid[]
+)
+RETURNS TABLE(
+  article_id uuid, slug text, title text, excerpt text, canonical_url text,
+  tags text[], status public.article_status, article_type text, is_sponsored boolean,
+  video_url text, audio_url text, duration_seconds integer,
+  region_id uuid, category_slug text, category_name text,
+  publisher_name text, attribution text, publisher_logo text, publisher_city text,
+  publisher_bio text, publisher_verified boolean, publisher_type text,
+  author_display text, author_bio text, author_avatar text, author_url text,
+  cover_image_url text, published_at timestamp with time zone,
+  updated_at timestamp with time zone, body text, body_json jsonb,
+  lead_media_id uuid
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $
+  SELECT
+    a.id,
+    a.slug,
+    a.title,
+    a.excerpt,
+    a.canonical_url,
+    COALESCE((
+      SELECT array_agg(tc.slug ORDER BY at.position)
+      FROM public.article_tags AS at
+      JOIN public.tag_catalog AS tc
+        ON tc.id = at.tag_id AND tc.status = 'active'
+      WHERE at.organization_id = a.organization_id
+        AND at.article_id = a.id
+    ), ARRAY[]::text[]),
+    a.status,
+    a.type::text,
+    a.is_sponsored,
+    a.video_url,
+    a.audio_url,
+    a.duration_seconds,
+    a.region_id,
+    (
+      SELECT cc.slug
+      FROM public.article_categories AS ac
+      JOIN public.category_catalog AS cc
+        ON cc.id = ac.catalog_id AND cc.status = 'active'
+      WHERE ac.organization_id = a.organization_id
+        AND ac.article_id = a.id
+      ORDER BY ac.position, cc.slug
+      LIMIT 1
+    ),
+    (
+      SELECT cc.name
+      FROM public.article_categories AS ac
+      JOIN public.category_catalog AS cc
+        ON cc.id = ac.catalog_id AND cc.status = 'active'
+      WHERE ac.organization_id = a.organization_id
+        AND ac.article_id = a.id
+      ORDER BY ac.position, cc.slug
+      LIMIT 1
+    ),
+    p.name,
+    p.attribution_label,
+    p.contacts->>'logoUrl',
+    p.contacts->>'city',
+    p.contacts->>'bio',
+    p.verification_status = 'verified',
+    p.type::text,
+    au.display_name,
+    au.bio,
+    au.avatar_url,
+    au.website_url,
+    a.cover_image_url,
+    a.published_at,
+    a.updated_at,
+    a.body,
+    a.body_json,
+    a.lead_media_id
+  FROM public.articles AS a
+  LEFT JOIN public.publishers AS p
+    ON p.organization_id = a.organization_id
+   AND p.id = a.publisher_id
+   AND p.status = 'active'
+  LEFT JOIN public.authors AS au
+    ON au.organization_id = a.organization_id
+   AND au.id = a.author_id
+   AND au.status = 'active'
+  WHERE a.organization_id = requested_organization_id
+    AND a.id = ANY (requested_article_ids)
+    AND a.status = 'active'
+    AND a.published_at IS NOT NULL
+$;
+REVOKE ALL ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (286, 'global_category_delivery', 'sha256:5e802d197c25854a5ee65752949eb8af9b7f5ddf60f35733958c3920878168f1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01', 1791860400000);
 COMMIT;
