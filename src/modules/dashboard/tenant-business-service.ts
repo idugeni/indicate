@@ -1097,14 +1097,17 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
 
     const { ownerOrganizationId, ...rest } = parsed.data;
     void ownerOrganizationId;
-    const categorySlugs: string[] = [];
+    const categoryReferences: Array<{ readonly name: string; readonly slug: string }> = [];
     for (const categoryId of rest.categoryIds ?? []) {
       const category = scope.categories.find((candidate) => candidate.id === categoryId && candidate.status === 'active');
       if (category === undefined) {
         return { ok: false, error: createPublicError('INVALID_INPUT', 'Kategori tidak valid untuk organisasi sumber.', actor.requestId, { categoryIds: ['Muat ulang kategori lalu pilih ulang.'] }) };
       }
-      categorySlugs.push(category.slug);
+      if (!categoryReferences.some((candidate) => candidate.slug === category.slug)) {
+        categoryReferences.push({ name: category.name, slug: category.slug });
+      }
     }
+    const categorySlugs = categoryReferences.map(({ slug }) => slug);
 
     let regionSlug: string | null = null;
     if (rest.regionId !== null) {
@@ -1125,6 +1128,48 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const ownerActor = this.platformOwnerActor(actor, ownerOrgId);
     try {
       const record = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
+        const now = this.clock.now().toISOString();
+
+        // Materialize metadata selected in the operator workspace under the
+        // destination tenant, within the same transaction as the article.
+        // Nothing is silently replaced: missing categories/authors are created
+        // with their selected names; inactive conflicting metadata is rejected.
+        for (const reference of categoryReferences) {
+          const existing = transaction.state.categories.find((candidate) => candidate.slug === reference.slug);
+          if (existing === undefined) {
+            const category: CategoryRecord = {
+              ...this.base(ownerActor, now),
+              name: reference.name,
+              slug: reference.slug,
+              status: 'active',
+            };
+            transaction.state.categories.push(category);
+            this.audit(transaction, 'category.create', 'category', category.id, null, category);
+          } else if (existing.status !== 'active') {
+            throw new DashboardValidationError({
+              categoryIds: [`Kategori "${reference.name}" sudah ada di organisasi tujuan tetapi berstatus ${existing.status}. Aktifkan kategori itu terlebih dahulu.`],
+            });
+          }
+        }
+
+        if (selectedAuthor !== null) {
+          const existing = transaction.state.authors.find((candidate) => candidate.displayName === selectedAuthor.displayName);
+          if (existing === undefined) {
+            const author: AuthorRecord = {
+              ...this.base(ownerActor, now),
+              displayName: selectedAuthor.displayName,
+              byline: selectedAuthor.byline,
+              status: 'active',
+            };
+            transaction.state.authors.push(author);
+            this.audit(transaction, 'author.create', 'author', author.id, null, author);
+          } else if (existing.status !== 'active') {
+            throw new DashboardValidationError({
+              authorId: [`Penulis "${selectedAuthor.displayName}" sudah ada di organisasi tujuan tetapi tidak aktif. Aktifkan penulis itu terlebih dahulu.`],
+            });
+          }
+        }
+
         const mapping = mapArticleForOrg(
           {
             publisherId: rest.publisherId,
@@ -1141,13 +1186,16 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
         if (!mapping.ok) {
           const mappingMessages: Record<ForOrgMappingField, string> = {
             publisherId: 'Penerbit tidak tersedia di organisasi tujuan.',
-            authorId: 'Penulis tidak tersedia di organisasi tujuan dan penulis default Redaksi tidak ditemukan.',
-            categoryIds: 'Kategori tidak tersedia di organisasi tujuan dan kategori default Berita tidak ditemukan.',
+            authorId: 'Penulis tidak tersedia di organisasi tujuan.',
+            categoryIds: 'Kategori tidak tersedia di organisasi tujuan.',
             regionId: 'Wilayah tidak tersedia di organisasi tujuan.',
           };
           throw new DashboardValidationError({ [mapping.field]: [mappingMessages[mapping.field]] });
         }
         const mapped = mapping.value;
+        if (mapped.categoryIds.length === 0) {
+          throw new DashboardValidationError({ categoryIds: ['Pilih minimal satu kategori sebelum menyimpan artikel lintas organisasi.'] });
+        }
         return this.insertArticleRecord(
           transaction,
           ownerActor,
@@ -1158,7 +1206,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
             categoryIds: mapped.categoryIds,
             regionId: mapped.regionId,
           },
-          this.clock.now().toISOString(),
+          now,
         );
       }, ['articles', 'regions', 'publishers', 'categories', 'articleCategories', 'authors', 'media', 'articleSites']);
       await this.invalidateActorOrganization(actor, 'createArticleForOwnerOrg');
