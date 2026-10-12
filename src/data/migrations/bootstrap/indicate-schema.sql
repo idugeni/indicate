@@ -294,7 +294,7 @@
 --   278  20261009120000_ai_operator_approvals  ledger sha256:cebe6a42090b4c3236263be69b79a29a044e63ce83b4952602e3c56ba0ec8ad1
 --   279  20261010000000_seo_vercel_gateway_model  ledger sha256:c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7
 --   280  20261012000000_canonical_metadata_catalogs  ledger sha256:3676ba2b39998a9f3b8110bb9129a773519f50ba604f2a88132d6fc6eff71de5
---   281  20261012160000_global_taxonomy_integrity  ledger sha256:71b03487b6afcfea39b006a2738848968135743d11742dbfef3a481c1a572f2c
+--   281  20261012160000_global_taxonomy_integrity  ledger sha256:8424657c4067b9f876cb7323168a89e5364988ef5e304e2970a030e77165e210
 --   282  20261012170000_global_metadata_readers  ledger sha256:e8f414eee3f987e28eb8b9cb63697fea9f48ab16be87235bbe1c93c69bf96f81
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
@@ -23498,6 +23498,17 @@ BEGIN
     RAISE EXCEPTION 'category_catalog_binding_unavailable';
   END IF;
 
+  IF TG_OP = 'UPDATE'
+     AND OLD.catalog_id IS DISTINCT FROM v_catalog_id
+     AND EXISTS (
+       SELECT 1
+       FROM public.article_categories AS ac
+       WHERE ac.organization_id = OLD.organization_id
+         AND ac.category_id = OLD.id
+     ) THEN
+    RAISE EXCEPTION 'category_catalog_identity_in_use';
+  END IF;
+
   NEW.catalog_id := v_catalog_id;
   NEW.name := v_catalog_name;
   NEW.slug := v_catalog_slug;
@@ -23508,10 +23519,29 @@ DROP TRIGGER categories_catalog_binding ON public.categories;
 CREATE TRIGGER categories_catalog_binding
 BEFORE INSERT OR UPDATE OF name, slug, catalog_id ON public.categories
 FOR EACH ROW EXECUTE FUNCTION indicate_private.sync_category_catalog_binding();
+CREATE FUNCTION indicate_private.sync_category_catalog_labels()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $func$
+BEGIN
+  IF NEW.name IS DISTINCT FROM OLD.name OR NEW.slug IS DISTINCT FROM OLD.slug THEN
+    UPDATE public.categories
+    SET name = NEW.name, slug = NEW.slug
+    WHERE catalog_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END
+$func$;
+CREATE TRIGGER category_catalog_labels_sync
+AFTER UPDATE OF name, slug ON public.category_catalog
+FOR EACH ROW EXECUTE FUNCTION indicate_private.sync_category_catalog_labels();
+REVOKE ALL ON FUNCTION indicate_private.sync_category_catalog_labels() FROM PUBLIC, anon, authenticated, indicate_runtime;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (280, 'global_taxonomy_integrity', 'sha256:65d9335d8ea809f83aaa301ba956c6f0a221ae4f205d00690a1f98e4fc373a6c');
+VALUES (280, 'global_taxonomy_integrity', 'sha256:aede9fbdebd86afb58fcc17efca091d32cb99fcff20adc4715dc7dee518b7122');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('71b03487b6afcfea39b006a2738848968135743d11742dbfef3a481c1a572f2c', 1791797441913);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('8424657c4067b9f876cb7323168a89e5364988ef5e304e2970a030e77165e210', 1791797441913);
 
 -- ----------------------------------------------------------------------
 -- 20261012170000_global_metadata_readers
