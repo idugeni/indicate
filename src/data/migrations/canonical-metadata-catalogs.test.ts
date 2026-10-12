@@ -52,6 +52,8 @@ describe('Global taxonomy binding integrity migration', () => {
     expect(taxonomyIntegrityMigration).toContain('EXECUTE FUNCTION indicate_private.sync_category_catalog_binding()');
     expect(taxonomyIntegrityMigration).toContain('NEW.name := v_catalog_name');
     expect(taxonomyIntegrityMigration).toContain('NEW.slug := v_catalog_slug');
+    expect(taxonomyIntegrityMigration).toContain('category_catalog_identity_in_use');
+    expect(taxonomyIntegrityMigration).toContain('category_catalog_labels_sync');
   });
 });
 
