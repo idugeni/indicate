@@ -24277,6 +24277,7 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (284, 'article_taxonomy_contraction_preflight', 'sha256:d1f82375d82d2ea4b71960d61671d3f5afd4dfc81b1480b79429e95efb5aa540');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504', 1791797441917);
+
 -- ----------------------------------------------------------------------
 -- 20261013000000_drop_legacy_article_taxonomy
 -- ----------------------------------------------------------------------
