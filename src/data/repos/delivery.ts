@@ -541,7 +541,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         : eq(articleSites.siteId, context.siteId);
       const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), scope, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
-      if (query.categorySlug !== undefined) conditions.push(eq(categories.slug, query.categorySlug));
+      if (query.categorySlug !== undefined) conditions.push(eq(categoryCatalog.slug, query.categorySlug));
       if (query.tag !== undefined) conditions.push(sql`EXISTS (
         SELECT 1 FROM article_tags at
         INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active'
