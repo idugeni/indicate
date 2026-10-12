@@ -1961,6 +1961,13 @@
       "when": 1791797441912,
       "tag": "20261012000000_canonical_metadata_catalogs",
       "breakpoints": true
+    },
+    {
+      "idx": 280,
+      "version": "7",
+      "when": 1791797441913,
+      "tag": "20261012160000_global_taxonomy_integrity",
+      "breakpoints": true
     }
   ]
 }
