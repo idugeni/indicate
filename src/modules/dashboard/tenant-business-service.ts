@@ -1234,7 +1234,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       await this.invalidateActorOrganization(ownerActor, 'createArticleForOwnerOrg');
       return { ok: true, value: record } as const;
     } catch (error) {
-      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Periksa kembali penerbit, penulis, kategori, wilayah, dan media untuk organisasi tujuan.', actor.requestId, error.fields) };
+      if (error instanceof DashboardValidationError) return { ok: false, error: createPublicError('INVALID_INPUT', 'Metadata yang ditandai tidak tersedia atau tidak aktif di organisasi tujuan.', actor.requestId, error.fields) };
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.create', 'article');
       if (error instanceof DashboardSubscriptionInactiveError) return { ok: false, error: createPublicError('FORBIDDEN', 'Langganan organisasi tujuan tidak aktif. Hubungi administrator agar dapat melanjutkan perubahan.', actor.requestId) };
       if (error instanceof DashboardConflictError) return { ok: false, error: createPublicError('CONFLICT', error.message, actor.requestId) };
