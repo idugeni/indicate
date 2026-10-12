@@ -383,7 +383,7 @@ BEGIN
     RETURN;
   END IF;
 END;
-$func$;;--> statement-breakpoint
+$func$;--> statement-breakpoint
 CREATE OR REPLACE FUNCTION indicate_private.count_cross_org_articles(
   p_status text,
   p_search text,
@@ -410,7 +410,7 @@ AS $$
     AND (p_publication_state IS NULL OR p_publication_state = '' OR EXISTS (
       SELECT 1 FROM public.article_sites AS s
       WHERE s.organization_id = a.organization_id AND s.article_id = a.id AND s.active AND s.state::text = p_publication_state))
-$$;;--> statement-breakpoint
+$$;--> statement-breakpoint
 CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_article_details(
   requested_organization_id uuid,
   requested_article_ids uuid[]
@@ -454,7 +454,7 @@ AS $$
     AND a.id = ANY (requested_article_ids)
     AND a.status = 'active'
     AND a.published_at IS NOT NULL
-$$;;--> statement-breakpoint
+$$;--> statement-breakpoint
 CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_articles(
   requested_organization_id uuid,
   requested_article_ids uuid[]
@@ -483,6 +483,6 @@ AS $$
     AND a.id = ANY (requested_article_ids)
     AND a.status = 'active'
     AND a.published_at IS NOT NULL
-$$;;--> statement-breakpoint
+$$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (281, 'global_metadata_readers', 'sha256:19e7a7e63d871bb14b97e56e96a7d9c04e5d29867e08cc1ad79ecf1dc30af6be');
+VALUES (281, 'global_metadata_readers', 'sha256:da10bfd1022e9314bab8b92cb1aae448710e3b134176aa0b23ee89acacfeb2fd');
