@@ -1961,6 +1961,41 @@
       "when": 1791797441912,
       "tag": "20261012000000_canonical_metadata_catalogs",
       "breakpoints": true
+    },
+    {
+      "idx": 280,
+      "version": "7",
+      "when": 1791797441913,
+      "tag": "20261012160000_global_taxonomy_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 281,
+      "version": "7",
+      "when": 1791797441914,
+      "tag": "20261012170000_global_metadata_readers",
+      "breakpoints": true
+    },
+    {
+      "idx": 282,
+      "version": "7",
+      "when": 1791797441915,
+      "tag": "20261012180000_article_category_global_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
+      "when": 1791797441916,
+      "tag": "20261012190000_article_tag_writer",
+      "breakpoints": true
+    },
+    {
+      "idx": 284,
+      "version": "7",
+      "when": 1791797441917,
+      "tag": "20261012200000_article_taxonomy_contraction_preflight",
+      "breakpoints": true
     }
   ]
 }

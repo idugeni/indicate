@@ -103,7 +103,7 @@ export const categories = pgTable('categories', {
   id: uuid('id').notNull(),
   name: text('name').notNull(),
   slug: text('slug').notNull(),
-  catalogId: uuid('catalog_id').notNull().defaultRandom().references(() => categoryCatalog.id, { onDelete: 'restrict' }),
+  catalogId: uuid('catalog_id').notNull().references(() => categoryCatalog.id, { onDelete: 'restrict' }),
   status: recordStatus('status').default('active').notNull(),
   version: integer('version').default(1).notNull(),
   ...timestamps,
@@ -140,6 +140,7 @@ export const articles = pgTable('articles', {
   id: uuid('id').notNull(),
   regionId: uuid('region_id'),
   publisherId: uuid('publisher_id'),
+  /** Legacy primary-category projection retained for rollback compatibility until contraction. */
   categoryId: uuid('category_id'),
   authorId: uuid('author_id'),
   leadMediaId: uuid('lead_media_id'),
@@ -155,6 +156,7 @@ export const articles = pgTable('articles', {
   /** Structured TipTap JSON (expand phase: nullable, legacy `body` stays canonical for search/RSS). */
   bodyJson: jsonb('body_json').$type<Record<string, unknown> | null>(),
   source: text('source').notNull(),
+  /** Legacy tag projection retained for rollback compatibility until contraction. */
   tags: text('tags').array().default(sql`ARRAY[]::text[]`).notNull(),
   status: articleStatus('status').default('draft').notNull(),
   /** Presentation mode; `standard` for legacy rows backfilled by migration 252. */
@@ -266,13 +268,18 @@ export const tagCatalog = pgTable('tag_catalog', {
 export const articleCategories = pgTable('article_categories', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'restrict' }),
   articleId: uuid('article_id').notNull(),
+  /** Tenant binding retained for compatibility; catalogId is the canonical global identity. */
   categoryId: uuid('category_id').notNull(),
+  catalogId: uuid('catalog_id').notNull(),
   position: integer('position').notNull(),
 }, (table) => [
   primaryKey({ name: 'article_categories_pk', columns: [table.organizationId, table.articleId, table.categoryId] }),
   foreignKey({ name: 'article_categories_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('cascade'),
   foreignKey({ name: 'article_categories_category_fk', columns: [table.organizationId, table.categoryId], foreignColumns: [categories.organizationId, categories.id] }).onDelete('restrict'),
+  foreignKey({ name: 'article_categories_catalog_fk', columns: [table.catalogId], foreignColumns: [categoryCatalog.id] }).onDelete('restrict'),
+  unique('article_categories_global_category_unique').on(table.organizationId, table.articleId, table.catalogId),
   index('article_categories_category_idx').on(table.organizationId, table.categoryId),
+  index('article_categories_catalog_idx').on(table.catalogId, table.organizationId),
   check('article_categories_position_positive', sql`${table.position} >= 1`),
 ]);
 

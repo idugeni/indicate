@@ -283,9 +283,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     if (organization[0] === undefined) throw new DashboardAccessDeniedError();
     const want = (name: DashboardCollectionName): boolean => only === undefined || only.has(name);
     const articleRows = want('articles')
-      ? (await transaction.select({ id: articles.id, regionId: articles.regionId, publisherId: articles.publisherId, categoryId: articles.categoryId, authorId: articles.authorId, leadMediaId: articles.leadMediaId, coverImageUrl: articles.coverImageUrl, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, source: articles.source, tags: articles.tags, status: articles.status, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, publishedAt: articles.publishedAt, scheduledAt: articles.scheduledAt, archivedAt: articles.archivedAt, version: articles.version, createdAt: articles.createdAt, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.organizationId, organizationId))).map((row) => ({ ...row, body: '', bodyJson: null as unknown | null }))
+      ? (await transaction.select({ id: articles.id, regionId: articles.regionId, publisherId: articles.publisherId, authorId: articles.authorId, leadMediaId: articles.leadMediaId, coverImageUrl: articles.coverImageUrl, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, source: articles.source, status: articles.status, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, publishedAt: articles.publishedAt, scheduledAt: articles.scheduledAt, archivedAt: articles.archivedAt, version: articles.version, createdAt: articles.createdAt, updatedAt: articles.updatedAt }).from(articles).where(eq(articles.organizationId, organizationId))).map((row) => ({ ...row, body: '', bodyJson: null as unknown | null }))
       : [];
-    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, publisherRows, affiliationRows, categoryRows, authorRows, articleCategoryRows, assignmentRows, mediaRows, jobRows, targetRows] = await Promise.all([
+    const [domainRows, regionRows, siteRows, settingsRows, roleRows, grantRows, membershipRows, publisherRows, affiliationRows, categoryRows, authorRows, articleCategoryRows, assignmentRows, mediaRows, jobRows, targetRows, canonicalTagRows] = await Promise.all([
       want('domains') ? transaction.select({ id: domains.id, normalizedHostname: domains.normalizedHostname, status: domains.status, cloudflareZoneId: domains.cloudflareZoneId, siteTopology: domains.siteTopology, routingVersion: domains.routingVersion, version: domains.version, createdAt: domains.createdAt, updatedAt: domains.updatedAt }).from(domains).where(eq(domains.organizationId, organizationId)) : [],
       want('regions') ? transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)) : [],
       want('sites') ? transaction.select({ id: sites.id, domainId: sites.domainId, regionId: sites.regionId, siteLevel: sites.siteLevel, parentSiteId: sites.parentSiteId, normalizedHostname: sites.normalizedHostname, status: sites.status, activationState: sites.activationState, version: sites.version, createdAt: sites.createdAt, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.organizationId, organizationId)) : [],
@@ -295,15 +295,28 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       want('memberships') ? transaction.select({ userId: memberships.userId, roleId: memberships.roleId, status: memberships.status, regionId: memberships.regionId, version: memberships.version, createdAt: memberships.createdAt, updatedAt: memberships.updatedAt }).from(memberships).where(eq(memberships.organizationId, organizationId)) : [],
       want('publishers') ? transaction.select({ id: publishers.id, name: publishers.name, type: publishers.type, attributionLabel: publishers.attributionLabel, contacts: publishers.contacts, evidenceReference: publishers.evidenceReference, verificationStatus: publishers.verificationStatus, submittedBy: publishers.submittedBy, submittedAt: publishers.submittedAt, verifiedBy: publishers.verifiedBy, verifiedAt: publishers.verifiedAt, rejectionReason: publishers.rejectionReason, status: publishers.status, version: publishers.version, createdAt: publishers.createdAt, updatedAt: publishers.updatedAt }).from(publishers).where(eq(publishers.organizationId, organizationId)) : [],
       want('affiliations') ? transaction.select({ id: officialAffiliations.id, publisherId: officialAffiliations.publisherId, siteId: officialAffiliations.siteId, institutionName: officialAffiliations.institutionName, claimScopes: officialAffiliations.claimScopes, evidenceReference: officialAffiliations.evidenceReference, active: officialAffiliations.active, verifiedAt: officialAffiliations.verifiedAt, version: officialAffiliations.version, createdAt: officialAffiliations.createdAt, updatedAt: officialAffiliations.updatedAt }).from(officialAffiliations).where(eq(officialAffiliations.organizationId, organizationId)) : [],
-      want('categories') ? transaction.select({ id: categories.id, name: categories.name, slug: categories.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).where(eq(categories.organizationId, organizationId)) : [],
+      want('categories') ? transaction.select({ id: categories.id, name: categoryCatalog.name, slug: categoryCatalog.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).innerJoin(categoryCatalog, and(eq(categoryCatalog.id, categories.catalogId), eq(categoryCatalog.status, 'active'))).where(eq(categories.organizationId, organizationId)) : [],
       want('authors') ? transaction.select({ id: authors.id, displayName: authors.displayName, byline: authors.byline, status: authors.status, version: authors.version, createdAt: authors.createdAt, updatedAt: authors.updatedAt }).from(authors).where(eq(authors.organizationId, organizationId)) : [],
-      want('articleCategories') ? transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)) : [],
+      (want('articleCategories') || want('articles')) ? transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)) : [],
       want('articleSites') ? transaction.select({ id: articleSites.id, articleId: articleSites.articleId, siteId: articleSites.siteId, state: articleSites.state, stateOccurredAt: articleSites.stateOccurredAt, publishedUrl: articleSites.publishedUrl, publishedAt: articleSites.publishedAt, active: articleSites.active, viewCount: articleSites.viewCount, assignmentSource: articleSites.assignmentSource, expandedFromSiteId: articleSites.expandedFromSiteId, customCanonicalUrl: articleSites.customCanonicalUrl, version: articleSites.version, createdAt: articleSites.createdAt, updatedAt: articleSites.updatedAt }).from(articleSites).where(eq(articleSites.organizationId, organizationId)) : [],
       want('media') ? transaction.select({ id: media.id, state: media.state, purpose: media.purpose, mediaType: media.mediaType }).from(media).where(eq(media.organizationId, organizationId)) : [],
       want('publishingJobs') ? transaction.select({ id: publishingJobs.id, articleId: publishingJobs.articleId, state: publishingJobs.state, createdAt: publishingJobs.createdAt, finalizedAt: publishingJobs.finalizedAt, updatedAt: publishingJobs.updatedAt }).from(publishingJobs).where(eq(publishingJobs.organizationId, organizationId)) : [],
       want('publishingJobTargets') ? transaction.select({ id: publishingJobTargets.id, jobId: publishingJobTargets.jobId, articleSiteId: publishingJobTargets.articleSiteId, state: publishingJobTargets.state, finishedAt: publishingJobTargets.finishedAt, updatedAt: publishingJobTargets.updatedAt }).from(publishingJobTargets).where(eq(publishingJobTargets.organizationId, organizationId)) : [],
+      want('articles') ? transaction.execute<{ article_id: string; tag: string; position: number }>(sql`SELECT at.article_id, tc.slug AS tag, at.position FROM article_tags at INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = ${organizationId} ORDER BY at.article_id, at.position`) : [],
     ]);
     const membershipProfiles = await this.resolveMembershipProfiles(transaction, membershipRows);
+    const canonicalTagsByArticle = new Map<string, string[]>();
+    for (const tagRow of canonicalTagRows) {
+      const tags = canonicalTagsByArticle.get(tagRow.article_id) ?? [];
+      tags.push(tagRow.tag);
+      canonicalTagsByArticle.set(tagRow.article_id, tags);
+    }
+    const categoryIdsByArticle = new Map<string, string[]>();
+    for (const link of [...articleCategoryRows].sort((a, b) => a.position - b.position)) {
+      const ids = categoryIdsByArticle.get(link.articleId) ?? [];
+      ids.push(link.categoryId);
+      categoryIdsByArticle.set(link.articleId, ids);
+    }
     const permissionsByRole = new Map<string, Set<string>>();
     for (const grant of grantRows) {
       const set = permissionsByRole.get(grant.roleId) ?? new Set<string>(); set.add(grant.permission); permissionsByRole.set(grant.roleId, set);
@@ -320,7 +333,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       affiliations: affiliationRows.map((row) => ({ id: row.id, organizationId, publisherId: row.publisherId, siteId: row.siteId, institutionName: row.institutionName, claimScopes: row.claimScopes, evidenceReference: row.evidenceReference, active: row.active, verifiedAt: optionalIso(row.verifiedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       authors: authorRows.map((row) => ({ id: row.id, organizationId, displayName: row.displayName, byline: row.byline, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
-      articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, categoryIds: articleCategoryRows.filter((link) => link.articleId === row.id).sort((a, b) => a.position - b.position).map((link) => link.categoryId), authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as unknown | null, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: optionalIso(row.publishedAt), scheduledAt: optionalIso(row.scheduledAt), archivedAt: optionalIso(row.archivedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
+      articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, publisherId: row.publisherId, categoryId: categoryIdsByArticle.get(row.id)?.[0] ?? null, categoryIds: categoryIdsByArticle.get(row.id) ?? [], authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as unknown | null, source: row.source, tags: [...(canonicalTagsByArticle.get(row.id) ?? [])], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: optionalIso(row.publishedAt), scheduledAt: optionalIso(row.scheduledAt), archivedAt: optionalIso(row.archivedAt), version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       articleCategories: articleCategoryRows.map((row) => ({ articleId: row.articleId, categoryId: row.categoryId, position: row.position })),
       articleSites: assignmentRows.map((row) => ({ id: row.id, organizationId, articleId: row.articleId, siteId: row.siteId, state: row.state, stateOccurredAt: iso(row.stateOccurredAt), publishedUrl: row.publishedUrl, publishedAt: optionalIso(row.publishedAt), active: row.active, viewCount: row.viewCount, assignmentSource: row.assignmentSource as 'manual' | 'auto', expandedFromSiteId: row.expandedFromSiteId, customCanonicalUrl: row.customCanonicalUrl, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
       media: mediaRows.map((row) => ({ id: row.id, organizationId, state: row.state, purpose: row.purpose, mediaType: row.mediaType })),
@@ -350,22 +363,26 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const [articleDimensionRows, jobsByState, bySite, outcomesBySite, jobDimensions, outcomeDimensions, taskRows, hourRows, newTasks, newOutcomes, newArticles, flowRows, deliveryRows, viewRows, viewAnalyticsRows] = await Promise.all([
         transaction.execute<{ dimension: 'region' | 'category' | 'publisher' | 'status'; key: string | null; count: number }>(sql`
           SELECT
-            CASE GROUPING(region_id, category_id, publisher_id, status)
-              WHEN 7 THEN 'region'
-              WHEN 11 THEN 'category'
-              WHEN 13 THEN 'publisher'
-              WHEN 14 THEN 'status'
+            CASE GROUPING(region_id, publisher_id, status)
+              WHEN 3 THEN 'region'
+              WHEN 5 THEN 'publisher'
+              WHEN 6 THEN 'status'
             END AS dimension,
-            CASE GROUPING(region_id, category_id, publisher_id, status)
-              WHEN 7 THEN region_id::text
-              WHEN 11 THEN category_id::text
-              WHEN 13 THEN publisher_id::text
-              WHEN 14 THEN status::text
+            CASE GROUPING(region_id, publisher_id, status)
+              WHEN 3 THEN region_id::text
+              WHEN 5 THEN publisher_id::text
+              WHEN 6 THEN status::text
             END AS key,
             count(*)::int AS count
           FROM articles
           WHERE organization_id = ${orgId} AND ${inArticleRange}
-          GROUP BY GROUPING SETS ((region_id), (category_id), (publisher_id), (status))`),
+          GROUP BY GROUPING SETS ((region_id), (publisher_id), (status))
+          UNION ALL
+          SELECT 'category' AS dimension, ac.category_id::text AS key, count(*)::int AS count
+          FROM article_categories ac
+          INNER JOIN articles a ON a.organization_id = ac.organization_id AND a.id = ac.article_id
+          WHERE a.organization_id = ${orgId} AND ${inArticleRange}
+          GROUP BY ac.category_id`),
         transaction.execute<{ key: string; count: number }>(sql`
           SELECT state AS key, count(*)::int AS count FROM publishing_jobs
           WHERE organization_id = ${orgId}
@@ -1118,7 +1135,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       await this.authorize(transaction, actor, permission);
       const organizationId = actor.organizationId;
       const [articleRows, linkRows, tagRows, categoryRows, regionRows] = await Promise.all([
-        transaction.select({ id: articles.id, regionId: articles.regionId, categoryId: articles.categoryId }).from(articles).where(eq(articles.organizationId, organizationId)),
+        transaction.select({ id: articles.id, regionId: articles.regionId }).from(articles).where(eq(articles.organizationId, organizationId)),
         transaction.select({ articleId: articleCategories.articleId, categoryId: articleCategories.categoryId, position: articleCategories.position }).from(articleCategories).where(eq(articleCategories.organizationId, organizationId)),
         transaction.execute<{ article_id: string; tag: string; position: number }>(sql`
           SELECT at.article_id, tc.slug AS tag, at.position
@@ -1126,8 +1143,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active'
           WHERE at.organization_id = ${organizationId}
           ORDER BY at.article_id, at.position`),
-        transaction.select({ id: categories.id, name: categories.name, slug: categoryCatalog.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt })
-          .from(categories).innerJoin(categoryCatalog, eq(categories.catalogId, categoryCatalog.id)).where(eq(categories.organizationId, organizationId)),
+        transaction.select({ id: categories.id, name: categoryCatalog.name, slug: categoryCatalog.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt })
+          .from(categories).innerJoin(categoryCatalog, and(eq(categories.catalogId, categoryCatalog.id), eq(categoryCatalog.status, 'active'))).where(eq(categories.organizationId, organizationId)),
         transaction.select({ id: regions.id, kind: regions.kind, parentRegionId: regions.parentRegionId }).from(regions)
           .innerJoin(regionCatalog, eq(regions.catalogId, regionCatalog.id)).where(eq(regions.organizationId, organizationId)),
       ]);
@@ -1144,7 +1161,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         tagsByArticle.set(tagRow.article_id, tags);
       }
       return {
-        articles: articleRows.map((row) => ({ id: row.id, organizationId, regionId: row.regionId, categoryId: row.categoryId, categoryIds: linksByArticle.get(row.id) ?? [], tags: tagsByArticle.get(row.id) ?? [] })),
+        articles: articleRows.map((row) => { const categoryIds = linksByArticle.get(row.id) ?? []; return { id: row.id, organizationId, regionId: row.regionId, categoryId: categoryIds[0] ?? null, categoryIds, tags: tagsByArticle.get(row.id) ?? [] }; }),
         categories: categoryRows.map((row) => ({ id: row.id, organizationId, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: iso(row.createdAt), updatedAt: iso(row.updatedAt) })),
         regions: regionRows.map((row) => ({ id: row.id, kind: row.kind, parentRegionId: row.parentRegionId })),
       };
@@ -1209,7 +1226,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         sql`(${lock}::uuid IS NULL OR (a.region_id IS NOT NULL AND (a.region_id = ${lock}::uuid OR a.region_id IN (
           SELECT r.id FROM regions r WHERE r.organization_id = ${organizationId} AND r.parent_region_id = ${lock}::uuid))))`,
         ...(filter.regionId === undefined ? [] : [sql`a.region_id = ${filter.regionId}::uuid`]),
-        ...(filter.categoryId === undefined ? [] : [sql`a.category_id = ${filter.categoryId}::uuid`]),
+        ...(filter.categoryId === undefined ? [] : [sql`EXISTS (SELECT 1 FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id AND ac.category_id = ${filter.categoryId}::uuid)`]),
         ...(filter.publisherId === undefined ? [] : [sql`a.publisher_id = ${filter.publisherId}::uuid`]),
         ...(filter.authorId === undefined ? [] : [sql`a.author_id = ${filter.authorId}::uuid`]),
         ...(filter.status === undefined ? [] : [sql`a.status = ${filter.status}`]),
@@ -1267,8 +1284,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       };
       const [articleRows, totalRows, tagRows, categoryRows, authorRows, publisherRows, regionRows, siteRows, domainRows] = await Promise.all([
         limit === 0 ? [] : transaction.execute<ArticleRow>(sql`
-          SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
-            a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.type, a.is_sponsored,
+          SELECT a.id, a.region_id, a.publisher_id, (SELECT ac.category_id FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS category_id, a.author_id, a.lead_media_id, a.cover_image_url,
+            a.slug, a.title, a.excerpt, a.canonical_url, a.source, (SELECT COALESCE(array_agg(tc.slug ORDER BY at.position), ARRAY[]::text[]) FROM article_tags at INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS tags, a.status, a.type, a.is_sponsored,
             a.video_url, a.audio_url, a.duration_seconds,
             a.published_at, a.scheduled_at,
             a.archived_at, a.version, a.created_at, a.updated_at
@@ -1286,7 +1303,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
             AND (${lock}::uuid IS NULL OR (a.region_id IS NOT NULL AND (a.region_id = ${lock}::uuid OR a.region_id IN (
               SELECT r.id FROM regions r WHERE r.organization_id = ${organizationId} AND r.parent_region_id = ${lock}::uuid))))
           GROUP BY tc.slug ORDER BY count DESC, tc.slug`),
-        transaction.select({ id: categories.id, name: categories.name, slug: categories.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).where(eq(categories.organizationId, organizationId)),
+        transaction.select({ id: categories.id, name: categoryCatalog.name, slug: categoryCatalog.slug, status: categories.status, version: categories.version, createdAt: categories.createdAt, updatedAt: categories.updatedAt }).from(categories).innerJoin(categoryCatalog, and(eq(categoryCatalog.id, categories.catalogId), eq(categoryCatalog.status, 'active'))).where(eq(categories.organizationId, organizationId)),
         transaction.select({ id: authors.id, displayName: authors.displayName, byline: authors.byline, status: authors.status, version: authors.version, createdAt: authors.createdAt, updatedAt: authors.updatedAt }).from(authors).where(eq(authors.organizationId, organizationId)),
         transaction.select({ id: publishers.id, name: publishers.name, attributionLabel: publishers.attributionLabel, status: publishers.status }).from(publishers).where(eq(publishers.organizationId, organizationId)),
         transaction.select({ id: regions.id, externalKey: regions.externalKey, name: regions.name, shortName: regions.shortName, slug: regions.slug, status: regions.status, kind: regions.kind, parentRegionId: regions.parentRegionId, version: regions.version, createdAt: regions.createdAt, updatedAt: regions.updatedAt }).from(regions).where(eq(regions.organizationId, organizationId)),
@@ -1451,8 +1468,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         published_at: Date | null;
         scheduled_at: Date | null; archived_at: Date | null; version: number; created_at: Date; updated_at: Date;
       }>(sql`
-        SELECT a.id, a.region_id, a.publisher_id, a.category_id, a.author_id, a.lead_media_id, a.cover_image_url,
-          a.slug, a.title, a.excerpt, a.canonical_url, a.source, a.tags, a.status, a.type, a.is_sponsored,
+        SELECT a.id, a.region_id, a.publisher_id, (SELECT ac.category_id FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id ORDER BY ac.position LIMIT 1) AS category_id, a.author_id, a.lead_media_id, a.cover_image_url,
+          a.slug, a.title, a.excerpt, a.canonical_url, a.source, (SELECT COALESCE(array_agg(tc.slug ORDER BY at.position), ARRAY[]::text[]) FROM article_tags at INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = a.organization_id AND at.article_id = a.id) AS tags, a.status, a.type, a.is_sponsored,
           a.published_at, a.scheduled_at,
           a.archived_at, a.version, a.created_at, a.updated_at
         FROM articles a
@@ -1463,7 +1480,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           AND (a.region_id IS NULL OR EXISTS (
             SELECT 1 FROM regions r WHERE r.organization_id = ${organizationId} AND r.id = a.region_id AND r.status = 'active'))
           AND (${filter.regionId ?? null}::uuid IS NULL OR a.region_id = ${filter.regionId ?? null}::uuid)
-          AND (${filter.categoryId ?? null}::uuid IS NULL OR a.category_id = ${filter.categoryId ?? null}::uuid)
+          AND (${filter.categoryId ?? null}::uuid IS NULL OR EXISTS (SELECT 1 FROM article_categories ac WHERE ac.organization_id = a.organization_id AND ac.article_id = a.id AND ac.category_id = ${filter.categoryId ?? null}::uuid))
           AND (${filter.publisherId ?? null}::uuid IS NULL OR a.publisher_id = ${filter.publisherId ?? null}::uuid)
           AND (${filter.authorId ?? null}::uuid IS NULL OR a.author_id = ${filter.authorId ?? null}::uuid)
           AND (${needle} IS NULL OR (a.title ILIKE ${needle} ESCAPE '\\' OR a.source ILIKE ${needle} ESCAPE '\\' OR a.body ILIKE ${needle} ESCAPE '\\'))
@@ -2274,7 +2291,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const prior = index.priorCategories.get(row.id);
       if (prior !== undefined && prior.name === row.name && prior.slug === row.slug && prior.status === row.status
         && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
-      await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
+      await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, catalogId: crypto.randomUUID(), name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
     for (const row of authorRows) {
       const prior = index.priorAuthors.get(row.id);
@@ -2289,7 +2306,10 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       changedArticles.push(row);
       const contentTrusted = row.body !== '' || (row.bodyJson !== null && row.bodyJson !== undefined);
       const hydratedContent = contentTrusted ? { body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null } : {};
-      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+      await transaction.insert(articles).values({ organizationId: state.organizationId, id: row.id, regionId: row.regionId, publisherId: row.publisherId, categoryId: row.categoryId, authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, body: row.body, bodyJson: (row.bodyJson ?? null) as Record<string, unknown> | null, source: row.source, tags: [...row.tags], status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [articles.organizationId, articles.id], set: { regionId: row.regionId, publisherId: row.publisherId, ...(prior?.categoryId === row.categoryId ? {} : { categoryId: row.categoryId }), ...(prior !== undefined && sameJson(prior.tags, row.tags) ? {} : { tags: [...row.tags] }), authorId: row.authorId, leadMediaId: row.leadMediaId, coverImageUrl: row.coverImageUrl, slug: row.slug, title: row.title, excerpt: row.excerpt, canonicalUrl: row.canonicalUrl, ...hydratedContent, source: row.source, status: row.status, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds, publishedAt: row.publishedAt === null ? null : new Date(row.publishedAt), scheduledAt: row.scheduledAt === null ? null : new Date(row.scheduledAt), archivedAt: row.archivedAt === null ? null : new Date(row.archivedAt), version: row.version, updatedAt: new Date(row.updatedAt) } });
+      if (prior === undefined || !sameJson(prior.tags, row.tags)) {
+        await transaction.execute(sql`SELECT indicate_private.replace_article_tags(${state.organizationId}::uuid, ${row.id}::uuid, ${sqlStringArray(row.tags)}::text[])`);
+      }
     }
     if (want('articleCategories') && !sameJson(
       [...state.articleCategories].map((row) => [row.articleId, row.categoryId, row.position]),
@@ -2297,7 +2317,14 @@ export class DrizzleDashboardRepository implements DashboardRepository {
     )) {
       await transaction.delete(articleCategories).where(eq(articleCategories.organizationId, state.organizationId));
       for (const chunk of insertChunks(state.articleCategories)) {
-        await transaction.insert(articleCategories).values(chunk.map((row) => ({ organizationId: state.organizationId, articleId: row.articleId, categoryId: row.categoryId, position: row.position }))).onConflictDoNothing();
+        const tuples = chunk.map((row) => sql`(${row.articleId}::uuid, ${row.categoryId}::uuid, ${row.position}::integer)`);
+        await transaction.execute(sql`
+          INSERT INTO article_categories (organization_id, article_id, category_id, catalog_id, position)
+          SELECT ${state.organizationId}::uuid, v.article_id, v.category_id, c.catalog_id, v.position
+          FROM (VALUES ${sql.join(tuples, sql`, `)}) AS v(article_id, category_id, position)
+          LEFT JOIN categories AS c
+            ON c.organization_id = ${state.organizationId}::uuid AND c.id = v.category_id
+        `);
       }
     }
     const removedArticleIds = want('articles') ? [...index.priorArticles.keys()].filter((id) => !index.currentArticles.has(id)) : [];

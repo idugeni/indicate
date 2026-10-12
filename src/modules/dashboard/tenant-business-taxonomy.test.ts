@@ -236,12 +236,21 @@ describe('TenantBusinessService category cache invalidation', () => {
     const revalidateTags = vi.fn(async () => undefined);
     const invalidateOrganization = vi.fn(async () => undefined);
     const { service } = harnessWithInvalidator({ categories: [category()] }, { revalidateTags, invalidateOrganization });
-    const updated = await service.updateCategory(actor, { id: ID, name: 'Politik Baru', slug: 'politik', status: 'active', expectedVersion: 1 });
+    const updated = await service.updateCategory(actor, { id: ID, name: 'Politik', slug: 'politik', status: 'inactive', expectedVersion: 1 });
     expect(updated.ok).toBe(true);
     const deleted = await service.deleteCategory(actor, { id: ID, expectedVersion: 2 });
     expect(deleted.ok).toBe(true);
     expect(revalidateTags).toHaveBeenCalledTimes(2);
     expect(revalidateTags).toHaveBeenCalledWith(['org:org-1']);
+  });
+
+  it('menolak perubahan nama dan slug kategori dari lingkup tenant', async () => {
+    const { service, state } = harness({ categories: [category()] });
+    const result = await service.updateCategory(actor, {
+      id: ID, name: 'Politik Baru', slug: 'politik-baru', status: 'active', expectedVersion: 1,
+    });
+    expect(result.ok).toBe(false);
+    expect(state.categories).toEqual([category()]);
   });
 
   it('menginvalidasi cache organisasi untuk setiap mutasi tenant', async () => {

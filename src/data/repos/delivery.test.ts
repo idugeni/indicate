@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, expectTypeOf, vi } from 'vitest';
 
 import { DrizzleDeliveryRepository, dedupeBridgeAssignmentRows, resolvePublisherAttribution } from '@/data/repos/delivery';
@@ -869,5 +871,15 @@ describe('loadNetworkFeed', () => {  it('menyertakan body penuh untuk RSS', asyn
     const { repository } = harness({ feed: [feedRow] });
     const feed = await repository.loadNetworkFeed({ ...CONTEXT }, 50);
     expect(feed[0]?.href).toBe('https://kota.apex.example/berita-utama');
+  });
+});
+
+
+describe('canonical category slug filtering', () => {
+  it('filters by any assigned canonical category, not only the primary category', () => {
+    const source = readFileSync(join(process.cwd(), 'src', 'data', 'repos', 'delivery.ts'), 'utf8');
+    expect(source).toContain('category_filter_catalog.slug = ${query.categorySlug}');
+    expect(source).toContain('category_filter.article_id = ${articles.id}');
+    expect(source).not.toContain('conditions.push(eq(categories.slug, query.categorySlug))');
   });
 });

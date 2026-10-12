@@ -81,18 +81,19 @@ describe('TaxonomyManager', () => {
     await waitFor(() => expect(command).toHaveBeenCalledWith('tag.remove', { tag: 'politik' }, { refresh: true }));
   });
 
-  it('mengubah kategori lewat dialog', async () => {
+  it('menjaga nama dan slug kategori global tetap read-only pada dialog tenant', async () => {
     const user = userEvent.setup();
     const command = vi.fn(async () => ({}));
     setup(command);
     await user.click(screen.getByRole('button', { name: 'Ubah kategori Politik' }));
     const dialog = await screen.findByRole('dialog');
-    await user.clear(within(dialog).getByLabelText('Nama Kategori'));
-    await user.type(within(dialog).getByLabelText('Nama Kategori'), 'Politik Baru');
+    expect((within(dialog).getByLabelText('Nama Kategori') as HTMLInputElement).readOnly).toBe(true);
+    expect((within(dialog).getByLabelText('Slug URL') as HTMLInputElement).readOnly).toBe(true);
+    expect(within(dialog).getByText(/mengikuti katalog kategori global/i)).toBeDefined();
     await user.click(screen.getByRole('button', { name: 'Simpan Perubahan' }));
     await waitFor(() => expect(command).toHaveBeenCalledWith(
       'category.update',
-      expect.objectContaining({ id: 'c-1', expectedVersion: 1, name: 'Politik Baru' }),
+      expect.objectContaining({ id: 'c-1', expectedVersion: 1, name: 'Politik', slug: 'politik' }),
       { refresh: true },
     ));
   });

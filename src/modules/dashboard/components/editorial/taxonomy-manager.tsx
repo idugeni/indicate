@@ -883,7 +883,7 @@ export function TaxonomyManager({
               Ubah Kategori: {editing?.name}
             </DialogTitle>
             <DialogDescription className="font-sans text-xs text-paper-dim">
-              Perbarui identitas kanal, tautan URL slug, dan status publikasi.
+              Nama dan slug mengikuti katalog kategori global. Dari organisasi ini, Anda hanya dapat mengubah status penggunaan kategori.
             </DialogDescription>
           </DialogHeader>
 
@@ -900,9 +900,9 @@ export function TaxonomyManager({
                   id={editNameId}
                   name="name"
                   value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
                   maxLength={120}
                   required
+                  readOnly
                   disabled={isUpdating}
                   className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-sans text-xs text-paper hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
                 />
@@ -919,10 +919,10 @@ export function TaxonomyManager({
                   id={editSlugId}
                   name="slug"
                   value={editSlug}
-                  onChange={(e) => setEditSlug(e.target.value.toLowerCase())}
                   maxLength={100}
                   pattern="[a-z0-9-]+"
                   required
+                  readOnly
                   disabled={isUpdating}
                   className="h-9 rounded-md border-hairline-strong bg-bg px-3 font-mono text-xs text-paper hover:border-hairline focus-visible:ring-1 focus-visible:ring-brass"
                 />
