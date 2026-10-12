@@ -273,3 +273,5 @@ describe('analyticsSummary bounded transfers', () => {
         !/LIMIT/i.test(statement),
     );
     expect(rawJoins).toEqual([]);
+  });
+});
