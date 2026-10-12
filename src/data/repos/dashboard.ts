@@ -2326,7 +2326,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         ),
         valid_tags AS (
           SELECT slug, position FROM normalized WHERE slug <> ''
-        ),
+        )
         INSERT INTO article_tags (organization_id, article_id, tag_id, position)
         SELECT ${state.organizationId}, ${row.id}, tc.id, vt.position
         FROM valid_tags vt
