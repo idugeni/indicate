@@ -2003,6 +2003,13 @@
       "when": 1791849600000,
       "tag": "20261013000000_drop_legacy_article_taxonomy",
       "breakpoints": true
+    },
+    {
+      "idx": 286,
+      "version": "7",
+      "when": 1791860400000,
+      "tag": "20261013100000_global_category_delivery",
+      "breakpoints": true
     }
   ]
 }
