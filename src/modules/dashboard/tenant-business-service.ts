@@ -748,7 +748,13 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
   updateCategory(actor: AuthorizedTenantActorContext, raw: unknown) {
     return this.mutate({ actor, raw, schema: categoryUpdateSchema, permission: DASHBOARD_PERMISSIONS.articleManage, action: 'category.update', targetType: 'category', revalidateTags: [orgTag(actor.organizationId)], scope: ['categories', 'articles', 'articleSites'], execute: (transaction, value, now) => {
       const before = requireRecord(transaction.state.categories, value.id); requireVersion(before, value.expectedVersion);
-      const after: CategoryRecord = { ...before, name: value.name, slug: value.slug, status: value.status, version: before.version + 1, updatedAt: now };
+      if (value.name !== before.name || value.slug !== before.slug) {
+        throw new DashboardValidationError({
+          name: ['Nama kategori mengikuti katalog global dan tidak dapat diubah dari pengelolaan organisasi.'],
+          slug: ['Slug kategori mengikuti katalog global dan tidak dapat diubah dari pengelolaan organisasi.'],
+        });
+      }
+      const after: CategoryRecord = { ...before, status: value.status, version: before.version + 1, updatedAt: now };
       replaceById(transaction.state.categories, after); this.audit(transaction, 'category.update', 'category', after.id, before, after); return after;
     }});
   }
