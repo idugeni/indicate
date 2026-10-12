@@ -1987,7 +1987,14 @@
       "idx": 283,
       "version": "7",
       "when": 1791797441916,
-      "tag": "20261012190000_article_taxonomy_legacy_contraction",
+      "tag": "20261012190000_article_tag_writer",
+      "breakpoints": true
+    },
+    {
+      "idx": 284,
+      "version": "7",
+      "when": 1791797441917,
+      "tag": "20261012200000_article_taxonomy_legacy_contraction",
       "breakpoints": true
     }
   ]
