@@ -268,12 +268,13 @@ export const articleCategories = pgTable('article_categories', {
   articleId: uuid('article_id').notNull(),
   /** Tenant binding retained for compatibility; catalogId is the canonical global identity. */
   categoryId: uuid('category_id').notNull(),
-  catalogId: uuid('catalog_id').notNull().references(() => categoryCatalog.id, { onDelete: 'restrict' }),
+  catalogId: uuid('catalog_id').notNull(),
   position: integer('position').notNull(),
 }, (table) => [
   primaryKey({ name: 'article_categories_pk', columns: [table.organizationId, table.articleId, table.categoryId] }),
   foreignKey({ name: 'article_categories_article_fk', columns: [table.organizationId, table.articleId], foreignColumns: [articles.organizationId, articles.id] }).onDelete('cascade'),
   foreignKey({ name: 'article_categories_category_fk', columns: [table.organizationId, table.categoryId], foreignColumns: [categories.organizationId, categories.id] }).onDelete('restrict'),
+  foreignKey({ name: 'article_categories_catalog_fk', columns: [table.catalogId], foreignColumns: [categoryCatalog.id] }).onDelete('restrict'),
   unique('article_categories_global_category_unique').on(table.organizationId, table.articleId, table.catalogId),
   index('article_categories_category_idx').on(table.organizationId, table.categoryId),
   index('article_categories_catalog_idx').on(table.catalogId, table.organizationId),
