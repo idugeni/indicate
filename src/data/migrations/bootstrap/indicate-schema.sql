@@ -298,7 +298,7 @@
 --   282  20261012170000_global_metadata_readers  ledger sha256:e8f414eee3f987e28eb8b9cb63697fea9f48ab16be87235bbe1c93c69bf96f81
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
---   285  20261012200000_article_taxonomy_legacy_contraction  ledger sha256:08377214d2e62f1fe0970a19d9baf4ca5d837e2791ca567c56148572062d8d33
+--   285  20261012200000_article_taxonomy_legacy_contraction  ledger sha256:a40e45680b7f526115eea54d0a119acb8cd0e4127fa1b7923b381065eede5f3b
 
 BEGIN;
 
@@ -24180,33 +24180,20 @@ DO $article_taxonomy_contraction_guard$
 BEGIN
   IF EXISTS (
     SELECT 1
-    FROM public.articles AS a
-    WHERE a.category_id IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM public.article_categories AS ac
-        WHERE ac.organization_id = a.organization_id
-          AND ac.article_id = a.id
-          AND ac.category_id = a.category_id
-      )
+    FROM public.article_categories AS ac
+    LEFT JOIN public.category_catalog AS cc ON cc.id = ac.catalog_id
+    WHERE cc.id IS NULL
   ) THEN
-    RAISE EXCEPTION 'legacy_primary_category_not_migrated';
+    RAISE EXCEPTION 'article_category_global_reference_missing';
   END IF;
 
   IF EXISTS (
     SELECT 1
-    FROM public.articles AS a
-    CROSS JOIN LATERAL unnest(COALESCE(a.tags, ARRAY[]::text[])) AS u(tag)
-    WHERE u.tag <> ''
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.article_tags AS at
-        JOIN public.tag_catalog AS tc ON tc.id = at.tag_id
-        WHERE at.organization_id = a.organization_id
-          AND at.article_id = a.id
-          AND tc.slug = u.tag
-      )
+    FROM public.article_tags AS at
+    LEFT JOIN public.tag_catalog AS tc ON tc.id = at.tag_id
+    WHERE tc.id IS NULL
   ) THEN
-    RAISE EXCEPTION 'legacy_article_tags_not_migrated';
+    RAISE EXCEPTION 'article_tag_global_reference_missing';
   END IF;
 END
 $article_taxonomy_contraction_guard$;
@@ -24218,7 +24205,7 @@ ALTER TABLE public.articles DROP CONSTRAINT articles_category_fk;
 ALTER TABLE public.articles DROP COLUMN tags;
 ALTER TABLE public.articles DROP COLUMN category_id;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (284, 'article_taxonomy_legacy_contraction', 'sha256:a2b2487b92e95e80513f235aed99aa48bbcb5e95b4aab3d6db3eeac09df2b4eb');
+VALUES (284, 'article_taxonomy_legacy_contraction', 'sha256:245205083437411b577683c6da5b70a34d324543ab1cb01f9480319275fafc1d');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('08377214d2e62f1fe0970a19d9baf4ca5d837e2791ca567c56148572062d8d33', 1791797441917);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('a40e45680b7f526115eea54d0a119acb8cd0e4127fa1b7923b381065eede5f3b', 1791797441917);
 COMMIT;
