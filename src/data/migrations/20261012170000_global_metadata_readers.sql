@@ -485,4 +485,4 @@ AS $$
     AND a.published_at IS NOT NULL
 $$;;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (281, 'global_metadata_readers', 'sha256:9da51d4fc851771d542d08ff94cf93ac61672fca9ab1a577d824b107456583eb');
+VALUES (281, 'global_metadata_readers', 'sha256:19e7a7e63d871bb14b97e56e96a7d9c04e5d29867e08cc1ad79ecf1dc30af6be');
