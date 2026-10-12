@@ -364,9 +364,9 @@ function ViewportHero(props: Omit<ArticleHeroProps, 'variant'>) {
         />
         <span aria-hidden="true" className="absolute inset-0 bg-slate-950/55" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-          {article.categoryName === null ? null : (
-            <p className="m-0 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-white/70">{article.categoryName}</p>
-          )}
+          <p className="m-0 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+            <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} />
+          </p>
           <h1 className="m-0 mt-3 max-w-3xl font-serif text-2xl font-medium uppercase leading-snug tracking-[0.15em] text-white sm:text-3xl">
             {article.title}
           </h1>
