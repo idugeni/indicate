@@ -46,7 +46,7 @@ describe('resolveOwnerOrgSlug', () => {
 });
 
 describe('mapArticleForOrg', () => {
-  it('memetakan referensi operator ke baris org pemilik', () => {
+  it('memetakan metadata yang memang tersedia di tenant tujuan', () => {
     expect(mapArticleForOrg(reference(), TARGET)).toEqual({
       ok: true,
       value: {
@@ -59,23 +59,23 @@ describe('mapArticleForOrg', () => {
     });
   });
 
-  it('memetakan kategori yang tidak disediakan tenant ke kategori lokal Berita', () => {
+  it('tidak mengganti kategori yang belum ada dengan kategori lain', () => {
     expect(mapArticleForOrg(reference({
-      authorName: 'Indicate Newsroom',
-      categorySlugs: ['keamanan', 'pemasyarakatan', 'berita', 'keamanan'],
-    }), TARGET)).toEqual({
+      categorySlugs: ['keamanan', 'pemasyarakatan'],
+    }), TARGET)).toEqual({ ok: false, field: 'categoryIds' });
+  });
+
+  it('tidak mengganti penulis kosong dengan penulis bawaan', () => {
+    expect(mapArticleForOrg(reference({
+      authorId: null,
+      authorName: null,
+    }), TARGET)).toMatchObject({
       ok: true,
-      value: {
-        ownerOrgSlug: 'rutan-kelas-ii-b-wonosobo',
-        publisherId: 'pub-upt',
-        authorId: 'aut-redaksi',
-        categoryIds: ['cat-berita'],
-        regionId: 'reg-kota',
-      },
+      value: { authorId: null },
     });
   });
 
-  it('melaporkan hanya publisherId bila penerbit cermin tak ada di org tujuan', () => {
+  it('melaporkan hanya publisherId bila penerbit tujuan tidak tersedia', () => {
     expect(mapArticleForOrg(reference({
       publisherName: 'Indicate Newsroom',
       categorySlugs: [],
@@ -83,13 +83,15 @@ describe('mapArticleForOrg', () => {
     }), TARGET)).toEqual({ ok: false, field: 'publisherId' });
   });
 
-  it('melaporkan categoryIds bila kategori tujuan tak ada dan kategori default Berita juga tidak tersedia', () => {
+  it('melaporkan hanya authorId bila penulis tujuan tidak tersedia', () => {
     expect(mapArticleForOrg(reference({
-      categorySlugs: ['keamanan'],
-    }), { ...TARGET, categories: [] })).toEqual({ ok: false, field: 'categoryIds' });
+      authorName: 'Indicate Newsroom',
+      categorySlugs: [],
+      regionSlug: null,
+    }), TARGET)).toEqual({ ok: false, field: 'authorId' });
   });
 
-  it('melaporkan regionId bila wilayah tidak ada di organisasi tujuan', () => {
+  it('melaporkan hanya regionId bila wilayah tujuan tidak tersedia', () => {
     expect(mapArticleForOrg(reference({
       categorySlugs: [],
       regionSlug: 'kabupaten-tidak-ada',
