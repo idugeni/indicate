@@ -208,12 +208,17 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
       regions: [{ id: SOURCE_REGION, name: 'Wonosobo', slug: 'wonosobo', status: 'active' }],
     }));
     const execute = vi.fn(async () => { throw new Error('cross-org write must not use active org'); });
+    const findOrganizationBySlug = vi.fn(async (_ownerActor: unknown, slug: string) => {
+      expect(slug).toBe('rutan-kelas-ii-b-wonosobo');
+      return TARGET_ORG;
+    });
     const executeForOrganization = vi.fn(async (_ownerActor: unknown, ownerId: string, operation: (tx: unknown) => unknown) => {
       expect(ownerId).toBe(TARGET_ORG);
       return operation(transaction);
     });
     const service = new TenantBusinessService({
       readEditorialScope,
+      findOrganizationBySlug,
       execute,
       executeForOrganization,
     } as never, identifiers);
