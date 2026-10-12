@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (284 migrations):
+-- Reviewed sources, in journal order (285 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -297,7 +297,8 @@
 --   281  20261012160000_global_taxonomy_integrity  ledger sha256:71b03487b6afcfea39b006a2738848968135743d11742dbfef3a481c1a572f2c
 --   282  20261012170000_global_metadata_readers  ledger sha256:e8f414eee3f987e28eb8b9cb63697fea9f48ab16be87235bbe1c93c69bf96f81
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
---   284  20261012190000_article_taxonomy_legacy_contraction  ledger sha256:3238f5563e68007f56493bc2aff62876334cd7676024bc37938111a82cdadf1a
+--   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
+--   285  20261012200000_article_taxonomy_legacy_contraction  ledger sha256:08377214d2e62f1fe0970a19d9baf4ca5d837e2791ca567c56148572062d8d33
 
 BEGIN;
 
@@ -24086,50 +24087,16 @@ VALUES (282, 'article_category_global_identity', 'sha256:ea124c98ee45d60cbb476e3
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e', 1791797441915);
 
 -- ----------------------------------------------------------------------
--- 20261012190000_article_taxonomy_legacy_contraction
+-- 20261012190000_article_tag_writer
 -- ----------------------------------------------------------------------
--- Contract the legacy article taxonomy projection after all readers/writers moved.
+-- Expand phase: provide the canonical global tag writer before application cutover.
 --
--- article_categories.catalog_id and article_tags.tag_id are now the canonical
--- article-to-global-taxonomy relations. This migration refuses to contract until
--- every article's legacy tag/category data has a matching canonical relation.
+-- This function is tenant-scoped and can coexist with the legacy article.tags
+-- projection/trigger. The destructive column contraction is a separate migration
+-- that must run only after the updated application is deployed.
 --
 -- Body digest: LF-normalize this file and replace its own checksum with zeros.
 
-DO $article_taxonomy_contraction_guard$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM public.articles AS a
-    WHERE a.category_id IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM public.article_categories AS ac
-        WHERE ac.organization_id = a.organization_id
-          AND ac.article_id = a.id
-          AND ac.category_id = a.category_id
-      )
-  ) THEN
-    RAISE EXCEPTION 'legacy_primary_category_not_migrated';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1
-    FROM public.articles AS a
-    CROSS JOIN LATERAL unnest(COALESCE(a.tags, ARRAY[]::text[])) AS u(tag)
-    WHERE u.tag <> ''
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.article_tags AS at
-        JOIN public.tag_catalog AS tc ON tc.id = at.tag_id
-        WHERE at.organization_id = a.organization_id
-          AND at.article_id = a.id
-          AND tc.slug = u.tag
-      )
-  ) THEN
-    RAISE EXCEPTION 'legacy_article_tags_not_migrated';
-  END IF;
-END
-$article_taxonomy_contraction_guard$;
 CREATE FUNCTION indicate_private.replace_article_tags(
   p_organization_id uuid,
   p_article_id uuid,
@@ -24193,6 +24160,56 @@ END
 $func$;
 REVOKE ALL ON FUNCTION indicate_private.replace_article_tags(uuid, uuid, text[]) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION indicate_private.replace_article_tags(uuid, uuid, text[]) TO indicate_runtime;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (283, 'article_tag_writer', 'sha256:45ebe1f7eba483682c45fed354ebc4267ef7b3b3ef96104aee267160ae2ada76');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2', 1791797441916);
+
+-- ----------------------------------------------------------------------
+-- 20261012200000_article_taxonomy_legacy_contraction
+-- ----------------------------------------------------------------------
+-- Contract legacy article taxonomy columns after the updated application is deployed.
+--
+-- This migration is intentionally separate from the writer expansion. Apply only
+-- after the deployed application uses article_categories/article_tags exclusively.
+-- The guards fail closed if legacy data is not represented in canonical relations.
+--
+-- Body digest: LF-normalize this file and replace its own checksum with zeros.
+
+DO $article_taxonomy_contraction_guard$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.articles AS a
+    WHERE a.category_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM public.article_categories AS ac
+        WHERE ac.organization_id = a.organization_id
+          AND ac.article_id = a.id
+          AND ac.category_id = a.category_id
+      )
+  ) THEN
+    RAISE EXCEPTION 'legacy_primary_category_not_migrated';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.articles AS a
+    CROSS JOIN LATERAL unnest(COALESCE(a.tags, ARRAY[]::text[])) AS u(tag)
+    WHERE u.tag <> ''
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.article_tags AS at
+        JOIN public.tag_catalog AS tc ON tc.id = at.tag_id
+        WHERE at.organization_id = a.organization_id
+          AND at.article_id = a.id
+          AND tc.slug = u.tag
+      )
+  ) THEN
+    RAISE EXCEPTION 'legacy_article_tags_not_migrated';
+  END IF;
+END
+$article_taxonomy_contraction_guard$;
 DROP TRIGGER articles_tag_catalog_sync ON public.articles;
 DROP FUNCTION indicate_private.sync_article_tag_catalog();
 DROP INDEX public.articles_tags_gin_idx;
@@ -24201,7 +24218,7 @@ ALTER TABLE public.articles DROP CONSTRAINT articles_category_fk;
 ALTER TABLE public.articles DROP COLUMN tags;
 ALTER TABLE public.articles DROP COLUMN category_id;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (283, 'article_taxonomy_legacy_contraction', 'sha256:9bb914a2b14c561898a72551ad8e02bd31b1a904b61418008c89f994c657faef');
+VALUES (284, 'article_taxonomy_legacy_contraction', 'sha256:a2b2487b92e95e80513f235aed99aa48bbcb5e95b4aab3d6db3eeac09df2b4eb');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('3238f5563e68007f56493bc2aff62876334cd7676024bc37938111a82cdadf1a', 1791797441916);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('08377214d2e62f1fe0970a19d9baf4ca5d837e2791ca567c56148572062d8d33', 1791797441917);
 COMMIT;
