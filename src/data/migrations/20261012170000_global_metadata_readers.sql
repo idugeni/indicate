@@ -424,7 +424,7 @@ RETURNS TABLE(
   publisher_bio text, publisher_verified boolean, publisher_type text,
   author_display text, author_bio text, author_avatar text, author_url text,
   cover_image_url text, published_at timestamp with time zone,
-  updated_at timestamp with time zone, body text, body_json jsonb
+  updated_at timestamp with time zone, body text, body_json jsonb, lead_media_id uuid
 )
 LANGUAGE sql
 STABLE
@@ -440,7 +440,7 @@ AS $$
     p.verification_status = 'verified', p.type::text,
     au.display_name, au.bio, au.avatar_url, au.website_url,
     a.cover_image_url, a.published_at,
-    a.updated_at, a.body, a.body_json
+    a.updated_at, a.body, a.body_json, a.lead_media_id
   FROM public.articles AS a
   LEFT JOIN public.publishers AS p
     ON p.organization_id = a.organization_id AND p.id = a.publisher_id AND p.status = 'active'
@@ -485,4 +485,4 @@ AS $$
     AND a.published_at IS NOT NULL
 $$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (281, 'global_metadata_readers', 'sha256:da10bfd1022e9314bab8b92cb1aae448710e3b134176aa0b23ee89acacfeb2fd');
+VALUES (281, 'global_metadata_readers', 'sha256:80f78c743628d1f747b843965629b8cbcc8bd6e55ffb8a0d26d3e44ad4c9ca71');
