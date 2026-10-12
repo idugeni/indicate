@@ -2291,7 +2291,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const prior = index.priorCategories.get(row.id);
       if (prior !== undefined && prior.name === row.name && prior.slug === row.slug && prior.status === row.status
         && prior.version === row.version && prior.updatedAt === row.updatedAt) continue;
-      await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
+      await transaction.insert(categories).values({ organizationId: state.organizationId, id: row.id, catalogId: crypto.randomUUID(), name: row.name, slug: row.slug, status: row.status, version: row.version, createdAt: new Date(row.createdAt), updatedAt: new Date(row.updatedAt) }).onConflictDoUpdate({ target: [categories.organizationId, categories.id], set: { name: row.name, slug: row.slug, status: row.status, version: row.version, updatedAt: new Date(row.updatedAt) } });
     }
     for (const row of authorRows) {
       const prior = index.priorAuthors.get(row.id);
