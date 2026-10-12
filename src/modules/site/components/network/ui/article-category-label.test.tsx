@@ -15,7 +15,7 @@ describe('ArticleCategoryLabel', () => {
 
   it('links real global categories to their canonical archive', () => {
     render(<ArticleCategoryLabel categoryName="Hukum" categorySlug="hukum" />);
-    expect(screen.getByRole('link', { name: 'Hukum' })).toHaveAttribute('href', '/categories/hukum');
+    expect(screen.getByRole('link', { name: 'Hukum' }).getAttribute('href')).toBe('/categories/hukum');
   });
 
   it('uses the same fallback for blank category names', () => {
