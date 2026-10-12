@@ -91,12 +91,13 @@ function HeroMeta({
   );
 }
 
-function CategoryBadge({ article, skin }: { readonly article: ArticleListItem; readonly skin: HomeHeroSkin }) {
+function CategoryBadge({ article, skin, linked = true }: { readonly article: ArticleListItem; readonly skin: HomeHeroSkin; readonly linked?: boolean }) {
   return (
     <p className="m-0">
       <ArticleCategoryLabel
         categoryName={article.categoryName}
         categorySlug={article.categorySlug}
+        linked={linked}
         className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold shadow-md"
         style={{ backgroundColor: skin.accent, color: readableTextOnAccent(skin.accent) }}
       />
@@ -250,7 +251,7 @@ function MosaicHero({
         />
         <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none" />
         <span className="absolute inset-x-0 bottom-0 block p-5 sm:p-6">
-          <CategoryBadge article={feature} skin={skin} />
+          <CategoryBadge article={feature} skin={skin} linked={false} />
           <span className="mt-2 line-clamp-3 block font-sans text-xl font-extrabold leading-tight text-white sm:text-2xl">
             {feature.title}
           </span>
