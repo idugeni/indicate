@@ -295,7 +295,7 @@
 --   279  20261010000000_seo_vercel_gateway_model  ledger sha256:c767f4c865793392178cf9575162b6e6e88d5328f8d188761430eef19d2e29d7
 --   280  20261012000000_canonical_metadata_catalogs  ledger sha256:3676ba2b39998a9f3b8110bb9129a773519f50ba604f2a88132d6fc6eff71de5
 --   281  20261012160000_global_taxonomy_integrity  ledger sha256:8424657c4067b9f876cb7323168a89e5364988ef5e304e2970a030e77165e210
---   282  20261012170000_global_metadata_readers  ledger sha256:e8f414eee3f987e28eb8b9cb63697fea9f48ab16be87235bbe1c93c69bf96f81
+--   282  20261012170000_global_metadata_readers  ledger sha256:d40a1df73633c22666792654e79607b92400237961c6f8e5ee6bcce983807181
 --   283  20261012180000_article_category_global_identity  ledger sha256:0dcc638057a82bf895aa7d4e3c0979cdedfd56bd6686f194367bc4ca9b50ed4e
 --   284  20261012190000_article_tag_writer  ledger sha256:9b773b8993d9c88e4d94985c539f06b856969510d3ba52f0e2153f74b90f3df2
 --   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504
@@ -23546,6 +23546,50 @@ INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('84246
 -- ----------------------------------------------------------------------
 -- 20261012170000_global_metadata_readers
 -- ----------------------------------------------------------------------
+-- Preserve legacy primary-category semantics before canonical readers switch over.
+-- The legacy category can exist at a non-primary relation position; public and
+-- cross-organization readers resolve position 1. Normalize that order before
+-- replacing those readers, and fail closed if any legacy primary is unrepresented.
+WITH legacy_primary AS (
+  SELECT a.organization_id, a.id AS article_id, a.category_id,
+         ac.position AS primary_position
+  FROM public.articles AS a
+  JOIN public.article_categories AS ac
+    ON ac.organization_id = a.organization_id
+   AND ac.article_id = a.id
+   AND ac.category_id = a.category_id
+  WHERE a.category_id IS NOT NULL
+    AND ac.position <> 1
+)
+UPDATE public.article_categories AS ac
+SET position = CASE
+  WHEN ac.category_id = p.category_id THEN 1
+  WHEN ac.position < p.primary_position THEN ac.position + 1
+  ELSE ac.position
+END
+FROM legacy_primary AS p
+WHERE ac.organization_id = p.organization_id
+  AND ac.article_id = p.article_id;
+DO $legacy_primary_category_guard$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.articles AS a
+    WHERE a.category_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.article_categories AS ac
+        WHERE ac.organization_id = a.organization_id
+          AND ac.article_id = a.id
+          AND ac.category_id = a.category_id
+          AND ac.position = 1
+      )
+  ) THEN
+    RAISE EXCEPTION 'legacy_primary_category_relation_inconsistent';
+  END IF;
+END
+$legacy_primary_category_guard$;
+
 -- Move database-backed article tag reads and category labels to canonical global catalogs.
 --
 -- Existing function signatures and grants are preserved. Tenant ownership remains
@@ -24035,9 +24079,9 @@ AS $$
     AND a.published_at IS NOT NULL
 $$;
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (281, 'global_metadata_readers', 'sha256:ba0f559896555a63936fda62fc7c403e76a15a629e9442c3c4218658a248b143');
+VALUES (281, 'global_metadata_readers', 'sha256:5cab454c79ad2c61786ceeb3589c77cf51412c46880435626e179c826289c9b3');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('e8f414eee3f987e28eb8b9cb63697fea9f48ab16be87235bbe1c93c69bf96f81', 1791797441914);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('d40a1df73633c22666792654e79607b92400237961c6f8e5ee6bcce983807181', 1791797441914);
 
 -- ----------------------------------------------------------------------
 -- 20261012180000_article_category_global_identity

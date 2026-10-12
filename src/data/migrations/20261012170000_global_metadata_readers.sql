@@ -1,3 +1,47 @@
+-- Preserve legacy primary-category semantics before canonical readers switch over.
+-- The legacy category can exist at a non-primary relation position; public and
+-- cross-organization readers resolve position 1. Normalize that order before
+-- replacing those readers, and fail closed if any legacy primary is unrepresented.
+WITH legacy_primary AS (
+  SELECT a.organization_id, a.id AS article_id, a.category_id,
+         ac.position AS primary_position
+  FROM public.articles AS a
+  JOIN public.article_categories AS ac
+    ON ac.organization_id = a.organization_id
+   AND ac.article_id = a.id
+   AND ac.category_id = a.category_id
+  WHERE a.category_id IS NOT NULL
+    AND ac.position <> 1
+)
+UPDATE public.article_categories AS ac
+SET position = CASE
+  WHEN ac.category_id = p.category_id THEN 1
+  WHEN ac.position < p.primary_position THEN ac.position + 1
+  ELSE ac.position
+END
+FROM legacy_primary AS p
+WHERE ac.organization_id = p.organization_id
+  AND ac.article_id = p.article_id;--> statement-breakpoint
+DO $legacy_primary_category_guard$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.articles AS a
+    WHERE a.category_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.article_categories AS ac
+        WHERE ac.organization_id = a.organization_id
+          AND ac.article_id = a.id
+          AND ac.category_id = a.category_id
+          AND ac.position = 1
+      )
+  ) THEN
+    RAISE EXCEPTION 'legacy_primary_category_relation_inconsistent';
+  END IF;
+END
+$legacy_primary_category_guard$;--> statement-breakpoint
+
 -- Move database-backed article tag reads and category labels to canonical global catalogs.
 --
 -- Existing function signatures and grants are preserved. Tenant ownership remains
@@ -487,4 +531,4 @@ AS $$
     AND a.published_at IS NOT NULL
 $$;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (281, 'global_metadata_readers', 'sha256:ba0f559896555a63936fda62fc7c403e76a15a629e9442c3c4218658a248b143');
+VALUES (281, 'global_metadata_readers', 'sha256:5cab454c79ad2c61786ceeb3589c77cf51412c46880435626e179c826289c9b3');

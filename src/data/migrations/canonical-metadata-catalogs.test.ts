@@ -127,3 +127,13 @@ describe('Legacy article taxonomy contraction migration', () => {
     expect(articleTaxonomyContractionMigration).toContain('DROP FUNCTION indicate_private.sync_article_tag_catalog()');
   });
 });
+
+
+describe('Legacy primary category compatibility during canonical reader cutover', () => {
+  it('normalizes and validates the legacy primary category before replacing readers', () => {
+    expect(globalMetadataReadersMigration).toContain('legacy_primary_category_guard');
+    expect(globalMetadataReadersMigration).toContain('legacy_primary_category_relation_inconsistent');
+    expect(globalMetadataReadersMigration).toContain('WHEN ac.category_id = p.category_id THEN 1');
+    expect(globalMetadataReadersMigration).toContain('ac.position <> 1');
+  });
+});
