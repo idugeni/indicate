@@ -6,6 +6,7 @@ import type { ArticleListItem } from '@/modules/delivery/models';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import { articleImage, formatFullViews, formatDate, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { badgeStyle } from '@/modules/site/components/network/templates/orange-modern/theme';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 import { SectionHeading } from '@/modules/site/components/network/templates/orange-modern/ui/section-heading';
 
 export function OrangeModernQuotePanel({ siteName, quote }: { readonly siteName: string; readonly quote: string }) {
@@ -104,11 +105,7 @@ export function OrangeModernLatest({
                 <div className="min-w-0 flex-1">
                   <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11px]">
                     <span className="max-w-[16rem] truncate font-bold text-slate-800">{article.attribution}</span>
-                    {article.categoryName === null ? null : (
-                      <span className="inline-block rounded-md px-2 py-0.5 font-bold" style={badge}>
-                        {article.categoryName}
-                      </span>
-                    )}
+                    <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="font-sans text-xs font-bold text-[var(--tpl-primary)]" />
                     <span className="inline-flex items-center gap-1 tabular-nums text-slate-500">
                       <CalendarDays className="h-3 w-3 opacity-70" aria-hidden="true" />
                       {formatDate(article.publishedAt, 'short')}
