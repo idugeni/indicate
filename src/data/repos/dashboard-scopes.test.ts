@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import {
   articleCategories,
+  articleTags,
   articles,
   articleSites,
   auditLogs,
   authors,
   categories,
+  categoryCatalog,
   domains,
   media,
   memberships,
@@ -16,11 +18,13 @@ import {
   publishers,
   publishingJobs,
   publishingJobTargets,
+  regionCatalog,
   regions,
   rolePermissions,
   roles,
   sites,
   siteSettings,
+  tagCatalog,
 } from '@/data/schema';
 
 const ACTOR = {
@@ -38,11 +42,12 @@ type RecordedSelect = { readonly table: string; readonly projection: readonly st
 function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Promise<readonly unknown[]>) {
   const selections: RecordedSelect[] = [];
   const fromTables: string[] = [];
+  const joinedTables: string[] = [];
   const executedSql: string[] = [];
   const nameOf = new Map<unknown, string>(
     Object.entries({
       organizations, domains, regions, sites, siteSettings, roles, rolePermissions, memberships,
-      publishers, officialAffiliations, categories, authors, articles, articleCategories, articleSites,
+      publishers, officialAffiliations, categories, categoryCatalog, authors, articles, articleCategories, articleTags, tagCatalog, regionCatalog, articleSites,
       media, publishingJobs, publishingJobTargets, auditLogs,
     }).map(([name, table]) => [table, name]),
   );
@@ -60,6 +65,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
           selections.push({ table, projection: pendingProjection });
           rows = results[table] ?? [];
         }
+        if (method === 'innerJoin') joinedTables.push(nameOf.get(args[0]) ?? 'unknown');
         if (method === 'limit') return chain;
         return chain;
       };
@@ -95,7 +101,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
   };
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
   const repository = new DrizzleDashboardRepository(database as never);
-  return { repository, selections, fromTables, executedSql };
+  return { repository, selections, fromTables, joinedTables, executedSql };
 }
 
 const ORG = [{ id: 'org-1', name: 'Org' }];
@@ -122,8 +128,8 @@ describe('scoped dashboard reads', () => {
     expect(fromTables).toContain('officialAffiliations');
   });
 
-  it('readTaxonomyScope memproyeksikan artikel tanpa body', async () => {
-    const { repository, selections } = scopeHarness({ memberships: MEMBER });
+  it('readTaxonomyScope uses normalized global tag relations and projects articles without body', async () => {
+    const { repository, selections, fromTables, joinedTables } = scopeHarness({ memberships: MEMBER });
     await repository.readTaxonomyScope(ACTOR as never, 'article.read');
     const articleSelections = selections.filter((selection) => selection.table === 'articles');
     expect(articleSelections.length).toBeGreaterThan(0);
@@ -131,7 +137,12 @@ describe('scoped dashboard reads', () => {
       expect(selection.projection).not.toContain('body');
       expect(selection.projection).not.toContain('bodyJson');
       expect(selection.projection).not.toContain('title');
+      expect(selection.projection).not.toContain('tags');
     }
+    expect(fromTables).toContain('articleTags');
+    expect(joinedTables).toContain('tagCatalog');
+    expect(joinedTables).toContain('categoryCatalog');
+    expect(joinedTables).toContain('regionCatalog');
   });
 
   it('readEditorialScope memproyeksikan artikel tanpa body dan melewatkan koleksi berat', async () => {
