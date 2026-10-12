@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import {
   articleCategories,
-  articleTags,
   articles,
   articleSites,
   auditLogs,
@@ -24,7 +23,6 @@ import {
   roles,
   sites,
   siteSettings,
-  tagCatalog,
 } from '@/data/schema';
 
 const ACTOR = {
@@ -59,7 +57,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
   const nameOf = new Map<unknown, string>(
     Object.entries({
       organizations, domains, regions, sites, siteSettings, roles, rolePermissions, memberships,
-      publishers, officialAffiliations, categories, categoryCatalog, authors, articles, articleCategories, articleTags, tagCatalog, regionCatalog, articleSites,
+      publishers, officialAffiliations, categories, categoryCatalog, authors, articles, articleCategories, regionCatalog, articleSites,
       media, publishingJobs, publishingJobTargets, auditLogs,
     }).map(([name, table]) => [table, name]),
   );
@@ -96,6 +94,7 @@ function scopeHarness(results: Record<string, unknown[]>, executeImpl?: () => Pr
         }
       }
       if (text.includes('subscription_access_state')) return [{ state: 'active' }];
+      if (text.includes('FROM article_tags at')) return results.articleTags ?? [];
       if (executeImpl !== undefined) return executeImpl();
       return [{ user_id: 'u-1', display_name: 'Operator', avatar_url: null }];
     },
@@ -134,7 +133,7 @@ describe('scoped dashboard reads', () => {
   });
 
   it('readTaxonomyScope uses normalized global tag relations and projects articles without body', async () => {
-    const { repository, selections, fromTables, joinedTables } = scopeHarness({ memberships: MEMBER });
+    const { repository, selections, joinedTables, executedSql } = scopeHarness({ memberships: MEMBER });
     await repository.readTaxonomyScope(ACTOR as never, 'article.read');
     const articleSelections = selections.filter((selection) => selection.table === 'articles');
     expect(articleSelections.length).toBeGreaterThan(0);
@@ -144,8 +143,8 @@ describe('scoped dashboard reads', () => {
       expect(selection.projection).not.toContain('title');
       expect(selection.projection).not.toContain('tags');
     }
-    expect(fromTables).toContain('articleTags');
-    expect(joinedTables).toContain('tagCatalog');
+    expect(executedSql.some((statement) => statement.includes('FROM article_tags at'))).toBe(true);
+    expect(executedSql.some((statement) => statement.includes('INNER JOIN tag_catalog tc'))).toBe(true);
     expect(joinedTables).toContain('categoryCatalog');
     expect(joinedTables).toContain('regionCatalog');
   });
