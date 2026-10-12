@@ -8,6 +8,7 @@ import type { ArticleListItem } from '@/modules/delivery/models';
 import { articleImage, isLocalImageSrc, readingMinutes } from '@/modules/site/components/network/ui/format';
 import { AuthorAvatar, type AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
 import { cn } from '@/ui/cn';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 
 /** Gaya badge kategori: pasangan warna teks dan latar. */
 export interface PickCardBadgeStyle {
@@ -87,18 +88,14 @@ export function ArticlePickCard({ article, index, skin, sizes = '(max-width: 768
             sizes={sizes}
           />
         </div>
-        {article.categoryName === null || skin.badgePlacement !== 'overlay' ? null : (
-          <span className={skin.badgeClass} style={badge}>
-            {article.categoryName}
-          </span>
+        {skin.badgePlacement !== 'overlay' ? null : (
+          <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className={skin.badgeClass} style={badge} />
         )}
       </div>
       <CardHeader className={skin.headerClass}>
-        {article.categoryName === null || skin.badgePlacement !== 'header' ? null : (
+        {skin.badgePlacement !== 'header' ? null : (
           <p className="m-0">
-            <span className={skin.badgeClass} style={badge}>
-              {article.categoryName}
-            </span>
+            <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className={skin.badgeClass} style={badge} />
           </p>
         )}
         <h3 className={skin.titleClass}>
