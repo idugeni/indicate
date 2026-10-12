@@ -21,7 +21,7 @@ import {
 } from '@/modules/publishing/ports';
 import { redact } from '@/core/security/redaction';
 import {
-  articleSites, articles, auditLogs, categories, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks,
+  articleCategories, articleSites, articles, auditLogs, categoryCatalog, domains, invalidationTasks, media, mediaKeyReservations, memberships, objectCleanupTasks,
   organizations, permissions, publicationTransitionReceipts, publishers, publishingJobs, publishingJobTargets, regions, rolePermissions,
   roles, sites, siteSettings,
 } from '@/data/schema';
@@ -194,7 +194,7 @@ export class DrizzlePublishingRepository implements PublishingRepository {
     const site = siteRows[0]; if (site === undefined) return;
     let articleSlugs: string[] = []; let categorySlugs: string[] = []; const extraMediaIds: string[] = [];
     if (articleId !== undefined) {
-      const rows = await transaction.select({ articleSlug: articles.slug, categorySlug: categories.slug, leadMediaId: articles.leadMediaId }).from(articles).leftJoin(categories, and(eq(categories.organizationId, articles.organizationId), eq(categories.id, articles.categoryId))).where(and(eq(articles.organizationId, organizationId), eq(articles.id, articleId))).limit(1);
+      const rows = await transaction.select({ articleSlug: articles.slug, categorySlug: categoryCatalog.slug, leadMediaId: articles.leadMediaId }).from(articles).leftJoin(articleCategories, and(eq(articleCategories.organizationId, articles.organizationId), eq(articleCategories.articleId, articles.id), eq(articleCategories.position, 1))).leftJoin(categoryCatalog, and(eq(categoryCatalog.id, articleCategories.catalogId), eq(categoryCatalog.status, 'active'))).where(and(eq(articles.organizationId, organizationId), eq(articles.id, articleId))).limit(1);
       if (rows[0] !== undefined) {
         articleSlugs = [rows[0].articleSlug]; if (rows[0].categorySlug !== null) categorySlugs = [rows[0].categorySlug];
         if (rows[0].leadMediaId !== null) extraMediaIds.push(rows[0].leadMediaId);
