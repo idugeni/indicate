@@ -9,7 +9,7 @@ import type {
 } from '@/modules/dashboard/models';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
-import { mapArticleForOrg, resolveOwnerOrgSlug } from '@/modules/dashboard/for-org-create';
+import { mapArticleForOrg, resolveOwnerOrgSlug, type ForOrgMappingField } from '@/modules/dashboard/for-org-create';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   buildNetworkPublisherClaim,
@@ -1125,7 +1125,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
     const ownerActor = this.platformOwnerActor(actor, ownerOrgId);
     try {
       const record = await this.repository.executeForOrganization(ownerActor, ownerOrgId, (transaction) => {
-        const mapped = mapArticleForOrg(
+        const mapping = mapArticleForOrg(
           {
             publisherId: rest.publisherId,
             authorId: rest.authorId,
@@ -1138,14 +1138,16 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
           },
           transaction.state,
         );
-        if (mapped === null) {
-          throw new DashboardValidationError({
-            publisherId: ['Penerbit tidak tersedia di organisasi tujuan.'],
-            ...(selectedAuthor !== null ? { authorId: ['Penulis dengan nama yang dipilih tidak tersedia di organisasi tujuan.'] } : {}),
-            ...(categorySlugs.length > 0 ? { categoryIds: ['Satu atau beberapa kategori tidak tersedia di organisasi tujuan.'] } : {}),
-            ...(regionSlug !== null ? { regionId: ['Wilayah tidak tersedia di organisasi tujuan.'] } : {}),
-          });
+        if (!mapping.ok) {
+          const mappingMessages: Record<ForOrgMappingField, string> = {
+            publisherId: 'Penerbit tidak tersedia di organisasi tujuan.',
+            authorId: 'Penulis tidak tersedia di organisasi tujuan dan penulis default Redaksi tidak ditemukan.',
+            categoryIds: 'Kategori tidak tersedia di organisasi tujuan dan kategori default Berita tidak ditemukan.',
+            regionId: 'Wilayah tidak tersedia di organisasi tujuan.',
+          };
+          throw new DashboardValidationError({ [mapping.field]: [mappingMessages[mapping.field]] });
         }
+        const mapped = mapping.value;
         return this.insertArticleRecord(
           transaction,
           ownerActor,
