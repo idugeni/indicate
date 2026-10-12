@@ -120,3 +120,21 @@ describe('DrizzleDashboardRepository editorial SQL', () => {
     expect(captured.some((text) => text.includes('bridge_article_ids'))).toBe(false);
   });
 });
+
+
+describe('canonical editorial taxonomy reads', () => {
+  it('filters categories and tags through canonical article relations', async () => {
+    const { repository, captured } = harness();
+    await repository.readEditorialScope(
+      ACTOR as never,
+      'article.read',
+      { categoryId: 'category-1', tag: 'wonosobo' },
+      { limit: 5 },
+    );
+
+    expect(captured.some((query) => query.includes('article_categories ac') && query.includes('ac.category_id'))).toBe(true);
+    expect(captured.some((query) => query.includes('article_tags at') && query.includes('tag_catalog tc'))).toBe(true);
+    expect(captured.some((query) => query.includes('a.tags'))).toBe(false);
+    expect(captured.some((query) => query.includes('a.category_id ='))).toBe(false);
+  });
+});
