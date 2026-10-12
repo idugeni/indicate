@@ -92,19 +92,32 @@ function articleRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function chainable(rows: readonly unknown[], limitLog?: number[]): unknown {
+function renderSqlChunk(chunk: unknown): string {
+  if (typeof chunk === 'string') return chunk;
+  if (typeof chunk !== 'object' || chunk === null) return '?';
+  const record = chunk as Record<string, unknown>;
+  if (Array.isArray(record.queryChunks)) return record.queryChunks.map(renderSqlChunk).join(' ');
+  if ('value' in record) {
+    const value = record.value;
+    return Array.isArray(value) ? value.map((part) => typeof part === 'string' ? part : '?').join('') : '?';
+  }
+  return '?';
+}
+
+function chainable(rows: readonly unknown[], limitLog?: number[], whereLog?: string[]): unknown {
   return new Proxy(
     {},
     {
       get(target, prop) {
         if (prop === 'then') return (resolve: (value: unknown) => void) => resolve(rows);
+        if (prop === 'where') return (condition: unknown) => { whereLog?.push(renderSqlChunk(condition)); return chainable(rows, limitLog, whereLog); };
         if (prop === 'limit' && limitLog !== undefined) {
           return (bound: number) => {
             limitLog.push(bound);
-            return chainable(rows.slice(0, bound), limitLog);
+            return chainable(rows.slice(0, bound), limitLog, whereLog);
           };
         }
-        return () => chainable(rows, limitLog);
+        return () => chainable(rows, limitLog, whereLog);
       },
     },
   );
@@ -132,6 +145,7 @@ function harness(handlers: {
 }) {
   const selectLog: SelectLog[] = [];
   const limitLog: number[] = [];
+  const whereLog: string[] = [];
   const settings = handlers.settings ?? [SETTINGS_ROW];
   const articles = handlers.articles ?? [articleRow()];
   const body = handlers.body ?? [];
@@ -163,23 +177,23 @@ function harness(handlers: {
             selectLog.push({ keys });
             const only = (...wanted: readonly string[]) =>
               wanted.length === keys.length && wanted.every((key) => keys.includes(key));
-            if (only('body') || only('body', 'bodyJson')) return chainable(body, limitLog);
-            if (keys.includes('sourceArticleId')) return chainable(handlers.bridgeAssignments ?? [], limitLog);
-            if (keys.includes('sortOrder')) return chainable(gallery, limitLog);
-            if (keys.includes('publishedAt') && !keys.includes('slug')) return chainable(handlers.updates ?? [], limitLog);
+            if (only('body') || only('body', 'bodyJson')) return chainable(body, limitLog, whereLog);
+            if (keys.includes('sourceArticleId')) return chainable(handlers.bridgeAssignments ?? [], limitLog, whereLog);
+            if (keys.includes('sortOrder')) return chainable(gallery, limitLog, whereLog);
+            if (keys.includes('publishedAt') && !keys.includes('slug')) return chainable(handlers.updates ?? [], limitLog, whereLog);
             if (only('mediaId')) {
               const set = brandSets[Math.min(brandCursor, brandSets.length - 1)] ?? [];
               brandCursor += 1;
-              return chainable(set, limitLog);
+              return chainable(set, limitLog, whereLog);
             }
-            if (keys.includes('slotId') && keys.includes('enabled')) return chainable(handlers.adSettings ?? [], limitLog);
-            if (keys.includes('slotId')) return chainable(handlers.placements ?? [], limitLog);
-            if (keys.includes('logoMediaId')) return chainable(settings, limitLog);
-            if (keys.includes('bodyExcerpt')) return chainable(articles, limitLog);
-            if (keys.includes('body') && keys.includes('slug')) return chainable(feed, limitLog);
-            if (only('slug', 'name', 'articleCount', 'lastUpdatedAt')) return chainable(handlers.categories ?? [], limitLog);
-            if (only('sitekey')) return chainable(handlers.reportSitekey ?? [{ sitekey: null }], limitLog);
-            return chainable([], limitLog);
+            if (keys.includes('slotId') && keys.includes('enabled')) return chainable(handlers.adSettings ?? [], limitLog, whereLog);
+            if (keys.includes('slotId')) return chainable(handlers.placements ?? [], limitLog, whereLog);
+            if (keys.includes('logoMediaId')) return chainable(settings, limitLog, whereLog);
+            if (keys.includes('bodyExcerpt')) return chainable(articles, limitLog, whereLog);
+            if (keys.includes('body') && keys.includes('slug')) return chainable(feed, limitLog, whereLog);
+            if (only('slug', 'name', 'articleCount', 'lastUpdatedAt')) return chainable(handlers.categories ?? [], limitLog, whereLog);
+            if (only('sitekey')) return chainable(handlers.reportSitekey ?? [{ sitekey: null }], limitLog, whereLog);
+            return chainable([], limitLog, whereLog);
           };
         return () => transaction;
       },
@@ -187,7 +201,7 @@ function harness(handlers: {
   );
   const database = { transaction: async (callback: (tx: unknown) => unknown) => callback(transaction) };
   const repository = new DrizzleDeliveryRepository(database as never, 'https://portal.example/brand/default.jpg', handlers.publicHost ?? null);
-  return { repository, selectLog, limitLog, executeStats };
+  return { repository, selectLog, limitLog, whereLog, executeStats };
 }
 
 describe('resolvePublisherAttribution', () => {
@@ -212,6 +226,15 @@ describe('resolvePublisherAttribution', () => {
     const { repository } = harness({ articles: [articleRow({ publisherName: 'Indicate Newsroom', attribution: 'Indicate Newsroom' })] });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
     expect(site?.articles[0]?.attribution).toBe('Indicate Newsroom');
+  });
+});
+
+describe('canonical public tag filtering', () => {
+  it('filters public article listings through tenant-scoped normalized tag relations', async () => {
+    const { repository, whereLog } = harness({ articles: [articleRow({ tags: ['wonosobo'] })] });
+    await repository.loadNetworkSite({ ...CONTEXT }, { tag: 'wonosobo' });
+    expect(whereLog.some((statement) => statement.includes('FROM article_tags at') && statement.includes('INNER JOIN tag_catalog tc'))).toBe(true);
+    expect(whereLog.some((statement) => statement.includes('articles.tags') && statement.includes('@>'))).toBe(false);
   });
 });
 
