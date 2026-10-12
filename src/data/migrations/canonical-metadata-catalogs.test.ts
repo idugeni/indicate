@@ -109,8 +109,8 @@ const articleTaxonomyContractionMigration = readFileSync(
 
 describe('Legacy article taxonomy contraction migration', () => {
   it('fails closed if legacy categories or tags are not represented canonically', () => {
-    expect(articleTaxonomyContractionMigration).toContain('legacy_primary_category_not_migrated');
-    expect(articleTaxonomyContractionMigration).toContain('legacy_article_tags_not_migrated');
+    expect(articleTaxonomyContractionMigration).toContain('article_category_global_reference_missing');
+    expect(articleTaxonomyContractionMigration).toContain('article_tag_global_reference_missing');
   });
 
   it('replaces the legacy tag trigger with a tenant-checked canonical writer', () => {
