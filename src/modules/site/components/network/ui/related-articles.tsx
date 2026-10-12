@@ -10,6 +10,7 @@ import {
 } from '@/modules/site/components/network/cards/article-pick-card';
 import { CommentCountSlot } from '@/modules/site/components/network/disqus/comment-count-badge';
 import type { AuthorAvatarSkin } from '@/modules/site/components/network/ui/author-avatar';
+import { ArticleCategoryLabel } from '@/modules/site/components/network/ui/article-category-label';
 import { articleImage, formatDate, formatFullViews, isLocalImageSrc, readableTextOnAccent, readingMinutes } from '@/modules/site/components/network/ui/format';
 
 /** Varian related-article yang disepakati: 6 gaya untuk 10 template. */
@@ -258,6 +259,7 @@ function NumberedRelated({
                         {String(position + 1).padStart(2, '0')}
                       </span>
                       <span className="min-w-0 flex-1">
+                        <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="mb-1 inline-block font-sans text-[11px] font-bold uppercase tracking-wide" style={{ color: skin.accent }} />
                         <Link
                           href={article.href}
                           className="line-clamp-2 block font-sans text-sm font-bold leading-snug transition-opacity hover:opacity-80"
@@ -380,14 +382,12 @@ function SplitFeatureRelated({
               className="aspect-[16/9] w-full object-cover transition-all duration-300 ease-out group-hover:brightness-[1.06] group-hover:saturate-[1.05] motion-reduce:transition-none"
             />
           </span>
-          {feature.categoryName === null ? null : (
-            <span
-              className="mt-4 inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
-              style={{ color: skin.accent, backgroundColor: `${skin.accent}1A` }}
-            >
-              {feature.categoryName}
-            </span>
-          )}
+          <ArticleCategoryLabel
+            categoryName={feature.categoryName}
+            categorySlug={feature.categorySlug}
+            className="mt-4 inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
+            style={{ color: skin.accent, backgroundColor: `${skin.accent}1A` }}
+          />
           <span
             className={`mt-2 block font-sans text-2xl font-extrabold leading-tight tracking-tight transition-opacity group-hover:opacity-80 ${dark ? 'text-slate-100' : 'text-slate-900'}`}
           >
@@ -418,6 +418,7 @@ function SplitFeatureRelated({
                   />
                 </Link>
                 <span className="min-w-0 flex-1">
+                  <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className={`mb-1 inline-block font-sans text-[11px] font-bold uppercase tracking-wide ${dark ? 'text-slate-300' : 'text-slate-500'}`} style={{ color: skin.accent }} />
                   <Link
                     href={article.href}
                     className={`line-clamp-3 block font-sans text-[15px] font-bold leading-snug transition-opacity hover:opacity-80 ${dark ? 'text-slate-100' : 'text-slate-900'}`}
@@ -481,14 +482,12 @@ function OverlayRelated({
               />
               <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/35 to-transparent opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none" />
               <span className="absolute inset-x-0 bottom-0 block p-5">
-                {article.categoryName === null ? null : (
-                  <span
-                    className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
-                    style={{ color: readableTextOnAccent(skin.accent), backgroundColor: skin.accent }}
-                  >
-                    {article.categoryName}
-                  </span>
-                )}
+                <ArticleCategoryLabel
+                  categoryName={article.categoryName}
+                  categorySlug={article.categorySlug}
+                  className="inline-block rounded-lg px-2.5 py-1 font-sans text-xs font-bold"
+                  style={{ color: readableTextOnAccent(skin.accent), backgroundColor: skin.accent }}
+                />
                 <span className="mt-2 line-clamp-3 block font-sans text-lg font-bold leading-snug text-white">
                   {article.title}
                 </span>
@@ -534,11 +533,7 @@ function MinimalRelated({
           <li key={article.id} className="m-0 border-b p-0 py-4 last:border-b-0" style={{ borderColor: skin.ring }}>
             <Link href={article.href} className="group flex min-w-0 items-center gap-4">
               <span className="min-w-0 flex-1">
-                {article.categoryName === null ? null : (
-                  <span className="block font-sans text-[11px] font-bold uppercase tracking-wider" style={{ color: skin.accent }}>
-                    {article.categoryName}
-                  </span>
-                )}
+                <ArticleCategoryLabel categoryName={article.categoryName} categorySlug={article.categorySlug} className="block font-sans text-[11px] font-bold uppercase tracking-wider" style={{ color: skin.accent }} />
                 <span
                   className={`mt-0.5 line-clamp-2 block font-sans text-[17px] font-bold leading-snug tracking-tight transition-opacity group-hover:opacity-80 ${dark ? 'text-slate-100' : 'text-slate-900'}`}
                 >
