@@ -301,6 +301,27 @@ describe('readBridgeArticles', () => {
     });
   });
 
+  it('menampilkan kategori global kanonis pada artikel bridge', async () => {
+    const categorized = { ...bridgeDetail, category_slug: 'pemasyarakatan', category_name: 'Pemasyarakatan' };
+    const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [categorized] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]).toMatchObject({ categorySlug: 'pemasyarakatan', categoryName: 'Pemasyarakatan' });
+  });
+
+  it('memasukkan artikel bridge yang cocok ke arsip kategori global saja', async () => {
+    const pemasyarakatan = { ...bridgeDetail, category_slug: 'pemasyarakatan', category_name: 'Pemasyarakatan' };
+    const hukum = { ...bridgeDetail, article_id: 'art-upt-2', slug: 'berita-hukum', category_slug: 'hukum', category_name: 'Hukum' };
+    const secondAssignment = { ...bridgeAssignment, id: 'bridge-2', sourceArticleId: 'art-upt-2' };
+    const { repository } = harness({
+      articles: [],
+      bridgeAssignments: [bridgeAssignment, secondAssignment],
+      bridgeDetails: [pemasyarakatan, hukum],
+    });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { categorySlug: 'pemasyarakatan' });
+    expect(site?.articles).toHaveLength(1);
+    expect(site?.articles[0]).toMatchObject({ slug: 'berita-upt', categorySlug: 'pemasyarakatan', categoryName: 'Pemasyarakatan' });
+  });
+
   it('membawa tayangan bridge apa adanya alih-alih nol', async () => {
     const { repository } = harness({ articles: [], bridgeAssignments: [{ ...bridgeAssignment, viewCount: 2500 }], bridgeDetails: [bridgeDetail] });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
