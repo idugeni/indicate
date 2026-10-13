@@ -26,7 +26,7 @@ const excerptForDescription = (body: string, maxLength = 180) => {
   const clean = stripMarkup(body);
   const chars = Array.from(clean);
   if (chars.length <= maxLength) return clean;
-  const firstSentence = clean.slice(0, maxLength).match(/^.{40,}?[.!?…](?=\\s|$)/u)?.[0];
+  const firstSentence = clean.slice(0, maxLength).match(/^.{40,}?[.!?…](?=\s|$)/u)?.[0];
   if (firstSentence !== undefined) return firstSentence.trim();
   const slice = chars.slice(0, maxLength).join('');
   const lastSpace = slice.lastIndexOf(' ');
