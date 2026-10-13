@@ -24469,6 +24469,7 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (286, 'global_category_delivery', 'sha256:5e802d197c25854a5ee65752949eb8af9b7f5ddf60f35733958c3920878168f1');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01', 1791860400000);
+
 -- ----------------------------------------------------------------------
 -- 20261013110000_global_category_tenant_bindings
 -- ----------------------------------------------------------------------
