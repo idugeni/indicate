@@ -30,8 +30,8 @@ const excerptForDescription = (body: string, maxLength = 180) => {
   if (firstSentence !== undefined) return firstSentence.trim();
   const slice = chars.slice(0, maxLength).join('');
   const lastSpace = slice.lastIndexOf(' ');
-  if (lastSpace > maxLength * 0.5) return slice.slice(0, lastSpace).trimEnd();
-  return slice.trimEnd();
+  if (lastSpace > maxLength * 0.5) return `${slice.slice(0, lastSpace).trimEnd()}…`;
+  return `${slice.trimEnd()}…`;
 };
 const absoluteMediaUrl = (context: ResolvedSiteContext, mediaId: string) => `https://${context.normalizedHostname}/api/network/media/${mediaId}`;
 const absoluteDefaultAssetUrl = (context: ResolvedSiteContext, configuredUrl: string) => { const parsed = new URL(configuredUrl); return `https://${context.normalizedHostname}${parsed.pathname}${parsed.search}`; };
