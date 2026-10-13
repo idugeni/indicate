@@ -513,7 +513,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         const detail = byId.get(row.sourceArticleId);
         if (detail === undefined) continue;
         if (query.articleSlug !== undefined && detail.slug !== query.articleSlug) continue;
-        if (query.categorySlug !== undefined) continue;
+        if (query.categorySlug !== undefined && detail.category_slug !== query.categorySlug) continue;
         if (query.tag !== undefined && !detail.tags.includes(query.tag)) continue;
         if (query.search !== undefined) {
           const needle = query.search.toLowerCase();
@@ -658,8 +658,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           tags: [...detail.tags],
           regionId: detail.region_id,
           categoryId: null,
-          categorySlug: null,
-          categoryName: null,
+          categorySlug: detail.category_slug,
+          categoryName: detail.category_name,
           authorName: null,
           authorDisplayName: detail.author_display,
           authorBio: detail.author_bio,
