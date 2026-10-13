@@ -21,7 +21,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const iso = (value: Date | string) => (value instanceof Date ? value : new Date(value)).toISOString();
 const stripMarkup = (value: string) => value.replaceAll(/<[^>]*>/gu, ' ').replaceAll(/\s+/gu, ' ').trim();
-const isCompleteDescription = (value: string | null | undefined): value is string => typeof value === 'string' && value.trim().length >= 50 && /[.!?…][”\"'’')\]]?$/u.test(value.trim());
+const isCompleteDescription = (value: string | null | undefined): value is string => typeof value === 'string' && value.trim().length >= 50 && /[.!?…]$/u.test(value.trim());
 const excerptForDescription = (body: string, maxLength = 180) => {
   const clean = stripMarkup(body);
   const chars = Array.from(clean);
