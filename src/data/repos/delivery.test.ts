@@ -77,7 +77,7 @@ function articleRow(overrides: Record<string, unknown> = {}) {
     mediaState: null,
     leadThumbKey: null,
     customTitle: null,
-    customDescription: 'Deskripsi kustom yang sudah final dari redaksi.',
+    customDescription: 'Deskripsi kustom yang sudah final dan lengkap dari redaksi untuk kebutuhan metadata SEO.',
     bodyExcerpt: null,
     customImageMediaId: null,
     customMediaType: null,
@@ -309,7 +309,7 @@ describe('readBridgeArticles', () => {
     };
     const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [incomplete] });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
-    expect(site?.articles[0]?.description).toBe('Rumah Tahanan Negara Wonosobo menggelar Sidang Tim Pengamat Pemasyarakatan untuk mengevaluasi pembinaan warga binaan.');
+    expect(site?.articles[0]?.description).toBe('Rumah Tahanan Negara Wonosobo menggelar Sidang Tim Pengamat Pemasyarakatan untuk mengevaluasi pembinaan warga binaan. Kegiatan ini memastikan pemenuhan hak warga binaan.');
   });
 
   it('menampilkan kategori global kanonis pada artikel bridge', async () => {
