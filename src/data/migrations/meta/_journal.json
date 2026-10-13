@@ -2010,6 +2010,13 @@
       "when": 1791860400000,
       "tag": "20261013100000_global_category_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 287,
+      "version": "7",
+      "when": 1791889200000,
+      "tag": "20261013110000_global_category_tenant_bindings",
+      "breakpoints": true
     }
   ]
 }
