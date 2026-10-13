@@ -14,7 +14,7 @@ import { parseTenantAdOverrides, safeTemplateId } from '@/modules/ads/config';
 import { mapPlacementRows, mapTenantAdRows } from '@/modules/ads/db-mapping';
 import { DeliveryConflictError, DeliveryResourceUnavailableError, type DeliveryRepository, type PublicBundle, type SiteCategory } from '@/modules/delivery/ports';
 import { sqlStringArray } from '@/data/repos/shared/sql-array';
-import { articleCategories, articleSites, articleUpdates, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, categoryCatalog, domainActivationAttempts, domains, invalidationTasks, media, portalAssignments, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
+import { articleCategories, articleSites, articleUpdates, articles, adCreatives, adPlacements, adSlots, auditLogs, authors, cacheBypasses, campaigns, categories, domainActivationAttempts, domains, invalidationTasks, media, portalAssignments, publishers, regions, sites, siteSettings, tenantAdSettings } from '@/data/schema';
 import type * as schema from '@/data/schema';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -541,16 +541,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         : eq(articleSites.siteId, context.siteId);
       const conditions = [eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), scope, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)];
       if (query.articleSlug !== undefined) conditions.push(eq(articles.slug, query.articleSlug));
-      if (query.categorySlug !== undefined) conditions.push(sql`EXISTS (
-        SELECT 1
-        FROM article_categories AS category_filter
-        JOIN category_catalog AS category_filter_catalog
-          ON category_filter_catalog.id = category_filter.catalog_id
-         AND category_filter_catalog.status = 'active'
-        WHERE category_filter.organization_id = ${articles.organizationId}
-          AND category_filter.article_id = ${articles.id}
-          AND category_filter_catalog.slug = ${query.categorySlug}
-      )`);
+      if (query.categorySlug !== undefined) conditions.push(eq(categories.slug, query.categorySlug));
       if (query.tag !== undefined) conditions.push(sql`EXISTS (
         SELECT 1 FROM article_tags at
         INNER JOIN tag_catalog tc ON tc.id = at.tag_id AND tc.status = 'active'
@@ -589,11 +580,11 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
             .limit(100)
             .as('scoped_article_sites')
         : articleSites;
-      const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, originHost: originSite.normalizedHostname, tags: sql<string[]>`COALESCE((SELECT array_agg(tc.slug ORDER BY at.position) FROM article_tags AS at INNER JOIN tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = ${articles.organizationId} AND at.article_id = ${articles.id}), ARRAY[]::text[])`, regionId: articles.regionId, categoryId: articleCategories.categoryId, categorySlug: categoryCatalog.slug, categoryName: categoryCatalog.name, authorName: authors.byline, authorDisplayName: authors.displayName, authorBio: authors.bio, authorAvatarUrl: authors.avatarUrl, publisherName: publishers.name, attribution: publishers.attributionLabel, publisherLogoUrl: sql<string | null>`(${publishers.contacts}->>'logoUrl')`, publisherCity: sql<string | null>`(${publishers.contacts}->>'city')`, publisherBio: sql<string | null>`(${publishers.contacts}->>'bio')`, publisherContacts: publishers.contacts, publisherType: publishers.type, publisherVerification: publishers.verificationStatus, publishedAt: scopedArticleSites.publishedAt, updatedAt: articles.updatedAt, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, leadObjectKey: media.objectKey, leadMediaWidth: media.widthPx, leadMediaHeight: media.heightPx, leadMediaFocalX: media.focalX, leadMediaFocalY: media.focalY, coverImageUrl: articles.coverImageUrl, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, mediaState: media.state, leadThumbKey: media.thumbObjectKey, customTitle: scopedArticleSites.customTitle, customDescription: scopedArticleSites.customDescription, robotsDirective: scopedArticleSites.seoRobotsDirective, bodyExcerpt: sql<string | null>`CASE WHEN ${scopedArticleSites.customDescription} IS NULL THEN substring(${articles.body} from 1 for 600) ELSE NULL END`, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, customObjectKey: customMedia.objectKey, customMediaWidth: customMedia.widthPx, customMediaHeight: customMedia.heightPx, customMediaFocalX: customMedia.focalX, customMediaFocalY: customMedia.focalY, customThumbKey: customMedia.thumbObjectKey, affiliationInstitution: sql<string | null>`official_affiliations.institution_name`, articleSiteId: scopedArticleSites.id, viewCount: scopedArticleSites.viewCount })
+      const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, excerpt: articles.excerpt, canonicalUrl: articles.canonicalUrl, originHost: originSite.normalizedHostname, tags: sql<string[]>`COALESCE((SELECT array_agg(tc.slug ORDER BY at.position) FROM article_tags AS at INNER JOIN tag_catalog AS tc ON tc.id = at.tag_id AND tc.status = 'active' WHERE at.organization_id = ${articles.organizationId} AND at.article_id = ${articles.id}), ARRAY[]::text[])`, regionId: articles.regionId, categoryId: articleCategories.categoryId, categorySlug: categories.slug, categoryName: categories.name, authorName: authors.byline, authorDisplayName: authors.displayName, authorBio: authors.bio, authorAvatarUrl: authors.avatarUrl, publisherName: publishers.name, attribution: publishers.attributionLabel, publisherLogoUrl: sql<string | null>`(${publishers.contacts}->>'logoUrl')`, publisherCity: sql<string | null>`(${publishers.contacts}->>'city')`, publisherBio: sql<string | null>`(${publishers.contacts}->>'bio')`, publisherContacts: publishers.contacts, publisherType: publishers.type, publisherVerification: publishers.verificationStatus, publishedAt: scopedArticleSites.publishedAt, updatedAt: articles.updatedAt, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, leadObjectKey: media.objectKey, leadMediaWidth: media.widthPx, leadMediaHeight: media.heightPx, leadMediaFocalX: media.focalX, leadMediaFocalY: media.focalY, coverImageUrl: articles.coverImageUrl, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl, durationSeconds: articles.durationSeconds, mediaState: media.state, leadThumbKey: media.thumbObjectKey, customTitle: scopedArticleSites.customTitle, customDescription: scopedArticleSites.customDescription, robotsDirective: scopedArticleSites.seoRobotsDirective, bodyExcerpt: sql<string | null>`CASE WHEN ${scopedArticleSites.customDescription} IS NULL THEN substring(${articles.body} from 1 for 600) ELSE NULL END`, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, customObjectKey: customMedia.objectKey, customMediaWidth: customMedia.widthPx, customMediaHeight: customMedia.heightPx, customMediaFocalX: customMedia.focalX, customMediaFocalY: customMedia.focalY, customThumbKey: customMedia.thumbObjectKey, affiliationInstitution: sql<string | null>`official_affiliations.institution_name`, articleSiteId: scopedArticleSites.id, viewCount: scopedArticleSites.viewCount })
         .from(scopedArticleSites).innerJoin(articles, and(eq(articles.organizationId, scopedArticleSites.organizationId), eq(articles.id, scopedArticleSites.articleId)))
         .innerJoin(originSite, and(eq(originSite.organizationId, scopedArticleSites.organizationId), eq(originSite.id, scopedArticleSites.siteId)))
         .leftJoin(articleCategories, and(eq(articleCategories.organizationId, articles.organizationId), eq(articleCategories.articleId, articles.id), eq(articleCategories.position, 1)))
-        .leftJoin(categoryCatalog, and(eq(categoryCatalog.id, articleCategories.catalogId), eq(categoryCatalog.status, 'active')))
+        .leftJoin(categories, and(eq(categories.organizationId, articleCategories.organizationId), eq(categories.id, articleCategories.categoryId), eq(categories.status, 'active')))
         .leftJoin(authors, and(eq(authors.organizationId, articles.organizationId), eq(authors.id, articles.authorId), eq(authors.status, 'active')))
         .leftJoin(publishers, and(eq(publishers.organizationId, articles.organizationId), eq(publishers.id, articles.publisherId), eq(publishers.status, 'active')))
         .leftJoin(media, and(eq(media.organizationId, articles.organizationId), eq(media.id, articles.leadMediaId), eq(media.state, 'active')))
@@ -658,8 +649,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           tags: [...detail.tags],
           regionId: detail.region_id,
           categoryId: null,
-          categorySlug: detail.category_slug,
-          categoryName: detail.category_name,
+          categorySlug: null,
+          categoryName: null,
           authorName: null,
           authorDisplayName: detail.author_display,
           authorBio: detail.author_bio,
@@ -727,19 +718,18 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
    */
   private async readCategories(transaction: Transaction, context: ResolvedSiteContext, limit: number): Promise<readonly SiteCategory[]> {
       const rows = await transaction.select({
-        slug: categoryCatalog.slug,
-        name: categoryCatalog.name,
+        slug: categories.slug,
+        name: categories.name,
         articleCount: sql<number>`count(${articleSites.id})::int`,
         lastUpdatedAt: sql<Date | null>`max(${articles.updatedAt})`,
       })
         .from(categories)
-        .innerJoin(categoryCatalog, and(eq(categoryCatalog.id, categories.catalogId), eq(categoryCatalog.status, 'active')))
-        .leftJoin(articleCategories, and(eq(articleCategories.organizationId, categories.organizationId), eq(articleCategories.catalogId, categories.catalogId)))
+        .leftJoin(articleCategories, and(eq(articleCategories.organizationId, categories.organizationId), eq(articleCategories.categoryId, categories.id)))
         .leftJoin(articles, and(eq(articles.organizationId, articleCategories.organizationId), eq(articles.id, articleCategories.articleId), eq(articles.status, 'active')))
         .leftJoin(articleSites, and(eq(articleSites.organizationId, categories.organizationId), eq(articleSites.articleId, articles.id), eq(articleSites.state, 'published'), eq(articleSites.active, true), isNotNull(articleSites.publishedAt), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`))
         .where(and(eq(categories.organizationId, context.organizationId), eq(categories.status, 'active')))
-        .groupBy(categoryCatalog.slug, categoryCatalog.name)
-        .orderBy(sql`${categoryCatalog.name} ASC`)
+        .groupBy(categories.slug, categories.name)
+        .orderBy(sql`${categories.name} ASC`)
         .limit(limit);
       return rows.map((row) => ({ slug: row.slug, name: row.name, articleCount: row.articleCount, lastUpdatedAt: row.lastUpdatedAt === null ? null : iso(row.lastUpdatedAt) }));
   }
@@ -885,12 +875,12 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       await this.publicTenant(transaction, context);
       const customMedia = aliasedTable(media, 'custom_media');
       const feedOrigin = aliasedTable(sites, 'origin_site');
-      const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, originHost: feedOrigin.normalizedHostname, description: articleSites.customDescription, body: articles.body, coverImageUrl: articles.coverImageUrl, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, mediaState: media.state, publishedAt: articleSites.publishedAt, categoryName: categoryCatalog.name, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl })
+      const rows = await transaction.select({ id: articles.id, slug: articles.slug, title: articles.title, originHost: feedOrigin.normalizedHostname, description: articleSites.customDescription, body: articles.body, coverImageUrl: articles.coverImageUrl, customImageMediaId: customMedia.id, customMediaType: customMedia.mediaType, leadMediaId: articles.leadMediaId, leadMediaType: media.mediaType, mediaState: media.state, publishedAt: articleSites.publishedAt, categoryName: categories.name, type: articles.type, isSponsored: articles.isSponsored, videoUrl: articles.videoUrl, audioUrl: articles.audioUrl })
         .from(articleSites)
         .innerJoin(articles, and(eq(articles.organizationId, articleSites.organizationId), eq(articles.id, articleSites.articleId)))
         .innerJoin(feedOrigin, and(eq(feedOrigin.organizationId, articleSites.organizationId), eq(feedOrigin.id, articleSites.siteId)))
         .leftJoin(articleCategories, and(eq(articleCategories.organizationId, articles.organizationId), eq(articleCategories.articleId, articles.id), eq(articleCategories.position, 1)))
-        .leftJoin(categoryCatalog, and(eq(categoryCatalog.id, articleCategories.catalogId), eq(categoryCatalog.status, 'active')))
+        .leftJoin(categories, and(eq(categories.organizationId, articleCategories.organizationId), eq(categories.id, articleCategories.categoryId), eq(categories.status, 'active')))
         .leftJoin(media, and(eq(media.organizationId, articles.organizationId), eq(media.id, articles.leadMediaId), eq(media.state, 'active')))
         .leftJoin(customMedia, and(eq(customMedia.organizationId, articles.organizationId), eq(customMedia.id, articleSites.customImageMediaId), eq(customMedia.state, 'active')))
         .where(and(eq(articles.organizationId, context.organizationId), eq(articleSites.organizationId, context.organizationId), sql`${articleSites.siteId} in ${lineageSiteIds(context)}`, eq(articleSites.state, 'published'), eq(articleSites.active, true), eq(articles.status, 'active'), isNotNull(articleSites.publishedAt)))
