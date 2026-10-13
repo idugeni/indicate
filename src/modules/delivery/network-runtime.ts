@@ -198,6 +198,18 @@ export async function resolveNetworkSite(query: NetworkContentQuery = {}, path =
  */
 const TAG_INDEX_MINIMUM = 3;
 
+/** Render a category label from its global slug, never from the first article's primary category. */
+export function categoryNameFromSlug(slug: string): string {
+  const minorWords = new Set(['dan', 'di', 'ke', 'dari', 'untuk', 'dengan', 'pada', 'dalam']);
+  return normalizeSlugCandidate(slug)
+    .split('-')
+    .filter(Boolean)
+    .map((word, index) => index > 0 && minorWords.has(word)
+      ? word
+      : word.charAt(0).toLocaleUpperCase('id-ID') + word.slice(1))
+    .join(' ');
+}
+
 /**
  * Social card entries for one tenant page, shared by Open Graph and Twitter.
  *
@@ -373,11 +385,11 @@ async function buildNetworkMetadata(site: NetworkSiteData, path: string, query: 
   }
 
   if (query.categorySlug !== undefined) {
-    const categoryName = site.articles[0]?.categoryName ?? query.categorySlug;
+    const categoryName = categoryNameFromSlug(query.categorySlug);
     const categoryTitle = `${categoryName} - ${site.settings.seoSiteName ?? site.settings.name}`;
     const categoryDescription =
       site.articles.length > 0
-        ? `Liputan ${categoryName} pilihan redaksi ${site.settings.name}: ${site.articles.length} laporan terkini, diperbarui mengikuti perkembangan di lapangan.`
+        ? `Liputan ${categoryName} pilihan redaksi ${site.settings.name}: ${site.articles.length} laporan terkini sesuai topik, diperbarui mengikuti perkembangan di lapangan.`
         : `Arsip liputan ${categoryName} redaksi ${site.settings.name}.`;
     if (site.articles.length < CATEGORY_INDEX_MINIMUM) {
       return tenantHiddenMeta(site, path, categoryTitle, categoryDescription);

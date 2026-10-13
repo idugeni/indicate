@@ -77,7 +77,7 @@ function articleRow(overrides: Record<string, unknown> = {}) {
     mediaState: null,
     leadThumbKey: null,
     customTitle: null,
-    customDescription: 'Deskripsi kustom yang sudah final dari redaksi.',
+    customDescription: 'Deskripsi kustom yang sudah final dan lengkap dari redaksi untuk kebutuhan metadata SEO.',
     bodyExcerpt: null,
     customImageMediaId: null,
     customMediaType: null,
@@ -301,6 +301,17 @@ describe('readBridgeArticles', () => {
     });
   });
 
+  it('mengganti excerpt bridge yang terpotong dengan kalimat lengkap dari isi artikel', async () => {
+    const incomplete = {
+      ...bridgeDetail,
+      excerpt: 'WONOSOBO – Rumah Tahanan Negara (Rutan) Kelas IIB Wonosobo melaksanakan Sidang TPP sebagai bagian dari upaya meningkatkan',
+      body: 'Rumah Tahanan Negara Wonosobo menggelar Sidang Tim Pengamat Pemasyarakatan untuk mengevaluasi pembinaan warga binaan. Kegiatan ini memastikan pemenuhan hak warga binaan.',
+    };
+    const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [incomplete] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]?.description).toBe('Rumah Tahanan Negara Wonosobo menggelar Sidang Tim Pengamat Pemasyarakatan untuk mengevaluasi pembinaan warga binaan. Kegiatan ini memastikan pemenuhan hak warga binaan.');
+  });
+
   it('menampilkan kategori global kanonis pada artikel bridge', async () => {
     const categorized = { ...bridgeDetail, category_slug: 'pemasyarakatan', category_name: 'Pemasyarakatan' };
     const { repository } = harness({ articles: [], bridgeAssignments: [bridgeAssignment], bridgeDetails: [categorized] });
@@ -509,7 +520,7 @@ describe('readSite projection', () => {
     expect(item).toBeDefined();
     expect(item).not.toHaveProperty('body');
     expect(item).not.toHaveProperty('gallery');
-    expect(item?.description).toBe('Deskripsi kustom yang sudah final dari redaksi.');
+    expect(item?.description).toBe('Deskripsi kustom yang sudah final dan lengkap dari redaksi untuk kebutuhan metadata SEO.');
   });
 
   it('menautkan artikel milik sendiri secara relatif agar hemat byte', async () => {

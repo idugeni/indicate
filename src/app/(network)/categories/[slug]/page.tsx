@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ChannelPage } from '@/modules/site/components/network/network-listing';
-import { networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
+import { categoryNameFromSlug, networkMetadata, resolveNetworkSite } from '@/modules/delivery/network-runtime';
 import { normalizeSlugCandidate } from '@/modules/site/slug-allocator';
 import { notFoundMetadata } from '@/modules/site/seo';
 
@@ -33,6 +33,6 @@ export default async function CategoryPage({ params }: Props) {
   if (slug.trim() === '') notFound();
   const clean = normalizeSlugCandidate(slug);
   const site = await resolveNetworkSite({ categorySlug: clean }, `/categories/${clean}`);
-  const name = site.articles[0]?.categoryName ?? clean;
+  const name = categoryNameFromSlug(clean);
   return <ChannelPage site={site} kicker="Kanal liputan" title={name} path={`/categories/${clean}`} />;
 }
