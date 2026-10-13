@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (287 migrations):
+-- Reviewed sources, in journal order (288 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -301,6 +301,7 @@
 --   285  20261012200000_article_taxonomy_contraction_preflight  ledger sha256:618c5b3bf65b5818bb9869d961883250a7d10e0d047c099a82df6340257f7504
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
+--   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
 
 BEGIN;
 
@@ -24468,4 +24469,100 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (286, 'global_category_delivery', 'sha256:5e802d197c25854a5ee65752949eb8af9b7f5ddf60f35733958c3920878168f1');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01', 1791860400000);
+-- ----------------------------------------------------------------------
+-- 20261013110000_global_category_tenant_bindings
+-- ----------------------------------------------------------------------
+-- Make every active global category available to each organization that publishes content.
+-- `categories` is the tenant binding layer; `category_catalog` remains the canonical
+-- global taxonomy. Without these bindings, the editor can only select a tenant's
+-- existing subset (often just `Berita`) even though the global catalog has more terms.
+-- Body digest: LF-normalize this file and replace its own checksum with zeros.
+
+INSERT INTO public.categories (
+  organization_id, id, name, slug, status, version, created_at, updated_at, catalog_id
+)
+SELECT
+  eligible.organization_id,
+  gen_random_uuid(),
+  catalog.name,
+  catalog.slug,
+  'active'::public.record_status,
+  1,
+  now(),
+  now(),
+  catalog.id
+FROM (
+  SELECT DISTINCT p.organization_id
+  FROM public.publishers AS p
+) AS eligible
+CROSS JOIN public.category_catalog AS catalog
+WHERE catalog.status = 'active'::public.record_status
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.categories AS existing
+    WHERE existing.organization_id = eligible.organization_id
+      AND existing.catalog_id = catalog.id
+  )
+ON CONFLICT (organization_id, slug) DO NOTHING;
+
+-- A globally active category must not remain hidden in an organization simply
+-- because its local binding was archived before the global catalog was introduced.
+UPDATE public.categories AS binding
+SET status = 'active'::public.record_status,
+    version = binding.version + 1,
+    updated_at = now()
+FROM public.category_catalog AS catalog
+WHERE catalog.id = binding.catalog_id
+  AND catalog.status = 'active'::public.record_status
+  AND binding.status <> 'active'::public.record_status;
+
+-- New global categories are created through a tenant binding. Fan the new canonical
+-- identity out to every other publishing organization so the editor stays global after
+-- this one-time backfill, not merely until the next category is created.
+CREATE FUNCTION indicate_private.fanout_global_category_bindings()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $func$
+BEGIN
+  -- Prevent the bindings inserted by this trigger from recursively fanning out.
+  IF pg_trigger_depth() > 1 THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO public.categories (
+    organization_id, id, name, slug, status, version, created_at, updated_at, catalog_id
+  )
+  SELECT
+    eligible.organization_id,
+    gen_random_uuid(),
+    NEW.name,
+    NEW.slug,
+    'active'::public.record_status,
+    1,
+    now(),
+    now(),
+    NEW.catalog_id
+  FROM (
+    SELECT DISTINCT p.organization_id
+    FROM public.publishers AS p
+  ) AS eligible
+  WHERE eligible.organization_id <> NEW.organization_id
+  ON CONFLICT (organization_id, slug) DO NOTHING;
+
+  RETURN NEW;
+END
+$func$;
+
+CREATE TRIGGER categories_global_binding_fanout
+AFTER INSERT ON public.categories
+FOR EACH ROW EXECUTE FUNCTION indicate_private.fanout_global_category_bindings();
+
+REVOKE ALL ON FUNCTION indicate_private.fanout_global_category_bindings() FROM PUBLIC, anon, authenticated, indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (287, 'global_category_tenant_bindings', 'sha256:998cd8db4bac03f2cbc85c8ad74b47a900b5a8d8f5ca852250d2599faa2118fc');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285', 1791889200000);
 COMMIT;
