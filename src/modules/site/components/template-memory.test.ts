@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { TEMPLATE_CANVAS_FALLBACK, chromeForTemplate, overlayForTemplate } from '@/modules/site/components/template-memory';
+import {
+  TEMPLATE_CANVAS_FALLBACK,
+  chromeForTemplate,
+  overlayForTemplate,
+} from '@/modules/site/components/template-memory';
 
 describe('overlayForTemplate', () => {
   it('memetakan template gelap ke canvas gelap', () => {
@@ -21,14 +25,34 @@ describe('overlayForTemplate', () => {
 });
 
 describe('chromeForTemplate', () => {
-  it('mewarnai chrome peramban gelap untuk template gelap', () => {
-    expect(chromeForTemplate('dark-navy')).toEqual({ themeColor: '#070f22', colorScheme: 'dark' });
-    expect(chromeForTemplate('black-lime')).toEqual({ themeColor: '#0a0c07', colorScheme: 'dark' });
+  it('memetakan warna chrome dan skema gelap untuk template gelap', () => {
+    expect(chromeForTemplate('dark-navy')).toEqual({
+      themeColor: '#070f22',
+      colorScheme: 'dark',
+    });
+    expect(chromeForTemplate('black-lime')).toEqual({
+      themeColor: '#0a0c07',
+      colorScheme: 'dark',
+    });
   });
 
-  it('membiarkan default terang untuk setiap template terang', () => {
-    for (const id of ['clean-blue', 'glassy-blue', 'green-minimal', 'orange-modern', 'purple-editorial', 'red-editorial', 'soft-blue', 'warm-editorial']) {
-      expect(chromeForTemplate(id)).toBeNull();
+  it('memetakan warna chrome dan skema terang untuk semua template terang', () => {
+    const lightTemplates = {
+      'clean-blue': '#f5f8fd',
+      'glassy-blue': '#edf4ff',
+      'green-minimal': '#f7faf7',
+      'orange-modern': '#fff9f4',
+      'purple-editorial': '#f8f7ff',
+      'red-editorial': '#fffafa',
+      'soft-blue': '#f1f6ff',
+      'warm-editorial': '#fdf7f0',
+    } as const;
+
+    for (const [templateId, themeColor] of Object.entries(lightTemplates)) {
+      expect(chromeForTemplate(templateId)).toEqual({
+        themeColor,
+        colorScheme: 'light',
+      });
     }
   });
 
