@@ -21,10 +21,13 @@ type Database = PostgresJsDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const iso = (value: Date | string) => (value instanceof Date ? value : new Date(value)).toISOString();
 const stripMarkup = (value: string) => value.replaceAll(/<[^>]*>/gu, ' ').replaceAll(/\s+/gu, ' ').trim();
+const isCompleteDescription = (value: string | null | undefined): value is string => typeof value === 'string' && value.trim().length >= 50 && /[.!?…][”\"'’')\]]?$/u.test(value.trim());
 const excerptForDescription = (body: string, maxLength = 180) => {
   const clean = stripMarkup(body);
   const chars = Array.from(clean);
   if (chars.length <= maxLength) return clean;
+  const firstSentence = clean.slice(0, maxLength).match(/^.{40,}?[.!?…](?=\\s|$)/u)?.[0];
+  if (firstSentence !== undefined) return firstSentence.trim();
   const slice = chars.slice(0, maxLength).join('');
   const lastSpace = slice.lastIndexOf(' ');
   if (lastSpace > maxLength * 0.5) return slice.slice(0, lastSpace).trimEnd();
@@ -644,7 +647,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
         const detail = pair.detail;
         const isBridgeDetail = bridgeDetail !== null && pair.bridgeId === bridgeDetail.bridgeId;
         const richText = isBridgeDetail && isTipTapDoc(detail.body_json) ? tiptapToText(detail.body_json) : '';
-        const description = detail.excerpt ?? (richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(detail.body, 180));
+        const bodyDescription = richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(detail.body, 180);
+        const description = isCompleteDescription(detail.excerpt) ? detail.excerpt.trim() : bodyDescription;
         return {
           id: detail.article_id,
           slug: detail.slug,
@@ -696,7 +700,8 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
       const ownItems = rows.filter((row) => row.publishedAt !== null).map((row) => {
           const isDetail = detailTarget !== undefined && detailBody !== null && row.id === detailTarget.id;
           const richText = isDetail && isTipTapDoc(detailBodyJson) ? tiptapToText(detailBodyJson) : '';
-          const description = row.customDescription ?? row.excerpt ?? (richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(articleBodyText(row.bodyExcerpt ?? ''), 180));
+          const bodyDescription = richText !== '' ? excerptForDescription(richText, 180) : excerptForDescription(articleBodyText(row.bodyExcerpt ?? ''), 180);
+          const description = isCompleteDescription(row.customDescription) ? row.customDescription.trim() : isCompleteDescription(row.excerpt) ? row.excerpt.trim() : bodyDescription;
           return { id: row.id, slug: row.slug, title: row.customTitle ?? row.title, href: originHref(row.originHost, context, row.slug), canonicalUrl: row.canonicalUrl, robotsDirective: robotsDirectiveFor(row.robotsDirective), description, ...(isDetail ? { body: detailBody, bodyJson: isTipTapDoc(detailBodyJson) ? detailBodyJson : null, gallery: detailGallery, updates: detailUpdates } : {}), tags: [...row.tags], regionId: row.regionId, categoryId: row.categoryId, categorySlug: row.categorySlug, categoryName: row.categoryName, authorName: row.authorName, authorDisplayName: row.authorDisplayName, authorBio: row.authorBio, authorAvatarUrl: row.authorAvatarUrl, publisherName: row.publisherName, attribution: resolvePublisherAttribution(row.attribution ?? row.publisherName ?? settings.name, settings.name), publisherLogoUrl: row.publisherLogoUrl, publisherCity: row.publisherCity, publisherBio: row.publisherBio ?? DEFAULT_PUBLISHER_BIO, publisherSocials: pickPublisherSocials((row.publisherContacts ?? {}) as Readonly<Record<string, unknown>>), publisherVerified: row.publisherVerification === 'verified', independent: row.publisherType === 'independent_publisher', officialInstitution: row.publisherVerification === 'verified' ? row.affiliationInstitution : null, publishedAt: iso(row.publishedAt!), updatedAt: iso(row.updatedAt), articleSiteId: row.articleSiteId, viewCount: row.viewCount, imageMediaType: row.customImageMediaId !== null ? row.customMediaType : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaType : null, imageUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customObjectKey) ?? absoluteMediaUrl(context, row.customImageMediaId)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadObjectKey) ?? absoluteMediaUrl(context, row.leadMediaId)) : (row.coverImageUrl ?? (row.type === 'video' ? youtubeThumbnailUrl(row.videoUrl) : null) ?? (isDetail && row.type === 'gallery' && detailGallery.length > 0 ? detailGallery[0]?.url ?? null : null)), thumbnailUrl: row.customImageMediaId !== null ? (publicMediaUrl(this.publicHost, row.customThumbKey) ?? (row.customThumbKey === null ? null : `${absoluteMediaUrl(context, row.customImageMediaId)}?variant=thumb`)) : row.leadMediaId !== null && row.mediaState === 'active' ? (publicMediaUrl(this.publicHost, row.leadThumbKey) ?? (row.leadThumbKey === null ? null : `${absoluteMediaUrl(context, row.leadMediaId)}?variant=thumb`)) : null, imageWidth: row.customImageMediaId !== null ? row.customMediaWidth : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaWidth : null, imageHeight: row.customImageMediaId !== null ? row.customMediaHeight : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaHeight : null, imageFocalX: row.customImageMediaId !== null ? row.customMediaFocalX : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalX : null, imageFocalY: row.customImageMediaId !== null ? row.customMediaFocalY : row.leadMediaId !== null && row.mediaState === 'active' ? row.leadMediaFocalY : null, type: row.type, isSponsored: row.isSponsored, videoUrl: row.videoUrl, audioUrl: row.audioUrl, durationSeconds: row.durationSeconds };
         });
       const merged = [...ownItems, ...bridgeItems].sort(
