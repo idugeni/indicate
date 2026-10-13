@@ -520,7 +520,7 @@ describe('readSite projection', () => {
     expect(item).toBeDefined();
     expect(item).not.toHaveProperty('body');
     expect(item).not.toHaveProperty('gallery');
-    expect(item?.description).toBe('Deskripsi kustom yang sudah final dari redaksi.');
+    expect(item?.description).toBe('Deskripsi kustom yang sudah final dan lengkap dari redaksi untuk kebutuhan metadata SEO.');
   });
 
   it('menautkan artikel milik sendiri secara relatif agar hemat byte', async () => {
