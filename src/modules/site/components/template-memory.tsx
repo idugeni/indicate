@@ -21,6 +21,8 @@ const TEMPLATE_CANVAS: Readonly<Record<string, string>> = {
   'warm-editorial': '#fdf7f0',
 };
 
+const DARK_TEMPLATES: ReadonlySet<string> = new Set(['black-lime', 'dark-navy']);
+
 /**
  * Resolve the loading overlay background for a remembered template.
  *
@@ -33,24 +35,26 @@ export function overlayForTemplate(templateId: string | null): string {
 }
 
 /**
- * Templates whose canvas is dark. Browser chrome (the Android Chrome toolbar,
- * the iOS status bar) is painted from `theme-color`, and the network layout
- * declares a light `#ffffff` for every portal, so on these templates the
- * toolbar shows as a white strip, most visibly when it sits at the bottom.
- */
-const DARK_TEMPLATES: ReadonlySet<string> = new Set(['black-lime', 'dark-navy']);
-
-/**
  * Browser chrome colours for a rendered template.
  *
  * @param templateId - Template id read from the DOM, if any.
- * @returns `theme-color` plus `color-scheme` for a dark template, or `null`
- * to leave the layout's light default untouched.
+ * @returns The exact canvas colour and matching colour scheme for a known template,
+ * or null when the template is unknown.
+ * @remarks Keep browser theme-color, color-scheme metadata, and the document
+ * canvas in sync. Returning null for light templates left their browser chrome
+ * on a generic white default, which can expose a contrasting strip when mobile
+ * browser toolbars collapse during a fast scroll.
  */
-export function chromeForTemplate(templateId: string | null): { readonly themeColor: string; readonly colorScheme: 'dark' } | null {
-  if (templateId === null || !DARK_TEMPLATES.has(templateId)) return null;
+export function chromeForTemplate(
+  templateId: string | null,
+): { readonly themeColor: string; readonly colorScheme: 'dark' | 'light' } | null {
+  if (templateId === null) return null;
   const themeColor = TEMPLATE_CANVAS[templateId];
-  return themeColor === undefined ? null : { themeColor, colorScheme: 'dark' };
+  if (themeColor === undefined) return null;
+  return {
+    themeColor,
+    colorScheme: DARK_TEMPLATES.has(templateId) ? 'dark' : 'light',
+  };
 }
 
 /**
@@ -68,8 +72,16 @@ export function TemplateMemory() {
     document.cookie = `indicate-template=${templateId}; path=/; max-age=31536000; SameSite=Lax`;
     const chrome = chromeForTemplate(templateId);
     if (chrome === null) return;
-    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) meta.content = chrome.themeColor;
-    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="color-scheme"]')) meta.content = chrome.colorScheme;
+    document.documentElement.style.backgroundColor = chrome.themeColor;
+    document.body.style.backgroundColor = chrome.themeColor;
+    document.documentElement.style.colorScheme = chrome.colorScheme;
+    document.body.style.colorScheme = chrome.colorScheme;
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+      meta.content = chrome.themeColor;
+    }
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="color-scheme"]')) {
+      meta.content = chrome.colorScheme;
+    }
   }, []);
   return null;
 }
