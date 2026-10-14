@@ -14,7 +14,6 @@ import {
   canAccessView,
   PRIMARY_NAV_AREAS,
   VIEW_REGISTRY,
-  visibleNavGroups,
 } from '@/modules/dashboard/components/view-registry';
 import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
 import { AppTooltip } from '@/ui/app-tooltip';
@@ -64,38 +63,32 @@ export function DashboardNavList({
   if (collapsed) {
     return (
       <>
-        {visibleNavGroups(permissions).map((group, groupIndex) => (
-          <div key={group.id} className="space-y-1 py-1">
-            {groupIndex > 0 ? (
-              <div className="mx-4 border-t border-white/[0.07]" aria-hidden="true" />
-            ) : null}
-            {group.views.map((navView) => {
-              const { label, icon: Icon } = VIEW_REGISTRY[navView];
-              const isActive = view === navView;
-              return (
-                <AppTooltip key={navView} label={label} side="right">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    aria-current={isActive ? 'page' : undefined}
-                    aria-label={label}
-                    onClick={() => onSelect(navView)}
-                    className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                      isActive
-                        ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
-                        : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
-                    }`}
-                  >
-                    <Icon
-                      className={`h-4 w-4 flex-none ${isActive ? 'text-white' : 'text-paper-faint'}`}
-                      aria-hidden="true"
-                    />
-                  </Button>
-                </AppTooltip>
-              );
-            })}
-          </div>
-        ))}
+        {PRIMARY_NAV_AREAS.map((area) => {
+          const allowedViews = area.views.filter((candidate) => canAccessView(candidate, permissions));
+          if (allowedViews.length === 0) return null;
+          const defaultView = allowedViews.includes(area.defaultView)
+            ? area.defaultView
+            : (allowedViews[0] ?? area.defaultView);
+          const Icon = VIEW_REGISTRY[defaultView].icon;
+          return (
+            <AppTooltip key={area.id} label={area.label} side="right">
+              <Button
+                type="button"
+                variant="ghost"
+                aria-current={view === defaultView ? 'page' : undefined}
+                aria-label={area.label}
+                onClick={() => onSelect(defaultView)}
+                className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
+                  area.views.includes(view)
+                    ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
+                    : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 flex-none text-paper-faint" aria-hidden="true" />
+              </Button>
+            </AppTooltip>
+          );
+        })}
       </>
     );
   }
