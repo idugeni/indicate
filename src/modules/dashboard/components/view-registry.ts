@@ -132,7 +132,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   billing: {
     label: 'Billing', title: 'Billing & Plan', eyebrow: 'Commercial Control', group: 'system',
     description: 'Status paket, aktivasi, dan kontrol langganan organisasi.',
-    icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead,
+    icon: CreditCard, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
   audit: {
     label: 'Audit', title: 'Audit & Security', eyebrow: 'Governance', group: 'system',
@@ -162,7 +162,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   ai: {
     label: 'AI Control', title: 'AI Control Center', eyebrow: 'Intelligence Layer', group: 'system',
     description: 'Kelola kredensial, routing, dan konfigurasi asisten AI.',
-    icon: Bot, requiredPermission: INTEGRATIONS_PERMISSIONS.aiManage,
+    icon: Bot, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.aiManage, INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
 };
 
@@ -171,32 +171,39 @@ export const ALL_VIEWS = Object.keys(VIEW_REGISTRY) as readonly View[];
 export interface PrimaryNavArea {
   readonly id: string;
   readonly label: string;
+  readonly scope: 'organization' | 'platform';
   readonly defaultView: View;
   readonly views: readonly View[];
 }
 
-/** Five first-level dashboard areas; supporting views remain permission-gated children. */
+/**
+ * Tenant users have exactly two top-level areas. Platform control-plane views
+ * are kept in a separate area and remain hidden unless their platform grants
+ * are present. This is navigation only; APIs enforce authorization separately.
+ */
 export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
-  { id: 'dashboard', label: 'Dashboard', defaultView: 'dashboard', views: ['dashboard', 'analytics'] },
-  { id: 'articles', label: 'Artikel', defaultView: 'articles', views: ['articles', 'editorial', 'taxonomy', 'publishers'] },
-  { id: 'media', label: 'Media', defaultView: 'media', views: ['media'] },
   {
-    id: 'publishing',
-    label: 'Publikasi',
-    defaultView: 'publishing',
-    views: ['publishing', 'published', 'ads'],
+    id: 'news',
+    label: 'Berita',
+    scope: 'organization',
+    defaultView: 'articles',
+    views: ['dashboard', 'analytics', 'articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published'],
   },
   {
-    id: 'settings',
-    label: 'Pengaturan Organisasi',
+    id: 'organization',
+    label: 'Organisasi',
+    scope: 'organization',
     defaultView: 'configuration',
-    views: [
-      'configuration', 'settings', 'billing', 'audit', 'operations', 'moderation',
-      'customers', 'content', 'ai',
-    ],
+    views: ['configuration', 'settings', 'ads', 'audit', 'operations', 'moderation'],
+  },
+  {
+    id: 'super-admin',
+    label: 'Super Admin',
+    scope: 'platform',
+    defaultView: 'customers',
+    views: ['customers', 'billing', 'content', 'ai'],
   },
 ];
-
 
 const GROUP_TITLES: Readonly<Record<ViewGroup, string>> = {
   overview: 'Command Center',
