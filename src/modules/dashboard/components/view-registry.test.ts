@@ -22,7 +22,7 @@ describe('Dashboard V2 view registry', () => {
 });
 
 describe('Authenticated dashboard mode boundaries', () => {
-  it('keeps tenant views out of platform mode and platform views out of tenant mode', () => {
+  it('keeps top-level navigation separate while preserving authorized platform workflows', () => {
     const platformPermissions = new Set([
       INTEGRATIONS_PERMISSIONS.superAdmin,
       INTEGRATIONS_PERMISSIONS.aiManage,
