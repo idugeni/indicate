@@ -23,7 +23,7 @@ Supporting views remain nested under their owning area; no registered workflow i
 
 - The registry has 19 views and explicit metadata for every view.
 - Nine views have explicit registry permission requirements; the remaining views currently have no registry-level requirement. This is a navigation/UI gate, not proof that APIs are unprotected.
-- `ads` requires `site.manage`; `settings` requires `api_key.read`; `billing` requires `subscription.read`; `audit`, `operations`, and `moderation` currently require `audit.read`; `customers` requires either `platform.super_admin` or the legacy `platform.customer.admin`; `content` requires `platform.content.manage`; `ai` requires `platform.ai.manage`.
+- `ads` requires `site.manage`; `settings` requires `api_key.read`; `audit`, `operations`, and `moderation` currently require `audit.read`; `customers` and `billing` require `platform.super_admin` or the legacy `platform.customer.admin`, matching the platform-only billing route; `content` requires `platform.content.manage`; `ai` accepts `platform.ai.manage`, `platform.super_admin`, or the legacy `platform.customer.admin`, matching `AiService.canManage`.
 - `dashboard/page.tsx` constructs organization options differently for cookie sessions and access-key sessions. The access-key actor is bound to an organization. This behavior must be preserved.
 - Article listing and publication listing can request cross-organization scope for platform-authorized actors. The UI contraction must not broaden that scope.
 - Categories and tags are global taxonomy. Do not introduce organization-owned category/tag CRUD as part of this navigation change.
