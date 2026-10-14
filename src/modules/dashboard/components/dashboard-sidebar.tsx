@@ -11,11 +11,11 @@ import { OrganizationSwitcher } from '@/modules/dashboard/components/organizatio
 import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
 import {
-  canAccessView,
+  canAccessViewInMode,
   PRIMARY_NAV_AREAS,
   VIEW_REGISTRY,
 } from '@/modules/dashboard/components/view-registry';
-import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
+import type { DashboardMode, OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
 import { AppTooltip } from '@/ui/app-tooltip';
 import { cn } from '@/ui/cn';
 
@@ -36,19 +36,22 @@ export function DashboardNavList({
   permissions,
   collapsed = false,
   onSelect,
+  navigationMode = 'organization',
 }: {
   readonly view: View;
+  readonly navigationMode?: DashboardMode;
   readonly permissions: ReadonlySet<string>;
   readonly collapsed?: boolean;
   readonly onSelect: (view: View) => void;
 }) {
-  const activeArea = PRIMARY_NAV_AREAS.find((area) => area.views.includes(view));
+  const visibleAreas = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode);
+  const activeArea = visibleAreas.find((area) => area.views.includes(view));
   const [expandedArea, setExpandedArea] = useState<string | null>(
     activeArea !== undefined && activeArea.defaultView !== view ? activeArea.id : null,
   );
 
   useEffect(() => {
-    const selectedArea = PRIMARY_NAV_AREAS.find((area) => area.views.includes(view));
+    const selectedArea = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode).find((area) => area.views.includes(view));
     void Promise.resolve().then(() => {
       setExpandedArea(
         selectedArea !== undefined && selectedArea.defaultView !== view
@@ -56,14 +59,13 @@ export function DashboardNavList({
           : null,
       );
     });
-  }, [view]);
-
+  }, [view, navigationMode]);
 
   if (collapsed) {
     return (
       <>
-        {PRIMARY_NAV_AREAS.map((area) => {
-          const allowedViews = area.views.filter((candidate) => canAccessView(candidate, permissions));
+        {visibleAreas.map((area) => {
+          const allowedViews = area.views.filter((candidate) => canAccessViewInMode(candidate, permissions, navigationMode));
           if (allowedViews.length === 0) return null;
           const defaultView = allowedViews.includes(area.defaultView)
             ? area.defaultView
@@ -184,6 +186,7 @@ const SidebarBody = memo(function SidebarBody({
   organizations,
   activeOrganization,
   permissions,
+  navigationMode = 'organization',
   view,
   collapsed,
   onSelectView,
@@ -196,6 +199,7 @@ const SidebarBody = memo(function SidebarBody({
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;
+  readonly navigationMode?: DashboardMode;
   readonly view: View;
   readonly collapsed: boolean;
   readonly onSelectView: (view: View) => void;
@@ -260,6 +264,7 @@ const SidebarBody = memo(function SidebarBody({
         <DashboardNavList
           view={view}
           permissions={permissions}
+          navigationMode={navigationMode}
           collapsed={collapsed}
           onSelect={onSelectView}
         />
