@@ -154,7 +154,7 @@ describe('Dashboard workspace', () => {
         return { ok: true, json: async () => ({ articles: [], total: 0, articlesNextCursor: null }) };
       });
       vi.stubGlobal('fetch', fetchMock);
-      render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} />);
+      render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} navigationMode="platform" />);
 
       await waitFor(() => {
         expect(fetchMock.mock.calls.some(([url]) => {
