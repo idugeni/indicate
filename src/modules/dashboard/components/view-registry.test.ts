@@ -21,26 +21,24 @@ describe('Dashboard V2 view registry', () => {
 });
 
 describe('Primary dashboard navigation', () => {
-  it('exposes exactly five first-level areas without deleting supporting views', () => {
-    expect(PRIMARY_NAV_AREAS.map((area) => area.label)).toEqual([
-      'Dashboard',
-      'Artikel',
-      'Media',
-      'Publikasi',
-      'Pengaturan Organisasi',
+  it('exposes exactly two tenant areas and separates platform control-plane navigation', () => {
+    expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'organization').map((area) => area.label)).toEqual([
+      'Berita',
+      'Organisasi',
     ]);
+    expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'platform').map((area) => area.label)).toEqual(['Super Admin']);
     const groupedViews = PRIMARY_NAV_AREAS.flatMap((area) => area.views);
     expect(new Set(groupedViews).size).toBe(ALL_VIEWS.length);
     expect(groupedViews).toEqual(expect.arrayContaining(ALL_VIEWS));
   });
 
   it('retains permission gating for supporting views inside primary areas', () => {
-    const settings = PRIMARY_NAV_AREAS.find((area) => area.id === 'settings');
-    expect(settings?.views).toContain('customers');
+    const platform = PRIMARY_NAV_AREAS.find((area) => area.id === 'super-admin');
+    expect(platform?.views).toContain('customers');
     expect(canAccessView('customers', new Set([DASHBOARD_PERMISSIONS.auditRead]))).toBe(false);
     expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
-    const publishing = PRIMARY_NAV_AREAS.find((area) => area.id === 'publishing');
-    expect(publishing?.views).toContain('ads');
+    const organization = PRIMARY_NAV_AREAS.find((area) => area.id === 'organization');
+    expect(organization?.views).toContain('ads');
     expect(canAccessView('ads', new Set(['article.read']))).toBe(false);
   });
 });
@@ -50,7 +48,11 @@ describe('AI control-plane view registry', () => {
     expect(ALL_VIEWS).toContain('ai');
     expect(VIEW_REGISTRY.ai.label).toBe('AI Control');
     expect(VIEW_REGISTRY.ai.group).toBe('system');
-    expect(VIEW_REGISTRY.ai.requiredPermission).toBe(INTEGRATIONS_PERMISSIONS.aiManage);
+    expect(VIEW_REGISTRY.ai.requiredAnyPermission).toEqual([
+      INTEGRATIONS_PERMISSIONS.aiManage,
+      INTEGRATIONS_PERMISSIONS.superAdmin,
+      INTEGRATIONS_PERMISSIONS.customerAdmin,
+    ]);
   });
 
   it('menyembunyikan ai dari aktor tanpa grant aiManage', () => {
@@ -91,13 +93,18 @@ describe('Ads view registry', () => {
 describe('Dashboard V2 direct view authorization', () => {
   it('rejects direct navigation when the required permission is missing', () => {
     expect(canAccessView('customers', new Set([DASHBOARD_PERMISSIONS.auditRead]))).toBe(false);
+    expect(canAccessView('billing', new Set([INTEGRATIONS_PERMISSIONS.subscriptionRead]))).toBe(false);
     expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.apiKeyRead]))).toBe(false);
   });
 
-  it('allows direct navigation only when the registered permission is present', () => {
+  it('aligns platform view visibility with service-level grants', () => {
     expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
     expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);
+    expect(canAccessView('billing', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
+    expect(canAccessView('billing', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);
     expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.aiManage]))).toBe(true);
+    expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
+    expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);
     expect(canAccessView('dashboard', new Set())).toBe(true);
   });
 });
