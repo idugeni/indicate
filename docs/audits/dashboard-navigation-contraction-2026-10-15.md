@@ -12,15 +12,15 @@ This is a source-level audit. It does not claim authenticated production/browser
 Organization-login navigation has exactly two first-level areas:
 
 1. **Berita** — dashboard analytics, article listing/editorial work, global taxonomy, publishers, media, distribution, and live publication results.
-2. **Organisasi** — organization infrastructure, access/integrations, site monetization, audit, and operations views where the active actor has the required organization permission.
+2. **Organisasi** — organization overview and the signed-in user's personal profile only.
 
-**Super Admin** is the only top-level area in platform login mode, not a third area mixed into the tenant sidebar. Customer operations, platform billing, and moderation are shown only when their platform grants are present. The mode comes from the verified server-side authentication path, not a client role label or the selected organization. Public web content retains its specific grant; AI visibility accepts the same platform grants as the AI service. UI visibility remains defense in depth and does not replace API/repository/RLS checks.
+**Super Admin** is the only top-level area in platform login mode, not a third area mixed into the tenant sidebar. Domain/site infrastructure, access and integrations, monetization, audit, operations, customer management, platform billing, content, AI, and moderation live here and remain permission-gated. The mode comes from the verified server-side authentication path, not a client role label or the selected organization. Public web content retains its specific grant; AI visibility accepts the same platform grants as the AI service. UI visibility remains defense in depth and does not replace API/repository/RLS checks.
 
 Supporting views remain nested under their owning area; no registered workflow is removed. Collapsed navigation displays area entry points rather than exposing every supporting view as a separate first-level item.
 
 ## Source findings
 
-- The registry has 19 views and explicit metadata for every view.
+- The registry has 21 views and explicit metadata for every view.
 - Nine views have explicit registry permission requirements; the remaining views currently have no registry-level requirement. This is a navigation/UI gate, not proof that APIs are unprotected.
 - `ads` requires `site.manage`; `settings` requires `api_key.read`; `audit` and `operations` require `audit.read`; `moderation`, `customers`, and `billing` require `platform.super_admin` or the legacy `platform.customer.admin`, matching their platform-only service/API authorization; `content` requires `platform.content.manage`; `ai` accepts `platform.ai.manage`, `platform.super_admin`, or the legacy `platform.customer.admin`, matching `AiService.canManage`.
 - `dashboard/page.tsx` constructs organization options differently for cookie sessions and access-key sessions. The access-key actor is bound to an organization. This behavior must be preserved.
@@ -43,7 +43,7 @@ Permissions, not role labels, are the authorization source. UI visibility is def
 
 - Organization logins see exactly two first-level areas: Berita and Organisasi; platform Super Admin logins see only the Super Admin area.
 - Desktop sidebar, mobile navigation, command palette, initial landing view, and direct-view guard all enforce the same authenticated mode.
-- Supporting views remain nested beneath their owning area and are permission-gated by `canAccessView`.
+- Supporting views remain nested beneath their owning area and are permission-gated by `canAccessViewInMode`; organization infrastructure, access/integrations, monetization, audit, and operations are platform-owned.
 - Restricted views are hidden from navigation and remain blocked when their URL is entered directly.
 - Organization switching clears stale payload/error state and does not leak data across tenants.
 - Cookie login and access-key login remain functional.
