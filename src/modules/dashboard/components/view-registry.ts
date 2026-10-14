@@ -216,7 +216,7 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     label: 'Super Admin',
     scope: 'platform',
     defaultView: 'customers',
-    views: ['configuration', 'settings', 'ads', 'audit', 'operations', 'customers', 'billing', 'content', 'ai', 'moderation'],
+    views: ['dashboard', 'analytics', 'articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published', 'configuration', 'settings', 'ads', 'audit', 'operations', 'customers', 'billing', 'content', 'ai', 'moderation'],
   },
 ];
 
@@ -250,8 +250,10 @@ export function canAccessViewInMode(
   permissions: ReadonlySet<string>,
   mode: DashboardMode,
 ): boolean {
-  const area = PRIMARY_NAV_AREAS.find((candidate) => candidate.views.includes(view));
-  return area?.scope === mode && canAccessView(view, permissions);
+  const belongsToMode = PRIMARY_NAV_AREAS.some(
+    (area) => area.scope === mode && area.views.includes(view),
+  );
+  return belongsToMode && canAccessView(view, permissions);
 }
 
 export function visibleNavGroups(permissions: ReadonlySet<string>): readonly { readonly id: ViewGroup; readonly title: string; readonly views: readonly View[] }[] {
