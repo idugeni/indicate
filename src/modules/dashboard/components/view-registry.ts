@@ -168,10 +168,12 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
 
 export const ALL_VIEWS = Object.keys(VIEW_REGISTRY) as readonly View[];
 
+export type DashboardMode = 'organization' | 'platform';
+
 export interface PrimaryNavArea {
   readonly id: string;
   readonly label: string;
-  readonly scope: 'organization' | 'platform';
+  readonly scope: DashboardMode;
   readonly defaultView: View;
   readonly views: readonly View[];
 }
@@ -228,6 +230,15 @@ export function canAccessView(view: View, permissions: ReadonlySet<string>): boo
   }
   const required = metadata.requiredPermission;
   return required === undefined || permissions.has(required);
+}
+
+export function canAccessViewInMode(
+  view: View,
+  permissions: ReadonlySet<string>,
+  mode: DashboardMode,
+): boolean {
+  const area = PRIMARY_NAV_AREAS.find((candidate) => candidate.views.includes(view));
+  return area?.scope === mode && canAccessView(view, permissions);
 }
 
 export function visibleNavGroups(permissions: ReadonlySet<string>): readonly { readonly id: ViewGroup; readonly title: string; readonly views: readonly View[] }[] {
