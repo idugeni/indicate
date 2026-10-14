@@ -9,6 +9,7 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 45
     env:
       SUPABASE_DB_URL: ${{ secrets.DATABASE_DIRECT_URL }}
