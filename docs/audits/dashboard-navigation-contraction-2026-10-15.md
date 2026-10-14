@@ -18,7 +18,6 @@ Tenant-facing navigation has exactly two first-level areas:
 
 Supporting views remain nested under their owning area; no registered workflow is removed. Collapsed navigation displays area entry points rather than exposing every supporting view as a separate first-level item.
 
-
 ## Source findings
 
 - The registry has 19 views and explicit metadata for every view.
