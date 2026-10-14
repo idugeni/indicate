@@ -39,7 +39,7 @@ describe('buildAccessKeyOrganizationOptions', () => {
     expect(organizations).toEqual([{
       id: 'org-b',
       name: 'Organisasi B',
-      role: 'editor',
+      role: 'user',
       permissions: ['article.read'],
     }]);
   });
