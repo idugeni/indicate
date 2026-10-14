@@ -26,6 +26,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import {
+  type DashboardMode,
   type DashboardSnapshot,
   type OrganizationOption,
   type View,
@@ -33,7 +34,7 @@ import {
 import { DashboardFooter } from '@/modules/dashboard/components/dashboard-footer';
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { useDashboardView } from '@/modules/dashboard/components/shared/use-dashboard-query';
-import { canAccessView, viewLabel } from '@/modules/dashboard/components/view-registry';
+import { canAccessViewInMode, viewLabel } from '@/modules/dashboard/components/view-registry';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   DashboardNavList,
@@ -131,18 +132,20 @@ export function DashboardWorkspace({
   avatarUrl = null,
   organizations,
   initialDashboard = null,
+  navigationMode = 'organization',
 }: {
   readonly displayName: string;
   readonly avatarUrl?: string | null;
   readonly organizations: readonly OrganizationOption[];
   readonly initialDashboard?: DashboardSnapshot | null;
+  readonly navigationMode?: DashboardMode;
 }) {
   const drawerOrgId = useId();
   const initialOrgId = organizations[0]?.id ?? '';
 
   const [organizationId, setOrganizationId] = useState(initialOrgId);
   const [generation, setGeneration] = useState(initialOrgId ? 1 : 0);
-  const [view, setView] = useDashboardView();
+  const [view, setView] = useDashboardView(navigationMode === 'platform' ? 'customers' : 'dashboard');
   const [payload, setPayload] = useState<{ readonly key: string; readonly body: unknown } | null>(null);
   const [pendingOrgId, setPendingOrgId] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState(
@@ -260,7 +263,7 @@ export function DashboardWorkspace({
   );
 
   useEffect(() => {
-    if (!canAccessView(view, activePermissions)) {
+    if (!canAccessViewInMode(view, activePermissions, navigationMode)) {
       void Promise.resolve().then(() => {
         setPayload(null);
         setError(null);
@@ -301,7 +304,7 @@ export function DashboardWorkspace({
       fetchData(view, organizationId, filterQuery, controller.signal)
     );
     return () => controller.abort();
-  }, [fetchAnalytics, fetchData, view, organizationId, filterQuery, initialDashboard, activePermissions]);
+  }, [fetchAnalytics, fetchData, view, organizationId, filterQuery, initialDashboard, activePermissions, navigationMode]);
 
   const handleSwitchCommitted = useCallback(
     (nextOrgId: string) => {
@@ -511,6 +514,7 @@ export function DashboardWorkspace({
           organizations={organizations}
           activeOrganization={activeOrganization}
           permissions={activePermissions}
+          navigationMode={navigationMode}
           view={view}
           onSelectView={selectView}
           onRequestOrganizationSwitch={handleSwitchRequested}
@@ -550,7 +554,7 @@ export function DashboardWorkspace({
           </Breadcrumb>
 
           <div className="ml-auto flex flex-none items-center gap-2">
-            <CommandPalette permissions={activePermissions} organizationId={organizationId} />
+            <CommandPalette permissions={activePermissions} organizationId={organizationId} navigationMode={navigationMode} />
             <p className="m-0 hidden items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums text-[#8e99b0] md:inline-flex">
               <span className="relative flex h-1.5 w-1.5 flex-none" aria-hidden="true">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
@@ -611,6 +615,7 @@ export function DashboardWorkspace({
               <DashboardNavList
                 view={view}
                 permissions={activePermissions}
+                navigationMode={navigationMode}
                 onSelect={selectMobileNavView}
               />            </div>
             <div className="flex-none border-t border-hairline px-4 py-3">
@@ -669,6 +674,7 @@ export function DashboardWorkspace({
           articlesTotal={articlesMore.total}
           onLoadMoreArticles={view === 'articles' || view === 'published' ? fetchMoreArticles : undefined}
           crossOrg={crossOrg}
+          navigationMode={navigationMode}
         />
         <DashboardFooter />
         </div>
