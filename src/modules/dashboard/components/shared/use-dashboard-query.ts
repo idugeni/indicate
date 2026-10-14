@@ -10,10 +10,10 @@ import { ALL_VIEWS, type View } from '@/modules/dashboard/components/view-regist
  *
  * @returns Pair of `View` value and setter pushing browser history.
  */
-export function useDashboardView(): readonly [View, (next: View) => void] {
+export function useDashboardView(defaultView: View = 'dashboard'): readonly [View, (next: View) => void] {
   const [view, setViewQuery] = useQueryState(
     'view',
-    parseAsStringEnum([...ALL_VIEWS]).withDefault('dashboard').withOptions({ scroll: false, history: 'push' }),
+    parseAsStringEnum([...ALL_VIEWS]).withDefault(defaultView).withOptions({ scroll: false, history: 'push' }),
   );
   const setView = useCallback((next: View) => {
     void setViewQuery(next);
