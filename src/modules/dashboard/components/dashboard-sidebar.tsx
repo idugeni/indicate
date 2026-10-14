@@ -24,17 +24,14 @@ const SIDEBAR_WIDTH = 272;
 const SIDEBAR_COLLAPSED_WIDTH = 68;
 
 /**
- * Render the sidebar navigation items, grouped and permission gated.
+ * Render five concise primary areas while preserving authorized supporting views
+ * as secondary navigation. In collapsed mode, expose all permitted views as
+ * icon buttons so secondary workflows remain reachable.
  *
  * @param props.view - Active view, highlighted with `aria-current`.
  * @param props.permissions - Union of permissions for the active organization.
- * @param props.collapsed - Hides group titles and labels, switching items to icon buttons with tooltips.
- * @param props.onSelect - Receives the picked view.
- */
-/**
- * Keep five concise primary areas while preserving authorized supporting views
- * as secondary navigation. In collapsed mode, expose all permitted views as
- * icon buttons so secondary workflows remain reachable.
+ * @param props.collapsed - Uses icon buttons with tooltips for compact navigation.
+ * @param props.onSelect - Receives the selected view.
  */
 export function DashboardNavList({
   view,
@@ -69,7 +66,9 @@ export function DashboardNavList({
       <>
         {visibleNavGroups(permissions).map((group, groupIndex) => (
           <div key={group.id} className="space-y-1 py-1">
-            {groupIndex > 0 ? <div className="mx-4 border-t border-white/[0.07]" aria-hidden="true" /> : null}
+            {groupIndex > 0 ? (
+              <div className="mx-4 border-t border-white/[0.07]" aria-hidden="true" />
+            ) : null}
             {group.views.map((navView) => {
               const { label, icon: Icon } = VIEW_REGISTRY[navView];
               const isActive = view === navView;
@@ -81,9 +80,16 @@ export function DashboardNavList({
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={label}
                     onClick={() => onSelect(navView)}
-                    className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${isActive ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
+                    className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
+                      isActive
+                        ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
+                        : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
+                    }`}
                   >
-                    <Icon className={`h-4 w-4 flex-none ${isActive ? 'text-white' : 'text-paper-faint'}`} aria-hidden="true" />
+                    <Icon
+                      className={`h-4 w-4 flex-none ${isActive ? 'text-white' : 'text-paper-faint'}`}
+                      aria-hidden="true"
+                    />
                   </Button>
                 </AppTooltip>
               );
@@ -153,7 +159,10 @@ export function DashboardNavList({
                       onClick={() => onSelect(navView)}
                       className={`flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-left font-sans text-[12px] font-normal transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${isActive ? 'bg-white/[0.05] font-medium text-paper' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
                     >
-                      <ChildIcon className="h-3.5 w-3.5 flex-none text-paper-faint" aria-hidden="true" />
+                      <ChildIcon
+                        className="h-3.5 w-3.5 flex-none text-paper-faint"
+                        aria-hidden="true"
+                      />
                       <span className="min-w-0 flex-1 truncate">{label}</span>
                     </Button>
                   );
