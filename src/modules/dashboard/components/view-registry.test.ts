@@ -44,7 +44,7 @@ describe('Primary dashboard navigation', () => {
 });
 
 describe('AI control-plane view registry', () => {
-  it('mendaftarkan view ai di grup system dengan gating aiManage', () => {
+  it('mendaftarkan view ai di grup system dengan grants yang diterima layanan', () => {
     expect(ALL_VIEWS).toContain('ai');
     expect(VIEW_REGISTRY.ai.label).toBe('AI Control');
     expect(VIEW_REGISTRY.ai.group).toBe('system');
