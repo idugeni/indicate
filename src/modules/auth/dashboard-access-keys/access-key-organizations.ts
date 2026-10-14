@@ -1,3 +1,4 @@
+import type { RoleTier } from '@/modules/dashboard/models';
 import type { OrganizationOption } from '@/modules/dashboard/components/dashboard-workspace';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
@@ -9,7 +10,7 @@ export interface AccessKeyOrganization {
 export interface BuildAccessKeyOrganizationOptionsInput {
   readonly activeOrganizations: readonly AccessKeyOrganization[];
   readonly boundOrganizationId: string;
-  readonly roleTier: OrganizationOption['role'];
+  readonly roleTier: RoleTier;
   readonly organizationPermissions: readonly string[];
   readonly platformPermissions: readonly string[];
   readonly platformAdminTenantPermissions: readonly string[];

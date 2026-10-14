@@ -22,15 +22,15 @@ describe('buildAccessKeyOrganizationOptions', () => {
 
     expect(organizations.map(({ id }) => id)).toEqual(['org-b', 'org-a', 'org-c']);
     expect(organizations.every(({ role }) => role === 'superadmin')).toBe(true);
-    expect(organizations.every(({ permissions }) => permissions.includes('article.manage'))).toBe(true);
-    expect(organizations.every(({ permissions }) => permissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin))).toBe(true);
+    expect(organizations.every(({ permissions }) => permissions?.includes('article.manage'))).toBe(true);
+    expect(organizations.every(({ permissions }) => permissions?.includes(INTEGRATIONS_PERMISSIONS.superAdmin))).toBe(true);
   });
 
   it('keeps a regular access key limited to its bound organization and grants', () => {
     const organizations = buildAccessKeyOrganizationOptions({
       activeOrganizations: ACTIVE_ORGANIZATIONS,
       boundOrganizationId: 'org-b',
-      roleTier: 'editor',
+      roleTier: 'user',
       organizationPermissions: ['article.read'],
       platformPermissions: [],
       platformAdminTenantPermissions: ['article.manage', 'publisher.manage'],
