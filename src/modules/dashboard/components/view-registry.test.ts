@@ -100,6 +100,7 @@ describe('Dashboard V2 direct view authorization', () => {
   it('rejects direct navigation when the required permission is missing', () => {
     expect(canAccessView('customers', new Set([DASHBOARD_PERMISSIONS.auditRead]))).toBe(false);
     expect(canAccessView('billing', new Set([INTEGRATIONS_PERMISSIONS.subscriptionRead]))).toBe(false);
+    expect(canAccessView('moderation', new Set([DASHBOARD_PERMISSIONS.auditRead]))).toBe(false);
     expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.apiKeyRead]))).toBe(false);
   });
 
@@ -108,6 +109,8 @@ describe('Dashboard V2 direct view authorization', () => {
     expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);
     expect(canAccessView('billing', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
     expect(canAccessView('billing', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);
+    expect(canAccessView('moderation', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
+    expect(canAccessView('moderation', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);
     expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.aiManage]))).toBe(true);
     expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
     expect(canAccessView('ai', new Set([INTEGRATIONS_PERMISSIONS.customerAdmin]))).toBe(true);

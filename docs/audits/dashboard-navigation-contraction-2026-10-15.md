@@ -12,9 +12,9 @@ This is a source-level audit. It does not claim authenticated production/browser
 Tenant-facing navigation has exactly two first-level areas:
 
 1. **Berita** — dashboard analytics, article listing/editorial work, global taxonomy, publishers, media, distribution, and live publication results.
-2. **Organisasi** — organization infrastructure, access/integrations, site monetization, audit, operations, and moderation views where the active actor has the required organization permission.
+2. **Organisasi** — organization infrastructure, access/integrations, site monetization, audit, and operations views where the active actor has the required organization permission.
 
-**Super Admin** is a separate platform area, not a third tenant area. Customer operations and platform billing are shown only when their platform grant is present. Public web content and AI control-plane views retain their specific grants; AI visibility accepts the same platform grants as the AI service. UI visibility remains defense in depth and does not replace API/repository/RLS checks.
+**Super Admin** is a separate platform area, not a third tenant area. Customer operations, platform billing, and moderation are shown only when their platform grants are present. Public web content retains its specific grant; AI visibility accepts the same platform grants as the AI service. UI visibility remains defense in depth and does not replace API/repository/RLS checks.
 
 Supporting views remain nested under their owning area; no registered workflow is removed. Collapsed navigation displays area entry points rather than exposing every supporting view as a separate first-level item.
 
@@ -23,11 +23,11 @@ Supporting views remain nested under their owning area; no registered workflow i
 
 - The registry has 19 views and explicit metadata for every view.
 - Nine views have explicit registry permission requirements; the remaining views currently have no registry-level requirement. This is a navigation/UI gate, not proof that APIs are unprotected.
-- `ads` requires `site.manage`; `settings` requires `api_key.read`; `audit`, `operations`, and `moderation` currently require `audit.read`; `customers` and `billing` require `platform.super_admin` or the legacy `platform.customer.admin`, matching the platform-only billing route; `content` requires `platform.content.manage`; `ai` accepts `platform.ai.manage`, `platform.super_admin`, or the legacy `platform.customer.admin`, matching `AiService.canManage`.
+- `ads` requires `site.manage`; `settings` requires `api_key.read`; `audit` and `operations` require `audit.read`; `moderation`, `customers`, and `billing` require `platform.super_admin` or the legacy `platform.customer.admin`, matching their platform-only service/API authorization; `content` requires `platform.content.manage`; `ai` accepts `platform.ai.manage`, `platform.super_admin`, or the legacy `platform.customer.admin`, matching `AiService.canManage`.
 - `dashboard/page.tsx` constructs organization options differently for cookie sessions and access-key sessions. The access-key actor is bound to an organization. This behavior must be preserved.
 - Article listing and publication listing can request cross-organization scope for platform-authorized actors. The UI contraction must not broaden that scope.
 - Categories and tags are global taxonomy. Do not introduce organization-owned category/tag CRUD as part of this navigation change.
-- Article metadata and mutations must remain scoped to the article's owning organization. Do not alter database schema, migrations, production data, RLS, or deployment settings for a navigation-only change.
+- Article metadata and mutations must remain scoped to the article's owning organization. Do not alter database schema, migrations, production data, RLS, or deployment settings for these navigation and view-permission metadata fixes.
 
 ## Required access posture
 

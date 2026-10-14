@@ -147,7 +147,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   moderation: {
     label: 'Moderation', title: 'Trust & Moderation', eyebrow: 'Safety Operations', group: 'system',
     description: 'Tangani laporan konten dan permintaan data pengguna.',
-    icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead,
+    icon: Flag, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
   customers: {
     label: 'Customers', title: 'Customer Operations', eyebrow: 'Platform Control', group: 'system',
@@ -194,14 +194,14 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     label: 'Organisasi',
     scope: 'organization',
     defaultView: 'configuration',
-    views: ['configuration', 'settings', 'ads', 'audit', 'operations', 'moderation'],
+    views: ['configuration', 'settings', 'ads', 'audit', 'operations'],
   },
   {
     id: 'super-admin',
     label: 'Super Admin',
     scope: 'platform',
     defaultView: 'customers',
-    views: ['customers', 'billing', 'content', 'ai'],
+    views: ['customers', 'billing', 'content', 'ai', 'moderation'],
   },
 ];
 

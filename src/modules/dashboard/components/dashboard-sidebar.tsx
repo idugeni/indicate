@@ -23,9 +23,8 @@ const SIDEBAR_WIDTH = 272;
 const SIDEBAR_COLLAPSED_WIDTH = 68;
 
 /**
- * Render five concise primary areas while preserving authorized supporting views
- * as secondary navigation. In collapsed mode, expose all permitted views as
- * icon buttons so secondary workflows remain reachable.
+ * Render two tenant-facing areas and a separate grant-gated Super Admin area.
+ * Supporting views remain nested under their owning area.
  *
  * @param props.view - Active view, highlighted with `aria-current`.
  * @param props.permissions - Union of permissions for the active organization.
