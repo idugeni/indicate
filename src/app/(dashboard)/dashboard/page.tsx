@@ -145,7 +145,7 @@ async function DashboardBody({
       ? await getDashboardSnapshot(firstOrganization.id, identity)
       : await getDashboardSnapshot(firstOrganization.id, identity, { localUser, membership: firstMembership });
   const avatarRef = localUser.avatarUrl ?? identity.avatarUrl;
-  return <DashboardWorkspace displayName={displayName} avatarUrl={avatarRef} organizations={organizations} initialDashboard={initialDashboard} />;
+  return <DashboardWorkspace displayName={displayName} avatarUrl={avatarRef} organizations={organizations} initialDashboard={initialDashboard} navigationMode={isPlatformSuperAdmin ? 'platform' : 'organization'} />;
 }
 
 async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly cookieStore: Awaited<ReturnType<typeof cookies>>; readonly searchParams?: Promise<{ readonly view?: string | readonly string[] | undefined }> | undefined }) {
@@ -196,6 +196,7 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
       avatarUrl={resolved.localUser.avatarUrl ?? resolved.avatarUrl}
       organizations={organizations}
       initialDashboard={initialDashboard}
+      navigationMode="organization"
     />
   );
 }
