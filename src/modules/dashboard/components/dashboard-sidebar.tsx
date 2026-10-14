@@ -275,7 +275,7 @@ const SidebarBody = memo(function SidebarBody({
           <button
             type="button"
             aria-label="Buka profil saya"
-            onClick={() => onSelectView('settings')}
+            onClick={() => onSelectView(navigationMode === 'platform' ? 'settings' : 'profile')}
             className={cn(
               'rounded-md text-left transition-colors duration-150 hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
               collapsed ? 'p-1' : 'flex min-w-0 flex-1 items-center gap-2.5 p-1.5',
