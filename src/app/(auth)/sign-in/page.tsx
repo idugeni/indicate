@@ -14,8 +14,8 @@ const PANEL_STEPS: readonly { readonly title: string; readonly detail: string }[
 ]);
 
 const AUTH_ALERTS: Readonly<Record<string, string>> = Object.freeze({
-  unavailable: 'Tautan masuk tidak valid atau kedaluwarsa. Minta kode baru di bawah.',
-  provider: 'Masuk dengan Google sedang gagal dikonfigurasi. Hubungi administrator, atau pakai kode email di bawah.',
+  unavailable: 'Sesi masuk tidak valid atau kedaluwarsa. Silakan masuk kembali.',
+  provider: 'Masuk dengan Google sedang gagal dikonfigurasi. Hubungi administrator, atau gunakan email dan kata sandi.',
   required: 'Sesi Anda berakhir atau belum masuk. Masuk kembali untuk membuka dashboard.',
   inactive: 'Akun Anda belum aktif. Hubungi administrator organisasi Anda.',
 });
@@ -66,8 +66,7 @@ export default async function SignInPage({
               Masuk ke dashboard
             </h1>
             <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-[#4c5b6b]">
-              Masukkan email kerja — kami kirim kode masuk 8 digit yang kedaluwarsa dalam
-              beberapa menit.
+              Masuk menggunakan email dan kata sandi, atau lanjutkan dengan Google.
             </p>
             <div className="mt-6">
               <SignInMethods />

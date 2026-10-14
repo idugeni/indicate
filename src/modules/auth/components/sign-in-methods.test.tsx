@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 
 import { SignInMethods } from '@/modules/auth/components/sign-in-methods';
 
@@ -15,8 +15,6 @@ vi.mock('next/link', () => ({
 vi.mock('@/integrations/supabase/supabase-browser', () => ({
   createBrowserSupabaseClient: () => ({
     auth: {
-      signInWithOtp: vi.fn(async () => ({ error: null })),
-      verifyOtp: vi.fn(async () => ({ error: null })),
       signInWithPassword: vi.fn(async () => ({ error: null })),
       signInWithOAuth: vi.fn(async () => ({ error: null })),
     },
@@ -27,20 +25,18 @@ afterEach(() => {
   cleanup();
 });
 
-describe('Pengalih metode masuk', () => {
-  it('menampilkan kode OTP dan tombol Google secara bawaan', () => {
+describe('Metode masuk', () => {
+  it('hanya menampilkan email/kata sandi, lupa kata sandi, dan Google', () => {
     render(<SignInMethods />);
-    expect(screen.getByRole('button', { name: /kirim kode masuk/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: /lanjutkan dengan google/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Masuk dengan kata sandi' })).toBeDefined();
-  });
 
-  it('beralih ke formulir kata sandi lalu kembali ke kode', () => {
-    render(<SignInMethods />);
-    fireEvent.click(screen.getByRole('button', { name: 'Masuk dengan kata sandi' }));
+    expect(screen.getByLabelText('Alamat email')).toBeDefined();
+    expect(screen.getByLabelText('Kata sandi')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Lupa kata sandi?' })).toBeDefined();
     expect(screen.getByRole('button', { name: /masuk ke dashboard/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /lanjutkan dengan google/i })).toBeDefined();
+
     expect(screen.queryByRole('button', { name: /kirim kode masuk/i })).toBe(null);
-    fireEvent.click(screen.getByRole('button', { name: 'Masuk dengan kode email' }));
-    expect(screen.getByRole('button', { name: /kirim kode masuk/i })).toBeDefined();
+    expect(screen.queryByLabelText('Kode masuk')).toBe(null);
+    expect(screen.queryByRole('button', { name: /masuk dengan kode email/i })).toBe(null);
   });
 });
