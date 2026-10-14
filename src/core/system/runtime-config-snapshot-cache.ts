@@ -18,6 +18,8 @@ export interface SnapshotSharedStore {
   write(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void>;
   /** Slide the key's expiry forward on a hit; failures stay best-effort. */
   touch(environment: string, revision: number, ttlSeconds: number): Promise<void>;
+  /** Repopulate earlier cache layers after a later layer supplied a validated hit. */
+  backfill?(environment: string, revision: number, model: unknown, ttlSeconds: number): Promise<void>;
 }
 
 export interface SnapshotStatus {
@@ -97,6 +99,9 @@ export class RuntimeConfigSnapshotCache {
         if (shared !== null) {
           const sharedParsed = parsePersistedReadModel(shared as PersistedRuntimeConfigReadModel, environment);
           if (sharedParsed.success) {
+            if (this.#store.backfill !== undefined) {
+              void this.#store.backfill(environment, configurationVersion, shared, this.#storeTtlSeconds).catch(() => undefined);
+            }
             void this.#store.touch(environment, configurationVersion, this.#storeTtlSeconds).catch(() => undefined);
             return this.adopt(environment, sharedParsed.snapshot);
           }
