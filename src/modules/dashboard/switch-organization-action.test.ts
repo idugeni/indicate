@@ -84,6 +84,38 @@ vi.mock('@/data/repos/tenancy/authorization', () => ({
   },
 }));
 
+vi.mock('@/modules/auth/authenticate-dashboard', () => ({
+  authenticateDashboardUser: async () => {
+    if (requestHeaders.get('x-no-session') === '1' && requestHeaders.get('x-access-key') !== '1') return null;
+    return {
+      authUserId: 'auth-1',
+      localUserId: LOCAL_USER_ID,
+      avatarUrl: null,
+      accessKey: requestHeaders.get('x-access-key') === '1' ? { actor: { organizationId: ORG_ID } } : null,
+    };
+  },
+  authorizeDashboardOrganization: async (_database: unknown, user: { accessKey: { actor: { organizationId: string } } | null }, organizationId: string) => {
+    const targetIsActive = membershipState.accessibleOrganizations.some((organization) => organization.id === organizationId);
+    if (!targetIsActive) return null;
+    if (membershipState.platformPermissions.includes('platform.super_admin')) {
+      return {
+        actorType: 'user', actorId: LOCAL_USER_ID, verifiedAuthUserId: 'auth-1', organizationId,
+        permissionSet: new Set(['article.manage']), platformPermissionSet: new Set(['platform.super_admin']),
+        regionScopeId: null, entryPoint: 'dashboard', requestId: 'test',
+      };
+    }
+    if (user.accessKey !== null) return user.accessKey.actor.organizationId === organizationId ? {
+      actorType: 'user', actorId: LOCAL_USER_ID, verifiedAuthUserId: 'auth-1', organizationId,
+      permissionSet: new Set(), platformPermissionSet: new Set(), regionScopeId: null, entryPoint: 'dashboard', requestId: 'test',
+    } : null;
+    if (organizationId !== ORG_ID || membershipState.membership?.roleActive !== true) return null;
+    return {
+      actorType: 'user', actorId: LOCAL_USER_ID, verifiedAuthUserId: 'auth-1', organizationId,
+      permissionSet: new Set(), platformPermissionSet: new Set(), regionScopeId: null, entryPoint: 'dashboard', requestId: 'test',
+    };
+  },
+}));
+
 vi.mock('@/data/repos/dashboard', () => ({
   DrizzleDashboardRepository: class {
     async recordDenied(actor: { organizationId: string }, action: string) {
@@ -156,6 +188,38 @@ describe('switchActiveOrganization', () => {
     expect(result).toEqual({ status: 'ok', organizationId: OTHER_ORG_ID });
     expect(cookieWrites[0]).toMatchObject({ name: 'indicate-active-organization', value: OTHER_ORG_ID });
     expect(recordedDenials).toHaveLength(0);
+  });
+
+  it('mengizinkan access-key platform super-admin beralih lintas organisasi tanpa sesi Supabase', async () => {
+    requestHeaders.set('x-no-session', '1');
+    requestHeaders.set('x-access-key', '1');
+    membershipState.platformPermissions = ['platform.super_admin'];
+    membershipState.accessibleOrganizations = [
+      { id: ORG_ID, name: 'Org Utama' },
+      { id: OTHER_ORG_ID, name: 'Org Lain' },
+    ];
+
+    const result = await switchActiveOrganization({ status: 'idle' }, formData(OTHER_ORG_ID));
+
+    expect(result).toEqual({ status: 'ok', organizationId: OTHER_ORG_ID });
+    expect(cookieWrites[0]).toMatchObject({ name: 'indicate-active-organization', value: OTHER_ORG_ID });
+    expect(recordedDenials).toHaveLength(0);
+  });
+
+  it('tetap menolak access key tenant biasa untuk organisasi lain', async () => {
+    requestHeaders.set('x-no-session', '1');
+    requestHeaders.set('x-access-key', '1');
+    membershipState.platformPermissions = [];
+    membershipState.accessibleOrganizations = [
+      { id: ORG_ID, name: 'Org Utama' },
+      { id: OTHER_ORG_ID, name: 'Org Lain' },
+    ];
+
+    const result = await switchActiveOrganization({ status: 'idle' }, formData(OTHER_ORG_ID));
+
+    expect(result).toEqual({ status: 'error', message: DENIED_MESSAGE });
+    expect(cookieWrites).toHaveLength(0);
+    expect(recordedDenials).toHaveLength(1);
   });
 
   it('menolak permintaan lintas situs sebelum menyentuh cookie', async () => {
