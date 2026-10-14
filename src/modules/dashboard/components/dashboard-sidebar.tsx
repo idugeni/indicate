@@ -43,7 +43,7 @@ export function DashboardNavList({
   readonly onSelect: (view: View) => void;
 }) {
   const activeArea = PRIMARY_NAV_AREAS.find((area) => area.views.includes(view));
-  const [expandedArea, setExpandedArea] = useState<string | null>(activeArea?.id ?? null);
+  const [expandedArea, setExpandedArea] = useState<string | null>(activeArea !== undefined && activeArea.defaultView !== view ? activeArea.id : null);
 
   if (collapsed) {
     return (
