@@ -5,6 +5,7 @@ import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 import {
   ALL_VIEWS,
   canAccessView,
+  canAccessViewInMode,
   PRIMARY_NAV_AREAS,
   VIEW_REGISTRY,
   visibleNavGroups,
@@ -17,6 +18,22 @@ describe('Dashboard V2 view registry', () => {
       expect(VIEW_REGISTRY[view].title.trim()).not.toBe('');
       expect(VIEW_REGISTRY[view].description.trim()).not.toBe('');
     }
+  });
+});
+
+describe('Authenticated dashboard mode boundaries', () => {
+  it('keeps tenant views out of platform mode and platform views out of tenant mode', () => {
+    const platformPermissions = new Set([
+      INTEGRATIONS_PERMISSIONS.superAdmin,
+      INTEGRATIONS_PERMISSIONS.aiManage,
+      INTEGRATIONS_PERMISSIONS.customerAdmin,
+      INTEGRATIONS_PERMISSIONS.contentManage,
+    ]);
+
+    expect(canAccessViewInMode('customers', platformPermissions, 'platform')).toBe(true);
+    expect(canAccessViewInMode('articles', platformPermissions, 'platform')).toBe(false);
+    expect(canAccessViewInMode('customers', platformPermissions, 'organization')).toBe(false);
+    expect(canAccessViewInMode('articles', platformPermissions, 'organization')).toBe(true);
   });
 });
 
