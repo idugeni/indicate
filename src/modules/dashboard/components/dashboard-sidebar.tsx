@@ -10,7 +10,12 @@ import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
-import { canAccessView, PRIMARY_NAV_AREAS, VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
+import {
+  canAccessView,
+  PRIMARY_NAV_AREAS,
+  VIEW_REGISTRY,
+  visibleNavGroups,
+} from '@/modules/dashboard/components/view-registry';
 import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
 import { AppTooltip } from '@/ui/app-tooltip';
 import { cn } from '@/ui/cn';
@@ -43,7 +48,9 @@ export function DashboardNavList({
   readonly onSelect: (view: View) => void;
 }) {
   const activeArea = PRIMARY_NAV_AREAS.find((area) => area.views.includes(view));
-  const [expandedArea, setExpandedArea] = useState<string | null>(activeArea !== undefined && activeArea.defaultView !== view ? activeArea.id : null);
+  const [expandedArea, setExpandedArea] = useState<string | null>(
+    activeArea !== undefined && activeArea.defaultView !== view ? activeArea.id : null,
+  );
 
   if (collapsed) {
     return (
@@ -80,7 +87,9 @@ export function DashboardNavList({
       {PRIMARY_NAV_AREAS.map((area) => {
         const allowedViews = area.views.filter((candidate) => canAccessView(candidate, permissions));
         if (allowedViews.length === 0) return null;
-        const defaultView = allowedViews.includes(area.defaultView) ? area.defaultView : (allowedViews[0] ?? area.defaultView);
+        const defaultView = allowedViews.includes(area.defaultView)
+          ? area.defaultView
+          : (allowedViews[0] ?? area.defaultView);
         const active = allowedViews.includes(view);
         const expanded = expandedArea === area.id;
         const Icon = VIEW_REGISTRY[defaultView].icon;
@@ -106,10 +115,15 @@ export function DashboardNavList({
                   size="icon"
                   aria-label={`${expanded ? 'Tutup' : 'Buka'} submenu ${area.label}`}
                   aria-expanded={expanded}
-                  onClick={() => setExpandedArea((current) => current === area.id ? null : area.id)}
+                  onClick={() =>
+                    setExpandedArea((current) => (current === area.id ? null : area.id))
+                  }
                   className="h-8 w-8 flex-none text-paper-faint hover:text-paper"
                 >
-                  <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  />
                 </Button>
               ) : null}
             </div>
