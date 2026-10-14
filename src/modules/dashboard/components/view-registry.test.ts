@@ -12,7 +12,7 @@ import {
 } from '@/modules/dashboard/components/view-registry';
 
 describe('Dashboard V2 view registry', () => {
-  it('registers all 19 dashboard views with explicit metadata', () => {
+  it('registers all 21 dashboard views with explicit metadata', () => {
     expect(ALL_VIEWS).toHaveLength(21);
     for (const view of ALL_VIEWS) {
       expect(VIEW_REGISTRY[view].title.trim()).not.toBe('');
