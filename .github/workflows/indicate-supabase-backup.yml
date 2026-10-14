@@ -12,7 +12,7 @@ jobs:
     environment: production
     timeout-minutes: 45
     env:
-      SUPABASE_DB_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+      SUPABASE_DB_URL: ${{ secrets.DATABASE_BACKUP_URL }}
       BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
 
     steps:
@@ -29,11 +29,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
-            echo "::error::DATABASE_DIRECT_URL secret is empty or unavailable."
+            echo "::error::DATABASE_BACKUP_URL secret is empty or unavailable. Set it to the Supabase IPv4 Session Pooler connection string (port 5432)."
             exit 1
           fi
           if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-            echo "::error::Add BACKUP_ENCRYPTION_KEY in repository Actions secrets before running. Use a long random passphrase and save it securely."
+            echo "::error::Add BACKUP_ENCRYPTION_KEY in production environment secrets before running. Use a long random passphrase and save it securely."
             exit 1
           fi
 
