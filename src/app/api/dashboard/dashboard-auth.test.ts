@@ -336,7 +336,7 @@ function dashboardRequest(
   init?: { readonly method?: string; readonly body?: unknown; readonly loggedIn?: boolean },
 ): Request {
   keyScenario(init?.loggedIn === true);
-  const headers: Record<string, string> = { host: 'localhost' };
+  const headers: Record<string, string> = { host: 'localhost', 'sec-fetch-site': 'same-origin' };
   if (init?.loggedIn === true) headers.cookie = `${DASHBOARD_ACCESS_KEY_COOKIE}=${shared.bearer}`;
   if (init?.body !== undefined) headers['content-type'] = 'application/json';
   return new Request(`http://localhost${path}`, {
@@ -625,7 +625,7 @@ describe('satu pintu login untuk semua aksi admin dashboard', () => {
 
   it('avatar terotorisasi dengan satu pintu', async () => {
     const response = await avatarGET(
-      dashboardRequest('/api/dashboard/avatar?ref=r2:avatars/proof', { loggedIn: true }),
+      dashboardRequest('/api/dashboard/avatar?ref=r2:avatars/11111111-1111-4111-8111-111111111111/avatar.webp', { loggedIn: true }),
     );
     expect(response.status).toBe(200);
     const body = (await response.json()) as { readonly url?: string };
@@ -634,7 +634,7 @@ describe('satu pintu login untuk semua aksi admin dashboard', () => {
 
   it('avatar menolak tanpa kredensial', async () => {
     const response = await avatarGET(
-      dashboardRequest('/api/dashboard/avatar?ref=r2:avatars/proof'),
+      dashboardRequest('/api/dashboard/avatar?ref=r2:avatars/11111111-1111-4111-8111-111111111111/avatar.webp'),
     );
     expect(response.status).toBe(404);
   });
