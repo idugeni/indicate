@@ -19,8 +19,8 @@ import {
   DashboardSplitFormSkeleton,
   DashboardViewSkeleton,
 } from '@/modules/dashboard/components/dashboard-skeletons';
-import { canAccessView, VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
-import type { View } from '@/modules/dashboard/components/dashboard-types';
+import { canAccessViewInMode, VIEW_REGISTRY } from '@/modules/dashboard/components/view-registry';
+import type { DashboardMode, View } from '@/modules/dashboard/components/dashboard-types';
 
 const InfrastructureControlCenterV2 = dynamic(
   () =>
@@ -181,8 +181,10 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
   articlesTotal,
   onLoadMoreArticles,
   crossOrg,
+  navigationMode = 'organization',
 }: {
   readonly view: View;
+  readonly navigationMode?: DashboardMode;
   readonly displayName: string;
   readonly data: unknown;
   readonly organizationId: string;
@@ -229,7 +231,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
     onSelectView('articles');
   };
 
-  if (!canAccessView(view, permissions)) {
+  if (!canAccessViewInMode(view, permissions, navigationMode)) {
     return (
       <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1500px]">
@@ -237,7 +239,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             title="Akses tidak tersedia"
             description="Akun ini tidak memiliki izin untuk membuka area tersebut. Minta administrator memberikan izin yang sesuai."
             icon={<SearchX className="h-5 w-5 text-paper-faint" aria-hidden="true" />}
-            action={<Button type="button" variant="outline" onClick={() => onSelectView('dashboard')}>Kembali ke Command Center</Button>}
+            action={<Button type="button" variant="outline" onClick={() => onSelectView(navigationMode === 'platform' ? 'customers' : 'dashboard')}>Kembali ke Dashboard</Button>}
           />
         </div>
       </main>
