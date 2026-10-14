@@ -168,6 +168,22 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
 
 export const ALL_VIEWS = Object.keys(VIEW_REGISTRY) as readonly View[];
 
+export interface PrimaryNavArea {
+  readonly id: string;
+  readonly label: string;
+  readonly defaultView: View;
+  readonly views: readonly View[];
+}
+
+/** Five first-level dashboard areas; supporting views remain permission-gated children. */
+export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
+  { id: 'dashboard', label: 'Dashboard', defaultView: 'dashboard', views: ['dashboard', 'analytics'] },
+  { id: 'articles', label: 'Artikel', defaultView: 'articles', views: ['articles', 'editorial', 'taxonomy', 'publishers'] },
+  { id: 'media', label: 'Media', defaultView: 'media', views: ['media'] },
+  { id: 'publishing', label: 'Publikasi', defaultView: 'publishing', views: ['publishing', 'published', 'ads'] },
+  { id: 'settings', label: 'Pengaturan Organisasi', defaultView: 'configuration', views: ['configuration', 'settings', 'billing', 'audit', 'operations', 'moderation', 'customers', 'content', 'ai'] },
+];
+
 
 const GROUP_TITLES: Readonly<Record<ViewGroup, string>> = {
   overview: 'Command Center',
