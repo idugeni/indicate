@@ -92,6 +92,43 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('Dashboard workspace login modes', () => {
+  it('shows only Berita and Organisasi navigation for an organization login', () => {
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+
+    expect(screen.getByRole('button', { name: 'Berita' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Organisasi' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Super Admin' })).toBeNull();
+  });
+
+  it('shows only Super Admin navigation for a platform Super Admin login', () => {
+    initialView = 'customers';
+    const platformOrganizations = [{
+      id: 'org-platform',
+      name: 'Pengelola Platform',
+      role: 'superadmin',
+      permissions: [
+        INTEGRATIONS_PERMISSIONS.superAdmin,
+        INTEGRATIONS_PERMISSIONS.customerAdmin,
+        INTEGRATIONS_PERMISSIONS.aiManage,
+        INTEGRATIONS_PERMISSIONS.contentManage,
+      ],
+    }] as never;
+
+    render(
+      <DashboardWorkspace
+        displayName="Super Admin"
+        organizations={platformOrganizations}
+        navigationMode="platform"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Super Admin' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Berita' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Organisasi' })).toBeNull();
+  });
+});
+
 describe('Dashboard workspace', () => {
   it('blocks direct URL access to a restricted V2 view before mounting its data-owning panel', async () => {
     initialView = 'customers';
