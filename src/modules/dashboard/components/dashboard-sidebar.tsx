@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useId, useState } from 'react';
+import { memo, useEffect, useId, useState } from 'react';
 import Image from 'next/image';
 import { ChevronDown } from 'lucide-react';
 
@@ -51,6 +51,18 @@ export function DashboardNavList({
   const [expandedArea, setExpandedArea] = useState<string | null>(
     activeArea !== undefined && activeArea.defaultView !== view ? activeArea.id : null,
   );
+
+  useEffect(() => {
+    const selectedArea = PRIMARY_NAV_AREAS.find((area) => area.views.includes(view));
+    void Promise.resolve().then(() => {
+      setExpandedArea(
+        selectedArea !== undefined && selectedArea.defaultView !== view
+          ? selectedArea.id
+          : null,
+      );
+    });
+  }, [view]);
+
 
   if (collapsed) {
     return (
