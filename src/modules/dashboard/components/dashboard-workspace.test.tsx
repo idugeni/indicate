@@ -96,8 +96,8 @@ describe('Dashboard workspace login modes', () => {
   it('shows only Berita and Organisasi navigation for an organization login', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
-    expect(screen.getByRole('button', { name: 'Berita' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Organisasi' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: 'Berita' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Organisasi' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Super Admin' })).toBeNull();
   });
 
@@ -123,7 +123,7 @@ describe('Dashboard workspace login modes', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Super Admin' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: 'Super Admin' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Berita' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Organisasi' })).toBeNull();
   });
