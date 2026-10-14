@@ -14,7 +14,7 @@ import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-br
 const CODE_LENGTH = 8;
 const RESEND_COOLDOWN_S = 60;
 
-/** Passwordless sign-in leaf: email code first, verified in-page, magic link as backup. */
+/** Passwordless sign-in using email OTP codes only; authentication is verified in-page. */
 export function OtpSignInForm() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -36,11 +36,9 @@ export function OtpSignInForm() {
 
   const sendCode = async (target: string, token: string | null) => {
     const supabase = createBrowserSupabaseClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: target,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback?next=%2Fdashboard`,
         ...(token === null ? {} : { captchaToken: token }),
       },
     });
@@ -157,7 +155,6 @@ export function OtpSignInForm() {
         <MailCheck className="mt-0.5 h-5 w-5 flex-none text-[#8a5f1c]" aria-hidden="true" />
         <p className="m-0 font-sans text-sm leading-relaxed text-[#4c5b6b]">
           Kode 8 digit dikirim ke <strong className="font-semibold text-[#1a2430]">{sentTo}</strong>.
-          Klik tautan di email itu juga bisa.
         </p>
       </div>
       <form
