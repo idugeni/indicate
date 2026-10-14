@@ -4,18 +4,14 @@ import { cookies, headers } from 'next/headers';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { z } from 'zod';
 
-import { resolveVerifiedLocalUser } from '@/modules/auth/resolve-authenticated-user';
+import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { orgTag } from '@/modules/dashboard/cache-tags';
-import { getPublicConfig } from '@/core/config/public-config';
 import { isProductionServer } from '@/core/config/runtime/runtime-flags';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
 import { denyCrossSiteHeaders } from '@/core/security/mutation-guard';
-import { UuidGenerator } from '@/core/system/uuid-generator';
-import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 const inputSchema = z.object({ organizationId: z.uuid() });
 
@@ -42,7 +38,7 @@ function writeActiveOrganizationCookie(
   });
 }
 
-/** Server Action replacing the active-org fetch; audits before mutation, purges both org tags on success. */
+/** Server Action using the shared dashboard auth resolver for sessions and access-key bearers. */
 export async function switchActiveOrganization(
   previousState: SwitchOrganizationState,
   formData: FormData,
@@ -55,53 +51,38 @@ export async function switchActiveOrganization(
   if (!parsed.success) return DENIED;
   const organizationId = parsed.data.organizationId;
   const cookieStore = await cookies();
-
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl,
-    publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({
-      getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })),
-      set: (name, value, options) => {
-        cookieStore.set(name, value, options);
-      },
-    }),
-  });
-  const identity = await auth.verifyCookieSession();
-  if (identity === null) return DENIED;
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
-  {
-    const repository = new DrizzleAuthorizationRepository(runtime.db);
-    const localUserResult = await resolveVerifiedLocalUser(identity, repository, new UuidGenerator());
-    if (!localUserResult.ok) return DENIED;
-    const membership = await repository.findActiveMembership(organizationId, localUserResult.value.id);
-    const platformPermissions = new Set<string>(membership?.platformPermissions
-      ?? await repository.listPlatformPermissions(localUserResult.value.id, organizationId).catch((): readonly string[] => []));
-    const isPlatformSuperAdmin = platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
-    const accessibleOrganizations = await repository.listActiveOrganizationsForUser(identity.authUserId, organizationId).catch(() => []);
-    const targetIsActiveAndAccessible = accessibleOrganizations.some((organization) => organization.id === organizationId);
-    const hasActiveMembership = membership !== null && membership.roleActive;
-    if (!targetIsActiveAndAccessible || (!hasActiveMembership && !isPlatformSuperAdmin)) {
-      try {
-        await new DrizzleDashboardRepository(runtime.db).recordDenied(
-          {
-            actorType: 'user',
-            actorId: localUserResult.value.id,
-            verifiedAuthUserId: identity.authUserId,
-            organizationId,
-            permissionSet: new Set(),
-            entryPoint: 'dashboard',
-            requestId,
-          },
-          'dashboard.organization.switch',
-          'organization',
-        );
-      } catch {
-        return DENIED;
-      }
+
+  const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId).catch(() => null);
+  if (user === null) return DENIED;
+
+  const repository = new DrizzleAuthorizationRepository(runtime.db);
+  const accessibleOrganizations = await repository
+    .listActiveOrganizationsForUser(user.authUserId, organizationId)
+    .catch(() => []);
+  const targetIsActiveAndAccessible = accessibleOrganizations.some((organization) => organization.id === organizationId);
+  const actor = await authorizeDashboardOrganization(runtime.db, user, organizationId, requestId).catch(() => null);
+
+  if (!targetIsActiveAndAccessible || actor === null) {
+    try {
+      await new DrizzleDashboardRepository(runtime.db).recordDenied(
+        {
+          actorType: 'user',
+          actorId: user.localUserId,
+          verifiedAuthUserId: user.authUserId,
+          organizationId,
+          permissionSet: new Set(),
+          entryPoint: 'dashboard',
+          requestId,
+        },
+        'dashboard.organization.switch',
+        'organization',
+      );
+    } catch {
       return DENIED;
     }
+    return DENIED;
   }
 
   const previous = cookieStore.get('indicate-active-organization')?.value;
