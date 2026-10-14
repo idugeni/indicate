@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
-import { ALL_VIEWS, canAccessView, VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
+import { ALL_VIEWS, canAccessView, PRIMARY_NAV_AREAS, VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
 
 describe('Dashboard V2 view registry', () => {
   it('registers all 19 dashboard views with explicit metadata', () => {
@@ -11,6 +11,31 @@ describe('Dashboard V2 view registry', () => {
       expect(VIEW_REGISTRY[view].title.trim()).not.toBe('');
       expect(VIEW_REGISTRY[view].description.trim()).not.toBe('');
     }
+  });
+});
+
+describe('Primary dashboard navigation', () => {
+  it('exposes exactly five first-level areas without deleting supporting views', () => {
+    expect(PRIMARY_NAV_AREAS.map((area) => area.label)).toEqual([
+      'Dashboard',
+      'Artikel',
+      'Media',
+      'Publikasi',
+      'Pengaturan Organisasi',
+    ]);
+    const groupedViews = PRIMARY_NAV_AREAS.flatMap((area) => area.views);
+    expect(new Set(groupedViews).size).toBe(ALL_VIEWS.length);
+    expect(groupedViews).toEqual(expect.arrayContaining(ALL_VIEWS));
+  });
+
+  it('retains permission gating for supporting views inside primary areas', () => {
+    const settings = PRIMARY_NAV_AREAS.find((area) => area.id === 'settings');
+    expect(settings?.views).toContain('customers');
+    expect(canAccessView('customers', new Set([DASHBOARD_PERMISSIONS.auditRead]))).toBe(false);
+    expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
+    const publishing = PRIMARY_NAV_AREAS.find((area) => area.id === 'publishing');
+    expect(publishing?.views).toContain('ads');
+    expect(canAccessView('ads', new Set(['article.read']))).toBe(false);
   });
 });
 
