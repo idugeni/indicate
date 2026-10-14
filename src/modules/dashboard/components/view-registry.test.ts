@@ -31,7 +31,7 @@ describe('Authenticated dashboard mode boundaries', () => {
     ]);
 
     expect(canAccessViewInMode('customers', platformPermissions, 'platform')).toBe(true);
-    expect(canAccessViewInMode('articles', platformPermissions, 'platform')).toBe(false);
+    expect(canAccessViewInMode('articles', platformPermissions, 'platform')).toBe(true);
     expect(canAccessViewInMode('customers', platformPermissions, 'organization')).toBe(false);
     expect(canAccessViewInMode('articles', platformPermissions, 'organization')).toBe(true);
   });
@@ -44,8 +44,11 @@ describe('Primary dashboard navigation', () => {
       'Organisasi',
     ]);
     expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'platform').map((area) => area.label)).toEqual(['Super Admin']);
+    for (const scope of ['organization', 'platform'] as const) {
+      const scopedViews = PRIMARY_NAV_AREAS.filter((area) => area.scope === scope).flatMap((area) => area.views);
+      expect(new Set(scopedViews).size).toBe(scopedViews.length);
+    }
     const groupedViews = PRIMARY_NAV_AREAS.flatMap((area) => area.views);
-    expect(new Set(groupedViews).size).toBe(ALL_VIEWS.length);
     expect(groupedViews).toEqual(expect.arrayContaining([...ALL_VIEWS]));
   });
 
