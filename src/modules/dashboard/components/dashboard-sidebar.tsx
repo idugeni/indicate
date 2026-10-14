@@ -2,6 +2,7 @@
 
 import { memo, useId, useState } from 'react';
 import Image from 'next/image';
+import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,26 @@ const SIDEBAR_COLLAPSED_WIDTH = 68;
  * @param props.collapsed - Hides group titles and labels, switching items to icon buttons with tooltips.
  * @param props.onSelect - Receives the picked view.
  */
+type PrimaryArea = {
+  readonly id: string;
+  readonly label: string;
+  readonly defaultView: View;
+  readonly views: readonly View[];
+};
+
+const PRIMARY_AREAS: readonly PrimaryArea[] = [
+  { id: 'dashboard', label: 'Dashboard', defaultView: 'dashboard', views: ['dashboard', 'analytics'] },
+  { id: 'articles', label: 'Artikel', defaultView: 'articles', views: ['articles', 'editorial', 'taxonomy', 'publishers'] },
+  { id: 'media', label: 'Media', defaultView: 'media', views: ['media'] },
+  { id: 'publishing', label: 'Publikasi', defaultView: 'publishing', views: ['publishing', 'published', 'ads'] },
+  { id: 'settings', label: 'Pengaturan Organisasi', defaultView: 'configuration', views: ['configuration', 'settings', 'billing', 'audit', 'operations', 'moderation', 'customers', 'content', 'ai'] },
+];
+
+/**
+ * Keep five concise primary areas while preserving authorized supporting views
+ * as secondary navigation. In collapsed mode, expose all permitted views as
+ * icon buttons so secondary workflows remain reachable.
+ */
 export function DashboardNavList({
   view,
   permissions,
@@ -36,78 +57,102 @@ export function DashboardNavList({
   readonly collapsed?: boolean;
   readonly onSelect: (view: View) => void;
 }) {
-  return (
-    <>
-      {visibleNavGroups(permissions).map((group, groupIndex) => {
-        return (
-        <div
-          key={group.id}
-          className={`animate-in fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${collapsed ? 'space-y-1 py-1' : 'space-y-1 px-1 py-1'}`}
-        >
-          {collapsed ? (
-            groupIndex > 0 ? (
-              <div className="mx-4 border-t border-white/[0.07]" aria-hidden="true" />
-            ) : null
-          ) : (
-            <h3 className="px-2 pb-1 font-sans text-[11px] font-medium uppercase tracking-wider text-[#68738a]">
-              {group.title}
-            </h3>
-          )}
-          <div className="space-y-0.5">
+  const activeArea = PRIMARY_AREAS.find((area) => area.views.includes(view));
+  const [expandedArea, setExpandedArea] = useState<string | null>(activeArea?.id ?? null);
+
+  if (collapsed) {
+    return (
+      <>
+        {visibleNavGroups(permissions).map((group, groupIndex) => (
+          <div key={group.id} className="space-y-1 py-1">
+            {groupIndex > 0 ? <div className="mx-4 border-t border-white/[0.07]" aria-hidden="true" /> : null}
             {group.views.map((navView) => {
               const { label, icon: Icon } = VIEW_REGISTRY[navView];
               const isActive = view === navView;
-
-              if (collapsed) {
-                return (
-                  <AppTooltip key={navView} label={label} side="right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      aria-current={isActive ? 'page' : undefined}
-                      aria-label={label}
-                      onClick={() => onSelect(navView)}
-                      className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                        isActive
-                          ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
-                          : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
-                      }`}
-                    >
-                      <Icon
-                        className={`h-4 w-4 flex-none ${isActive ? 'text-white' : 'text-paper-faint'}`}
-                        aria-hidden="true"
-                      />
-                    </Button>
-                  </AppTooltip>
-                );
-              }
-
               return (
-                <Button
-                  key={navView}
-                  type="button"
-                  variant="ghost"
-                  aria-current={isActive ? 'page' : undefined}
-                  onClick={() => onSelect(navView)}
-                  className={`flex w-full items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left font-sans text-[13px] font-normal transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                    isActive
-                      ? 'bg-white/[0.05] font-medium text-paper'
-                      : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
-                  }`}
-                >
-                  <Icon
-                    className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
-                    aria-hidden="true"
-                  />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                </Button>
+                <AppTooltip key={navView} label={label} side="right">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={label}
+                    onClick={() => onSelect(navView)}
+                    className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${isActive ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
+                  >
+                    <Icon className={`h-4 w-4 flex-none ${isActive ? 'text-white' : 'text-paper-faint'}`} aria-hidden="true" />
+                  </Button>
+                </AppTooltip>
               );
             })}
           </div>
-        </div>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {PRIMARY_AREAS.map((area) => {
+        const allowedViews = area.views.filter((candidate) => canAccessView(candidate, permissions));
+        if (allowedViews.length === 0) return null;
+        const defaultView = allowedViews.includes(area.defaultView) ? area.defaultView : allowedViews[0];
+        const active = allowedViews.includes(view);
+        const expanded = expandedArea === area.id;
+        const Icon = VIEW_REGISTRY[defaultView].icon;
+        const children = allowedViews.filter((candidate) => candidate !== defaultView);
+
+        return (
+          <section key={area.id} className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                aria-current={view === defaultView ? 'page' : undefined}
+                onClick={() => onSelect(defaultView)}
+                className={`flex min-w-0 flex-1 items-center justify-start gap-2.5 rounded-md px-2.5 py-2 text-left font-sans text-[13px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${active ? 'bg-white/[0.05] text-paper' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
+              >
+                <Icon className="h-4 w-4 flex-none text-paper-faint" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate">{area.label}</span>
+              </Button>
+              {children.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`${expanded ? 'Tutup' : 'Buka'} submenu ${area.label}`}
+                  aria-expanded={expanded}
+                  onClick={() => setExpandedArea((current) => current === area.id ? null : area.id)}
+                  className="h-8 w-8 flex-none text-paper-faint hover:text-paper"
+                >
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+                </Button>
+              ) : null}
+            </div>
+            {expanded && children.length > 0 ? (
+              <div className="ml-4 space-y-0.5 border-l border-white/[0.08] pl-2">
+                {children.map((navView) => {
+                  const { label, icon: ChildIcon } = VIEW_REGISTRY[navView];
+                  const isActive = view === navView;
+                  return (
+                    <Button
+                      key={navView}
+                      type="button"
+                      variant="ghost"
+                      aria-current={isActive ? 'page' : undefined}
+                      onClick={() => onSelect(navView)}
+                      className={`flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-left font-sans text-[12px] font-normal transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${isActive ? 'bg-white/[0.05] font-medium text-paper' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
+                    >
+                      <ChildIcon className="h-3.5 w-3.5 flex-none text-paper-faint" aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
         );
       })}
-    </>
+    </div>
   );
 }
 
