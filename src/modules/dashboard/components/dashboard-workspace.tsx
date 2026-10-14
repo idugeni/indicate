@@ -95,7 +95,7 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
  * discarded for them (see the loading effect below), so a post-mutation
  * refetch here would only waste one GET per mutation. Panels own refresh.
  */
-const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['content', 'billing', 'moderation', 'ai', 'ads', 'customers']);
+const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['organization', 'profile', 'content', 'billing', 'moderation', 'ai', 'ads', 'customers']);
 
 const DASHBOARD_ARTICLE_PAGE_SIZE = 20;
 
@@ -623,7 +623,7 @@ export function DashboardWorkspace({
                 <button
                   type="button"
                   aria-label="Buka profil saya"
-                  onClick={() => selectMobileNavView('settings')}
+                  onClick={() => selectMobileNavView(navigationMode === 'platform' ? 'settings' : 'profile')}
                   className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md p-1.5 text-left transition-colors duration-150 hover:bg-bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60"
                 >
                   <DashboardAvatar displayName={displayName} avatarRef={avatarUrl} />
@@ -662,6 +662,8 @@ export function DashboardWorkspace({
           data={data}
           organizationId={organizationId}
           permissions={activePermissions}
+          organizationName={activeOrganization?.name ?? 'Organisasi'}
+          organizationRole={activeOrganization?.role ?? null}
           error={error}
           command={command}
           onDismissError={dismissError}
