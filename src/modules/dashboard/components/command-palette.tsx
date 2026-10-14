@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AppTooltip } from '@/ui/app-tooltip';
-import { groupTitle, VIEW_REGISTRY, visibleNavGroups, type View } from '@/modules/dashboard/components/view-registry';
+import { canAccessViewInMode, groupTitle, PRIMARY_NAV_AREAS, VIEW_REGISTRY, type DashboardMode, type View } from '@/modules/dashboard/components/view-registry';
 import { AiAssistantDialog } from '@/modules/ai/components/ai-assistant-dialog';
 
 interface CommandAction {
@@ -40,9 +40,9 @@ function viewAction(view: View, group: string): CommandAction {
  * @param permissions - Union of org and platform permissions; gates the entries the sidebar hides.
  * @returns One command per reachable view, in sidebar order, plus the sign-in route.
  */
-function buildActions(permissions: ReadonlySet<string>): readonly CommandAction[] {
+function buildActions(permissions: ReadonlySet<string>, navigationMode: DashboardMode): readonly CommandAction[] {
   return [
-    ...visibleNavGroups(permissions).flatMap((group) => group.views.map((view) => viewAction(view, group.title))),
+    ...PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode).flatMap((area) => area.views.filter((view) => canAccessViewInMode(view, permissions, navigationMode)).map((view) => viewAction(view, area.label))),
     AUTH_ACTION,
   ];
 }
@@ -59,8 +59,10 @@ export function CommandPalette({
   showTrigger = true,
   permissions,
   organizationId,
+  navigationMode = 'organization',
 }: {
   readonly showTrigger?: boolean;
+  readonly navigationMode?: DashboardMode;
   readonly permissions: ReadonlySet<string>;
   readonly organizationId?: string | undefined;
 }) {
@@ -70,7 +72,7 @@ export function CommandPalette({
 
   const router = useRouter();
 
-  const actions = React.useMemo(() => buildActions(permissions), [permissions]);
+  const actions = React.useMemo(() => buildActions(permissions, navigationMode), [permissions, navigationMode]);
 
   React.useEffect(() => () => {
     document.documentElement.style.removeProperty('overflow');
