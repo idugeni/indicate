@@ -236,6 +236,36 @@ describe('RuntimeConfigSnapshotCache lapis bersama', () => {
     expect(readComplete).not.toHaveBeenCalled();
   });
 
+  it('meminta backfill setelah snapshot bersama lolos validasi', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const backfill = vi.fn(async () => {});
+    const store: SnapshotSharedStore = {
+      read: async () => validModel(),
+      write: async () => {},
+      touch: async () => {},
+      backfill,
+    };
+    const { cache } = setup(readComplete, store);
+    await cache.get('test');
+    expect(backfill).toHaveBeenCalledWith('test', 7, expect.objectContaining({ configurationVersion: 7 }), RUNTIME_CONFIG_SNAPSHOT_SHARED_TTL_SECONDS);
+    expect(readComplete).not.toHaveBeenCalled();
+  });
+
+  it('tidak backfill snapshot bersama yang gagal validasi', async () => {
+    const readComplete = vi.fn(async () => validModel());
+    const backfill = vi.fn(async () => {});
+    const store: SnapshotSharedStore = {
+      read: async () => ({ ...validModel(), rateLimitPolicies: [] }),
+      write: async () => {},
+      touch: async () => {},
+      backfill,
+    };
+    const { cache } = setup(readComplete, store);
+    await cache.get('test');
+    expect(backfill).not.toHaveBeenCalled();
+    expect(readComplete).toHaveBeenCalledOnce();
+  });
+
   it('memperpanjang umur kunci saat storehits agar baca penuh tidak diulang', async () => {
     const readComplete = vi.fn(async () => validModel());
     const touch = vi.fn(async () => {});
