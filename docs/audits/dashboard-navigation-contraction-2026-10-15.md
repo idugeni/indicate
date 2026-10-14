@@ -5,16 +5,16 @@
 Repository: `idugeni/indicate`
 Base reviewed: `main` at `8c54004bb482ebcb274a2f953a1dcd40cf700d00`.
 
-This is a source-level audit. It does not claim authenticated production/browser verification. The dashboard currently registers 19 views in `src/modules/dashboard/components/view-registry.ts`. Tenant navigation must expose exactly two first-level areas, while platform control-plane views must remain separate and grant-gated. The dashboard shell reads the selected view from the URL, and both the workspace and view panel call `canAccessView`. Server API authorization remains an independent boundary.
+This is a source-level audit. It does not claim authenticated production/browser verification. The dashboard currently registers 19 views in `src/modules/dashboard/components/view-registry.ts`. Navigation is selected from the authenticated server-side actor mode: organization logins receive exactly two first-level areas, while a platform Super Admin login receives only the separate platform control-plane area. Permission grants further gate views within that mode. The dashboard shell reads the selected view from the URL, and both the workspace and view panel call `canAccessView`. Server API authorization remains an independent boundary.
 
 ## Target navigation
 
-Tenant-facing navigation has exactly two first-level areas:
+Organization-login navigation has exactly two first-level areas:
 
 1. **Berita** — dashboard analytics, article listing/editorial work, global taxonomy, publishers, media, distribution, and live publication results.
 2. **Organisasi** — organization infrastructure, access/integrations, site monetization, audit, and operations views where the active actor has the required organization permission.
 
-**Super Admin** is a separate platform area, not a third tenant area. Customer operations, platform billing, and moderation are shown only when their platform grants are present. Public web content retains its specific grant; AI visibility accepts the same platform grants as the AI service. UI visibility remains defense in depth and does not replace API/repository/RLS checks.
+**Super Admin** is the only top-level area in platform login mode, not a third area mixed into the tenant sidebar. Customer operations, platform billing, and moderation are shown only when their platform grants are present. The mode comes from the verified server-side authentication path, not a client role label or the selected organization. Public web content retains its specific grant; AI visibility accepts the same platform grants as the AI service. UI visibility remains defense in depth and does not replace API/repository/RLS checks.
 
 Supporting views remain nested under their owning area; no registered workflow is removed. Collapsed navigation displays area entry points rather than exposing every supporting view as a separate first-level item.
 
@@ -41,7 +41,8 @@ Permissions, not role labels, are the authorization source. UI visibility is def
 
 ## Acceptance criteria
 
-- Tenant users see exactly two first-level areas: Berita and Organisasi; Super Admin controls are separated into a platform-only area.
+- Organization logins see exactly two first-level areas: Berita and Organisasi; platform Super Admin logins see only the Super Admin area.
+- Desktop sidebar, mobile navigation, command palette, initial landing view, and direct-view guard all enforce the same authenticated mode.
 - Supporting views remain nested beneath their owning area and are permission-gated by `canAccessView`.
 - Restricted views are hidden from navigation and remain blocked when their URL is entered directly.
 - Organization switching clears stale payload/error state and does not leak data across tenants.
