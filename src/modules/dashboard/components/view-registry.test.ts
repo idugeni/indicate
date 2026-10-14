@@ -13,7 +13,7 @@ import {
 
 describe('Dashboard V2 view registry', () => {
   it('registers all 19 dashboard views with explicit metadata', () => {
-    expect(ALL_VIEWS).toHaveLength(19);
+    expect(ALL_VIEWS).toHaveLength(21);
     for (const view of ALL_VIEWS) {
       expect(VIEW_REGISTRY[view].title.trim()).not.toBe('');
       expect(VIEW_REGISTRY[view].description.trim()).not.toBe('');
@@ -52,10 +52,16 @@ describe('Primary dashboard navigation', () => {
   it('retains permission gating for supporting views inside primary areas', () => {
     const platform = PRIMARY_NAV_AREAS.find((area) => area.id === 'super-admin');
     expect(platform?.views).toContain('customers');
+    expect(platform?.views).toContain('configuration');
+    expect(platform?.views).toContain('settings');
+    expect(platform?.views).toContain('operations');
     expect(canAccessView('customers', new Set([DASHBOARD_PERMISSIONS.auditRead]))).toBe(false);
     expect(canAccessView('customers', new Set([INTEGRATIONS_PERMISSIONS.superAdmin]))).toBe(true);
     const organization = PRIMARY_NAV_AREAS.find((area) => area.id === 'organization');
-    expect(organization?.views).toContain('ads');
+    expect(organization?.views).toContain('organization');
+    expect(organization?.views).not.toContain('configuration');
+    expect(organization?.views).not.toContain('settings');
+    expect(organization?.views).not.toContain('operations');
     expect(canAccessView('ads', new Set(['article.read']))).toBe(false);
   });
 });
