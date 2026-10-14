@@ -10,7 +10,7 @@ import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
-import { VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
+import { canAccessView, PRIMARY_NAV_AREAS, VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
 import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
 import { AppTooltip } from '@/ui/app-tooltip';
 import { cn } from '@/ui/cn';
@@ -26,21 +26,6 @@ const SIDEBAR_COLLAPSED_WIDTH = 68;
  * @param props.collapsed - Hides group titles and labels, switching items to icon buttons with tooltips.
  * @param props.onSelect - Receives the picked view.
  */
-type PrimaryArea = {
-  readonly id: string;
-  readonly label: string;
-  readonly defaultView: View;
-  readonly views: readonly View[];
-};
-
-const PRIMARY_AREAS: readonly PrimaryArea[] = [
-  { id: 'dashboard', label: 'Dashboard', defaultView: 'dashboard', views: ['dashboard', 'analytics'] },
-  { id: 'articles', label: 'Artikel', defaultView: 'articles', views: ['articles', 'editorial', 'taxonomy', 'publishers'] },
-  { id: 'media', label: 'Media', defaultView: 'media', views: ['media'] },
-  { id: 'publishing', label: 'Publikasi', defaultView: 'publishing', views: ['publishing', 'published', 'ads'] },
-  { id: 'settings', label: 'Pengaturan Organisasi', defaultView: 'configuration', views: ['configuration', 'settings', 'billing', 'audit', 'operations', 'moderation', 'customers', 'content', 'ai'] },
-];
-
 /**
  * Keep five concise primary areas while preserving authorized supporting views
  * as secondary navigation. In collapsed mode, expose all permitted views as
@@ -57,7 +42,7 @@ export function DashboardNavList({
   readonly collapsed?: boolean;
   readonly onSelect: (view: View) => void;
 }) {
-  const activeArea = PRIMARY_AREAS.find((area) => area.views.includes(view));
+  const activeArea = PRIMARY_NAV_AREAS.find((area) => area.views.includes(view));
   const [expandedArea, setExpandedArea] = useState<string | null>(activeArea?.id ?? null);
 
   if (collapsed) {
@@ -92,7 +77,7 @@ export function DashboardNavList({
 
   return (
     <div className="space-y-1">
-      {PRIMARY_AREAS.map((area) => {
+      {PRIMARY_NAV_AREAS.map((area) => {
         const allowedViews = area.views.filter((candidate) => canAccessView(candidate, permissions));
         if (allowedViews.length === 0) return null;
         const defaultView = allowedViews.includes(area.defaultView) ? area.defaultView : allowedViews[0];
