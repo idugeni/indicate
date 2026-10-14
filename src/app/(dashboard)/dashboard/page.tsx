@@ -9,6 +9,7 @@ import { resolveVerifiedUserOrganizations } from '@/modules/auth/resolve-authent
 import type { MembershipAuthorization } from '@/modules/auth/rbac';
 import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-keys/cookie';
 import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
+import { buildAccessKeyOrganizationOptions } from '@/modules/auth/dashboard-access-keys/access-key-organizations';
 import { getDashboardSnapshot } from '@/modules/dashboard';
 import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
@@ -158,23 +159,22 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
   const organizationsForUser = await repository.listActiveOrganizationsForUser(resolved.identity.authUserId);
   const bound = organizationsForUser.find(({ id }) => id === resolved.actor.organizationId);
   if (bound === undefined) redirect('/sign-in?auth=inactive');
-  const isPlatformSuperAdmin = resolved.membership.platformPermissions.has(INTEGRATIONS_PERMISSIONS.superAdmin);
+  const platformPermissions = [...resolved.membership.platformPermissions];
+  const isPlatformSuperAdmin = platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
   const platformAdminTenantPermissions = [
     ...DASHBOARD_PERMISSION_NAMES,
     ...PUBLISHING_PERMISSION_NAMES,
     ...INTEGRATIONS_TENANT_PERMISSION_NAMES,
     INTEGRATIONS_PERMISSIONS.siteSettingsManage,
   ];
-  const organizations: readonly OrganizationOption[] = [
-    {
-      id: bound.id,
-      name: bound.name,
-      role: isPlatformSuperAdmin ? 'superadmin' : resolved.membership.roleTier,
-      permissions: isPlatformSuperAdmin
-        ? [...platformAdminTenantPermissions, ...resolved.membership.platformPermissions]
-        : [...resolved.membership.orgPermissions, ...resolved.membership.platformPermissions],
-    },
-  ];
+  const organizations: readonly OrganizationOption[] = buildAccessKeyOrganizationOptions({
+    activeOrganizations: organizationsForUser,
+    boundOrganizationId: bound.id,
+    roleTier: resolved.membership.roleTier,
+    organizationPermissions: [...resolved.membership.orgPermissions],
+    platformPermissions,
+    platformAdminTenantPermissions,
+  });
   const sessionIdentity = {
     authUserId: resolved.identity.authUserId,
     displayName: resolved.displayName,
@@ -184,7 +184,7 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
   const resolvedParams = searchParams === undefined ? undefined : await searchParams;
   const rawView = Array.isArray(resolvedParams?.view) ? resolvedParams?.view[0] : resolvedParams?.view;
   const needsSnapshot = rawView === undefined || rawView === 'dashboard';
-  const initialDashboard = !needsSnapshot
+  const initialDashboard = !needsSnapshot || isPlatformSuperAdmin
     ? null
     : await getDashboardSnapshot(bound.id, sessionIdentity, {
       localUser: resolved.localUser,
