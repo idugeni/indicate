@@ -12,6 +12,7 @@ jobs:
     timeout-minutes: 45
     env:
       SUPABASE_DB_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
 
     steps:
       - name: Checkout
@@ -22,12 +23,16 @@ jobs:
         with:
           version: latest
 
-      - name: Validate configured database secret
+      - name: Validate secrets before accessing database
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
             echo "::error::DATABASE_DIRECT_URL secret is empty or unavailable."
+            exit 1
+          fi
+          if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+            echo "::error::Add BACKUP_ENCRYPTION_KEY in repository Actions secrets before running. Use a long random passphrase and save it securely."
             exit 1
           fi
 
@@ -40,7 +45,7 @@ jobs:
       - name: Dump database data
         run: supabase db dump --db-url "$SUPABASE_DB_URL" --file data.sql --data-only
 
-      - name: Package and validate ZIP
+      - name: Package, encrypt, and verify backup
         shell: bash
         run: |
           set -euo pipefail
@@ -52,16 +57,18 @@ jobs:
           if [[ -d supabase/migrations ]]; then
             cp -R supabase/migrations indicate-supabase-backup/migrations
           fi
-          printf 'Project: INDICATE\nGenerated (UTC): %s\nFormat: Supabase CLI logical SQL backup\n' "$(date -u +%FT%TZ)" > indicate-supabase-backup/README.txt
+          printf 'Project: INDICATE\nGenerated (UTC): %s\nFormat: Supabase CLI logical SQL backup\nManaged schemas such as auth and storage are excluded by the standard dump.\n' "$(date -u +%FT%TZ)" > indicate-supabase-backup/README.txt
           (cd indicate-supabase-backup && sha256sum roles.sql schema.sql data.sql > SHA256SUMS)
           zip -qr indicate-supabase-backup.zip indicate-supabase-backup
           unzip -t indicate-supabase-backup.zip
-          sha256sum indicate-supabase-backup.zip
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 -in indicate-supabase-backup.zip -out indicate-supabase-backup.zip.enc -pass env:BACKUP_ENCRYPTION_KEY
+          test -s indicate-supabase-backup.zip.enc
+          sha256sum indicate-supabase-backup.zip.enc
 
-      - name: Upload ZIP as private workflow artifact
+      - name: Upload encrypted backup artifact
         uses: actions/upload-artifact@v4
         with:
-          name: indicate-supabase-backup
-          path: indicate-supabase-backup.zip
+          name: indicate-supabase-backup-encrypted
+          path: indicate-supabase-backup.zip.enc
           retention-days: 1
           if-no-files-found: error
