@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
-import { ALL_VIEWS, canAccessView, PRIMARY_NAV_AREAS, VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
+import {
+  ALL_VIEWS,
+  canAccessView,
+  PRIMARY_NAV_AREAS,
+  VIEW_REGISTRY,
+  visibleNavGroups,
+} from '@/modules/dashboard/components/view-registry';
 
 describe('Dashboard V2 view registry', () => {
   it('registers all 19 dashboard views with explicit metadata', () => {
