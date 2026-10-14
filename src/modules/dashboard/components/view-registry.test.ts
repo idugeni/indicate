@@ -61,10 +61,16 @@ describe('AI control-plane view registry', () => {
     expect(system?.views).not.toContain('ai');
   });
 
-  it('menampilkan ai untuk aktor platform dengan grant aiManage', () => {
-    const groups = visibleNavGroups(new Set([INTEGRATIONS_PERMISSIONS.aiManage]));
-    const system = groups.find((group) => group.id === 'system');
-    expect(system?.views).toContain('ai');
+  it('menampilkan ai untuk grant AI spesifik maupun grant platform yang diterima layanan', () => {
+    for (const permission of [
+      INTEGRATIONS_PERMISSIONS.aiManage,
+      INTEGRATIONS_PERMISSIONS.superAdmin,
+      INTEGRATIONS_PERMISSIONS.customerAdmin,
+    ]) {
+      const groups = visibleNavGroups(new Set([permission]));
+      const system = groups.find((group) => group.id === 'system');
+      expect(system?.views).toContain('ai');
+    }
   });
 });
 
