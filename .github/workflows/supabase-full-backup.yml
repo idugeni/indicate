@@ -1,0 +1,79 @@
+name: Supabase Full Database Backup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Create private database backup artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client zip
+
+      - name: Validate connection secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error::Repository secret SUPABASE_DB_URL is not configured."
+            exit 1
+          fi
+
+      - name: Dump database roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_dumpall --roles-only --no-role-passwords --dbname="$SUPABASE_DB_URL" > roles.sql
+
+      - name: Dump database schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_dump --schema-only --no-owner --no-privileges --dbname="$SUPABASE_DB_URL" > schema.sql
+
+      - name: Dump database data
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_dump --data-only --no-owner --no-privileges --column-inserts --dbname="$SUPABASE_DB_URL" > data.sql
+
+      - name: Package and verify backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s roles.sql
+          test -s schema.sql
+          test -s data.sql
+          mkdir -p indicate-supabase-backup
+          mv roles.sql schema.sql data.sql indicate-supabase-backup/
+          if [[ -d supabase/migrations ]]; then
+            cp -R supabase/migrations indicate-supabase-backup/migrations
+          fi
+          printf 'Project: INDICATE\nGenerated (UTC): %s\nFormat: PostgreSQL logical SQL dump\n' "$(date -u +%FT%TZ)" > indicate-supabase-backup/README.txt
+          (cd indicate-supabase-backup && sha256sum roles.sql schema.sql data.sql > SHA256SUMS)
+          zip -qr indicate-supabase-backup.zip indicate-supabase-backup
+          unzip -t indicate-supabase-backup.zip
+          sha256sum indicate-supabase-backup.zip
+
+      - name: Upload private backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: indicate-supabase-backup
+          path: indicate-supabase-backup.zip
+          retention-days: 1
+          if-no-files-found: error
