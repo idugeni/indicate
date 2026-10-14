@@ -29,7 +29,7 @@ describe('Primary dashboard navigation', () => {
     expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'platform').map((area) => area.label)).toEqual(['Super Admin']);
     const groupedViews = PRIMARY_NAV_AREAS.flatMap((area) => area.views);
     expect(new Set(groupedViews).size).toBe(ALL_VIEWS.length);
-    expect(groupedViews).toEqual(expect.arrayContaining(ALL_VIEWS));
+    expect(groupedViews).toEqual(expect.arrayContaining([...ALL_VIEWS]));
   });
 
   it('retains permission gating for supporting views inside primary areas', () => {
