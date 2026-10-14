@@ -131,7 +131,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   },
   billing: {
     label: 'Billing', title: 'Billing & Plan', eyebrow: 'Commercial Control', group: 'system',
-    description: 'Status paket, aktivasi, dan kontrol langganan organisasi.',
+    description: 'Status paket pelanggan, aktivasi, dan kontrol langganan pada platform.',
     icon: CreditCard, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
   audit: {
