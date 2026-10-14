@@ -96,8 +96,8 @@ export function DashboardNavList({
 
   return (
     <div className="space-y-1">
-      {PRIMARY_NAV_AREAS.map((area) => {
-        const allowedViews = area.views.filter((candidate) => canAccessView(candidate, permissions));
+      {visibleAreas.map((area) => {
+        const allowedViews = area.views.filter((candidate) => canAccessViewInMode(candidate, permissions, navigationMode));
         if (allowedViews.length === 0) return null;
         const defaultView = allowedViews.includes(area.defaultView)
           ? area.defaultView
@@ -317,6 +317,7 @@ export function DashboardSidebar(props: {
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;
+  readonly navigationMode?: DashboardMode;
   readonly view: View;
   readonly onSelectView: (view: View) => void;
   readonly onRequestOrganizationSwitch: (organizationId: string) => void;
