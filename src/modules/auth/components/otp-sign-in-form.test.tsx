@@ -41,6 +41,9 @@ describe('Formulir masuk kode OTP', () => {
     fireEvent.change(screen.getByLabelText('Alamat email'), { target: { value: 'nama@wartanusantara.net' } });
     fireEvent.submit(screen.getByLabelText('Alamat email').closest('form') as HTMLFormElement);
     expect(await screen.findByText(/Kode 8 digit dikirim ke/)).toBeDefined();
+    expect(otpMock).toHaveBeenCalledWith('nama@wartanusantara.net', {
+      options: {},
+    });
     expect(screen.getByText('nama@wartanusantara.net')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Ganti email' })).toBeDefined();
   });
