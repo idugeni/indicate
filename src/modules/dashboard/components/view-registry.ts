@@ -18,6 +18,7 @@ import {
   Share2,
   ShieldAlert,
   Tags,
+  UserRound,
   Users,
 } from 'lucide-react';
 
@@ -31,6 +32,8 @@ export type IconComponent = ComponentType<{
 
 export type View =
   | 'dashboard'
+  | 'organization'
+  | 'profile'
   | 'configuration'
   | 'publishers'
   | 'editorial'
@@ -69,6 +72,16 @@ export interface ViewMetadata {
 export type ViewGroup = 'overview' | 'editorial' | 'publishing' | 'system';
 
 export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
+  organization: {
+    label: 'Organisasi', title: 'Organisasi', eyebrow: 'Tenant Identity', group: 'system',
+    description: 'Ringkasan organisasi yang sedang aktif. Pengaturan infrastruktur dan administrasi platform berada di Super Admin.',
+    icon: Building2,
+  },
+  profile: {
+    label: 'Profil Saya', title: 'Profil Saya', eyebrow: 'Personal Identity', group: 'system',
+    description: 'Kelola profil personal akun yang sedang login.',
+    icon: UserRound,
+  },
   dashboard: {
     label: 'Command Center', title: 'Command Center', eyebrow: 'Operational Intelligence', group: 'overview',
     description: 'Kesehatan jaringan, workload distribusi, exception, dan aktivitas terbaru.',
@@ -195,15 +208,15 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     id: 'organization',
     label: 'Organisasi',
     scope: 'organization',
-    defaultView: 'configuration',
-    views: ['configuration', 'settings', 'ads', 'audit', 'operations'],
+    defaultView: 'organization',
+    views: ['organization', 'profile'],
   },
   {
     id: 'super-admin',
     label: 'Super Admin',
     scope: 'platform',
     defaultView: 'customers',
-    views: ['customers', 'billing', 'content', 'ai', 'moderation'],
+    views: ['configuration', 'settings', 'ads', 'audit', 'operations', 'customers', 'billing', 'content', 'ai', 'moderation'],
   },
 ];
 
