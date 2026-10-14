@@ -1,9 +1,7 @@
-/** CSRF gate for cookie-authed mutations: SameSite=Lax keeps the OAuth callback working; fail-closed on cross-site/mismatched origin, unparsable values, and missing host as non-disclosing 404s. Header-getter core also serves Server Actions via `headers()`. */
+/** CSRF gate for cookie-authenticated mutations. Require same-origin Fetch Metadata when present; otherwise require an exact Origin or Referer host match. Missing origin signals fail closed. */
 export function denyCrossSiteHeaders(getHeader: (name: string) => string | null): boolean {
   const fetchSite = getHeader('sec-fetch-site');
-  if (fetchSite !== null) {
-    return fetchSite !== 'same-origin' && fetchSite !== 'same-site' && fetchSite !== 'none';
-  }
+  if (fetchSite !== null) return fetchSite !== 'same-origin';
 
   const host = getHeader('host')?.toLowerCase();
   if (host === undefined || host === '') return true;
@@ -26,7 +24,7 @@ export function denyCrossSiteHeaders(getHeader: (name: string) => string | null)
     }
   }
 
-  return false;
+  return true;
 }
 
 export function denyCrossSiteMutation(request: Request): boolean {

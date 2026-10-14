@@ -9,6 +9,7 @@ import { R2ObjectStorageAdapter } from '@/integrations/storage/r2-object-storage
 import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial } from '@/core/errors';
+import { isOwnedAvatarObjectKey } from './route-helpers';
 
 const querySchema = z.object({ ref: z.string().min(1).max(500) });
 
@@ -23,9 +24,13 @@ async function handleGET(request: Request) {
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const user = await authenticateDashboardUser(runtime.db, cookieStore, requestId);
   if (user === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  const objectKey = parsed.data.ref.slice('r2:'.length);
+  if (!isOwnedAvatarObjectKey(objectKey, user.localUserId)) {
+    return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+  }
   try {
     const storage = new R2ObjectStorageAdapter({ accountId: context.config.r2.accountId, bucketName: context.config.r2.bucketName, publicBucketName: context.config.r2.publicBucketName, accessKeyId: context.config.r2.accessKeyId, secretAccessKey: context.config.r2.secretAccessKey });
-    const authorization = await storage.authorizeExactGet(parsed.data.ref.slice('r2:'.length), context.config.r2.readTtlSeconds);
+    const authorization = await storage.authorizeExactGet(objectKey, context.config.r2.readTtlSeconds);
     return NextResponse.json({ url: authorization.url });
   } catch {
     return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
