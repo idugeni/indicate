@@ -1,5 +1,6 @@
 import type { DashboardSnapshot, RoleTier } from '@/modules/dashboard/models';
 import type {
+  DashboardMode,
   IconComponent as RegistryIconComponent,
   View,
   ViewGroup,
@@ -7,7 +8,7 @@ import type {
 } from '@/modules/dashboard/components/view-registry';
 
 export type { DashboardSnapshot };
-export type { View, ViewGroup, ViewMetadata };
+export type { DashboardMode, View, ViewGroup, ViewMetadata };
 export type IconComponent = RegistryIconComponent;
 
 /** Membership tier bound to `roles.tier`; `superadmin` is platform-org only (DB trigger guards it). */
