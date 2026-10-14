@@ -197,7 +197,7 @@ import { asStreamCapableAdapter } from '@/app/api/dashboard/ai/route-helpers';
 function streamRequest(): Request {
   return new Request('http://localhost/api/dashboard/ai', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', host: 'localhost' },
+    headers: { 'content-type': 'application/json', host: 'localhost', 'sec-fetch-site': 'same-origin' },
     body: JSON.stringify({
       organizationId: ORG,
       action: 'draft-article-stream',
@@ -296,7 +296,7 @@ describe('POST operator-plan', () => {
   it('returns a validated read-only plan without executing it', async () => {
     const response = await POST(new Request('http://localhost/api/dashboard/ai', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', host: 'localhost' },
+      headers: { 'content-type': 'application/json', host: 'localhost', 'sec-fetch-site': 'same-origin' },
       body: JSON.stringify({ organizationId: ORG, action: 'operator-plan', payload: { request: 'Ringkas kondisi dashboard' } }),
     }));
     expect(response.status).toBe(200);
@@ -313,7 +313,7 @@ describe('POST operator-execute', () => {
   it('dispatches a validated plan to the read-only executor', async () => {
     const response = await POST(new Request('http://localhost/api/dashboard/ai', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', host: 'localhost' },
+      headers: { 'content-type': 'application/json', host: 'localhost', 'sec-fetch-site': 'same-origin' },
       body: JSON.stringify({ organizationId: ORG, action: 'operator-execute', payload: { plan: { steps: [{ id: 'step_1', capabilityId: 'command-center.overview.read', arguments: {} }] } } }),
     }));
     expect(response.status).toBe(200);
@@ -323,7 +323,7 @@ describe('POST operator-execute', () => {
   it('rejects an unknown capability before dispatch', async () => {
     const response = await POST(new Request('http://localhost/api/dashboard/ai', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', host: 'localhost' },
+      headers: { 'content-type': 'application/json', host: 'localhost', 'sec-fetch-site': 'same-origin' },
       body: JSON.stringify({ organizationId: ORG, action: 'operator-execute', payload: { plan: { steps: [{ id: 'step_1', capabilityId: 'system.shell.execute', arguments: {} }] } } }),
     }));
     expect(response.status).toBe(400);
