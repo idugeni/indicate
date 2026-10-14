@@ -80,7 +80,7 @@ export function DashboardNavList({
       {PRIMARY_NAV_AREAS.map((area) => {
         const allowedViews = area.views.filter((candidate) => canAccessView(candidate, permissions));
         if (allowedViews.length === 0) return null;
-        const defaultView = allowedViews.includes(area.defaultView) ? area.defaultView : allowedViews[0];
+        const defaultView = allowedViews.includes(area.defaultView) ? area.defaultView : (allowedViews[0] ?? area.defaultView);
         const active = allowedViews.includes(view);
         const expanded = expandedArea === area.id;
         const Icon = VIEW_REGISTRY[defaultView].icon;
