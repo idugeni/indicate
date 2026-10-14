@@ -1,0 +1,67 @@
+name: INDICATE Supabase Backup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_DB_URL: ${{ secrets.DATABASE_DIRECT_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate configured database secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error::DATABASE_DIRECT_URL secret is empty or unavailable."
+            exit 1
+          fi
+
+      - name: Dump database roles
+        run: supabase db dump --db-url "$SUPABASE_DB_URL" --file roles.sql --role-only
+
+      - name: Dump database schema
+        run: supabase db dump --db-url "$SUPABASE_DB_URL" --file schema.sql
+
+      - name: Dump database data
+        run: supabase db dump --db-url "$SUPABASE_DB_URL" --file data.sql --data-only
+
+      - name: Package and validate ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s roles.sql
+          test -s schema.sql
+          test -s data.sql
+          mkdir -p indicate-supabase-backup
+          mv roles.sql schema.sql data.sql indicate-supabase-backup/
+          if [[ -d supabase/migrations ]]; then
+            cp -R supabase/migrations indicate-supabase-backup/migrations
+          fi
+          printf 'Project: INDICATE\nGenerated (UTC): %s\nFormat: Supabase CLI logical SQL backup\n' "$(date -u +%FT%TZ)" > indicate-supabase-backup/README.txt
+          (cd indicate-supabase-backup && sha256sum roles.sql schema.sql data.sql > SHA256SUMS)
+          zip -qr indicate-supabase-backup.zip indicate-supabase-backup
+          unzip -t indicate-supabase-backup.zip
+          sha256sum indicate-supabase-backup.zip
+
+      - name: Upload ZIP as private workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: indicate-supabase-backup
+          path: indicate-supabase-backup.zip
+          retention-days: 1
+          if-no-files-found: error
