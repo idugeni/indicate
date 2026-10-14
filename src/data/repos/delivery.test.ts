@@ -567,6 +567,7 @@ describe('readSite projection', () => {
     const item = site?.articles[0];
     expect(item).toBeDefined();
     expect(item).toHaveProperty('body', 'Isi penuh artikel untuk halaman detail.');
+    expect(item?.description).toBe('Deskripsi kustom yang sudah final dan lengkap dari redaksi untuk kebutuhan metadata SEO.');
     expect(item).toHaveProperty('gallery');
     expect(selectLog).toHaveLength(7);
     expectTypeOf(item).toEqualTypeOf<ArticleListItem | undefined>();
