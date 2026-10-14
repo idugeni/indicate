@@ -33,6 +33,35 @@ describe('CompositeSnapshotStore fanout', () => {
     expect(await empty.read('production', 9)).toBeNull();
   });
 
+  it('backfills earlier cache layers only after a later layer returns a hit', async () => {
+    const model = { revision: 9 };
+    const writes: unknown[][] = [];
+    const first = fakeStore({
+      name: 'first',
+      read: async () => null,
+      write: async (...args: unknown[]) => { writes.push(args); },
+    });
+    const last = fakeStore({ name: 'last', read: async () => model });
+    const composite = new CompositeSnapshotStore([first, last]);
+
+    const hit = await composite.read('production', 9);
+    expect(hit).toBe(model);
+    expect(writes).toEqual([]);
+
+    await composite.backfill('production', 9, hit, 3600);
+    expect(writes).toEqual([['production', 9, model, 3600]]);
+
+    const directWrites: unknown[][] = [];
+    const firstHit = new CompositeSnapshotStore([
+      fakeStore({ name: 'first-hit', read: async () => model, write: async (...args: unknown[]) => { directWrites.push(args); } }),
+      last,
+    ]);
+    const directHit = await firstHit.read('production', 9);
+    await firstHit.backfill('production', 9, directHit, 3600);
+    expect(directWrites).toEqual([]);
+    expect(writes).toEqual([['production', 9, model, 3600]]);
+  });
+
   it('write dan touch mencapai semua lapis secara best-effort', async () => {
     const rejecting = fakeStore({
       name: 'rejecting',
