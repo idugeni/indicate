@@ -154,7 +154,10 @@ export function DashboardWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const crossOrg = useMemo(() => organizations.some((organization) => (organization.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin)), [organizations]);
+  const crossOrg = useMemo(
+    () => navigationMode === 'platform' && organizations.some((organization) => (organization.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin)),
+    [navigationMode, organizations],
+  );
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
