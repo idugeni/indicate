@@ -5,19 +5,19 @@
 Repository: `idugeni/indicate`
 Base reviewed: `main` at `8c54004bb482ebcb274a2f953a1dcd40cf700d00`.
 
-This is a source-level audit. It does not claim authenticated production/browser verification. The dashboard currently registers 19 views in `src/modules/dashboard/components/view-registry.ts`; the registry groups them into four navigation groups. The dashboard shell reads the selected view from the URL, and both the workspace and view panel call `canAccessView`. Server API authorization remains an independent boundary.
+This is a source-level audit. It does not claim authenticated production/browser verification. The dashboard currently registers 19 views in `src/modules/dashboard/components/view-registry.ts`. Tenant navigation must expose exactly two first-level areas, while platform control-plane views must remain separate and grant-gated. The dashboard shell reads the selected view from the URL, and both the workspace and view panel call `canAccessView`. Server API authorization remains an independent boundary.
 
 ## Target navigation
 
-Keep five primary areas visible:
+Tenant-facing navigation has exactly two first-level areas:
 
-1. **Dashboard** — `dashboard` (analytics remains a supporting view).
-2. **Artikel** — `articles` as the listing entry point; `editorial`, `taxonomy`, and `publishers` are supporting editorial views.
-3. **Media** — `media`.
-4. **Publikasi** — `publishing`; `published` and eligible ad controls are supporting views.
-5. **Pengaturan Organisasi** — `configuration`; access, billing, audit, operations, moderation, customer operations, public web content, and AI controls remain supporting views only where authorization permits.
+1. **Berita** — dashboard analytics, article listing/editorial work, global taxonomy, publishers, media, distribution, and live publication results.
+2. **Organisasi** — organization infrastructure, access/integrations, site monetization, audit, operations, and moderation views where the active actor has the required organization permission.
 
-The primary navigation must not delete or silently disable existing workflows. Supporting views should remain discoverable as secondary navigation and direct URLs must continue to be permission-checked.
+**Super Admin** is a separate platform area, not a third tenant area. Customer operations and platform billing are shown only when their platform grant is present. Public web content and AI control-plane views retain their specific grants; AI visibility accepts the same platform grants as the AI service. UI visibility remains defense in depth and does not replace API/repository/RLS checks.
+
+Supporting views remain nested under their owning area; no registered workflow is removed. Collapsed navigation displays area entry points rather than exposing every supporting view as a separate first-level item.
+
 
 ## Source findings
 
@@ -42,13 +42,13 @@ Permissions, not role labels, are the authorization source. UI visibility is def
 
 ## Acceptance criteria
 
-- Five primary areas are the first-level navigation, with concise labels.
-- Supporting views remain available through secondary navigation where `canAccessView` allows them.
+- Tenant users see exactly two first-level areas: Berita and Organisasi; Super Admin controls are separated into a platform-only area.
+- Supporting views remain nested beneath their owning area and are permission-gated by `canAccessView`.
 - Restricted views are hidden from navigation and remain blocked when their URL is entered directly.
 - Organization switching clears stale payload/error state and does not leak data across tenants.
 - Cookie login and access-key login remain functional.
 - Global categories/tags and organization-owned article metadata are unchanged.
-- Existing editorial, media, distribution, live-results, billing, audit, and platform workflows remain reachable to authorized actors.
+- Existing editorial, media, distribution, live-results, audit, and platform workflows remain reachable to authorized actors; platform billing and AI visibility match the grants accepted by their services.
 - Relevant registry/sidebar/workspace tests pass, followed by typecheck, lint, test suite, build, and PR CI.
 - No production data/schema mutation and no merge until evidence supports it.
 
