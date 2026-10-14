@@ -567,12 +567,47 @@ describe('readSite projection', () => {
     const item = site?.articles[0];
     expect(item).toBeDefined();
     expect(item).toHaveProperty('body', 'Isi penuh artikel untuk halaman detail.');
+    expect(item?.description).toBe('Deskripsi kustom yang sudah final dan lengkap dari redaksi untuk kebutuhan metadata SEO.');
     expect(item).toHaveProperty('gallery');
     expect(selectLog).toHaveLength(7);
     expectTypeOf(item).toEqualTypeOf<ArticleListItem | undefined>();
     if (item !== undefined && isNetworkArticle(item)) {
       expectTypeOf(item).toEqualTypeOf<NetworkArticle>();
     }
+  });
+
+  it('detail SEO falls back to the full article body when custom description and excerpt are incomplete', async () => {
+    const fullBody = 'Rumah Tahanan Negara Wonosobo melaksanakan kegiatan pembinaan secara rutin untuk memastikan pelayanan dan keamanan berjalan dengan baik.';
+    const incomplete = 'WONOSOBO – Rumah Tahanan Negara Kelas IIB melaksanakan kegiatan untuk meningkatkan';
+    const { repository } = harness({
+      articles: [articleRow({
+        customDescription: incomplete,
+        excerpt: incomplete,
+        bodyExcerpt: incomplete,
+      })],
+      body: [{ body: fullBody }],
+    });
+
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+
+    expect(site?.articles[0]?.description).toBe(fullBody);
+  });
+
+  it('detail SEO preserves a complete excerpt when the custom description is incomplete', async () => {
+    const completeExcerpt = 'Rumah Tahanan Negara Wonosobo melaksanakan pembinaan rutin untuk menjaga pelayanan dan keamanan warga binaan.';
+    const incomplete = 'WONOSOBO – Rumah Tahanan Negara Kelas IIB melaksanakan kegiatan untuk meningkatkan';
+    const { repository } = harness({
+      articles: [articleRow({
+        customDescription: incomplete,
+        excerpt: completeExcerpt,
+        bodyExcerpt: incomplete,
+      })],
+      body: [{ body: 'Isi penuh artikel yang tidak boleh menggantikan excerpt lengkap.' }],
+    });
+
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, { articleSlug: 'berita-utama' });
+
+    expect(site?.articles[0]?.description).toBe(completeExcerpt);
   });
 
   it('detail artikel kaya membawa bodyJson dan deskripsi dari teks terstruktur', async () => {
