@@ -188,27 +188,40 @@ export interface PrimaryNavArea {
   readonly label: string;
   readonly scope: DashboardMode;
   readonly defaultView: View;
+  /** Views that appear as direct navigation entries; other views remain available to contextual workflows. */
+  readonly navigationViews?: readonly View[];
+  /** Views authorized for this workspace mode, including contextual workflows. */
   readonly views: readonly View[];
 }
 
 /**
- * Tenant users have exactly two top-level areas. Platform control-plane views
- * are kept in a separate area and remain hidden unless their platform grants
- * are present. This is navigation only; APIs enforce authorization separately.
+ * Tenant users see exactly three top-level entries. Supporting views remain
+ * available to contextual workflows but are intentionally omitted from primary
+ * navigation and the command palette. Platform control-plane views stay separate.
  */
 export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
   {
-    id: 'news',
-    label: 'Berita',
+    id: 'dashboard',
+    label: 'Dashboard',
+    scope: 'organization',
+    defaultView: 'dashboard',
+    navigationViews: ['dashboard'],
+    views: ['dashboard', 'analytics'],
+  },
+  {
+    id: 'articles',
+    label: 'Artikel',
     scope: 'organization',
     defaultView: 'articles',
-    views: ['dashboard', 'analytics', 'articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published'],
+    navigationViews: ['articles'],
+    views: ['articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published'],
   },
   {
     id: 'organization',
     label: 'Organisasi',
     scope: 'organization',
     defaultView: 'organization',
+    navigationViews: ['organization'],
     views: ['organization', 'profile'],
   },
   {

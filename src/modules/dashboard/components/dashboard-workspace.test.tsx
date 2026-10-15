@@ -93,12 +93,15 @@ afterEach(() => {
 });
 
 describe('Dashboard workspace login modes', () => {
-  it('shows only Berita and Organisasi navigation for an organization login', () => {
+  it('shows only Dashboard, Artikel, and Organisasi navigation for an organization login', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
-    expect(screen.getAllByRole('button', { name: 'Berita' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: 'Organisasi' }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Super Admin' })).toBeNull();
+    for (const label of ['Dashboard', 'Artikel', 'Organisasi']) {
+      expect(screen.getAllByRole('button', { name: label }).length).toBeGreaterThan(0);
+    }
+    for (const hiddenLabel of ['Berita', 'Compose', 'Media Library', 'Live Results', 'Super Admin']) {
+      expect(screen.queryByRole('button', { name: hiddenLabel })).toBeNull();
+    }
   });
 
   it('shows only Super Admin navigation for a platform Super Admin login', () => {
@@ -215,11 +218,11 @@ describe('Dashboard workspace', () => {
     expect(screen.getByRole('separator', { name: 'Bentangkan sidebar' })).toBeDefined();
   });
 
-  it('switches the title when an editorial module is selected', async () => {
+  it('opens the editorial library from the tenant Artikel navigation', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
-    fireEvent.click(screen.getByRole('button', { name: 'Compose' }));
-    expect(await screen.findByText('Artikel baru', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Artikel' })[0]!);
+    expect(await screen.findByRole('region', { name: 'Content Library' }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 

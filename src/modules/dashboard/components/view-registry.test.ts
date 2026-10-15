@@ -39,10 +39,20 @@ describe('Authenticated dashboard mode boundaries', () => {
 
 describe('Primary dashboard navigation', () => {
   it('exposes exactly two tenant areas and separates platform control-plane navigation', () => {
-    expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'organization').map((area) => area.label)).toEqual([
-      'Berita',
+    const tenantAreas = PRIMARY_NAV_AREAS.filter((area) => area.scope === 'organization');
+    expect(tenantAreas.map((area) => area.label)).toEqual([
+      'Dashboard',
+      'Artikel',
       'Organisasi',
     ]);
+    expect(tenantAreas.map((area) => area.navigationViews)).toEqual([
+      ['dashboard'],
+      ['articles'],
+      ['organization'],
+    ]);
+    expect(PRIMARY_NAV_AREAS.find((area) => area.id === 'articles')?.views).toEqual(
+      expect.arrayContaining(['articles', 'editorial', 'media', 'taxonomy', 'publishing', 'published']),
+    );
     expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'platform').map((area) => area.label)).toEqual(['Super Admin']);
     for (const scope of ['organization', 'platform'] as const) {
       const scopedViews = PRIMARY_NAV_AREAS.filter((area) => area.scope === scope).flatMap((area) => area.views);

@@ -42,7 +42,7 @@ function viewAction(view: View, group: string): CommandAction {
  */
 function buildActions(permissions: ReadonlySet<string>, navigationMode: DashboardMode): readonly CommandAction[] {
   return [
-    ...PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode).flatMap((area) => area.views.filter((view) => canAccessViewInMode(view, permissions, navigationMode)).map((view) => viewAction(view, area.label))),
+    ...PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode).flatMap((area) => (area.navigationViews ?? area.views).filter((view) => canAccessViewInMode(view, permissions, navigationMode)).map((view) => viewAction(view, area.label))),
     AUTH_ACTION,
   ];
 }

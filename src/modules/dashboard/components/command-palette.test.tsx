@@ -53,9 +53,14 @@ afterEach(() => {
 });
 
 describe('Palet perintah', () => {
-  it('membuka dialog pencarian dari tombol pemicu', async () => {
+  it('membuka dialog dengan hanya tiga perintah tenant tingkat atas', async () => {
     await openPalette(ALL_PERMISSIONS);
-    expect((await screen.findAllByText('Command Center')).length).toBeGreaterThan(0);
+    expect(await screen.findByText('Dashboard')).toBeDefined();
+    expect(screen.getByText('Artikel')).toBeDefined();
+    expect(screen.getAllByText('Organisasi').length).toBeGreaterThan(0);
+    for (const label of ['Compose', 'Taxonomy', 'Media Library', 'Live Results', 'Distribution Control']) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
   });
 
   it('menyaring perintah sesuai kata kunci', async () => {
@@ -81,7 +86,7 @@ describe('Palet perintah', () => {
 
   it('menyembunyikan rute yang tidak diizinkan, sama seperti sidebar', async () => {
     await openPalette(new Set<string>());
-    expect((await screen.findAllByText('Command Center')).length).toBeGreaterThan(0);
+    expect(await screen.findByText('Dashboard')).toBeDefined();
     expect(screen.queryByText('Billing')).toBe(null);
     expect(screen.queryByText('Audit')).toBe(null);
     expect(screen.queryByText('Customers')).toBe(null);
