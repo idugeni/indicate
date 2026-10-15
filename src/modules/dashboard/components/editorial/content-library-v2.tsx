@@ -166,7 +166,6 @@ function isHttpUrl(value: string): boolean {
 function publishedUrlsForArticle(
   article: Row,
   model: ContentLibraryModel,
-  siteHostnames: ReadonlyMap<string, string>,
 ): readonly string[] {
   const directUrls = article.publishedUrls ?? [];
   const assignmentUrls = (model.articleSites ?? [])
@@ -175,11 +174,7 @@ function publishedUrlsForArticle(
       assignment.state === 'published' &&
       assignment.active !== false,
     )
-    .map((assignment) => {
-      if (assignment.publishedUrl) return assignment.publishedUrl;
-      const hostname = siteHostnames.get(assignment.siteId);
-      return hostname ? `https://${hostname}/${article.slug}` : null;
-    })
+    .map((assignment) => assignment.publishedUrl ?? null)
     .filter((url): url is string => url !== null);
   const bridgeUrls = (model.bridgePublished ?? [])
     .filter((bridge) => bridge.articleId === article.id)
@@ -404,7 +399,7 @@ export function ContentLibraryV2({
           {visible.map((row) => {
             const meta = resolveStatus(row.status);
             const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames);
-            const publishedLinks = publishedUrlsForArticle(row, model, siteHostnames);
+            const publishedLinks = publishedUrlsForArticle(row, model);
             const isBusy = busy.includes(row.id);
             const transition = row.status === 'archived' ? 'article.restore' : 'article.archive';
             const statusTone = publication.isPublished ? STATUS_BADGE_TONE.ok : STATUS_BADGE_TONE[meta.tone];
@@ -464,7 +459,7 @@ export function ContentLibraryV2({
               {visible.map((row) => {
                 const meta = resolveStatus(row.status);
                 const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames);
-                const publishedLinks = publishedUrlsForArticle(row, model, siteHostnames);
+                const publishedLinks = publishedUrlsForArticle(row, model);
                 const isBusy = busy.includes(row.id);
                 const transition =
                   row.status === 'archived' ? 'article.restore' : 'article.archive';
