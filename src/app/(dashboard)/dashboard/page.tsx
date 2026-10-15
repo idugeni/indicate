@@ -196,7 +196,7 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
       avatarUrl={resolved.localUser.avatarUrl ?? resolved.avatarUrl}
       organizations={organizations}
       initialDashboard={initialDashboard}
-      navigationMode="organization"
+      navigationMode={isPlatformSuperAdmin ? 'platform' : 'organization'}
     />
   );
 }
