@@ -93,12 +93,15 @@ afterEach(() => {
 });
 
 describe('Dashboard workspace login modes', () => {
-  it('shows only Berita and Organisasi navigation for an organization login', () => {
+  it('shows only Dashboard, Artikel, and Organisasi navigation for an organization login', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
-    expect(screen.getAllByRole('button', { name: 'Berita' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: 'Organisasi' }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Super Admin' })).toBeNull();
+    for (const label of ['Dashboard', 'Artikel', 'Organisasi']) {
+      expect(screen.getAllByRole('button', { name: label }).length).toBeGreaterThan(0);
+    }
+    for (const hiddenLabel of ['Berita', 'Compose', 'Media Library', 'Live Results', 'Super Admin']) {
+      expect(screen.queryByRole('button', { name: hiddenLabel })).toBeNull();
+    }
   });
 
   it('shows only Super Admin navigation for a platform Super Admin login', () => {
