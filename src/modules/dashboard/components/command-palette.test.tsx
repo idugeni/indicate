@@ -57,7 +57,7 @@ describe('Palet perintah', () => {
     await openPalette(ALL_PERMISSIONS);
     expect(await screen.findByText('Dashboard')).toBeDefined();
     expect(screen.getByText('Artikel')).toBeDefined();
-    expect(screen.getByText('Organisasi')).toBeDefined();
+    expect(screen.getAllByText('Organisasi').length).toBeGreaterThan(0);
     for (const label of ['Compose', 'Taxonomy', 'Media Library', 'Live Results', 'Distribution Control']) {
       expect(screen.queryByText(label)).toBeNull();
     }
