@@ -1,7 +1,8 @@
 'use client';
 
-import { memo, useId, useState } from 'react';
+import { memo, useEffect, useId, useState } from 'react';
 import Image from 'next/image';
+import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,8 +10,12 @@ import { DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar
 import { OrganizationSwitcher } from '@/modules/dashboard/components/organization-switcher';
 import { SidebarResizeRail } from '@/modules/dashboard/components/shared/sidebar-resize-rail';
 import { SignOutDialog } from '@/modules/dashboard/components/sign-out-dialog';
-import { VIEW_REGISTRY, visibleNavGroups } from '@/modules/dashboard/components/view-registry';
-import type { OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
+import {
+  canAccessViewInMode,
+  PRIMARY_NAV_AREAS,
+  VIEW_REGISTRY,
+} from '@/modules/dashboard/components/view-registry';
+import type { DashboardMode, OrganizationOption, View } from '@/modules/dashboard/components/dashboard-types';
 import { AppTooltip } from '@/ui/app-tooltip';
 import { cn } from '@/ui/cn';
 
@@ -18,96 +23,150 @@ const SIDEBAR_WIDTH = 272;
 const SIDEBAR_COLLAPSED_WIDTH = 68;
 
 /**
- * Render the sidebar navigation items, grouped and permission gated.
+ * Render two tenant-facing areas and a separate grant-gated Super Admin area.
+ * Supporting views remain nested under their owning area.
  *
  * @param props.view - Active view, highlighted with `aria-current`.
  * @param props.permissions - Union of permissions for the active organization.
- * @param props.collapsed - Hides group titles and labels, switching items to icon buttons with tooltips.
- * @param props.onSelect - Receives the picked view.
+ * @param props.collapsed - Uses icon buttons with tooltips for compact navigation.
+ * @param props.onSelect - Receives the selected view.
  */
 export function DashboardNavList({
   view,
   permissions,
   collapsed = false,
   onSelect,
+  navigationMode = 'organization',
 }: {
   readonly view: View;
+  readonly navigationMode?: DashboardMode;
   readonly permissions: ReadonlySet<string>;
   readonly collapsed?: boolean;
   readonly onSelect: (view: View) => void;
 }) {
-  return (
-    <>
-      {visibleNavGroups(permissions).map((group, groupIndex) => {
-        return (
-        <div
-          key={group.id}
-          className={`animate-in fade-in duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${collapsed ? 'space-y-1 py-1' : 'space-y-1 px-1 py-1'}`}
-        >
-          {collapsed ? (
-            groupIndex > 0 ? (
-              <div className="mx-4 border-t border-white/[0.07]" aria-hidden="true" />
-            ) : null
-          ) : (
-            <h3 className="px-2 pb-1 font-sans text-[11px] font-medium uppercase tracking-wider text-[#68738a]">
-              {group.title}
-            </h3>
-          )}
-          <div className="space-y-0.5">
-            {group.views.map((navView) => {
-              const { label, icon: Icon } = VIEW_REGISTRY[navView];
-              const isActive = view === navView;
+  const visibleAreas = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode);
+  const activeArea = visibleAreas.find((area) => area.views.includes(view));
+  const [expandedArea, setExpandedArea] = useState<string | null>(
+    activeArea !== undefined && activeArea.defaultView !== view ? activeArea.id : null,
+  );
 
-              if (collapsed) {
-                return (
-                  <AppTooltip key={navView} label={label} side="right">
+  useEffect(() => {
+    const selectedArea = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode).find((area) => area.views.includes(view));
+    void Promise.resolve().then(() => {
+      setExpandedArea(
+        selectedArea !== undefined && selectedArea.defaultView !== view
+          ? selectedArea.id
+          : null,
+      );
+    });
+  }, [view, navigationMode]);
+
+  if (collapsed) {
+    return (
+      <>
+        {visibleAreas.map((area) => {
+          const allowedViews = area.views.filter((candidate) => canAccessViewInMode(candidate, permissions, navigationMode));
+          if (allowedViews.length === 0) return null;
+          const defaultView = allowedViews.includes(area.defaultView)
+            ? area.defaultView
+            : (allowedViews[0] ?? area.defaultView);
+          const Icon = VIEW_REGISTRY[defaultView].icon;
+          return (
+            <AppTooltip key={area.id} label={area.label} side="right">
+              <Button
+                type="button"
+                variant="ghost"
+                aria-current={view === defaultView ? 'page' : undefined}
+                aria-label={area.label}
+                onClick={() => onSelect(defaultView)}
+                className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
+                  area.views.includes(view)
+                    ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
+                    : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 flex-none text-paper-faint" aria-hidden="true" />
+              </Button>
+            </AppTooltip>
+          );
+        })}
+      </>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {visibleAreas.map((area) => {
+        const allowedViews = area.views.filter((candidate) => canAccessViewInMode(candidate, permissions, navigationMode));
+        if (allowedViews.length === 0) return null;
+        const defaultView = allowedViews.includes(area.defaultView)
+          ? area.defaultView
+          : (allowedViews[0] ?? area.defaultView);
+        const active = allowedViews.includes(view);
+        const expanded = expandedArea === area.id;
+        const Icon = VIEW_REGISTRY[defaultView].icon;
+        const children = allowedViews.filter((candidate) => candidate !== defaultView);
+
+        return (
+          <section key={area.id} className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                aria-current={view === defaultView ? 'page' : undefined}
+                onClick={() => onSelect(defaultView)}
+                className={`flex min-w-0 flex-1 items-center justify-start gap-2.5 rounded-md px-2.5 py-2 text-left font-sans text-[13px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${active ? 'bg-white/[0.05] text-paper' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
+              >
+                <Icon className="h-4 w-4 flex-none text-paper-faint" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate">{area.label}</span>
+              </Button>
+              {children.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`${expanded ? 'Tutup' : 'Buka'} submenu ${area.label}`}
+                  aria-expanded={expanded}
+                  onClick={() =>
+                    setExpandedArea((current) => (current === area.id ? null : area.id))
+                  }
+                  className="h-8 w-8 flex-none text-paper-faint hover:text-paper"
+                >
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                    aria-hidden="true"
+                  />
+                </Button>
+              ) : null}
+            </div>
+            {expanded && children.length > 0 ? (
+              <div className="ml-4 space-y-0.5 border-l border-white/[0.08] pl-2">
+                {children.map((navView) => {
+                  const { label, icon: ChildIcon } = VIEW_REGISTRY[navView];
+                  const isActive = view === navView;
+                  return (
                     <Button
+                      key={navView}
                       type="button"
                       variant="ghost"
                       aria-current={isActive ? 'page' : undefined}
-                      aria-label={label}
                       onClick={() => onSelect(navView)}
-                      className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                        isActive
-                          ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
-                          : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
-                      }`}
+                      className={`flex w-full items-center justify-start gap-2 rounded-md px-2 py-1.5 text-left font-sans text-[12px] font-normal transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${isActive ? 'bg-white/[0.05] font-medium text-paper' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
                     >
-                      <Icon
-                        className={`h-4 w-4 flex-none ${isActive ? 'text-white' : 'text-paper-faint'}`}
+                      <ChildIcon
+                        className="h-3.5 w-3.5 flex-none text-paper-faint"
                         aria-hidden="true"
                       />
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
                     </Button>
-                  </AppTooltip>
-                );
-              }
-
-              return (
-                <Button
-                  key={navView}
-                  type="button"
-                  variant="ghost"
-                  aria-current={isActive ? 'page' : undefined}
-                  onClick={() => onSelect(navView)}
-                  className={`flex w-full items-center justify-start gap-2.5 rounded-md px-2.5 py-1.5 text-left font-sans text-[13px] font-normal transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
-                    isActive
-                      ? 'bg-white/[0.05] font-medium text-paper'
-                      : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'
-                  }`}
-                >
-                  <Icon
-                    className={`h-4 w-4 flex-none ${isActive ? 'text-paper' : 'text-paper-faint'}`}
-                    aria-hidden="true"
-                  />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                </Button>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -127,6 +186,7 @@ const SidebarBody = memo(function SidebarBody({
   organizations,
   activeOrganization,
   permissions,
+  navigationMode = 'organization',
   view,
   collapsed,
   onSelectView,
@@ -139,6 +199,7 @@ const SidebarBody = memo(function SidebarBody({
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;
+  readonly navigationMode?: DashboardMode;
   readonly view: View;
   readonly collapsed: boolean;
   readonly onSelectView: (view: View) => void;
@@ -203,6 +264,7 @@ const SidebarBody = memo(function SidebarBody({
         <DashboardNavList
           view={view}
           permissions={permissions}
+          navigationMode={navigationMode}
           collapsed={collapsed}
           onSelect={onSelectView}
         />
@@ -213,7 +275,7 @@ const SidebarBody = memo(function SidebarBody({
           <button
             type="button"
             aria-label="Buka profil saya"
-            onClick={() => onSelectView('settings')}
+            onClick={() => onSelectView(navigationMode === 'platform' ? 'settings' : 'profile')}
             className={cn(
               'rounded-md text-left transition-colors duration-150 hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60',
               collapsed ? 'p-1' : 'flex min-w-0 flex-1 items-center gap-2.5 p-1.5',
@@ -255,6 +317,7 @@ export function DashboardSidebar(props: {
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;
+  readonly navigationMode?: DashboardMode;
   readonly view: View;
   readonly onSelectView: (view: View) => void;
   readonly onRequestOrganizationSwitch: (organizationId: string) => void;

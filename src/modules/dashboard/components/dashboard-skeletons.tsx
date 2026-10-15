@@ -331,6 +331,8 @@ export function DashboardMediaSkeleton() {
 }
 
 const VIEW_LOADING_LABELS: Readonly<Record<View, string>> = {
+  organization: 'Memuat ringkasan organisasi',
+  profile: 'Memuat profil personal',
   dashboard: 'Memuat Command Center',
   configuration: 'Memuat konfigurasi infrastruktur',
   publishers: 'Memuat jaringan publisher',

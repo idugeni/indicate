@@ -92,6 +92,43 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('Dashboard workspace login modes', () => {
+  it('shows only Berita and Organisasi navigation for an organization login', () => {
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+
+    expect(screen.getAllByRole('button', { name: 'Berita' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Organisasi' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Super Admin' })).toBeNull();
+  });
+
+  it('shows only Super Admin navigation for a platform Super Admin login', () => {
+    initialView = 'customers';
+    const platformOrganizations = [{
+      id: 'org-platform',
+      name: 'Pengelola Platform',
+      role: 'superadmin',
+      permissions: [
+        INTEGRATIONS_PERMISSIONS.superAdmin,
+        INTEGRATIONS_PERMISSIONS.customerAdmin,
+        INTEGRATIONS_PERMISSIONS.aiManage,
+        INTEGRATIONS_PERMISSIONS.contentManage,
+      ],
+    }] as never;
+
+    render(
+      <DashboardWorkspace
+        displayName="Super Admin"
+        organizations={platformOrganizations}
+        navigationMode="platform"
+      />,
+    );
+
+    expect(screen.getAllByRole('button', { name: 'Super Admin' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Berita' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Organisasi' })).toBeNull();
+  });
+});
+
 describe('Dashboard workspace', () => {
   it('blocks direct URL access to a restricted V2 view before mounting its data-owning panel', async () => {
     initialView = 'customers';
@@ -101,7 +138,7 @@ describe('Dashboard workspace', () => {
 
     expect(await screen.findByRole('heading', { name: 'Akses tidak tersedia' })).toBeDefined();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=customers'))).toBe(false);
-    expect(screen.getByRole('button', { name: 'Kembali ke Command Center' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Kembali ke Dashboard' })).toBeDefined();
   });
 
   it.each(['articles', 'published'] as const)(
@@ -117,7 +154,7 @@ describe('Dashboard workspace', () => {
         return { ok: true, json: async () => ({ articles: [], total: 0, articlesNextCursor: null }) };
       });
       vi.stubGlobal('fetch', fetchMock);
-      render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} />);
+      render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} navigationMode="platform" />);
 
       await waitFor(() => {
         expect(fetchMock.mock.calls.some(([url]) => {
@@ -143,7 +180,7 @@ describe('Dashboard workspace', () => {
       return { ok: true, json: async () => ({ articles: [], total: 0, articlesNextCursor: null }) };
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} />);
+    render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} navigationMode="platform" />);
 
     await waitFor(() => {
       const articleRequests = fetchMock.mock.calls
@@ -229,7 +266,7 @@ describe('Dashboard workspace', () => {
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} navigationMode="platform" />);
 
     expect(await screen.findByRole('heading', { name: 'Network Infrastructure', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     act(() => setViewExternal?.('publishers'));
@@ -383,7 +420,7 @@ describe('Dashboard workspace', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'audit';
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} navigationMode="platform" />);
     await screen.findByText('article.create', {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     fireEvent.click(await screen.findByRole('button', { name: 'Muat riwayat lebih lama' }, { timeout: LAZY_MODULE_TIMEOUT_MS }));
     await waitFor(() => expect(calls.some((url) => url.includes('cursor=cursor-1'))).toBe(true), { timeout: LAZY_MODULE_TIMEOUT_MS });

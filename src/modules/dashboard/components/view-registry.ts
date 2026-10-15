@@ -18,6 +18,7 @@ import {
   Share2,
   ShieldAlert,
   Tags,
+  UserRound,
   Users,
 } from 'lucide-react';
 
@@ -31,6 +32,8 @@ export type IconComponent = ComponentType<{
 
 export type View =
   | 'dashboard'
+  | 'organization'
+  | 'profile'
   | 'configuration'
   | 'publishers'
   | 'editorial'
@@ -69,6 +72,16 @@ export interface ViewMetadata {
 export type ViewGroup = 'overview' | 'editorial' | 'publishing' | 'system';
 
 export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
+  organization: {
+    label: 'Organisasi', title: 'Organisasi', eyebrow: 'Tenant Identity', group: 'system',
+    description: 'Ringkasan organisasi yang sedang aktif. Pengaturan infrastruktur dan administrasi platform berada di Super Admin.',
+    icon: Building2,
+  },
+  profile: {
+    label: 'Profil Saya', title: 'Profil Saya', eyebrow: 'Personal Identity', group: 'system',
+    description: 'Kelola profil personal akun yang sedang login.',
+    icon: UserRound,
+  },
   dashboard: {
     label: 'Command Center', title: 'Command Center', eyebrow: 'Operational Intelligence', group: 'overview',
     description: 'Kesehatan jaringan, workload distribusi, exception, dan aktivitas terbaru.',
@@ -131,8 +144,8 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   },
   billing: {
     label: 'Billing', title: 'Billing & Plan', eyebrow: 'Commercial Control', group: 'system',
-    description: 'Status paket, aktivasi, dan kontrol langganan organisasi.',
-    icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead,
+    description: 'Status paket pelanggan, aktivasi, dan kontrol langganan pada platform.',
+    icon: CreditCard, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
   audit: {
     label: 'Audit', title: 'Audit & Security', eyebrow: 'Governance', group: 'system',
@@ -147,7 +160,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   moderation: {
     label: 'Moderation', title: 'Trust & Moderation', eyebrow: 'Safety Operations', group: 'system',
     description: 'Tangani laporan konten dan permintaan data pengguna.',
-    icon: Flag, requiredPermission: DASHBOARD_PERMISSIONS.auditRead,
+    icon: Flag, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
   customers: {
     label: 'Customers', title: 'Customer Operations', eyebrow: 'Platform Control', group: 'system',
@@ -162,12 +175,50 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   ai: {
     label: 'AI Control', title: 'AI Control Center', eyebrow: 'Intelligence Layer', group: 'system',
     description: 'Kelola kredensial, routing, dan konfigurasi asisten AI.',
-    icon: Bot, requiredPermission: INTEGRATIONS_PERMISSIONS.aiManage,
+    icon: Bot, requiredAnyPermission: [INTEGRATIONS_PERMISSIONS.aiManage, INTEGRATIONS_PERMISSIONS.superAdmin, INTEGRATIONS_PERMISSIONS.customerAdmin],
   },
 };
 
 export const ALL_VIEWS = Object.keys(VIEW_REGISTRY) as readonly View[];
 
+export type DashboardMode = 'organization' | 'platform';
+
+export interface PrimaryNavArea {
+  readonly id: string;
+  readonly label: string;
+  readonly scope: DashboardMode;
+  readonly defaultView: View;
+  readonly views: readonly View[];
+}
+
+/**
+ * Tenant users have exactly two top-level areas. Platform control-plane views
+ * are kept in a separate area and remain hidden unless their platform grants
+ * are present. This is navigation only; APIs enforce authorization separately.
+ */
+export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
+  {
+    id: 'news',
+    label: 'Berita',
+    scope: 'organization',
+    defaultView: 'articles',
+    views: ['dashboard', 'analytics', 'articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published'],
+  },
+  {
+    id: 'organization',
+    label: 'Organisasi',
+    scope: 'organization',
+    defaultView: 'organization',
+    views: ['organization', 'profile'],
+  },
+  {
+    id: 'super-admin',
+    label: 'Super Admin',
+    scope: 'platform',
+    defaultView: 'customers',
+    views: ['dashboard', 'analytics', 'articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published', 'configuration', 'settings', 'ads', 'audit', 'operations', 'customers', 'billing', 'content', 'ai', 'moderation'],
+  },
+];
 
 const GROUP_TITLES: Readonly<Record<ViewGroup, string>> = {
   overview: 'Command Center',
@@ -192,6 +243,17 @@ export function canAccessView(view: View, permissions: ReadonlySet<string>): boo
   }
   const required = metadata.requiredPermission;
   return required === undefined || permissions.has(required);
+}
+
+export function canAccessViewInMode(
+  view: View,
+  permissions: ReadonlySet<string>,
+  mode: DashboardMode,
+): boolean {
+  const belongsToMode = PRIMARY_NAV_AREAS.some(
+    (area) => area.scope === mode && area.views.includes(view),
+  );
+  return belongsToMode && canAccessView(view, permissions);
 }
 
 export function visibleNavGroups(permissions: ReadonlySet<string>): readonly { readonly id: ViewGroup; readonly title: string; readonly views: readonly View[] }[] {
