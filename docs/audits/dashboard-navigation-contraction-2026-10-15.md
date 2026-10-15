@@ -23,8 +23,8 @@ Supporting views remain nested under their owning area; no registered workflow i
 - The registry has 21 views and explicit metadata for every view.
 - Nine views have explicit registry permission requirements; the remaining views currently have no registry-level requirement. This is a navigation/UI gate, not proof that APIs are unprotected.
 - `ads` requires `site.manage`; `settings` requires `api_key.read`; `audit` and `operations` require `audit.read`; `moderation`, `customers`, and `billing` require `platform.super_admin` or the legacy `platform.customer.admin`, matching their platform-only service/API authorization; `content` requires `platform.content.manage`; `ai` accepts `platform.ai.manage`, `platform.super_admin`, or the legacy `platform.customer.admin`, matching `AiService.canManage`.
-- `dashboard/page.tsx` constructs organization options differently for cookie sessions and access-key sessions. The access-key actor is bound to an organization and remains in organization mode even if a legacy grant appears in its permission set. This behavior must be preserved.
-- Article listing and publication listing can request cross-organization scope for platform-authorized actors. Cross-organization article scope is enabled only in cookie-authenticated platform mode; access-key sessions remain organization-bound. The UI contraction must not broaden that scope.
+- `dashboard/page.tsx` constructs organization options differently for cookie sessions and access-key sessions. A regular access key stays bound to its issuing organization; a verified access-key actor with the live `platform.super_admin` grant receives the existing cross-organization options and platform navigation. The verified platform grant, not a role label, determines this mode.
+- Article listing and publication listing can request cross-organization scope for platform-authorized actors. Cross-organization article scope is enabled only when the verified actor has `platform.super_admin` in either cookie-session or access-key authentication; ordinary access keys remain organization-bound. The UI contraction must not broaden or narrow that existing scope.
 - Categories and tags are global taxonomy. Do not introduce organization-owned category/tag CRUD as part of this navigation change.
 - Article metadata and mutations must remain scoped to the article's owning organization. Do not alter database schema, migrations, production data, RLS, or deployment settings for these navigation and view-permission metadata fixes.
 
@@ -35,7 +35,8 @@ Supporting views remain nested under their owning area; no registered workflow i
 | Organization administrator | Core editorial and publishing work plus organization overview and personal profile; no platform infrastructure/access controls |
 | Editor/redaktur | Article creation/editing and permitted media/publication actions; no platform control plane by role name alone |
 | Platform Superadmin | Platform-only customer, trust, AI, and operational controls only when the corresponding platform grant is present |
-| Access-key actor | Same organization binding and grants resolved by the existing access-key actor flow; never infer wider scope from UI role labels |
+| Regular access-key actor | Bound to the issuing organization and its live grants; never infer wider scope from role labels |
+| Verified Super Admin access key | Platform navigation and cross-organization switching/scope, based on the live `platform.super_admin` grant and existing server-side checks |
 
 Permissions, not role labels, are the authorization source. UI visibility is defense-in-depth; every API/command must retain its server-side authorization checks.
 
@@ -46,7 +47,7 @@ Permissions, not role labels, are the authorization source. UI visibility is def
 - Supporting views remain nested beneath their owning area and are permission-gated by `canAccessViewInMode`; organization infrastructure, access/integrations, monetization, audit, and operations are platform-owned.
 - Restricted views are hidden from navigation and remain blocked when their URL is entered directly.
 - Organization switching clears stale payload/error state and does not leak data across tenants.
-- Cookie login and access-key login remain functional.
+- Cookie and access-key login remain functional; a verified Super Admin access key retains platform mode, while ordinary access keys remain tenant-bound.
 - Global categories/tags and organization-owned article metadata are unchanged.
 - Existing editorial, media, distribution, live-results, audit, and platform workflows remain reachable to authorized actors; platform billing and AI visibility match the grants accepted by their services.
 - Relevant registry/sidebar/workspace tests pass, followed by typecheck, lint, test suite, build, and PR CI.
