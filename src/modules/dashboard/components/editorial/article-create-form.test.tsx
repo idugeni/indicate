@@ -16,9 +16,20 @@ vi.mock('@/modules/dashboard/components/editorial/rich-text-editor', () => ({
     readonly onDocChange: (change: { readonly doc: unknown; readonly text: string }) => void;
     readonly onPolish?: (() => void) | undefined;
   }) => {
-    const initial = initialDoc as { readonly content?: readonly { readonly content?: readonly { readonly text?: unknown }[] }[] } | null | undefined;
+    const initial = initialDoc as
+      | {
+          readonly content?: readonly {
+            readonly content?: readonly { readonly text?: unknown }[];
+          }[];
+        }
+      | null
+      | undefined;
     const initialText = (initial?.content ?? [])
-      .map((node) => (node.content ?? []).map((leaf) => (typeof leaf.text === 'string' ? leaf.text : '')).join(''))
+      .map((node) =>
+        (node.content ?? [])
+          .map((leaf) => (typeof leaf.text === 'string' ? leaf.text : ''))
+          .join(''),
+      )
       .join(' ');
     return (
       <>
@@ -29,21 +40,21 @@ vi.mock('@/modules/dashboard/components/editorial/rich-text-editor', () => ({
         )}
         <textarea
           aria-label="Isi Artikel"
-        defaultValue={initialText}
-        onChange={(event) => {
-          const text = event.target.value;
-          onDocChange({
-            doc: {
-              type: 'doc',
-              content:
-                text.trim() === ''
-                  ? [{ type: 'paragraph' }]
-                  : [{ type: 'paragraph', content: [{ type: 'text', text }] }],
-            },
-            text,
-          });
-        }}
-      />
+          defaultValue={initialText}
+          onChange={(event) => {
+            const text = event.target.value;
+            onDocChange({
+              doc: {
+                type: 'doc',
+                content:
+                  text.trim() === ''
+                    ? [{ type: 'paragraph' }]
+                    : [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+              },
+              text,
+            });
+          }}
+        />
       </>
     );
   },
@@ -61,9 +72,11 @@ const DATA = {
   regions: [
     { id: 'r-1', name: 'Jawa Tengah', kind: 'region', parentRegionId: null },
     { id: 'r-2', name: 'Wonosobo', kind: 'city', parentRegionId: 'r-1' },
+    { id: 'r-3', name: 'Magelang', kind: 'city', parentRegionId: 'r-1' },
   ],
   publishers: [
     { id: 'p-1', name: 'Penerbit Uji', status: 'active' },
+    { id: 'p-3', name: 'Penerbit Lain', status: 'active' },
     { id: 'p-2', name: 'Penerbit Arsip', status: 'archived' },
   ],
   categories: [
@@ -75,11 +88,41 @@ const DATA = {
   authors: [{ id: 'a-1', displayName: 'Penulis Uji' }],
   articles: [{ id: 'art-1', title: 'Artikel Uji' }],
   sites: [
-    { id: 's-apex-1', siteLevel: 'apex', status: 'active', activationState: 'active', regionId: null },
-    { id: 's-apex-2', siteLevel: 'apex', status: 'active', activationState: 'active', regionId: null },
-    { id: 's-region-1', siteLevel: 'region', status: 'active', activationState: 'active', regionId: 'r-1' },
-    { id: 's-city-1', siteLevel: 'city', status: 'active', activationState: 'active', regionId: 'r-2' },
-    { id: 's-dead-1', siteLevel: 'apex', status: 'retired', activationState: 'active', regionId: null },
+    {
+      id: 's-apex-1',
+      siteLevel: 'apex',
+      status: 'active',
+      activationState: 'active',
+      regionId: null,
+    },
+    {
+      id: 's-apex-2',
+      siteLevel: 'apex',
+      status: 'active',
+      activationState: 'active',
+      regionId: null,
+    },
+    {
+      id: 's-region-1',
+      siteLevel: 'region',
+      status: 'active',
+      activationState: 'active',
+      regionId: 'r-1',
+    },
+    {
+      id: 's-city-1',
+      siteLevel: 'city',
+      status: 'active',
+      activationState: 'active',
+      regionId: 'r-2',
+    },
+    {
+      id: 's-dead-1',
+      siteLevel: 'apex',
+      status: 'retired',
+      activationState: 'active',
+      regionId: null,
+    },
   ],
 };
 
@@ -91,19 +134,31 @@ function setup(overrides: {
   editArticleId?: string;
   onExitEdit?: () => void;
 }) {
-  const submit = vi.fn(async (payload: unknown) => (overrides.submit ? overrides.submit(payload) : null));
+  const submit = vi.fn(async (payload: unknown) =>
+    overrides.submit ? overrides.submit(payload) : null,
+  );
   const cmd = vi.fn(async (action: string, payload: unknown) => {
     if (overrides.command !== undefined) return overrides.command(action, payload);
     if (action !== 'publication.suggest') return {};
     const { siteIds } = payload as { readonly siteIds: readonly string[] };
     return {
       overrides: Object.fromEntries(
-        siteIds.map((siteId, index) => [siteId, { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` }]),
+        siteIds.map((siteId, index) => [
+          siteId,
+          { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` },
+        ]),
       ),
     };
   });
   const { container, unmount } = render(
-    <ArticleCreateForm data={overrides.data ?? DATA} onSubmit={submit} command={cmd} organizationId={overrides.organizationId} editArticleId={overrides.editArticleId} onExitEdit={overrides.onExitEdit} />,
+    <ArticleCreateForm
+      data={overrides.data ?? DATA}
+      onSubmit={submit}
+      command={cmd}
+      organizationId={overrides.organizationId}
+      editArticleId={overrides.editArticleId}
+      onExitEdit={overrides.onExitEdit}
+    />,
   );
   return { submit, cmd, container, unmount };
 }
@@ -131,6 +186,65 @@ describe('Formulir tulis artikel', () => {
     expect(screen.getByRole('button', { name: /simpan draf/i })).toBeDefined();
   });
 
+  it('mengisi wilayah dan penerbit otomatis jika masing-masing hanya punya satu pilihan aktif', async () => {
+    const { submit, container } = setup({
+      data: {
+        ...DATA,
+        regions: DATA.regions.slice(0, 2),
+        publishers: [DATA.publishers[0]],
+      },
+    });
+    await waitFor(() =>
+      expect((screen.getByLabelText('Penerbit') as HTMLInputElement).value).toBe('Penerbit Uji'),
+    );
+    expect(screen.getByLabelText('Kota / kabupaten')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), {
+      target: { value: 'Judul Otomatis' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(
+        expect.objectContaining({ regionId: 'r-2', publisherId: 'p-1', authorId: 'a-1' }),
+      ),
+    );
+  });
+
+  it('mengisi penulis Redaksi otomatis ketika artikel tidak memakai penerbit', async () => {
+    const { submit, container } = setup({
+      data: {
+        ...DATA,
+        publishers: [],
+        authors: [
+          { id: 'a-redaksi', displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active' },
+        ],
+      },
+    });
+    await waitFor(() =>
+      expect((screen.getByLabelText('Penulis') as HTMLInputElement).value).toBe('Redaksi'),
+    );
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), {
+      target: { value: 'Judul Otomatis' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
+    await pilihWilayahWonosobo();
+    fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ authorId: 'a-redaksi' })),
+    );
+  });
+
+  it('mengunci wilayah sesuai regionScope membership', async () => {
+    setup({ data: { ...DATA, regionScope: { id: 'r-2', name: 'Wonosobo' } } });
+    await waitFor(() => expect(screen.getByLabelText('Kota / kabupaten')).toBeDefined());
+    expect((screen.getByLabelText('Wilayah') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Kota / kabupaten') as HTMLInputElement).disabled).toBe(true);
+  });
+
   it('menampilkan kota hanya setelah wilayah dipilih dan mengirim id kota', async () => {
     const user = userEvent.setup();
     const { submit, container } = setup({});
@@ -143,10 +257,16 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByLabelText('Kota / kabupaten'));
     await user.click(await screen.findByRole('option', { name: 'Wonosobo' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ regionId: 'r-2' })));
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ regionId: 'r-2' })),
+    );
   });
 
   it('menyembunyikan penerbit arsip dari formulir artikel', async () => {
@@ -162,11 +282,17 @@ describe('Formulir tulis artikel', () => {
     const { submit, container } = setup({});
     await user.click(screen.getByLabelText('Penerbit'));
     await user.type(screen.getByLabelText('Penerbit'), 'uji');
-    await waitFor(() => expect(screen.queryByRole('option', { name: 'Mandiri (tanpa penerbit)' })).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole('option', { name: 'Mandiri (tanpa penerbit)' })).toBeNull(),
+    );
     await user.keyboard('{Enter}');
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
@@ -197,9 +323,13 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByLabelText('Penerbit'));
     await user.click(await screen.findByRole('option', { name: 'RUTAN KELAS II B WONOSOBO' }));
     expect(screen.getByLabelText('Kota / kabupaten')).toBeDefined();
-    expect((screen.getByLabelText('Sumber', { selector: 'input' }) as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Sumber', { selector: 'input' }) as HTMLInputElement).value).toBe(
+      '',
+    );
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
@@ -220,8 +350,12 @@ describe('Formulir tulis artikel', () => {
     await user.type(tagsInput, 'wonosobo');
     await user.keyboard('{Enter}');
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
@@ -244,8 +378,12 @@ describe('Formulir tulis artikel', () => {
     const titleInput = screen.getByLabelText('Judul Artikel');
     fireEvent.change(titleInput, { target: { value: 'Judul Uji' } });
     fireEvent.blur(titleInput);
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
@@ -273,10 +411,16 @@ describe('Formulir tulis artikel', () => {
     const user = userEvent.setup();
     const { submit, container } = setup({});
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     fireEvent.change(screen.getByLabelText('Deskripsi'), { target: { value: 'Inti berita.' } });
-    fireEvent.change(screen.getByLabelText('URL Kanonis (opsional)'), { target: { value: 'https://sumber.example/rilis' } });
+    fireEvent.change(screen.getByLabelText('URL Kanonis (opsional)'), {
+      target: { value: 'https://sumber.example/rilis' },
+    });
     await user.click(screen.getByLabelText('Penulis'));
     await user.click(await screen.findByRole('option', { name: 'Penulis Uji' }));
     await pilihWilayahWonosobo();
@@ -301,8 +445,12 @@ describe('Formulir tulis artikel', () => {
     await user.click(await screen.findByRole('option', { name: 'Ekonomi' }));
     await user.click(await screen.findByRole('option', { name: 'Politik' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
@@ -314,11 +462,17 @@ describe('Formulir tulis artikel', () => {
     const { submit, container } = setup({});
     expect(screen.getByLabelText(/Kategori \(1 dipilih · Berita\)/)).toBeDefined();
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ['c-0'] })));
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ categoryIds: ['c-0'] })),
+    );
   });
 
   it('menyembunyikan kategori arsip dari combobox', async () => {
@@ -337,8 +491,12 @@ describe('Formulir tulis artikel', () => {
     expect(screen.queryByRole('button', { name: /sebagai kategori baru/ })).toBeNull();
     await user.keyboard('{Enter}');
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
@@ -349,7 +507,9 @@ describe('Formulir tulis artikel', () => {
   it('menunda kategori baru ke server sampai artikel disimpan', async () => {
     const user = userEvent.setup();
     const submit = vi.fn(async () => null);
-    const cmd = vi.fn(async (action: string) => (action === 'category.create' ? { id: 'c-9' } : {}));
+    const cmd = vi.fn(async (action: string) =>
+      action === 'category.create' ? { id: 'c-9' } : {},
+    );
     const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
     await user.click(screen.getByLabelText(/Kategori/));
     await user.type(screen.getByLabelText(/Kategori/), 'Olahraga');
@@ -358,8 +518,12 @@ describe('Formulir tulis artikel', () => {
     await waitFor(() => expect(screen.getByText('Olahraga')).toBeDefined());
     expect(cmd).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
@@ -377,29 +541,43 @@ describe('Formulir tulis artikel', () => {
     const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
     await user.click(screen.getByLabelText(/Kategori/));
     await user.type(screen.getByLabelText(/Kategori/), 'Olahraga');
-    await user.click(await screen.findByRole('button', { name: /Tambah.*Olahraga.*kategori baru/ }));
+    await user.click(
+      await screen.findByRole('button', { name: /Tambah.*Olahraga.*kategori baru/ }),
+    );
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    await waitFor(() => expect(cmd).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }));
+    await waitFor(() =>
+      expect(cmd).toHaveBeenCalledWith('category.create', { name: 'Olahraga', slug: 'olahraga' }),
+    );
     expect(submit).not.toHaveBeenCalled();
   });
 
   it('menyimpan artikel tanpa sumber', async () => {
     const { submit, container } = setup({});
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ source: '' })));
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ source: '' })),
+    );
   });
 
   it('menolak simpan dan menampilkan pesan Indonesia saat isi kaya tidak valid', async () => {
     const { submit, container } = setup({});
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     await act(async () => {
       screen.getByLabelText('Isi Artikel').dispatchEvent(new Event('change', { bubbles: true }));
@@ -410,13 +588,24 @@ describe('Formulir tulis artikel', () => {
 
   it('membuka form selalu kosong walau sebelumnya sempat mengisi', async () => {
     const first = setup({ organizationId: 'org-1' });
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Belum Selesai' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Paragraf yang belum rampung.' } });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), {
+      target: { value: 'Belum Selesai' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Paragraf yang belum rampung.' },
+    });
     expect(window.localStorage.getItem('indicate:article-draft:org-1')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Simpan ke server' })).toBeNull();
     first.unmount();
 
-    render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={vi.fn(async () => ({}))} organizationId="org-1" />);
+    render(
+      <ArticleCreateForm
+        data={DATA}
+        onSubmit={vi.fn(async () => null)}
+        command={vi.fn(async () => ({}))}
+        organizationId="org-1"
+      />,
+    );
     expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toBe('');
   });
@@ -427,22 +616,35 @@ describe('Formulir tulis artikel', () => {
     await pilihWilayahWonosobo();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000);
+    });
     expect(saved).not.toHaveBeenCalled();
   });
 
   it('mengirim URL sampul luar tanpa unggahan', async () => {
     const { submit, container } = setup({});
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
-    fireEvent.change(screen.getByLabelText(/URL gambar luar/), { target: { value: 'https://sumber.example/sampul.jpg' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
+    fireEvent.change(screen.getByLabelText(/URL gambar luar/), {
+      target: { value: 'https://sumber.example/sampul.jpg' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ leadMediaId: null, coverImageUrl: 'https://sumber.example/sampul.jpg' }),
+        expect.objectContaining({
+          leadMediaId: null,
+          coverImageUrl: 'https://sumber.example/sampul.jpg',
+        }),
       ),
     );
   });
@@ -453,20 +655,42 @@ describe('Formulir tulis artikel', () => {
     try {
       const submit = vi.fn(async () => null);
       const cmd = vi.fn(async (action: string) => {
-        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.reserve')
+          return {
+            reservationId: 'res-1',
+            authorization: {
+              url: 'https://r2.example/put',
+              requiredHeaders: { Authorization: 'sig' },
+            },
+          };
         if (action === 'media.complete') return { id: 'm-1' };
         return {};
       });
-      const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
+      const { container } = render(
+        <ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />,
+      );
       const file = new File(['isi-gambar'], 'sampul.png', { type: 'image/png' });
-      const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
+      const input = container.querySelector(
+        'input[data-testid="featured-file-input"]',
+      ) as HTMLInputElement;
       expect(input).not.toBeNull();
       fireEvent.change(input, { target: { files: [file] } });
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.reserve', expect.objectContaining({ filename: 'sampul.png' })));
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }));
+      await waitFor(() =>
+        expect(cmd).toHaveBeenCalledWith(
+          'media.reserve',
+          expect.objectContaining({ filename: 'sampul.png' }),
+        ),
+      );
+      await waitFor(() =>
+        expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }),
+      );
       fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-      fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-      fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+      fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+        target: { value: 'Rilis Resmi' },
+      });
+      fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+        target: { value: 'Isi berita lengkap.' },
+      });
       await pilihWilayahWonosobo();
       fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
       await waitFor(() =>
@@ -483,14 +707,25 @@ describe('Formulir tulis artikel', () => {
     try {
       const submit = vi.fn(async () => null);
       const cmd = vi.fn(async (action: string) => {
-        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.reserve')
+          return {
+            reservationId: 'res-1',
+            authorization: {
+              url: 'https://r2.example/put',
+              requiredHeaders: { Authorization: 'sig' },
+            },
+          };
         if (action === 'media.complete') return { id: 'm-1' };
         if (action === 'media.read') return { url: 'https://r2.example/preview' };
         return {};
       });
-      const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
+      const { container } = render(
+        <ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />,
+      );
       const file = new File(['isi-gambar'], 'sampul.png', { type: 'image/png' });
-      const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
+      const input = container.querySelector(
+        'input[data-testid="featured-file-input"]',
+      ) as HTMLInputElement;
       fireEvent.change(input, { target: { files: [file] } });
       await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.read', { mediaId: 'm-1' }));
       expect(await screen.findByAltText('Pratinjau sampul.png')).toBeDefined();
@@ -506,21 +741,45 @@ describe('Formulir tulis artikel', () => {
     try {
       const submit = vi.fn(async () => null);
       const cmd = vi.fn(async (action: string) => {
-        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.reserve')
+          return {
+            reservationId: 'res-1',
+            authorization: {
+              url: 'https://r2.example/put',
+              requiredHeaders: { Authorization: 'sig' },
+            },
+          };
         if (action === 'media.complete') return { id: 'm-1', version: 1 };
         if (action === 'media.update') return { id: 'm-1', version: 2 };
         if (action === 'media.read') return { url: 'https://r2.example/preview' };
         return {};
       });
-      const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
+      const { container } = render(
+        <ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />,
+      );
       const file = new File(['isi-gambar'], 'sampul.png', { type: 'image/png' });
-      const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
+      const input = container.querySelector(
+        'input[data-testid="featured-file-input"]',
+      ) as HTMLInputElement;
       fireEvent.change(input, { target: { files: [file] } });
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }));
-      fireEvent.change(screen.getByLabelText('Teks alt sampul'), { target: { value: 'Pasar pagi' } });
-      fireEvent.change(screen.getByLabelText(/Keterangan sampul/), { target: { value: 'Suasana pasar' } });
+      await waitFor(() =>
+        expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }),
+      );
+      fireEvent.change(screen.getByLabelText('Teks alt sampul'), {
+        target: { value: 'Pasar pagi' },
+      });
+      fireEvent.change(screen.getByLabelText(/Keterangan sampul/), {
+        target: { value: 'Suasana pasar' },
+      });
       fireEvent.click(screen.getByRole('button', { name: 'Simpan metadata sampul' }));
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.update', { mediaId: 'm-1', expectedVersion: 1, altText: 'Pasar pagi', caption: 'Suasana pasar' }));
+      await waitFor(() =>
+        expect(cmd).toHaveBeenCalledWith('media.update', {
+          mediaId: 'm-1',
+          expectedVersion: 1,
+          altText: 'Pasar pagi',
+          caption: 'Suasana pasar',
+        }),
+      );
     } finally {
       vi.unstubAllGlobals();
     }
@@ -532,21 +791,49 @@ describe('Formulir tulis artikel', () => {
     try {
       const submit = vi.fn(async () => null);
       const cmd = vi.fn(async (action: string) => {
-        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.reserve')
+          return {
+            reservationId: 'res-1',
+            authorization: {
+              url: 'https://r2.example/put',
+              requiredHeaders: { Authorization: 'sig' },
+            },
+          };
         if (action === 'media.complete') return { id: 'm-1', version: 1 };
         if (action === 'media.update') return { id: 'm-1', version: 2 };
         if (action === 'media.read') return { url: 'https://r2.example/preview' };
         return {};
       });
-      const { container } = render(<ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />);
+      const { container } = render(
+        <ArticleCreateForm data={DATA} onSubmit={submit} command={cmd} />,
+      );
       const file = new File(['isi-gambar'], 'sampul.png', { type: 'image/png' });
-      const input = container.querySelector('input[data-testid="featured-file-input"]') as HTMLInputElement;
+      const input = container.querySelector(
+        'input[data-testid="featured-file-input"]',
+      ) as HTMLInputElement;
       fireEvent.change(input, { target: { files: [file] } });
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }));
+      await waitFor(() =>
+        expect(cmd).toHaveBeenCalledWith('media.complete', { reservationId: 'res-1' }),
+      );
       const picker = await screen.findByRole('button', { name: 'Pilih titik fokus sampul' });
-      vi.spyOn(picker, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: 200, height: 100, x: 0, y: 0, right: 200, bottom: 100, toJSON: () => ({}) } as DOMRect);
+      vi.spyOn(picker, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        top: 0,
+        width: 200,
+        height: 100,
+        x: 0,
+        y: 0,
+        right: 200,
+        bottom: 100,
+        toJSON: () => ({}),
+      } as DOMRect);
       fireEvent.click(picker, { clientX: 60, clientY: 25 });
-      await waitFor(() => expect(cmd).toHaveBeenCalledWith('media.update', expect.objectContaining({ mediaId: 'm-1', expectedVersion: 1, focalX: 30, focalY: 25 })));
+      await waitFor(() =>
+        expect(cmd).toHaveBeenCalledWith(
+          'media.update',
+          expect.objectContaining({ mediaId: 'm-1', expectedVersion: 1, focalX: 30, focalY: 25 }),
+        ),
+      );
       expect(await screen.findByText('Fokus 30%, 25% — klik lagi untuk mengubah.')).toBeDefined();
     } finally {
       vi.unstubAllGlobals();
@@ -598,12 +885,18 @@ describe('Formulir tulis artikel', () => {
 
   it('menayangkan artikel tersimpan dengan judul kanonik apa adanya di semua portal', async () => {
     const user = userEvent.setup();
-    const { cmd, container } = setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    const { cmd, container } = setup({
+      submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }),
+    });
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
@@ -613,17 +906,24 @@ describe('Formulir tulis artikel', () => {
       ),
     );
     const request = cmd.mock.calls.find(([action]) => action === 'publication.request');
-    expect(request?.[1]).toEqual(expect.objectContaining({
-      articleId: 'art-baru',
-      siteIds: ['s-city-1'],
-      options: { mode: 'immediate' },
-      overrides: {},
-    }));
+    expect(request?.[1]).toEqual(
+      expect.objectContaining({
+        articleId: 'art-baru',
+        siteIds: ['s-city-1'],
+        options: { mode: 'immediate' },
+        overrides: {},
+      }),
+    );
   });
 
   it('memecah penerbitan mengikuti jumlah apex portal yang tersedia', async () => {
     const user = userEvent.setup();
-    const apexSites = Array.from({ length: 134 }, (slot, index) => ({ id: `apex-${index}`, siteLevel: 'apex', status: 'active', activationState: 'active' }));
+    const apexSites = Array.from({ length: 134 }, (slot, index) => ({
+      id: `apex-${index}`,
+      siteLevel: 'apex',
+      status: 'active',
+      activationState: 'active',
+    }));
     const seen: number[] = [];
     const { container } = render(
       <ArticleCreateForm
@@ -641,8 +941,12 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahSaja();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(seen.length).toBe(2));
@@ -656,13 +960,21 @@ describe('Formulir tulis artikel', () => {
       return {};
     });
     const { container } = render(
-      <ArticleCreateForm data={DATA} onSubmit={async () => ({ id: 'art-var', slug: 'judul-uji' })} command={cmd} />,
+      <ArticleCreateForm
+        data={DATA}
+        onSubmit={async () => ({ id: 'art-var', slug: 'judul-uji' })}
+        command={cmd}
+      />,
     );
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(screen.queryByText(/gagal ditayangkan/)).toBeDefined());
@@ -670,10 +982,16 @@ describe('Formulir tulis artikel', () => {
   });
 
   it('tidak menayangkan draf meski tayang otomatis nyala', async () => {
-    const { cmd, container } = setup({ submit: async () => ({ id: 'art-draf', slug: 'judul-uji' }) });
+    const { cmd, container } = setup({
+      submit: async () => ({ id: 'art-draf', slug: 'judul-uji' }),
+    });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(cmd).not.toHaveBeenCalledWith('publication.request', expect.anything()),
@@ -681,28 +999,39 @@ describe('Formulir tulis artikel', () => {
   });
 
   it('mengunci penulis ke penerbit dan menampilkan byline humas', async () => {
-    const user = userEvent.setup();
     const submit = vi.fn(async () => null);
     const cmd = vi.fn(async () => ({}));
     const data = {
       ...DATA,
-      authors: [{ id: 'r-1', displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active', version: 1 }],
-      publishers: [{ id: 'p-1', name: 'Lapas Uji', attributionLabel: 'Humas Lapas Uji', status: 'active' }],
+      authors: [
+        { id: 'r-1', displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active', version: 1 },
+      ],
+      publishers: [
+        { id: 'p-1', name: 'Lapas Uji', attributionLabel: 'Humas Lapas Uji', status: 'active' },
+      ],
     };
     const { container } = render(<ArticleCreateForm data={data} onSubmit={submit} command={cmd} />);
-    expect(await screen.findByText('Yang tampil: Tim Redaksi.')).toBeDefined();
-    await user.click(screen.getByLabelText('Penerbit'));
-    await user.click(await screen.findByRole('option', { name: 'Lapas Uji' }));
+    await waitFor(() =>
+      expect((screen.getByLabelText('Penerbit') as HTMLInputElement).value).toBe('Lapas Uji'),
+    );
     expect((screen.getByLabelText('Penulis') as HTMLInputElement).disabled).toBe(true);
-    expect(screen.getByText('Yang tampil: Humas Lapas Uji (mengikuti penerbit).')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Yang tampil: Humas Lapas Uji (mengikuti penerbit); penulis internal tetap tercatat.',
+      ),
+    ).toBeDefined();
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ publisherId: 'p-1', authorId: null }),
+        expect.objectContaining({ publisherId: 'p-1', authorId: 'r-1' }),
       ),
     );
   });
@@ -713,8 +1042,12 @@ describe('Formulir tulis artikel', () => {
     const cmd = vi.fn(async () => ({}));
     const data = {
       ...DATA,
-      authors: [{ id: 'r-1', displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active', version: 1 }],
-      publishers: [{ id: 'p-1', name: 'Lapas Uji', attributionLabel: 'Humas Lapas Uji', status: 'active' }],
+      authors: [
+        { id: 'r-1', displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active', version: 1 },
+      ],
+      publishers: [
+        { id: 'p-1', name: 'Lapas Uji', attributionLabel: 'Humas Lapas Uji', status: 'active' },
+      ],
     };
     render(<ArticleCreateForm data={data} onSubmit={submit} command={cmd} />);
     await user.click(screen.getByLabelText('Penerbit'));
@@ -730,7 +1063,9 @@ describe('Formulir tulis artikel', () => {
     const user = userEvent.setup();
     const cmd = vi.fn(async () => ({}));
     render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} />);
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi untuk sumber.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi untuk sumber.' },
+    });
     await user.click(screen.getByRole('tab', { name: 'Sumber' }));
     expect(screen.getByText('Isi untuk sumber.')).toBeDefined();
     expect(screen.getByText(/Struktur JSON valid/)).toBeDefined();
@@ -740,8 +1075,12 @@ describe('Formulir tulis artikel', () => {
     const user = userEvent.setup();
     const cmd = vi.fn(async () => ({}));
     render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} />);
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Pratinjau' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi untuk pratinjau.' } });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), {
+      target: { value: 'Judul Pratinjau' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi untuk pratinjau.' },
+    });
     await user.click(screen.getByRole('tab', { name: 'Pratinjau' }));
     expect(await screen.findByRole('heading', { name: 'Judul Pratinjau' })).toBeDefined();
     expect(screen.getByText('Isi untuk pratinjau.')).toBeDefined();
@@ -750,14 +1089,18 @@ describe('Formulir tulis artikel', () => {
   it('menolak simpan saat isi artikel kosong', async () => {
     const { submit, container } = setup({});
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(submit).not.toHaveBeenCalled());
   });
 
   it('menampilkan statistik artikel lengkap di bawah editor', () => {
     setup({});
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'satu dua tiga empat' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'satu dua tiga empat' },
+    });
     const stats = screen.getByLabelText('Statistik artikel');
     expect(within(stats).getByText(/4 kata/)).toBeDefined();
     expect(within(stats).getByText(/19 karakter/)).toBeDefined();
@@ -765,7 +1108,9 @@ describe('Formulir tulis artikel', () => {
     expect(within(stats).getByText(/0 gambar/)).toBeDefined();
     expect(within(stats).getByText(/0 sematan/)).toBeDefined();
     expect(within(stats).getByText(/1 mnt baca/)).toBeDefined();
-    expect((screen.getByRole('combobox', { name: 'Status artikel' }) as HTMLInputElement).value).toBe('Draf');
+    expect(
+      (screen.getByRole('combobox', { name: 'Status artikel' }) as HTMLInputElement).value,
+    ).toBe('Draf');
   });
 
   it('menolak status terjadwal tanpa jadwal terbit', async () => {
@@ -774,8 +1119,12 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terjadwal' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(submit).not.toHaveBeenCalled());
   });
@@ -795,22 +1144,28 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByRole('button', { name: 'Jadwal terbit' }));
     await user.click(await screen.findByRole('button', { name: 'Besok' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
-      expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'scheduled' }),
-      ),
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ status: 'scheduled' })),
     );
-    const payload = vi.mocked(submit).mock.calls[0]?.[0] as { readonly scheduledAt?: string } | undefined;
+    const payload = vi.mocked(submit).mock.calls[0]?.[0] as
+      | { readonly scheduledAt?: string }
+      | undefined;
     expect(typeof payload?.scheduledAt).toBe('string');
     // The shortcut carries the current clock, and `localDateTimeToIso` emits UTC.
     // Compare in the browser's timezone, or an early-morning local time shifts the
     // UTC date back a day and the comparison is meaningless.
     const scheduled = new Date(payload?.scheduledAt as string);
-    expect(`${scheduled.getFullYear()}-${pad(scheduled.getMonth() + 1)}-${pad(scheduled.getDate())}`).toBe(expectedDay);
+    expect(
+      `${scheduled.getFullYear()}-${pad(scheduled.getMonth() + 1)}-${pad(scheduled.getDate())}`,
+    ).toBe(expectedDay);
   });
 
   it('slug mengikuti judul kata per kata sampai disentuh manual', async () => {
@@ -830,12 +1185,18 @@ describe('Formulir tulis artikel', () => {
 
   it('menerbitkan backdate kemarin dengan tayangan awal kustom', async () => {
     const user = userEvent.setup();
-    const { cmd, container } = setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    const { cmd, container } = setup({
+      submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }),
+    });
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     await user.click(screen.getByRole('button', { name: 'Tanggal terbit' }));
     await user.click(await screen.findByRole('button', { name: 'Kemarin' }));
@@ -844,7 +1205,9 @@ describe('Formulir tulis artikel', () => {
     await waitFor(() => {
       const request = cmd.mock.calls.find(([action]) => action === 'publication.request');
       const publishAt = (request?.[1] as { readonly publishAt?: string } | undefined)?.publishAt;
-      expect(typeof publishAt === 'string' && new Date(publishAt).getTime() < Date.now()).toBe(true);
+      expect(typeof publishAt === 'string' && new Date(publishAt).getTime() < Date.now()).toBe(
+        true,
+      );
     });
     await waitFor(() =>
       expect(cmd).toHaveBeenCalledWith('article.sites.views.setMany', {
@@ -861,24 +1224,36 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
     await user.click(screen.getByRole('button', { name: 'Tanggal terbit' }));
-    expect((await screen.findByRole('button', { name: 'Besok' }) as HTMLButtonElement).disabled).toBe(true);
-    expect((await screen.findByRole('button', { name: 'Kemarin' }) as HTMLButtonElement).disabled).toBe(false);
+    expect(
+      ((await screen.findByRole('button', { name: 'Besok' })) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      ((await screen.findByRole('button', { name: 'Kemarin' })) as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 
   it('melewatkan tayangan awal saat dikosongkan agar seeding bawaan jalan', async () => {
     const user = userEvent.setup();
-    const { cmd, container } = setup({ submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
+    const { cmd, container } = setup({
+      submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }),
+    });
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => {
       expect(cmd.mock.calls.find(([action]) => action === 'publication.request')).toBeDefined();
     });
-    expect(cmd.mock.calls.find(([action]) => action === 'article.sites.views.setMany')).toBeUndefined();
+    expect(
+      cmd.mock.calls.find(([action]) => action === 'article.sites.views.setMany'),
+    ).toBeUndefined();
   });
 
   it('menaikkan dan menurunkan tayangan awal lewat tombol stepper', async () => {
@@ -902,7 +1277,8 @@ describe('Formulir tulis artikel', () => {
         void url;
         return {
           ok: true,
-          json: async () => handler(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>),
+          json: async () =>
+            handler(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>),
         };
       }),
     );
@@ -913,12 +1289,16 @@ describe('Formulir tulis artikel', () => {
     setup({ organizationId: 'org-1' });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air surut.' } });
-    mockAiFetch((body) => body.action === 'seo-titles' ? { titles: ['Banjir Surut di Wonosobo', 'Warga Kembali'] } : {});
+    mockAiFetch((body) =>
+      body.action === 'seo-titles' ? { titles: ['Banjir Surut di Wonosobo', 'Warga Kembali'] } : {},
+    );
 
     await user.click(screen.getByRole('button', { name: 'Sempurnakan judul' }));
     await waitFor(() => expect(screen.queryByText('Banjir Surut di Wonosobo')).not.toBeNull());
     await user.click(screen.getAllByRole('button', { name: 'Pakai' })[0]!);
-    expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('Banjir Surut di Wonosobo');
+    expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe(
+      'Banjir Surut di Wonosobo',
+    );
   });
 
   it('membuat deskripsi inline saat masih kosong', async () => {
@@ -926,11 +1306,15 @@ describe('Formulir tulis artikel', () => {
     setup({ organizationId: 'org-1' });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Banjir' } });
     fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Air surut.' } });
-    mockAiFetch((body) => body.action === 'seo-meta' ? { metaDescription: 'Air di Wonosobo surut.' } : {});
+    mockAiFetch((body) =>
+      body.action === 'seo-meta' ? { metaDescription: 'Air di Wonosobo surut.' } : {},
+    );
 
     await user.click(screen.getByRole('button', { name: 'Buatkan deskripsi' }));
     await waitFor(() =>
-      expect((screen.getByLabelText('Deskripsi') as HTMLTextAreaElement).value).toBe('Air di Wonosobo surut.'),
+      expect((screen.getByLabelText('Deskripsi') as HTMLTextAreaElement).value).toBe(
+        'Air di Wonosobo surut.',
+      ),
     );
   });
 
@@ -952,7 +1336,9 @@ describe('Formulir tulis artikel', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sempurnakan deskripsi' }));
     await waitFor(() =>
-      expect((screen.getByLabelText('Deskripsi') as HTMLTextAreaElement).value).toBe('Air di Wonosobo telah surut total.'),
+      expect((screen.getByLabelText('Deskripsi') as HTMLTextAreaElement).value).toBe(
+        'Air di Wonosobo telah surut total.',
+      ),
     );
     const sent = JSON.parse(String(vi.mocked(fetchMock).mock.calls[0]?.[1]?.body ?? '{}')) as {
       readonly payload?: { readonly current?: string };
@@ -971,16 +1357,27 @@ describe('Formulir tulis artikel', () => {
     await waitFor(() => expect(screen.queryByText(/Air sudah surut dengan baik/)).not.toBeNull());
     await user.click(screen.getByRole('button', { name: /terapkan ke isi/i }));
     await waitFor(() =>
-      expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toContain('Air sudah surut dengan baik.'),
+      expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toContain(
+        'Air sudah surut dengan baik.',
+      ),
     );
   });
 
   it('melengkapi kategori dan topik otomatis dari isi', async () => {
     const user = userEvent.setup();
-    const { submit, container } = setup({ organizationId: 'org-1', submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }) });
-    fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'APBD Wonosobo' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Anggaran disahkan.' } });
+    const { submit, container } = setup({
+      organizationId: 'org-1',
+      submit: async () => ({ id: 'art-baru', slug: 'judul-uji' }),
+    });
+    fireEvent.change(screen.getByLabelText('Judul Artikel'), {
+      target: { value: 'APBD Wonosobo' },
+    });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Anggaran disahkan.' },
+    });
     await pilihWilayahWonosobo();
     mockAiFetch(() => ({ classification: { categories: ['Ekonomi'], tags: ['apbd'] } }));
 
@@ -999,7 +1396,12 @@ describe('Formulir tulis artikel', () => {
     setup({ organizationId: 'org-1' });
     mockAiFetch(() => ({
       article: {
-        draft: { title: 'Gotong Royong', excerpt: 'Warga bergotong royong.', content: 'Warga bergotong royong membersihkan selokan.', slug: 'gotong-royong' },
+        draft: {
+          title: 'Gotong Royong',
+          excerpt: 'Warga bergotong royong.',
+          content: 'Warga bergotong royong membersihkan selokan.',
+          slug: 'gotong-royong',
+        },
         classification: { categories: ['Ekonomi'], tags: ['gotong-royong'] },
       },
     }));
@@ -1012,10 +1414,14 @@ describe('Formulir tulis artikel', () => {
     const file = new File(['pura-pura-audio'], 'wawancara.webm', { type: 'audio/webm' });
     await user.upload(fileInput as HTMLInputElement, file);
     await waitFor(() =>
-      expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe('Gotong Royong'),
+      expect((screen.getByLabelText('Judul Artikel') as HTMLInputElement).value).toBe(
+        'Gotong Royong',
+      ),
     );
     await waitFor(() =>
-      expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toContain('membersihkan selokan'),
+      expect((screen.getByLabelText('Isi Artikel') as HTMLTextAreaElement).value).toContain(
+        'membersihkan selokan',
+      ),
     );
   });
 
@@ -1027,25 +1433,42 @@ describe('Formulir tulis artikel', () => {
       const { siteIds } = payload as { readonly siteIds: readonly string[] };
       return {
         overrides: Object.fromEntries(
-          siteIds.map((siteId, index) => [siteId, { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` }]),
+          siteIds.map((siteId, index) => [
+            siteId,
+            { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` },
+          ]),
         ),
       };
     });
     const { container } = render(
-      <ArticleCreateForm data={{ ...DATA, regionScope: null }} onSubmit={submit} command={cmd} organizationId="org-1" />,
+      <ArticleCreateForm
+        data={{ ...DATA, regionScope: null }}
+        onSubmit={submit}
+        command={cmd}
+        organizationId="org-1"
+      />,
     );
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), { target: { value: 'Rilis Resmi' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
+      target: { value: 'Rilis Resmi' },
+    });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Terbit Langsung' }));
 
     await user.click(screen.getByRole('checkbox', { name: 'Nasional — semua apex utama' }));
     expect(screen.queryByLabelText('Wilayah')).toBeNull();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ regionId: null })));
     await waitFor(() =>
-      expect(cmd).toHaveBeenCalledWith('publication.request', expect.objectContaining({ siteIds: ['s-apex-1', 's-apex-2'] })),
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ regionId: null })),
+    );
+    await waitFor(() =>
+      expect(cmd).toHaveBeenCalledWith(
+        'publication.request',
+        expect.objectContaining({ siteIds: ['s-apex-1', 's-apex-2'] }),
+      ),
     );
   });
 
@@ -1071,24 +1494,48 @@ describe('Formulir tulis artikel', () => {
       'fetch',
       vi.fn(async (url: unknown) => ({
         ok: true,
-        json: async () => (String(url).includes('view=media') ? { media: [libraryItem], articles: [], sites: [] } : {}),
+        json: async () =>
+          String(url).includes('view=media')
+            ? { media: [libraryItem], articles: [], sites: [] }
+            : {},
       })),
     );
     try {
       const cmd = vi.fn(async (action: string) => {
         if (action === 'media.readMany') {
-          return { items: [{ mediaId: 'm-lib', url: 'https://r2.example/preview-lib', expiresAt: '2026-10-02T01:00:00.000Z' }] };
+          return {
+            items: [
+              {
+                mediaId: 'm-lib',
+                url: 'https://r2.example/preview-lib',
+                expiresAt: '2026-10-02T01:00:00.000Z',
+              },
+            ],
+          };
         }
         if (action === 'media.read') return { url: 'https://r2.example/preview-lib' };
         return {};
       });
-      render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} organizationId="org-1" />);
+      render(
+        <ArticleCreateForm
+          data={DATA}
+          onSubmit={vi.fn(async () => null)}
+          command={cmd}
+          organizationId="org-1"
+        />,
+      );
       await user.click(screen.getByRole('button', { name: /pilih dari pustaka/i }));
       await waitFor(() => expect(screen.queryByAltText('sampul-pustaka.webp')).not.toBeNull());
-      await user.click(screen.getByRole('button', { name: 'Pilih sampul-pustaka.webp sebagai sampul' }));
+      await user.click(
+        screen.getByRole('button', { name: 'Pilih sampul-pustaka.webp sebagai sampul' }),
+      );
       await waitFor(() => expect(screen.queryByLabelText('Teks alt sampul')).not.toBeNull());
-      expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Alt pustaka.');
-      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe('Caption pustaka.');
+      expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe(
+        'Alt pustaka.',
+      );
+      expect(
+        (screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value,
+      ).toBe('Caption pustaka.');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -1111,7 +1558,10 @@ describe('Formulir tulis artikel', () => {
       vi.fn(async (url: unknown, init?: { readonly body?: unknown }) => {
         const target = String(url);
         if (target.includes('view=media')) {
-          return { ok: true, json: async () => ({ media: [libraryItem], articles: [], sites: [] }) };
+          return {
+            ok: true,
+            json: async () => ({ media: [libraryItem], articles: [], sites: [] }),
+          };
         }
         if (target === 'https://r2.example/preview-lib') {
           return { ok: true, blob: async () => new Blob(['isi-gambar'], { type: 'image/jpeg' }) };
@@ -1130,21 +1580,42 @@ describe('Formulir tulis artikel', () => {
     try {
       const cmd = vi.fn(async (action: string) => {
         if (action === 'media.readMany') {
-          return { items: [{ mediaId: 'm-lib', url: 'https://r2.example/preview-lib', expiresAt: '2026-10-02T01:00:00.000Z' }] };
+          return {
+            items: [
+              {
+                mediaId: 'm-lib',
+                url: 'https://r2.example/preview-lib',
+                expiresAt: '2026-10-02T01:00:00.000Z',
+              },
+            ],
+          };
         }
         if (action === 'media.read') return { url: 'https://r2.example/preview-lib' };
         return {};
       });
-      render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} organizationId="org-1" />);
+      render(
+        <ArticleCreateForm
+          data={DATA}
+          onSubmit={vi.fn(async () => null)}
+          command={cmd}
+          organizationId="org-1"
+        />,
+      );
       await user.click(screen.getByRole('button', { name: /pilih dari pustaka/i }));
       await waitFor(() => expect(screen.queryByAltText('sampul-pustaka.webp')).not.toBeNull());
-      await user.click(screen.getByRole('button', { name: 'Pilih sampul-pustaka.webp sebagai sampul' }));
+      await user.click(
+        screen.getByRole('button', { name: 'Pilih sampul-pustaka.webp sebagai sampul' }),
+      );
       await waitFor(() => expect(screen.queryByLabelText('Teks alt sampul')).not.toBeNull());
       await user.click(screen.getByRole('button', { name: 'Isi alt dan caption otomatis' }));
       await waitFor(() =>
-        expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Alt AI pustaka.'),
+        expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe(
+          'Alt AI pustaka.',
+        ),
       );
-      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe('Caption AI pustaka.');
+      expect(
+        (screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value,
+      ).toBe('Caption AI pustaka.');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -1156,22 +1627,41 @@ describe('Formulir tulis artikel', () => {
     vi.stubGlobal('fetch', putMock);
     try {
       const cmd = vi.fn(async (action: string, payload: unknown) => {
-        if (action === 'media.reserve') return { reservationId: 'res-1', authorization: { url: 'https://r2.example/put', requiredHeaders: { Authorization: 'sig' } } };
+        if (action === 'media.reserve')
+          return {
+            reservationId: 'res-1',
+            authorization: {
+              url: 'https://r2.example/put',
+              requiredHeaders: { Authorization: 'sig' },
+            },
+          };
         if (action === 'media.complete') return { id: 'm-1', version: 1 };
         if (action === 'media.read') return { url: 'https://r2.example/preview' };
         if (action === 'publication.suggest') {
           const { siteIds } = payload as { readonly siteIds: readonly string[] };
           return {
             overrides: Object.fromEntries(
-              siteIds.map((siteId, index) => [siteId, { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` }]),
+              siteIds.map((siteId, index) => [
+                siteId,
+                { title: `Judul portal ${index}`, description: `Deskripsi portal ${index}.` },
+              ]),
             ),
           };
         }
         return {};
       });
-      render(<ArticleCreateForm data={DATA} onSubmit={vi.fn(async () => null)} command={cmd} organizationId="org-1" />);
+      render(
+        <ArticleCreateForm
+          data={DATA}
+          onSubmit={vi.fn(async () => null)}
+          command={cmd}
+          organizationId="org-1"
+        />,
+      );
       fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Panen Raya' } });
-      const picker = document.querySelector('[data-testid="featured-file-input"]') as HTMLInputElement;
+      const picker = document.querySelector(
+        '[data-testid="featured-file-input"]',
+      ) as HTMLInputElement;
       await user.upload(picker, new File(['isi-gambar'], 'sampul.png', { type: 'image/png' }));
       await waitFor(() => expect(screen.queryByLabelText('Teks alt sampul')).not.toBeNull());
 
@@ -1190,11 +1680,13 @@ describe('Formulir tulis artikel', () => {
       vi.stubGlobal('fetch', aiMock);
       await user.click(screen.getByRole('button', { name: 'Isi alt dan caption otomatis' }));
       await waitFor(() =>
-        expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Suasana pasar pagi.'),
+        expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe(
+          'Suasana pasar pagi.',
+        ),
       );
-      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe(
-        'Pedagang menata dagangan.',
-      );
+      expect(
+        (screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value,
+      ).toBe('Pedagang menata dagangan.');
       const sent = JSON.parse(String(vi.mocked(aiMock).mock.calls[0]?.[1]?.body ?? '{}')) as {
         readonly action?: string;
         readonly payload?: { readonly mimeType?: string; readonly title?: string };
@@ -1211,12 +1703,19 @@ describe('Formulir tulis artikel', () => {
     expect(screen.getByRole('combobox', { name: 'Mode artikel' })).toBeDefined();
     expect(screen.getByText('Naskah berita biasa tanpa syarat tambahan.')).toBeDefined();
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'standard', isSponsored: false, videoUrl: null, audioUrl: null }),
+        expect.objectContaining({
+          type: 'standard',
+          isSponsored: false,
+          videoUrl: null,
+          audioUrl: null,
+        }),
       ),
     );
   });
@@ -1228,7 +1727,9 @@ describe('Formulir tulis artikel', () => {
     await user.click(await screen.findByRole('option', { name: 'Video' }));
     expect(screen.getByLabelText('URL video')).toBeDefined();
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(submit).not.toHaveBeenCalled());
@@ -1240,15 +1741,25 @@ describe('Formulir tulis artikel', () => {
     const { submit, container } = setup({});
     await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Video' }));
-    fireEvent.change(screen.getByLabelText('URL video'), { target: { value: 'https://video.example/tonton' } });
-    fireEvent.change(screen.getByLabelText('Durasi (detik, opsional)'), { target: { value: '180' } });
+    fireEvent.change(screen.getByLabelText('URL video'), {
+      target: { value: 'https://video.example/tonton' },
+    });
+    fireEvent.change(screen.getByLabelText('Durasi (detik, opsional)'), {
+      target: { value: '180' },
+    });
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'video', videoUrl: 'https://video.example/tonton', durationSeconds: 180 }),
+        expect.objectContaining({
+          type: 'video',
+          videoUrl: 'https://video.example/tonton',
+          durationSeconds: 180,
+        }),
       ),
     );
   });
@@ -1258,7 +1769,9 @@ describe('Formulir tulis artikel', () => {
     setup({});
     await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Video' }));
-    fireEvent.change(screen.getByLabelText('URL video'), { target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' } });
+    fireEvent.change(screen.getByLabelText('URL video'), {
+      target: { value: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+    });
     expect(await screen.findByAltText('Pratinjau sampul otomatis YouTube')).toBeDefined();
     expect(screen.getByText(/Thumbnail YouTube dipakai otomatis/)).toBeDefined();
   });
@@ -1269,11 +1782,15 @@ describe('Formulir tulis artikel', () => {
     await user.click(screen.getByRole('combobox', { name: 'Mode artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Audio' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() => expect(submit).not.toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText(/URL audio/), { target: { value: 'https://cdn.example/rekaman.mp3' } });
+    fireEvent.change(screen.getByLabelText(/URL audio/), {
+      target: { value: 'https://cdn.example/rekaman.mp3' },
+    });
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(submit).toHaveBeenCalledWith(
@@ -1299,10 +1816,14 @@ describe('Formulir tulis artikel', () => {
     const { submit, container } = setup({});
     await user.click(screen.getByRole('checkbox', { name: /Konten bersponsor/ }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
-    fireEvent.change(screen.getByLabelText('Isi Artikel'), { target: { value: 'Isi berita lengkap.' } });
+    fireEvent.change(screen.getByLabelText('Isi Artikel'), {
+      target: { value: 'Isi berita lengkap.' },
+    });
     await pilihWilayahWonosobo();
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
-    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ isSponsored: true })));
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith(expect.objectContaining({ isSponsored: true })),
+    );
   });
 });
 
@@ -1335,7 +1856,10 @@ describe('Formulir ubah artikel', () => {
 
   async function editCommand(action: string): Promise<unknown> {
     if (action === 'article.edit.load') {
-      return { article: EDIT_ARTICLE, lookups: { regions: [], publishers: [], categories: [], authors: [] } };
+      return {
+        article: EDIT_ARTICLE,
+        lookups: { regions: [], publishers: [], categories: [], authors: [] },
+      };
     }
     if (action === 'article.update') return { ...EDIT_ARTICLE, version: 8 };
     return {};
@@ -1354,14 +1878,25 @@ describe('Formulir ubah artikel', () => {
 
   it('menyimpan via article.update dengan expectedVersion lalu keluar', async () => {
     const onExitEdit = vi.fn();
-    const { cmd, container } = setup({ organizationId: 'org-1', editArticleId: 'art-9', onExitEdit, command: editCommand });
+    const { cmd, container } = setup({
+      organizationId: 'org-1',
+      editArticleId: 'art-9',
+      onExitEdit,
+      command: editCommand,
+    });
     expect(await screen.findByText(/Mode ubah/)).toBeDefined();
     await screen.findByLabelText('Kota / kabupaten');
     fireEvent.submit(container.querySelectorAll('form')[0] as HTMLFormElement);
     await waitFor(() =>
       expect(cmd).toHaveBeenCalledWith(
         'article.update',
-        expect.objectContaining({ id: 'art-9', expectedVersion: 7, title: 'Judul Lama', slug: 'judul-lama', regionId: 'r-2' }),
+        expect.objectContaining({
+          id: 'art-9',
+          expectedVersion: 7,
+          title: 'Judul Lama',
+          slug: 'judul-lama',
+          regionId: 'r-2',
+        }),
         { refresh: true },
       ),
     );
@@ -1371,7 +1906,12 @@ describe('Formulir ubah artikel', () => {
   it('tombol kembali keluar dari mode ubah tanpa menyimpan', async () => {
     const user = userEvent.setup();
     const onExitEdit = vi.fn();
-    const { cmd } = setup({ organizationId: 'org-1', editArticleId: 'art-9', onExitEdit, command: editCommand });
+    const { cmd } = setup({
+      organizationId: 'org-1',
+      editArticleId: 'art-9',
+      onExitEdit,
+      command: editCommand,
+    });
     expect(await screen.findByText(/Mode ubah/)).toBeDefined();
     await user.click(screen.getByRole('button', { name: 'Kembali ke daftar' }));
     expect(onExitEdit).toHaveBeenCalledTimes(1);
@@ -1398,25 +1938,52 @@ describe('Formulir ubah artikel', () => {
   it('melengkapi metadata sampul artikel yang diubah dari pustaka', async () => {
     const articleWithCover = { ...EDIT_ARTICLE, leadMediaId: 'm-1' };
     const libraryItem = {
-      id: 'm-1', objectKey: 'sampul/uji.webp', mediaType: 'image/webp', sizeBytes: 1000,
-      altText: 'Pasar pagi', caption: 'Suasana pasar', version: 4, state: 'active',
+      id: 'm-1',
+      objectKey: 'sampul/uji.webp',
+      mediaType: 'image/webp',
+      sizeBytes: 1000,
+      altText: 'Pasar pagi',
+      caption: 'Suasana pasar',
+      version: 4,
+      state: 'active',
     };
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ media: [libraryItem] }) })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => ({ media: [libraryItem] }) })),
+    );
     try {
       setup({
         organizationId: 'org-1',
         editArticleId: 'art-9',
         command: async (action: string) => {
-          if (action === 'article.edit.load') return { article: articleWithCover, lookups: { regions: [], publishers: [], categories: [], authors: [] } };
+          if (action === 'article.edit.load')
+            return {
+              article: articleWithCover,
+              lookups: { regions: [], publishers: [], categories: [], authors: [] },
+            };
           if (action === 'media.readMany') {
-            return { items: [{ mediaId: 'm-1', url: 'https://r2.example/sampul', expiresAt: new Date(Date.now() + 3600000).toISOString() }] };
+            return {
+              items: [
+                {
+                  mediaId: 'm-1',
+                  url: 'https://r2.example/sampul',
+                  expiresAt: new Date(Date.now() + 3600000).toISOString(),
+                },
+              ],
+            };
           }
           return {};
         },
       });
       expect(await screen.findByText(/Mode ubah/)).toBeDefined();
-      await waitFor(() => expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe('Pasar pagi'));
-      expect((screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value).toBe('Suasana pasar');
+      await waitFor(() =>
+        expect((screen.getByLabelText('Teks alt sampul') as HTMLInputElement).value).toBe(
+          'Pasar pagi',
+        ),
+      );
+      expect(
+        (screen.getByLabelText('Keterangan sampul (opsional)') as HTMLInputElement).value,
+      ).toBe('Suasana pasar');
     } finally {
       vi.unstubAllGlobals();
     }
