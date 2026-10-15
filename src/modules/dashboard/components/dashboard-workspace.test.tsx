@@ -138,7 +138,7 @@ describe('Dashboard workspace', () => {
 
     expect(await screen.findByRole('heading', { name: 'Akses tidak tersedia' })).toBeDefined();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=customers'))).toBe(false);
-    expect(screen.getByRole('button', { name: 'Kembali ke Command Center' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Kembali ke Dashboard' })).toBeDefined();
   });
 
   it.each(['articles', 'published'] as const)(
@@ -180,7 +180,7 @@ describe('Dashboard workspace', () => {
       return { ok: true, json: async () => ({ articles: [], total: 0, articlesNextCursor: null }) };
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} />);
+    render(<DashboardWorkspace displayName="Admin Platform" organizations={organizations} navigationMode="platform" />);
 
     await waitFor(() => {
       const articleRequests = fetchMock.mock.calls
@@ -266,7 +266,7 @@ describe('Dashboard workspace', () => {
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} navigationMode="platform" />);
 
     expect(await screen.findByRole('heading', { name: 'Network Infrastructure', level: 1 }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     act(() => setViewExternal?.('publishers'));
