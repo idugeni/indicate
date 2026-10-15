@@ -9,7 +9,7 @@ vi.mock('@/modules/dashboard/components/shared/use-dashboard-query', () => ({
   useDashboardPage: () => [1, vi.fn()],
 }));
 
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const DATA = {
   articles: [
@@ -160,6 +160,60 @@ describe('ContentLibraryV2', () => {
       'article.archive',
       expect.objectContaining({ id: 'a-2' }),
       { refresh: true },
+    );
+  });
+
+
+  it('copies every published tenant URL for an article into a numbered paste-ready list', async () => {
+    const publishedUrls = Array.from(
+      { length: 134 },
+      (_, index) => `https://tenant-${index + 1}.example/banjir-wonosobo`,
+    );
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    const data = {
+      ...DATA,
+      articles: [{ ...DATA.articles[0]!, publishedUrls, portalHostnames: [] }],
+    };
+    render(<ContentLibraryV2 data={data} />);
+
+    fireEvent.click(screen.getAllByRole('button', {
+      name: 'Salin semua tautan tayang artikel Banjir Wonosobo',
+    })[0]!);
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const text = writeText.mock.calls[0]?.[0] ?? '';
+    const lines = text.split('\\n');
+    expect(lines).toHaveLength(134);
+    expect(lines[0]).toBe('1. https://tenant-1.example/banjir-wonosobo');
+    expect(lines[133]).toBe('134. https://tenant-134.example/banjir-wonosobo');
+  });
+
+  it('includes published assignment links and skips inactive or unpublished assignments', async () => {
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    const data = {
+      articles: [{ ...DATA.articles[0]!, publishedUrls: [], portalHostnames: [] }],
+      sites: [
+        { id: 'apex', normalizedHostname: 'example.com' },
+        { id: 'tenant', normalizedHostname: 'tenant.example' },
+        { id: 'draft', normalizedHostname: 'draft.example' },
+      ],
+      articleSites: [
+        { articleId: 'a-1', siteId: 'apex', state: 'published', publishedUrl: 'https://example.com/berita-custom' },
+        { articleId: 'a-1', siteId: 'tenant', state: 'published' },
+        { articleId: 'a-1', siteId: 'draft', state: 'queued' },
+      ],
+      total: 1,
+    };
+    render(<ContentLibraryV2 data={data} />);
+    fireEvent.click(screen.getAllByRole('button', {
+      name: 'Salin semua tautan tayang artikel Banjir Wonosobo',
+    })[0]!);
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0]?.[0]).toBe(
+      '1. https://example.com/berita-custom\\n2. https://tenant.example/banjir-wonosobo',
     );
   });
 
