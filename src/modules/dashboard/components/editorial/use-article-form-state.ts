@@ -1,4 +1,14 @@
-import { useEffect, useId, useMemo, useRef, useState, useTransition, type ChangeEvent, type FormEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ChangeEvent,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { toast } from 'sonner';
 import { CaseSensitive, Clock, Image as ImageIcon, Pilcrow, Share2, Type } from 'lucide-react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
@@ -10,7 +20,12 @@ import type {
   PublisherEntity,
   RegionEntity,
 } from '@/modules/dashboard/components/shared/types';
-import { findMatchingCategoryId, findPublisherHomeRegion, isoToLocalDateTimeInput, localDateTimeToIso } from '@/modules/dashboard/components/shared/form-utils';
+import {
+  findMatchingCategoryId,
+  findPublisherHomeRegion,
+  isoToLocalDateTimeInput,
+  localDateTimeToIso,
+} from '@/modules/dashboard/components/shared/form-utils';
 import { slugify } from '@/modules/site/slugify';
 import { DEFAULT_CATEGORY_SLUG } from '@/modules/dashboard/models';
 import { TAG_MAX_COUNT } from '@/modules/site/slug-allocator';
@@ -20,12 +35,22 @@ import { describeBodyJsonProblem } from '@/modules/dashboard/components/editoria
 import { buildArticlePayload } from '@/modules/dashboard/components/editorial/article-persistence';
 import { callAi } from '@/modules/ai/components/ai-client';
 import { uploadEditorImage } from '@/modules/dashboard/components/editorial/editor-image-upload';
-import { chunkPublicationTargets, selectPublicationTargets } from '@/modules/dashboard/components/editorial/publication-batch';
+import {
+  chunkPublicationTargets,
+  selectPublicationTargets,
+} from '@/modules/dashboard/components/editorial/publication-batch';
 import { beginActionProgress } from '@/modules/dashboard/components/shared/action-progress';
 import { useAiSlot } from '@/modules/dashboard/components/editorial/use-ai-slot';
-import type { PublicationScope, PublishTargetSite } from '@/modules/dashboard/components/editorial/publication-batch';
+import type {
+  PublicationScope,
+  PublishTargetSite,
+} from '@/modules/dashboard/components/editorial/publication-batch';
 import { COVER_COMPRESS, formatBytes } from '@/modules/publishing/compress-image';
-import { describeArticleTypeProblem, normalizeArticleType, type ArticleType } from '@/modules/site/article-type';
+import {
+  describeArticleTypeProblem,
+  normalizeArticleType,
+  type ArticleType,
+} from '@/modules/site/article-type';
 import {
   ARTICLE_STATUS_OPTIONS,
   COVER_CAPTION_BYTES_MAX,
@@ -108,7 +133,8 @@ export function useArticleFormState({
   const authorSelectId = useId();
   const statusSelectId = useId();
   const viewsInputId = useId();
-  const transcribeFullInputId = useId();  const slugInputId = useId();
+  const transcribeFullInputId = useId();
+  const slugInputId = useId();
   const titleInputId = useId();
   const sourceInputId = useId();
   const canonicalInputId = useId();
@@ -146,36 +172,72 @@ export function useArticleFormState({
   );
   /** Tandai konten berbayar untuk disclosure bersponsor. */
   const [isSponsored, setIsSponsored] = useState(initialArticle?.isSponsored ?? false);
-  const [categoryIds, setCategoryIds] = useState<readonly string[]>(() => [...(initialArticle?.categoryIds ?? [])]);
+  const [categoryIds, setCategoryIds] = useState<readonly string[]>(() => [
+    ...(initialArticle?.categoryIds ?? []),
+  ]);
   const [extraCategories, setExtraCategories] = useState<readonly CategoryEntity[]>([]);
   const [featuredId, setFeaturedId] = useState<string | null>(initialArticle?.leadMediaId ?? null);
   const [featuredOrgId, setFeaturedOrgId] = useState<string | null>(null);
   /** Org tercatat tiap gambar inline saat diunggah (null = org sesi saat itu). */
-  const [inlineMediaOrgs, setInlineMediaOrgs] = useState<Readonly<Record<string, string | null>>>({});
+  const [inlineMediaOrgs, setInlineMediaOrgs] = useState<Readonly<Record<string, string | null>>>(
+    {},
+  );
   const [featuredName, setFeaturedName] = useState('');
   const [featuredPreviewUrl, setFeaturedPreviewUrl] = useState<string | null>(null);
   const [featuredStatus, setFeaturedStatus] = useState<string | null>(null);
-  /** Petakan regionId artikel ke pilihan wilayah/kota; loader menjamin daftar wilayah sudah tiba. */
-  const resolveInitialRegion = (): { readonly provinceId: string | null; readonly cityId: string | null } => {
-    const regionId = initialArticle?.regionId ?? null;
-    if (regionId === null) return { provinceId: null, cityId: null };
-    const region = (model?.regions ?? []).find((item) => item.id === regionId) ?? null;
-    if (region === null) return { provinceId: null, cityId: null };
-    return region.kind === 'city'
-      ? { provinceId: region.parentRegionId ?? null, cityId: region.id }
-      : { provinceId: region.id, cityId: null };
-  };
-  const [provinceId, setProvinceId] = useState<string | null>(() => resolveInitialRegion().provinceId);
-  const [cityId, setCityId] = useState<string | null>(() => resolveInitialRegion().cityId);
-  const [isNational, setIsNational] = useState(() => initialArticle !== undefined && initialArticle.regionId === null);
+  /**
+   * Resolve geography deterministically: explicit article value, membership
+   * lock, then a single active city/region. Ambiguous tenants require a choice.
+   */
+  const initialRegion = useMemo((): {
+    readonly provinceId: string | null;
+    readonly cityId: string | null;
+  } => {
+    const requestedId =
+      initialArticle !== undefined ? initialArticle.regionId : (model?.regionScope?.id ?? null);
+    if (requestedId !== null) {
+      const region = (model?.regions ?? []).find((item) => item.id === requestedId) ?? null;
+      if (region === null) return { provinceId: requestedId, cityId: null };
+      return region.kind === 'city'
+        ? { provinceId: region.parentRegionId ?? null, cityId: region.id }
+        : { provinceId: region.id, cityId: null };
+    }
+    if (initialArticle !== undefined) return { provinceId: null, cityId: null };
+    const activeRegions = (model?.regions ?? []).filter(
+      (item) => item.status === undefined || item.status === 'active',
+    );
+    const activeCities = activeRegions.filter((item) => item.kind === 'city');
+    if (activeCities.length === 1) {
+      const city = activeCities[0]!;
+      return { provinceId: city.parentRegionId ?? null, cityId: city.id };
+    }
+    const activeProvinces = activeRegions.filter((item) => item.kind !== 'city');
+    if (activeCities.length === 0 && activeProvinces.length === 1)
+      return { provinceId: activeProvinces[0]!.id, cityId: null };
+    return { provinceId: null, cityId: null };
+  }, [initialArticle, model?.regionScope?.id, model?.regions]);
+  const [provinceId, setProvinceId] = useState<string | null>(() => initialRegion.provinceId);
+  const [cityId, setCityId] = useState<string | null>(() => initialRegion.cityId);
+  const [isNational, setIsNational] = useState(
+    () => initialArticle !== undefined && initialArticle.regionId === null,
+  );
   /** Admin tanpa kunci wilayah boleh menerbitkan nasional ke semua apex. */
   const isUnrestricted = model !== null && model.regionScope === null;
+  const regionLocked = model?.regionScope !== null && model?.regionScope !== undefined;
+  const lockedRegionIsCity =
+    regionLocked &&
+    (model?.regions ?? []).some(
+      (region) => region.id === model?.regionScope?.id && region.kind === 'city',
+    );
   const nationalActive = isUnrestricted && isNational;
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
   const [featuredVersion, setFeaturedVersion] = useState<number | null>(null);
   const [featuredAlt, setFeaturedAlt] = useState('');
   const [featuredCaption, setFeaturedCaption] = useState('');
-  const [featuredFocal, setFeaturedFocal] = useState<{ readonly x: number; readonly y: number } | null>(null);
+  const [featuredFocal, setFeaturedFocal] = useState<{
+    readonly x: number;
+    readonly y: number;
+  } | null>(null);
   const coverBlobRef = useRef<{ readonly blob: Blob; readonly mimeType: string } | null>(null);
   const coverRemoteRef = useRef<{ readonly url: string; readonly mimeType: string } | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -222,7 +284,9 @@ export function useArticleFormState({
   const publicationScope = useMemo<PublicationScope>(() => {
     if (nationalActive) return { kind: 'apex' };
     const pickedCity = model?.regions?.find((region) => region.id === cityId);
-    return pickedCity?.kind === 'city' ? { kind: 'city', regionId: pickedCity.id } : { kind: 'apex' };
+    return pickedCity?.kind === 'city'
+      ? { kind: 'city', regionId: pickedCity.id }
+      : { kind: 'apex' };
   }, [model?.regions, cityId, nationalActive]);
   const targetSiteIds = useMemo(
     () => selectPublicationTargets(liveSites, publicationScope),
@@ -247,7 +311,15 @@ export function useArticleFormState({
     for (const node of bodyJsonDraft?.content ?? []) {
       if (node.type === 'image') {
         images += 1;
-      } else if (node.type === 'youtube' || node.type === 'video' || node.type === 'twitter' || node.type === 'instagram' || node.type === 'tiktok' || node.type === 'facebook' || node.type === 'drive') {
+      } else if (
+        node.type === 'youtube' ||
+        node.type === 'video' ||
+        node.type === 'twitter' ||
+        node.type === 'instagram' ||
+        node.type === 'tiktok' ||
+        node.type === 'facebook' ||
+        node.type === 'drive'
+      ) {
         embeds += 1;
       } else if (node.type === 'bulletList' || node.type === 'orderedList') {
         for (const item of node.content ?? []) {
@@ -276,24 +348,44 @@ export function useArticleFormState({
   ];
 
   const handleRichChange = (change: { readonly doc: TipTapDoc; readonly text: string }) => {
-    const empty = change.text.trim() === '' && (change.doc.content ?? []).every((node) => node.type === 'paragraph' && (node.content ?? []).length === 0);
+    const empty =
+      change.text.trim() === '' &&
+      (change.doc.content ?? []).every(
+        (node) => node.type === 'paragraph' && (node.content ?? []).length === 0,
+      );
     setBodyJsonDraft(empty ? null : change.doc);
     setBodyText(change.text);
   };
   const regionOptions = useMemo(
-    () => (model?.regions ?? []).filter((r) => r.kind !== 'city').map((r) => ({ value: r.id, label: r.name })),
+    () =>
+      (model?.regions ?? [])
+        .filter((r) => r.kind !== 'city')
+        .map((r) => ({ value: r.id, label: r.name })),
     [model?.regions],
   );
   const cityOptions = useMemo(
-    () => (model?.regions ?? [])
-      .filter((r) => r.kind === 'city' && (provinceId === null || r.parentRegionId === provinceId))
-      .map((r) => ({ value: r.id, label: r.name })),
+    () =>
+      (model?.regions ?? [])
+        .filter(
+          (r) => r.kind === 'city' && (provinceId === null || r.parentRegionId === provinceId),
+        )
+        .map((r) => ({ value: r.id, label: r.name })),
     [model?.regions, provinceId],
   );
-  const publisherOptions = useMemo(
-    () => (model?.publishers ?? []).filter((p) => p.status === undefined || p.status === 'active').map((p) => ({ value: p.id, label: p.name })),
+  const activePublishers = useMemo(
+    () =>
+      (model?.publishers ?? []).filter(
+        (publisher) => publisher.status === undefined || publisher.status === 'active',
+      ),
     [model?.publishers],
   );
+  const publisherOptions = useMemo(
+    () => activePublishers.map((publisher) => ({ value: publisher.id, label: publisher.name })),
+    [activePublishers],
+  );
+  // Auto-select only when the tenant has exactly one active publisher. Multiple
+  // publishers are an explicit editorial choice; never pick the first at random.
+  const defaultPublisherId = activePublishers.length === 1 ? activePublishers[0]!.id : null;
   const activeCategories = useMemo(
     () => (model?.categories ?? []).filter((c) => c.status === undefined || c.status === 'active'),
     [model?.categories],
@@ -303,25 +395,38 @@ export function useArticleFormState({
     return [...activeCategories, ...extraCategories.filter((category) => !seen.has(category.id))];
   }, [activeCategories, extraCategories]);
   const defaultCategory = useMemo(
-    () => allCategories.find((category) => category.slug === DEFAULT_CATEGORY_SLUG) ?? allCategories[0] ?? null,
+    () =>
+      allCategories.find((category) => category.slug === DEFAULT_CATEGORY_SLUG) ??
+      allCategories[0] ??
+      null,
     [allCategories],
   );
   const defaultCategoryId = defaultCategory?.id ?? null;
   const defaultCategoryName = defaultCategory?.name ?? null;
   const authorOptions = useMemo(
-    () => (model?.authors ?? []).filter((a) => a.status === undefined || a.status === 'active').map((a) => ({ value: a.id, label: a.displayName })),
+    () =>
+      (model?.authors ?? [])
+        .filter((a) => a.status === undefined || a.status === 'active')
+        .map((a) => ({ value: a.id, label: a.displayName })),
     [model?.authors],
   );
   const activeAuthors = useMemo(
     () => (model?.authors ?? []).filter((a) => a.status === undefined || a.status === 'active'),
     [model?.authors],
   );
+  // Author metadata belongs to the active organization's editorial configuration.
+  // Do not privilege a display name such as "Redaksi": choose automatically only
+  // when the organization has exactly one active author; ambiguity requires a choice.
   const defaultAuthorId = useMemo(
-    () => activeAuthors.find((a) => a.displayName === 'Redaksi')?.id ?? activeAuthors[0]?.id ?? null,
+    () => (activeAuthors.length === 1 ? activeAuthors[0]!.id : null),
     [activeAuthors],
   );
-  const [publisherId, setPublisherId] = useState<string | null>(initialArticle?.publisherId ?? null);
+  const [publisherId, setPublisherId] = useState<string | null>(
+    initialArticle?.publisherId ?? null,
+  );
   const [authorId, setAuthorId] = useState<string | null>(initialArticle?.authorId ?? null);
+  /** User's explicit choice (including Mandiri) must not be overwritten by defaults. */
+  const touchedPublisher = useRef(isEditing);
   /** Mode ubah tidak pernah menerapkan penulis bawaan; nilai awal adalah kebenaran. */
   const touchedAuthor = useRef(isEditing);
 
@@ -330,15 +435,27 @@ export function useArticleFormState({
     [model?.publishers, publisherId],
   );
   const effectiveOwnerOrg = ownerOrganizationId ?? selectedPublisher?.ownerOrganizationId ?? null;
-  const foreignOwnerOrg = effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
+  const foreignOwnerOrg =
+    effectiveOwnerOrg !== null && effectiveOwnerOrg !== organizationId ? effectiveOwnerOrg : null;
 
   const effectiveArticleOrg = foreignOwnerOrg ?? (organizationId === '' ? '' : organizationId);
 
   useEffect(() => {
-    if (!touchedAuthor.current && publisherId === null && authorId === null && defaultAuthorId !== null) {
+    if (
+      !isEditing &&
+      !touchedPublisher.current &&
+      publisherId === null &&
+      defaultPublisherId !== null
+    ) {
+      setPublisherId(defaultPublisherId);
+    }
+  }, [isEditing, publisherId, defaultPublisherId]);
+
+  useEffect(() => {
+    if (!isEditing && !touchedAuthor.current && authorId === null && defaultAuthorId !== null) {
       setAuthorId(defaultAuthorId);
     }
-  }, [publisherId, authorId, defaultAuthorId]);
+  }, [isEditing, publisherId, defaultPublisherId, authorId, defaultAuthorId]);
 
   /** expectedVersion artikel yang diubah; disegarkan dari tiap hasil `article.update`. */
   const editVersionRef = useRef(initialArticle?.version ?? 0);
@@ -347,14 +464,17 @@ export function useArticleFormState({
   const coverPreviewRequested = useRef(false);
   useEffect(() => {
     const mediaId = initialArticle?.leadMediaId ?? null;
-    if (!isEditing || mediaId === null || command === undefined || coverPreviewRequested.current) return;
+    if (!isEditing || mediaId === null || command === undefined || coverPreviewRequested.current)
+      return;
     if (featuredId !== mediaId || featuredPreviewUrl !== null) return;
     coverPreviewRequested.current = true;
     void (async () => {
       try {
         const result = (await command('media.readMany', {
           mediaIds: [mediaId],
-          ...(effectiveArticleOrg !== '' && effectiveArticleOrg !== organizationId ? { ownerOrganizationId: effectiveArticleOrg } : {}),
+          ...(effectiveArticleOrg !== '' && effectiveArticleOrg !== organizationId
+            ? { ownerOrganizationId: effectiveArticleOrg }
+            : {}),
         })) as {
           readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown }[];
         } | null;
@@ -364,7 +484,15 @@ export function useArticleFormState({
         /* Pratinjau sampul best-effort; id media tetap tersimpan. */
       }
     })();
-  }, [isEditing, initialArticle, command, featuredId, featuredPreviewUrl, effectiveArticleOrg, organizationId]);
+  }, [
+    isEditing,
+    initialArticle,
+    command,
+    featuredId,
+    featuredPreviewUrl,
+    effectiveArticleOrg,
+    organizationId,
+  ]);
 
   /**
    * Lengkapi nama/versi/alt/caption sampul artikel yang diubah dari pustaka.
@@ -375,17 +503,28 @@ export function useArticleFormState({
   const coverMetaRequested = useRef(false);
   useEffect(() => {
     const mediaId = initialArticle?.leadMediaId ?? null;
-    if (!isEditing || mediaId === null || organizationId === undefined || organizationId === '' || coverMetaRequested.current) return;
+    if (
+      !isEditing ||
+      mediaId === null ||
+      organizationId === undefined ||
+      organizationId === '' ||
+      coverMetaRequested.current
+    )
+      return;
     if (featuredId !== mediaId || featuredVersion !== null) return;
     coverMetaRequested.current = true;
     void (async () => {
       try {
-        const item = (await fetchCoverLibrary(organizationId)).find((candidate) => candidate.id === mediaId) ?? null;
+        const item =
+          (await fetchCoverLibrary(organizationId)).find((candidate) => candidate.id === mediaId) ??
+          null;
         if (item === null) return;
         setFeaturedName((prev) => (prev === '' ? fileNameOf(item.objectKey) : prev));
         setFeaturedVersion((prev) => (prev === null ? item.version : prev));
         setFeaturedAlt((prev) => (prev === '' ? (item.altText ?? '').trim().slice(0, 300) : prev));
-        setFeaturedCaption((prev) => (prev === '' ? (item.caption ?? '').trim().slice(0, 500) : prev));
+        setFeaturedCaption((prev) =>
+          prev === '' ? (item.caption ?? '').trim().slice(0, 500) : prev,
+        );
       } catch {
         /* Metadata sampul best-effort; penjaga versi tetap menolak simpan buta. */
       }
@@ -393,29 +532,35 @@ export function useArticleFormState({
   }, [isEditing, initialArticle, organizationId, featuredId, featuredVersion]);
 
   const effectiveCategoryIds = useMemo(
-    () => (categoryIds.length > 0 ? categoryIds : defaultCategoryId === null ? [] : [defaultCategoryId]),
+    () =>
+      categoryIds.length > 0 ? categoryIds : defaultCategoryId === null ? [] : [defaultCategoryId],
     [categoryIds, defaultCategoryId],
   );
   const bodyJsonProblem = useMemo(() => describeBodyJsonProblem(bodyJsonDraft), [bodyJsonDraft]);
 
   /** Validasi silang mode terhadap isi, sampul, dan URL khusus mode. */
   const modeProblem = useMemo(
-    () => describeArticleTypeProblem({
-      type: articleType,
-      body: bodyText,
-      bodyJson: bodyJsonDraft,
-      leadMediaId: featuredId,
-      coverImageUrl: coverUrl,
-      videoUrl,
-      audioUrl,
-    }),
+    () =>
+      describeArticleTypeProblem({
+        type: articleType,
+        body: bodyText,
+        bodyJson: bodyJsonDraft,
+        leadMediaId: featuredId,
+        coverImageUrl: coverUrl,
+        videoUrl,
+        audioUrl,
+      }),
     [articleType, bodyText, bodyJsonDraft, featuredId, coverUrl, videoUrl, audioUrl],
   );
 
   const mediaLibraryOwnerOrg = effectiveArticleOrg === '' ? organizationId : effectiveArticleOrg;
 
   useEffect(() => {
-    if (libraryOwnerRequest.current === null || libraryOwnerRequest.current === mediaLibraryOwnerOrg) return;
+    if (
+      libraryOwnerRequest.current === null ||
+      libraryOwnerRequest.current === mediaLibraryOwnerOrg
+    )
+      return;
     libraryOwnerRequest.current = null;
     setLibraryOpen(false);
     setLibraryItems(null);
@@ -436,9 +581,13 @@ export function useArticleFormState({
   const handleInlineStored = (mediaId: string, ownerOrg: string | null): void => {
     // Null from the uploader means the active tenant, not an unknown owner.
     const actualOwnerOrg = ownerOrg ?? (organizationId === '' ? null : organizationId);
-    setInlineMediaOrgs((prev) => (prev[mediaId] === actualOwnerOrg ? prev : { ...prev, [mediaId]: actualOwnerOrg }));
+    setInlineMediaOrgs((prev) =>
+      prev[mediaId] === actualOwnerOrg ? prev : { ...prev, [mediaId]: actualOwnerOrg },
+    );
     if (publisherId === null || publisherId === '') {
-      toast.warning('Penerbit belum dipilih — gambar masuk organisasi aktif. Jika nanti memilih penerbit organisasi lain, unggah ulang gambar setelah penerbit tujuan dipilih.');
+      toast.warning(
+        'Penerbit belum dipilih — gambar masuk organisasi aktif. Jika nanti memilih penerbit organisasi lain, unggah ulang gambar setelah penerbit tujuan dipilih.',
+      );
     }
   };
 
@@ -451,44 +600,66 @@ export function useArticleFormState({
     return findForeignMediaIds(present, orgByMediaId, effectiveArticleOrg);
   }, [bodyJsonDraft, featuredId, inlineMediaOrgs, featuredOrgId, effectiveArticleOrg]);
 
-  const formSnapshot = useMemo(() => ({
-    slug,
-    titleText,
-    descriptionText,
-    bodyText,
-    bodyJson: bodyJsonDraft,
-    source,
-    canonicalUrl,
-    coverUrl,
-    tags,
-    status,
-    rawSchedule: rawScheduleInput,
-    provinceId,
-    cityId,
-    publisherId,
-    authorId,
-    ...(foreignOwnerOrg === null ? {} : { ownerOrganizationId: foreignOwnerOrg }),
-    categoryIds: effectiveCategoryIds,
-    leadMediaId: featuredId,
-    type: articleType,
-    isSponsored,
-    videoUrl,
-    audioUrl,
-    durationSeconds: durationInput,
-  }), [
-    slug, titleText, descriptionText, bodyText, bodyJsonDraft, source, canonicalUrl,
-    coverUrl, tags, status, rawScheduleInput, provinceId, cityId, publisherId,
-    authorId, foreignOwnerOrg, effectiveCategoryIds, featuredId,
-    articleType, isSponsored, videoUrl, audioUrl, durationInput,
-  ]);
+  const formSnapshot = useMemo(
+    () => ({
+      slug,
+      titleText,
+      descriptionText,
+      bodyText,
+      bodyJson: bodyJsonDraft,
+      source,
+      canonicalUrl,
+      coverUrl,
+      tags,
+      status,
+      rawSchedule: rawScheduleInput,
+      provinceId,
+      cityId,
+      publisherId,
+      authorId,
+      ...(foreignOwnerOrg === null ? {} : { ownerOrganizationId: foreignOwnerOrg }),
+      categoryIds: effectiveCategoryIds,
+      leadMediaId: featuredId,
+      type: articleType,
+      isSponsored,
+      videoUrl,
+      audioUrl,
+      durationSeconds: durationInput,
+    }),
+    [
+      slug,
+      titleText,
+      descriptionText,
+      bodyText,
+      bodyJsonDraft,
+      source,
+      canonicalUrl,
+      coverUrl,
+      tags,
+      status,
+      rawScheduleInput,
+      provinceId,
+      cityId,
+      publisherId,
+      authorId,
+      foreignOwnerOrg,
+      effectiveCategoryIds,
+      featuredId,
+      articleType,
+      isSponsored,
+      videoUrl,
+      audioUrl,
+      durationInput,
+    ],
+  );
 
   const selectedAuthor = activeAuthors.find((a) => a.id === authorId) ?? null;
 
   const handlePublisherChange = (next: string | null) => {
     const id = next === null || next === '' ? null : next;
+    touchedPublisher.current = true;
     setPublisherId(id);
     if (id !== null) {
-      setAuthorId(null);
       const picked = (model?.publishers ?? []).find((p) => p.id === id) ?? null;
       if (picked !== null) {
         if (provinceId === null && cityId === null) {
@@ -507,7 +678,8 @@ export function useArticleFormState({
     setAuthorId(next === null || next === '' ? null : next);
   };
   const tagSuggestions = useMemo(() => {
-    const options = (model as { readonly tagOptions?: readonly { readonly tag: string }[] } | null)?.tagOptions;
+    const options = (model as { readonly tagOptions?: readonly { readonly tag: string }[] } | null)
+      ?.tagOptions;
     if (options !== undefined) return options.map((option) => option.tag);
     return rankTags(model?.articles ?? []);
   }, [model]);
@@ -523,17 +695,29 @@ export function useArticleFormState({
   };
 
   const applyTranscript = (transcript: string) => {
-    const lines = transcript.split('\n').map((line) => line.trim()).filter((line) => line !== '');
+    const lines = transcript
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
     if (lines.length === 0) return;
-    const nodes = lines.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line.slice(0, 2000) }] }));
-    const merged: TipTapDoc = { type: 'doc', content: [...(bodyJsonDraft?.content ?? []), ...nodes].slice(-TIPTAP_MAX_NODES) };
+    const nodes = lines.map((line) => ({
+      type: 'paragraph',
+      content: [{ type: 'text', text: line.slice(0, 2000) }],
+    }));
+    const merged: TipTapDoc = {
+      type: 'doc',
+      content: [...(bodyJsonDraft?.content ?? []), ...nodes].slice(-TIPTAP_MAX_NODES),
+    };
     handleRichChange({ doc: merged, text: tiptapToText(merged) });
     setRichResetKey((key) => key + 1);
     toast.success('Transkrip ditambahkan ke isi artikel.');
   };
 
   const applyPolishedBody = (polished: string) => {
-    const paragraphs = polished.split('\n').map((line) => line.trim()).filter((line) => line !== '');
+    const paragraphs = polished
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
     if (paragraphs.length === 0) return;
     const remaining = [...paragraphs];
     const rewrite = (nodes: readonly TipTapNode[]): TipTapNode[] =>
@@ -547,20 +731,31 @@ export function useArticleFormState({
         return node;
       });
     const base = bodyJsonDraft?.content ?? [];
-    const content = [...rewrite(base), ...remaining.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line.slice(0, 2000) }] }))].slice(-TIPTAP_MAX_NODES);
+    const content = [
+      ...rewrite(base),
+      ...remaining.map((line) => ({
+        type: 'paragraph',
+        content: [{ type: 'text', text: line.slice(0, 2000) }],
+      })),
+    ].slice(-TIPTAP_MAX_NODES);
     const merged: TipTapDoc = { type: 'doc', content };
     handleRichChange({ doc: merged, text: tiptapToText(merged) });
     setRichResetKey((key) => key + 1);
     toast.success('Isi poles diterapkan; gambar dan sematan tidak berubah.');
   };
 
-  const applyClassification = (selection: { readonly categoryIds?: readonly string[] | undefined; readonly tags?: readonly string[] | undefined }) => {
+  const applyClassification = (selection: {
+    readonly categoryIds?: readonly string[] | undefined;
+    readonly tags?: readonly string[] | undefined;
+  }) => {
     if (selection.categoryIds !== undefined && selection.categoryIds.length > 0) {
       setCategoryIds([...selection.categoryIds]);
     }
     const tags = selection.tags ?? [];
     if (tags.length > 0) {
-      setTags((prev) => [...prev, ...tags.filter((tag) => !prev.includes(tag))].slice(0, TAG_MAX_COUNT));
+      setTags((prev) =>
+        [...prev, ...tags.filter((tag) => !prev.includes(tag))].slice(0, TAG_MAX_COUNT),
+      );
     }
     toast.success('Kategori dan topik terisi dari klasifikasi AI.');
   };
@@ -577,16 +772,25 @@ export function useArticleFormState({
     if (!aiReady || titleText.trim() === '' || !claimAi(action)) return;
     void (async () => {
       try {
-        const result = (await callAi(organizationId, 'seo-titles', { title: titleText.trim(), body: bodyText.trim() })) as {
+        const result = (await callAi(organizationId, 'seo-titles', {
+          title: titleText.trim(),
+          body: bodyText.trim(),
+        })) as {
           readonly titles?: readonly string[];
         };
         const titles = Array.isArray(result.titles)
-          ? result.titles.filter((item): item is string => typeof item === 'string' && item.trim() !== '').slice(0, 3)
+          ? result.titles
+              .filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+              .slice(0, 3)
           : [];
         if (titles.length === 0) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
         setTitleVariants(titles);
       } catch (err) {
-        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+        toast.error(
+          err instanceof Error && err.message !== ''
+            ? err.message
+            : 'Layanan AI sedang sibuk. Silakan coba lagi.',
+        );
       } finally {
         releaseAi();
       }
@@ -604,12 +808,19 @@ export function useArticleFormState({
         })) as {
           readonly metaDescription?: string;
         };
-        const meta = typeof result.metaDescription === 'string' ? result.metaDescription.trim().slice(0, 160) : '';
+        const meta =
+          typeof result.metaDescription === 'string'
+            ? result.metaDescription.trim().slice(0, 160)
+            : '';
         if (meta === '') throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
         setDescriptionText(meta);
         toast.success('Deskripsi disempurnakan AI.');
       } catch (err) {
-        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+        toast.error(
+          err instanceof Error && err.message !== ''
+            ? err.message
+            : 'Layanan AI sedang sibuk. Silakan coba lagi.',
+        );
       } finally {
         releaseAi();
       }
@@ -620,7 +831,10 @@ export function useArticleFormState({
     if (!aiReady || bodyText.trim() === '' || !claimAi('polish')) return;
     void (async () => {
       try {
-        const result = (await callAi(organizationId, 'polish-body', { title: titleText.trim(), body: bodyText.trim() })) as {
+        const result = (await callAi(organizationId, 'polish-body', {
+          title: titleText.trim(),
+          body: bodyText.trim(),
+        })) as {
           readonly body?: string;
         };
         if (typeof result.body !== 'string' || result.body.trim() === '') {
@@ -629,7 +843,11 @@ export function useArticleFormState({
         setPolished(result.body.trim());
         setPolishRounds((count) => count + 1);
       } catch (err) {
-        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+        toast.error(
+          err instanceof Error && err.message !== ''
+            ? err.message
+            : 'Layanan AI sedang sibuk. Silakan coba lagi.',
+        );
       } finally {
         releaseAi();
       }
@@ -661,35 +879,69 @@ export function useArticleFormState({
           categories: allCategories.map((category) => category.name),
         })) as {
           readonly article?: {
-            readonly draft?: { readonly title?: string; readonly excerpt?: string; readonly content?: string; readonly slug?: string };
-            readonly classification?: { readonly categories?: readonly string[]; readonly tags?: readonly string[] };
+            readonly draft?: {
+              readonly title?: string;
+              readonly excerpt?: string;
+              readonly content?: string;
+              readonly slug?: string;
+            };
+            readonly classification?: {
+              readonly categories?: readonly string[];
+              readonly tags?: readonly string[];
+            };
           };
         };
         const draft = result.article?.draft;
         if (draft === undefined) throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
-        if (titleText.trim() === '' && typeof draft.title === 'string' && draft.title.trim() !== '') {
+        if (
+          titleText.trim() === '' &&
+          typeof draft.title === 'string' &&
+          draft.title.trim() !== ''
+        ) {
           handleTitleChange(draft.title.trim().slice(0, 160));
         }
-        if (descriptionText.trim() === '' && typeof draft.excerpt === 'string' && draft.excerpt.trim() !== '') {
+        if (
+          descriptionText.trim() === '' &&
+          typeof draft.excerpt === 'string' &&
+          draft.excerpt.trim() !== ''
+        ) {
           setDescriptionText(draft.excerpt.trim().slice(0, 400));
         }
         if (typeof draft.content === 'string' && draft.content.trim() !== '') {
           applyTranscript(draft.content.trim());
         }
-        const rawCategories = Array.isArray(result.article?.classification?.categories) ? result.article.classification.categories : [];
-        const ids = [...new Set(
-          rawCategories
-            .filter((item): item is string => typeof item === 'string')
-            .map((name) => allCategories.find((category) => category.name.toLowerCase() === name.trim().toLowerCase())?.id)
-            .filter((id): id is string => id !== undefined),
-        )].slice(0, 3);
-        const tags = Array.isArray(result.article?.classification?.tags)
-          ? result.article.classification.tags.filter((item): item is string => typeof item === 'string')
+        const rawCategories = Array.isArray(result.article?.classification?.categories)
+          ? result.article.classification.categories
           : [];
-        applyClassification({ ...(ids.length === 0 ? {} : { categoryIds: ids }), ...(tags.length === 0 ? {} : { tags }) });
+        const ids = [
+          ...new Set(
+            rawCategories
+              .filter((item): item is string => typeof item === 'string')
+              .map(
+                (name) =>
+                  allCategories.find(
+                    (category) => category.name.toLowerCase() === name.trim().toLowerCase(),
+                  )?.id,
+              )
+              .filter((id): id is string => id !== undefined),
+          ),
+        ].slice(0, 3);
+        const tags = Array.isArray(result.article?.classification?.tags)
+          ? result.article.classification.tags.filter(
+              (item): item is string => typeof item === 'string',
+            )
+          : [];
+        applyClassification({
+          ...(ids.length === 0 ? {} : { categoryIds: ids }),
+          ...(tags.length === 0 ? {} : { tags }),
+        });
         toast.success('Berita dari audio terisi penuh — tinjau sebelum menyimpan.');
       } catch (err) {
-        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+        toast.error(
+          err instanceof Error && err.message !== ''
+            ? err.message
+            : 'Layanan AI sedang sibuk. Silakan coba lagi.',
+        );
       } finally {
         releaseAi();
       }
@@ -705,25 +957,43 @@ export function useArticleFormState({
           body: bodyText.trim(),
           categories: allCategories.map((category) => category.name),
         })) as {
-          readonly classification?: { readonly categories?: readonly string[]; readonly category?: string | null; readonly tags?: readonly string[] };
+          readonly classification?: {
+            readonly categories?: readonly string[];
+            readonly category?: string | null;
+            readonly tags?: readonly string[];
+          };
         };
         const raw = Array.isArray(result.classification?.categories)
           ? result.classification.categories
           : typeof result.classification?.category === 'string'
             ? [result.classification.category]
             : [];
-        const ids = [...new Set(
-          raw
-            .filter((item): item is string => typeof item === 'string')
-            .map((name) => allCategories.find((category) => category.name.toLowerCase() === name.trim().toLowerCase())?.id)
-            .filter((id): id is string => id !== undefined),
-        )].slice(0, 3);
+        const ids = [
+          ...new Set(
+            raw
+              .filter((item): item is string => typeof item === 'string')
+              .map(
+                (name) =>
+                  allCategories.find(
+                    (category) => category.name.toLowerCase() === name.trim().toLowerCase(),
+                  )?.id,
+              )
+              .filter((id): id is string => id !== undefined),
+          ),
+        ].slice(0, 3);
         const tags = Array.isArray(result.classification?.tags)
           ? result.classification.tags.filter((item): item is string => typeof item === 'string')
           : [];
-        applyClassification({ ...(ids.length === 0 ? {} : { categoryIds: ids }), ...(tags.length === 0 ? {} : { tags }) });
+        applyClassification({
+          ...(ids.length === 0 ? {} : { categoryIds: ids }),
+          ...(tags.length === 0 ? {} : { tags }),
+        });
       } catch (err) {
-        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+        toast.error(
+          err instanceof Error && err.message !== ''
+            ? err.message
+            : 'Layanan AI sedang sibuk. Silakan coba lagi.',
+        );
       } finally {
         releaseAi();
       }
@@ -768,7 +1038,9 @@ export function useArticleFormState({
     const items = libraryItems ?? [];
     if (needle === '') return items;
     return items.filter((item) =>
-      `${fileNameOf(item.objectKey)} ${item.altText ?? ''} ${item.caption ?? ''}`.toLowerCase().includes(needle),
+      `${fileNameOf(item.objectKey)} ${item.altText ?? ''} ${item.caption ?? ''}`
+        .toLowerCase()
+        .includes(needle),
     );
   }, [libraryItems, libraryQuery]);
   const libraryVisible = libraryFiltered.slice(0, libraryShown);
@@ -778,7 +1050,8 @@ export function useArticleFormState({
     const now = Date.now();
     const missing = libraryVisible.filter(
       (item) =>
-        (libraryPreviews[item.id] === undefined || (libraryExpiry.current.get(item.id) ?? 0) - 60_000 <= now) &&
+        (libraryPreviews[item.id] === undefined ||
+          (libraryExpiry.current.get(item.id) ?? 0) - 60_000 <= now) &&
         !libraryAuthInFlight.current.has(item.id),
     );
     if (missing.length === 0) return undefined;
@@ -789,21 +1062,34 @@ export function useArticleFormState({
         try {
           const result = (await run('media.readMany', {
             mediaIds: missing.map((item) => item.id),
-            ...(effectiveArticleOrg !== '' && effectiveArticleOrg !== organizationId ? { ownerOrganizationId: effectiveArticleOrg } : {}),
+            ...(effectiveArticleOrg !== '' && effectiveArticleOrg !== organizationId
+              ? { ownerOrganizationId: effectiveArticleOrg }
+              : {}),
           })) as {
-            readonly items?: readonly { readonly mediaId?: unknown; readonly url?: unknown; readonly expiresAt?: unknown }[];
+            readonly items?: readonly {
+              readonly mediaId?: unknown;
+              readonly url?: unknown;
+              readonly expiresAt?: unknown;
+            }[];
           } | null;
           if (!Array.isArray(result?.items)) return;
           const entries: [string, string][] = [];
           const expiry = new Map(libraryExpiry.current);
           for (const entry of result.items) {
-            if (typeof entry?.mediaId !== 'string' || typeof entry?.url !== 'string' || entry.url === '') continue;
+            if (
+              typeof entry?.mediaId !== 'string' ||
+              typeof entry?.url !== 'string' ||
+              entry.url === ''
+            )
+              continue;
             entries.push([entry.mediaId, entry.url]);
-            const expires = typeof entry?.expiresAt === 'string' ? Date.parse(entry.expiresAt) : Number.NaN;
+            const expires =
+              typeof entry?.expiresAt === 'string' ? Date.parse(entry.expiresAt) : Number.NaN;
             if (Number.isFinite(expires)) expiry.set(entry.mediaId, expires);
           }
           libraryExpiry.current = expiry;
-          if (entries.length > 0) setLibraryPreviews((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+          if (entries.length > 0)
+            setLibraryPreviews((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
         } catch {
           /* Pratinjau per baris best-effort; kartu tanpa URL tetap bisa dipilih. */
         }
@@ -822,8 +1108,13 @@ export function useArticleFormState({
     }
     coverBlobRef.current = null;
     coverRemoteRef.current = { url, mimeType: item.mediaType };
-    if (libraryOrganizationId === null || libraryOrganizationId !== (effectiveArticleOrg === '' ? organizationId : effectiveArticleOrg)) {
-      toast.error('Pustaka media berubah organisasi. Muat ulang lalu pilih gambar dari organisasi tujuan.');
+    if (
+      libraryOrganizationId === null ||
+      libraryOrganizationId !== (effectiveArticleOrg === '' ? organizationId : effectiveArticleOrg)
+    ) {
+      toast.error(
+        'Pustaka media berubah organisasi. Muat ulang lalu pilih gambar dari organisasi tujuan.',
+      );
       return;
     }
     setFeaturedId(item.id);
@@ -843,7 +1134,10 @@ export function useArticleFormState({
     toast.success('Sampul diambil dari pustaka.');
   };
 
-  const resolveCoverBytes = async (): Promise<{ readonly dataUrl: string; readonly mimeType: string }> => {
+  const resolveCoverBytes = async (): Promise<{
+    readonly dataUrl: string;
+    readonly mimeType: string;
+  }> => {
     const direct = coverBlobRef.current;
     if (direct !== null) {
       return { dataUrl: await blobToDataUrl(direct.blob), mimeType: direct.mimeType };
@@ -856,7 +1150,8 @@ export function useArticleFormState({
     const response = await fetch(remote.url);
     if (!response.ok) throw new Error('Gagal mengunduh gambar sampul.');
     const blob = await response.blob();
-    if (blob.size === 0 || blob.size > COVER_CAPTION_BYTES_MAX) throw new Error('Berkas gambar terlalu besar atau kosong.');
+    if (blob.size === 0 || blob.size > COVER_CAPTION_BYTES_MAX)
+      throw new Error('Berkas gambar terlalu besar atau kosong.');
     return { dataUrl: await blobToDataUrl(blob), mimeType: remote.mimeType };
   };
 
@@ -865,17 +1160,30 @@ export function useArticleFormState({
     void (async () => {
       try {
         const { dataUrl, mimeType } = await resolveCoverBytes();
-        const result = (await callAi(organizationId, 'cover-caption', { base64: dataUrl, mimeType, title: titleText.trim().slice(0, 200) })) as {
+        const result = (await callAi(organizationId, 'cover-caption', {
+          base64: dataUrl,
+          mimeType,
+          title: titleText.trim().slice(0, 200),
+        })) as {
           readonly caption?: { readonly alt?: unknown; readonly caption?: unknown };
         };
-        const alt = typeof result.caption?.alt === 'string' ? result.caption.alt.trim().slice(0, 300) : '';
-        const caption = typeof result.caption?.caption === 'string' ? result.caption.caption.trim().slice(0, 500) : '';
-        if (alt === '' && caption === '') throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
+        const alt =
+          typeof result.caption?.alt === 'string' ? result.caption.alt.trim().slice(0, 300) : '';
+        const caption =
+          typeof result.caption?.caption === 'string'
+            ? result.caption.caption.trim().slice(0, 500)
+            : '';
+        if (alt === '' && caption === '')
+          throw new Error('Layanan AI sedang sibuk. Silakan coba lagi.');
         if (alt !== '') setFeaturedAlt(alt);
         if (caption !== '') setFeaturedCaption(caption);
         toast.success('Alt dan caption terisi otomatis — tinjau lalu simpan metadata sampul.');
       } catch (err) {
-        toast.error(err instanceof Error && err.message !== '' ? err.message : 'Layanan AI sedang sibuk. Silakan coba lagi.');
+        toast.error(
+          err instanceof Error && err.message !== ''
+            ? err.message
+            : 'Layanan AI sedang sibuk. Silakan coba lagi.',
+        );
       } finally {
         releaseAi();
       }
@@ -896,7 +1204,11 @@ export function useArticleFormState({
       return matched;
     }
     const pendingId = `${PENDING_CATEGORY_PREFIX}${crypto.randomUUID()}`;
-    setExtraCategories((prev) => (prev.some((category) => category.id === pendingId) ? prev : [...prev, { id: pendingId, name, slug: slugify(name), status: 'active', version: 1 }]));
+    setExtraCategories((prev) =>
+      prev.some((category) => category.id === pendingId)
+        ? prev
+        : [...prev, { id: pendingId, name, slug: slugify(name), status: 'active', version: 1 }],
+    );
     setCategoryIds((prev) => (prev.includes(pendingId) ? prev : [...prev, pendingId]));
     return pendingId;
   };
@@ -907,7 +1219,9 @@ export function useArticleFormState({
    * @param ids - Id kategori terpilih; yang berawalan `new:` masih lokal.
    * @returns Id server dalam urutan yang sama, atau null bila ada yang gagal.
    */
-  const persistPendingCategories = async (ids: readonly string[]): Promise<readonly string[] | null> => {
+  const persistPendingCategories = async (
+    ids: readonly string[],
+  ): Promise<readonly string[] | null> => {
     if (!ids.some((id) => id.startsWith(PENDING_CATEGORY_PREFIX))) return ids;
     if (command === undefined) {
       toast.error('Kategori baru tidak dapat disimpan dari layar ini.');
@@ -923,9 +1237,16 @@ export function useArticleFormState({
       if (pending === undefined) return null;
       let created: { readonly id?: unknown } | null;
       try {
-        created = (await command('category.create', { name: pending.name, slug: slugify(pending.name) })) as { readonly id?: unknown } | null;
+        created = (await command('category.create', {
+          name: pending.name,
+          slug: slugify(pending.name),
+        })) as { readonly id?: unknown } | null;
       } catch (error) {
-        toast.error(error instanceof Error && error.message !== '' ? error.message : `Kategori "${pending.name}" gagal disimpan.`);
+        toast.error(
+          error instanceof Error && error.message !== ''
+            ? error.message
+            : `Kategori "${pending.name}" gagal disimpan.`,
+        );
         return null;
       }
       const newId = typeof created?.id === 'string' ? created.id : null;
@@ -963,7 +1284,16 @@ export function useArticleFormState({
     setUploadingFeatured(true);
     setFeaturedStatus('Menganalisis & mengompresi gambar di perangkat…');
     try {
-      const { mediaId, previewUrl, storedSrc, version, sizeBytes, savingsBytes, compressedBlob, compressedMediaType } = await uploadEditorImage(file, { kind: 'organization' }, command, {
+      const {
+        mediaId,
+        previewUrl,
+        storedSrc,
+        version,
+        sizeBytes,
+        savingsBytes,
+        compressedBlob,
+        compressedMediaType,
+      } = await uploadEditorImage(file, { kind: 'organization' }, command, {
         purpose: 'article-cover',
         compress: COVER_COMPRESS,
         ...(foreignOwnerOrg === null ? {} : { ownerOrganizationId: foreignOwnerOrg }),
@@ -979,32 +1309,56 @@ export function useArticleFormState({
       setFeaturedFocal(null);
       setFeaturedPreviewUrl(previewUrl === '' ? storedSrc : previewUrl);
       if (publisherId === null || publisherId === '') {
-        toast.warning('Penerbit belum dipilih — sampul masuk organisasi aktif. Memilih penerbit beda org nanti memicu peringatan.');
+        toast.warning(
+          'Penerbit belum dipilih — sampul masuk organisasi aktif. Memilih penerbit beda org nanti memicu peringatan.',
+        );
       }
-      setFeaturedStatus(savingsBytes > 0 ? `Terkompresi ${formatBytes(file.size)} → ${formatBytes(sizeBytes)} (WebP).` : null);
+      setFeaturedStatus(
+        savingsBytes > 0
+          ? `Terkompresi ${formatBytes(file.size)} → ${formatBytes(sizeBytes)} (WebP).`
+          : null,
+      );
     } catch (error) {
-      setFeaturedStatus(error instanceof Error ? error.message : 'Gagal mengunggah gambar sampul. Coba lagi.');
+      setFeaturedStatus(
+        error instanceof Error ? error.message : 'Gagal mengunggah gambar sampul. Coba lagi.',
+      );
     } finally {
       setUploadingFeatured(false);
     }
   };
 
-  const saveFeaturedMeta = async (patch: { readonly altText?: string | null; readonly caption?: string | null; readonly focalX?: number | null; readonly focalY?: number | null }) => {
+  const saveFeaturedMeta = async (patch: {
+    readonly altText?: string | null;
+    readonly caption?: string | null;
+    readonly focalX?: number | null;
+    readonly focalY?: number | null;
+  }) => {
     if (command === undefined || featuredId === null || featuredVersion === null) {
       toast.error('Simpan metadata sampul tidak tersedia.');
       return;
     }
     setSavingFeaturedMeta(true);
     try {
-      const updated = (await command('media.update', { mediaId: featuredId, expectedVersion: featuredVersion, ...(featuredOrgId === null ? {} : { ownerOrganizationId: featuredOrgId }), ...patch })) as { readonly version?: unknown } | null;
+      const updated = (await command('media.update', {
+        mediaId: featuredId,
+        expectedVersion: featuredVersion,
+        ...(featuredOrgId === null ? {} : { ownerOrganizationId: featuredOrgId }),
+        ...patch,
+      })) as { readonly version?: unknown } | null;
       if (updated === null) {
         toast.warning('Penyimpanan dibatalkan karena organisasi aktif berubah.');
         return;
       }
-      setFeaturedVersion(typeof updated.version === 'number' ? updated.version : featuredVersion + 1);
+      setFeaturedVersion(
+        typeof updated.version === 'number' ? updated.version : featuredVersion + 1,
+      );
       toast.success('Metadata sampul disimpan.');
     } catch (error) {
-      toast.error(error instanceof Error && error.message !== '' ? error.message : 'Gagal menyimpan metadata sampul. Coba lagi.');
+      toast.error(
+        error instanceof Error && error.message !== ''
+          ? error.message
+          : 'Gagal menyimpan metadata sampul. Coba lagi.',
+      );
     } finally {
       setSavingFeaturedMeta(false);
     }
@@ -1013,19 +1367,33 @@ export function useArticleFormState({
   const handleFeaturedMetaSave = () => {
     const alt = featuredAlt.trim();
     const caption = featuredCaption.trim();
-    void saveFeaturedMeta({ altText: alt === '' ? null : alt, caption: caption === '' ? null : caption });
+    void saveFeaturedMeta({
+      altText: alt === '' ? null : alt,
+      caption: caption === '' ? null : caption,
+    });
   };
 
   const handleFocalPick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (savingFeaturedMeta) return;
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    const x = Math.min(100, Math.max(0, Math.round(((event.clientX - rect.left) / rect.width) * 100)));
-    const y = Math.min(100, Math.max(0, Math.round(((event.clientY - rect.top) / rect.height) * 100)));
+    const x = Math.min(
+      100,
+      Math.max(0, Math.round(((event.clientX - rect.left) / rect.width) * 100)),
+    );
+    const y = Math.min(
+      100,
+      Math.max(0, Math.round(((event.clientY - rect.top) / rect.height) * 100)),
+    );
     setFeaturedFocal({ x, y });
     const alt = featuredAlt.trim();
     const caption = featuredCaption.trim();
-    void saveFeaturedMeta({ altText: alt === '' ? null : alt, caption: caption === '' ? null : caption, focalX: x, focalY: y });
+    void saveFeaturedMeta({
+      altText: alt === '' ? null : alt,
+      caption: caption === '' ? null : caption,
+      focalX: x,
+      focalY: y,
+    });
   };
 
   /**
@@ -1045,7 +1413,13 @@ export function useArticleFormState({
    * The article exists before any of this runs, so a failure leaves it publishable
    * from the queue rather than losing the writing.
    */
-  const publishCreatedArticle = async (articleId: string, scheduled: boolean, scheduledAt: string | null | undefined, backdateIso: string | null, initialViews: number | null) => {
+  const publishCreatedArticle = async (
+    articleId: string,
+    scheduled: boolean,
+    scheduledAt: string | null | undefined,
+    backdateIso: string | null,
+    initialViews: number | null,
+  ) => {
     if (command === undefined) {
       toast.error('Artikel tersimpan, tetapi perintah publikasi tidak tersedia di layar ini.');
       return;
@@ -1058,7 +1432,9 @@ export function useArticleFormState({
     const idempotencyPrefix = crypto.randomUUID();
     let dispatched = 0;
     let viewsFailed = 0;
-    const progress = beginActionProgress(`Mengirim ke ${targetSiteIds.length.toLocaleString('id-ID')} portal…`);
+    const progress = beginActionProgress(
+      `Mengirim ke ${targetSiteIds.length.toLocaleString('id-ID')} portal…`,
+    );
     try {
       for (const [index, batch] of batches.entries()) {
         await command('publication.request', {
@@ -1070,10 +1446,16 @@ export function useArticleFormState({
           overrides: {},
         });
         dispatched += batch.length;
-        progress.step(`Terkirim ke ${dispatched.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal…`);
+        progress.step(
+          `Terkirim ke ${dispatched.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal…`,
+        );
         if (initialViews !== null) {
           try {
-            const seeded = (await command('article.sites.views.setMany', { articleId, siteIds: batch, viewCount: initialViews })) as {
+            const seeded = (await command('article.sites.views.setMany', {
+              articleId,
+              siteIds: batch,
+              viewCount: initialViews,
+            })) as {
               readonly missing?: unknown;
             } | null;
             viewsFailed += Array.isArray(seeded?.missing) ? seeded.missing.length : batch.length;
@@ -1082,9 +1464,10 @@ export function useArticleFormState({
           }
         }
       }
-      const viewsNote = viewsFailed > 0
-        ? ` ${viewsFailed.toLocaleString('id-ID')} portal gagal diisi tayangan awal — atur manual dari Hasil Tayang.`
-        : '';
+      const viewsNote =
+        viewsFailed > 0
+          ? ` ${viewsFailed.toLocaleString('id-ID')} portal gagal diisi tayangan awal — atur manual dari Hasil Tayang.`
+          : '';
       progress.succeed(
         scheduled
           ? `Terjadwal ke ${dispatched.toLocaleString('id-ID')} portal.${viewsNote}`
@@ -1118,7 +1501,9 @@ export function useArticleFormState({
       return;
     }
     if (descriptionText.trim().length > 500) {
-      toast.error(`Deskripsi ${descriptionText.trim().length} karakter — maksimal 500. Pangkas dulu.`);
+      toast.error(
+        `Deskripsi ${descriptionText.trim().length} karakter — maksimal 500. Pangkas dulu.`,
+      );
       return;
     }
     if (provinceId === null && !nationalActive) {
@@ -1179,7 +1564,9 @@ export function useArticleFormState({
       return;
     }
     if (foreignOwnerOrg !== null && foreignMediaIds.length > 0) {
-      toast.error('Artikel lintas organisasi hanya boleh memakai media milik organisasi tujuan. Unggah ulang gambar yang masih dimiliki organisasi lain.');
+      toast.error(
+        'Artikel lintas organisasi hanya boleh memakai media milik organisasi tujuan. Unggah ulang gambar yang masih dimiliki organisasi lain.',
+      );
       return;
     }
     if (durationInput.trim() !== '') {
@@ -1194,7 +1581,9 @@ export function useArticleFormState({
       const payloadSlug = slugValue;
       const categoryIds = await persistPendingCategories(effectiveCategoryIds);
       if (categoryIds === null) {
-        toast.error('Kategori baru belum tersimpan. Periksa kategori yang ditandai, lalu coba Simpan lagi.');
+        toast.error(
+          'Kategori baru belum tersimpan. Periksa kategori yang ditandai, lalu coba Simpan lagi.',
+        );
         return;
       }
       const payload = buildArticlePayload({ ...formSnapshot, status, rawSchedule }, categoryIds);
@@ -1211,38 +1600,71 @@ export function useArticleFormState({
           )) as { readonly version?: unknown } | null;
           if (typeof updated?.version === 'number') editVersionRef.current = updated.version;
         } catch (error) {
-          toast.error(error instanceof Error && error.message !== '' ? error.message : 'Artikel gagal diperbarui.');
+          toast.error(
+            error instanceof Error && error.message !== ''
+              ? error.message
+              : 'Artikel gagal diperbarui.',
+          );
           return;
         }
         toast.success('Artikel diperbarui.');
         onEditSaved?.();
         return;
       }
-      let created: { readonly id?: string; readonly slug?: string; readonly organizationId?: string } | null;
+      let created: {
+        readonly id?: string;
+        readonly slug?: string;
+        readonly organizationId?: string;
+      } | null;
       try {
-        created = await onSubmit(payload) as { readonly id?: string; readonly slug?: string; readonly organizationId?: string };
+        created = (await onSubmit(payload)) as {
+          readonly id?: string;
+          readonly slug?: string;
+          readonly organizationId?: string;
+        };
       } catch (error) {
         // The article may already exist server-side, so keep the draft instead
         // of clearing the form and reporting a rollback that never happened.
-        toast.error(error instanceof Error && error.message !== '' ? error.message : 'Artikel gagal disimpan.');
+        toast.error(
+          error instanceof Error && error.message !== ''
+            ? error.message
+            : 'Artikel gagal disimpan.',
+        );
         return;
       }
       if (created === null) {
-        toast.warning('Penyimpanan dibatalkan karena organisasi aktif berubah. Tulis ulang bila perlu.');
+        toast.warning(
+          'Penyimpanan dibatalkan karena organisasi aktif berubah. Tulis ulang bila perlu.',
+        );
         return;
       }
       if (typeof created.slug === 'string' && created.slug !== payloadSlug) {
         toast.info(`Slug "${payloadSlug}" sudah dipakai — disimpan sebagai "${created.slug}".`);
       }
-      if (typeof created.organizationId === 'string' && created.organizationId !== '' && created.organizationId !== organizationId) {
-        if (willPublish && status === 'active' && typeof created.id === 'string' && command !== undefined && targetSiteIds.length > 0) {
+      if (
+        typeof created.organizationId === 'string' &&
+        created.organizationId !== '' &&
+        created.organizationId !== organizationId
+      ) {
+        if (
+          willPublish &&
+          status === 'active' &&
+          typeof created.id === 'string' &&
+          command !== undefined &&
+          targetSiteIds.length > 0
+        ) {
           // `siteIds` is capped per command, so the bridge request is split into as
           // many batches as the network needs instead of one oversized call.
           let bridgedSites = 0;
           let declined = false;
           try {
             for (const batch of chunkPublicationTargets(targetSiteIds)) {
-              const bridged = await command('article.bridge.request', { ownerOrganizationId: created.organizationId, articleId: created.id, siteIds: batch, ...(initialViews === null ? {} : { viewCount: initialViews }) });
+              const bridged = await command('article.bridge.request', {
+                ownerOrganizationId: created.organizationId,
+                articleId: created.id,
+                siteIds: batch,
+                ...(initialViews === null ? {} : { viewCount: initialViews }),
+              });
               if (bridged === null) {
                 declined = true;
                 break;
@@ -1250,22 +1672,38 @@ export function useArticleFormState({
               bridgedSites += batch.length;
             }
             if (!declined) {
-              toast.success(`Tersimpan di organisasi tujuan dan tayang ke ${bridgedSites.toLocaleString('id-ID')} portal.`);
+              toast.success(
+                `Tersimpan di organisasi tujuan dan tayang ke ${bridgedSites.toLocaleString('id-ID')} portal.`,
+              );
             } else if (bridgedSites === 0) {
-              toast.info('Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.');
+              toast.info(
+                'Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.',
+              );
             } else {
-              toast.warning(`Tersimpan di organisasi tujuan dan ${bridgedSites.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal sudah tayang. Sisanya menyusul dari Antrean Penerbitan.`);
+              toast.warning(
+                `Tersimpan di organisasi tujuan dan ${bridgedSites.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal sudah tayang. Sisanya menyusul dari Antrean Penerbitan.`,
+              );
             }
           } catch {
-            toast.error(bridgedSites === 0
-              ? 'Tersimpan di organisasi tujuan, tetapi gagal diterbitkan. Coba lagi dari Antrean Penerbitan.'
-              : `Tersimpan di organisasi tujuan dan ${bridgedSites.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal sudah tayang, sisanya gagal. Periksa Antrean Penerbitan.`);
+            toast.error(
+              bridgedSites === 0
+                ? 'Tersimpan di organisasi tujuan, tetapi gagal diterbitkan. Coba lagi dari Antrean Penerbitan.'
+                : `Tersimpan di organisasi tujuan dan ${bridgedSites.toLocaleString('id-ID')} dari ${targetSiteIds.length.toLocaleString('id-ID')} portal sudah tayang, sisanya gagal. Periksa Antrean Penerbitan.`,
+            );
           }
         } else {
-          toast.info('Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.');
+          toast.info(
+            'Tersimpan sebagai draf di organisasi tujuan (milik org tersebut). Penerbitan ke portal menyusul.',
+          );
         }
       } else if (willPublish && typeof created.id === 'string') {
-        await publishCreatedArticle(created.id, status === 'scheduled', scheduledAt, backdateIso, initialViews);
+        await publishCreatedArticle(
+          created.id,
+          status === 'scheduled',
+          scheduledAt,
+          backdateIso,
+          initialViews,
+        );
       }
       form.reset();
       setSlug('');
@@ -1313,39 +1751,161 @@ export function useArticleFormState({
   };
 
   return {
-    regionSelectId, nationalCheckId, citySelectId, publisherSelectId, authorSelectId, statusSelectId,
-    viewsInputId, transcribeFullInputId, slugInputId, titleInputId, sourceInputId, canonicalInputId,
-    tagsInputId, excerptInputId, bodyInputId, categoryInputId, featuredFileId, coverUrlInputId,
-    publishOnSaveId, librarySearchInputId,
-    slug, status, setStatus, categoryIds, setCategoryIds, extraCategories,
-    featuredId, setFeaturedId, setFeaturedOrgId, setFeaturedName, setFeaturedPreviewUrl,
-    setFeaturedVersion, setFeaturedFocal, featuredName, featuredPreviewUrl, featuredStatus,
-    provinceId, setProvinceId, cityId, setCityId, isNational, setIsNational,
-    isEditing, editOriginalStatus,
-    isUnrestricted, nationalActive,
-    uploadingFeatured, featuredAlt, setFeaturedAlt, featuredCaption, setFeaturedCaption, featuredFocal,
-    coverBlobRef, coverRemoteRef, libraryOpen, libraryItems, libraryLoading, libraryError,
-    libraryQuery, setLibraryQuery, libraryShown, setLibraryShown, libraryPreviews,
-    savingFeaturedMeta, coverUrl, setCoverUrl, titleText, descriptionText, setDescriptionText,
-    mode, setMode, bodyText, bodyJsonDraft, richResetKey, isSubmitting,
-    publishOnSave, setPublishOnSave, source, setSource, canonicalUrl, setCanonicalUrl,
-    tags, setTags, rawScheduleInput, setRawScheduleInput, rawPublishDateInput, setRawPublishDateInput,
-    viewsInput, setViewsInput, publisherId, authorId,
-    articleType, setArticleType, videoUrl, setVideoUrl, audioUrl, setAudioUrl,
-    durationInput, setDurationInput, isSponsored, setIsSponsored,
-    titleVariants, polished, setPolished, polishRounds, aiAction, aiReady, generatingTitles,
-    bumpViews, handleRichChange, handleInlineStored, handlePublisherChange, handleAuthorChange,
-    handleTitleChange, handleSlugChange, applyPolishedBody,
-    refineTitles, refineDescription, polishBodyInline, transcribeFileInline, classifyInline,
-    openLibrary, pickLibraryCover, handleCreateCategory, handleFeaturedFile,
-    handleFeaturedMetaSave, handleFocalPick, captionCoverInline,
-    targetSiteIds, targetLabel, willPublish, editorStats, statItems,
-    regionOptions, cityOptions, publisherOptions, activeCategories, allCategories,
-    defaultCategoryName, authorOptions, activeAuthors,
-    effectiveCategoryIds, bodyJsonProblem, modeProblem,
-    selectedPublisher, foreignOwnerOrg, selectedAuthor, tagSuggestions,
+    regionSelectId,
+    nationalCheckId,
+    citySelectId,
+    publisherSelectId,
+    authorSelectId,
+    statusSelectId,
+    viewsInputId,
+    transcribeFullInputId,
+    slugInputId,
+    titleInputId,
+    sourceInputId,
+    canonicalInputId,
+    tagsInputId,
+    excerptInputId,
+    bodyInputId,
+    categoryInputId,
+    featuredFileId,
+    coverUrlInputId,
+    publishOnSaveId,
+    librarySearchInputId,
+    slug,
+    status,
+    setStatus,
+    categoryIds,
+    setCategoryIds,
+    extraCategories,
+    featuredId,
+    setFeaturedId,
+    setFeaturedOrgId,
+    setFeaturedName,
+    setFeaturedPreviewUrl,
+    setFeaturedVersion,
+    setFeaturedFocal,
+    featuredName,
+    featuredPreviewUrl,
+    featuredStatus,
+    provinceId,
+    setProvinceId,
+    cityId,
+    setCityId,
+    isNational,
+    setIsNational,
+    isEditing,
+    editOriginalStatus,
+    isUnrestricted,
+    regionLocked,
+    lockedRegionIsCity,
+    nationalActive,
+    uploadingFeatured,
+    featuredAlt,
+    setFeaturedAlt,
+    featuredCaption,
+    setFeaturedCaption,
+    featuredFocal,
+    coverBlobRef,
+    coverRemoteRef,
+    libraryOpen,
+    libraryItems,
+    libraryLoading,
+    libraryError,
+    libraryQuery,
+    setLibraryQuery,
+    libraryShown,
+    setLibraryShown,
+    libraryPreviews,
+    savingFeaturedMeta,
+    coverUrl,
+    setCoverUrl,
+    titleText,
+    descriptionText,
+    setDescriptionText,
+    mode,
+    setMode,
+    bodyText,
+    bodyJsonDraft,
+    richResetKey,
+    isSubmitting,
+    publishOnSave,
+    setPublishOnSave,
+    source,
+    setSource,
+    canonicalUrl,
+    setCanonicalUrl,
+    tags,
+    setTags,
+    rawScheduleInput,
+    setRawScheduleInput,
+    rawPublishDateInput,
+    setRawPublishDateInput,
+    viewsInput,
+    setViewsInput,
+    publisherId,
+    authorId,
+    articleType,
+    setArticleType,
+    videoUrl,
+    setVideoUrl,
+    audioUrl,
+    setAudioUrl,
+    durationInput,
+    setDurationInput,
+    isSponsored,
+    setIsSponsored,
+    titleVariants,
+    polished,
+    setPolished,
+    polishRounds,
+    aiAction,
+    aiReady,
+    generatingTitles,
+    bumpViews,
+    handleRichChange,
+    handleInlineStored,
+    handlePublisherChange,
+    handleAuthorChange,
+    handleTitleChange,
+    handleSlugChange,
+    applyPolishedBody,
+    refineTitles,
+    refineDescription,
+    polishBodyInline,
+    transcribeFileInline,
+    classifyInline,
+    openLibrary,
+    pickLibraryCover,
+    handleCreateCategory,
+    handleFeaturedFile,
+    handleFeaturedMetaSave,
+    handleFocalPick,
+    captionCoverInline,
+    targetSiteIds,
+    targetLabel,
+    willPublish,
+    editorStats,
+    statItems,
+    regionOptions,
+    cityOptions,
+    publisherOptions,
+    activeCategories,
+    allCategories,
+    defaultCategoryName,
+    authorOptions,
+    activeAuthors,
+    effectiveCategoryIds,
+    bodyJsonProblem,
+    modeProblem,
+    selectedPublisher,
+    foreignOwnerOrg,
+    selectedAuthor,
+    tagSuggestions,
     foreignMediaIds,
-    libraryFiltered, libraryVisible, command, handleSaveArticle,
+    libraryFiltered,
+    libraryVisible,
+    command,
+    handleSaveArticle,
   };
 }
 
