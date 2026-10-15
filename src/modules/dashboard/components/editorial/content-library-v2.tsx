@@ -188,7 +188,7 @@ function publishedUrlsForArticle(
 }
 
 function formatPublishedLinksForPaste(urls: readonly string[]): string {
-  return urls.map((url, index) => `${index + 1}. ${url}`).join('\\n');
+  return urls.map((url, index) => `${index + 1}. ${url}`).join('\n');
 }
 
 export function ContentLibraryV2({
