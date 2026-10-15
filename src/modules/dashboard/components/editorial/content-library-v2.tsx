@@ -422,7 +422,7 @@ export function ContentLibraryV2({
                   <div className="rounded bg-bg px-2 py-1.5"><dt className="text-[10px] text-paper-faint">Tayang</dt><dd className="m-0 break-words text-xs text-paper-dim">{publicationLabel}</dd></div>
                 </dl>
                 <div className="mt-3 flex flex-wrap justify-end gap-1">
-                  <Button variant="outline" size="sm" aria-label={`Salin semua tautan tayang artikel ${row.title}`} title={`Salin ${publishedLinks.length} URL tayang`} onClick={() => void copyPublishedLinks(row, publishedLinks)} disabled={publishedLinks.length === 0 || copyingLinksFor !== null}>
+                  <Button variant="outline" size="sm" aria-label={`Salin semua tautan tayang artikel ${row.title}`} onClick={() => void copyPublishedLinks(row, publishedLinks)} disabled={publishedLinks.length === 0 || copyingLinksFor !== null}>
                     {copyingLinksFor === row.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : copiedLinksFor === row.id ? <Check className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
                     {copiedLinksFor === row.id ? 'Tersalin' : `Salin URL (${publishedLinks.length})`}
                   </Button>
@@ -527,7 +527,7 @@ export function ContentLibraryV2({
                         variant="outline"
                         size="sm"
                         aria-label={`Salin semua tautan tayang artikel ${row.title}`}
-                        title={`Salin ${publishedLinks.length} URL tayang`}
+
                         onClick={() => void copyPublishedLinks(row, publishedLinks)}
                         disabled={publishedLinks.length === 0 || copyingLinksFor !== null}
                       >
