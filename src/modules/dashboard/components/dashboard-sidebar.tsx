@@ -66,10 +66,11 @@ export function DashboardNavList({
       <>
         {visibleAreas.map((area) => {
           const allowedViews = area.views.filter((candidate) => canAccessViewInMode(candidate, permissions, navigationMode));
-          if (allowedViews.length === 0) return null;
-          const defaultView = allowedViews.includes(area.defaultView)
+          const navigationViews = (area.navigationViews ?? area.views).filter((candidate) => allowedViews.includes(candidate));
+          if (navigationViews.length === 0) return null;
+          const defaultView = navigationViews.includes(area.defaultView)
             ? area.defaultView
-            : (allowedViews[0] ?? area.defaultView);
+            : (navigationViews[0] ?? area.defaultView);
           const Icon = VIEW_REGISTRY[defaultView].icon;
           return (
             <AppTooltip key={area.id} label={area.label} side="right">
@@ -98,14 +99,15 @@ export function DashboardNavList({
     <div className="space-y-1">
       {visibleAreas.map((area) => {
         const allowedViews = area.views.filter((candidate) => canAccessViewInMode(candidate, permissions, navigationMode));
-        if (allowedViews.length === 0) return null;
-        const defaultView = allowedViews.includes(area.defaultView)
+        const navigationViews = (area.navigationViews ?? area.views).filter((candidate) => allowedViews.includes(candidate));
+        if (navigationViews.length === 0) return null;
+        const defaultView = navigationViews.includes(area.defaultView)
           ? area.defaultView
-          : (allowedViews[0] ?? area.defaultView);
+          : (navigationViews[0] ?? area.defaultView);
         const active = allowedViews.includes(view);
         const expanded = expandedArea === area.id;
         const Icon = VIEW_REGISTRY[defaultView].icon;
-        const children = allowedViews.filter((candidate) => candidate !== defaultView);
+        const children = navigationViews.filter((candidate) => candidate !== defaultView);
 
         return (
           <section key={area.id} className="space-y-0.5">
