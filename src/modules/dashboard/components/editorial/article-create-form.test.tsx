@@ -238,6 +238,22 @@ describe('Formulir tulis artikel', () => {
     );
   });
 
+  it('tidak memilih Redaksi otomatis jika organisasi memiliki beberapa penulis aktif', async () => {
+    setup({
+      data: {
+        ...DATA,
+        publishers: [],
+        authors: [
+          { id: 'a-redaksi', displayName: 'Redaksi', byline: 'Tim Redaksi', status: 'active' },
+          { id: 'a-penulis', displayName: 'Penulis Organisasi', byline: 'Penulis Organisasi', status: 'active' },
+        ],
+      },
+    });
+    await waitFor(() => {
+      expect((screen.getByLabelText('Penulis') as HTMLInputElement).value).toBe('');
+    });
+  });
+
   it('mengunci wilayah sesuai regionScope membership', async () => {
     setup({ data: { ...DATA, regionScope: { id: 'r-2', name: 'Wonosobo' } } });
     await waitFor(() => expect(screen.getByLabelText('Kota / kabupaten')).toBeDefined());

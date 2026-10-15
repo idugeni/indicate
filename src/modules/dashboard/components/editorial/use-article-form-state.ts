@@ -414,11 +414,13 @@ export function useArticleFormState({
     () => (model?.authors ?? []).filter((a) => a.status === undefined || a.status === 'active'),
     [model?.authors],
   );
-  const defaultAuthorId = useMemo(() => {
-    const newsroom = activeAuthors.filter((author) => author.displayName === 'Redaksi');
-    if (newsroom.length === 1) return newsroom[0]!.id;
-    return activeAuthors.length === 1 ? activeAuthors[0]!.id : null;
-  }, [activeAuthors]);
+  // Author metadata belongs to the active organization's editorial configuration.
+  // Do not privilege a display name such as "Redaksi": choose automatically only
+  // when the organization has exactly one active author; ambiguity requires a choice.
+  const defaultAuthorId = useMemo(
+    () => (activeAuthors.length === 1 ? activeAuthors[0]!.id : null),
+    [activeAuthors],
+  );
   const [publisherId, setPublisherId] = useState<string | null>(
     initialArticle?.publisherId ?? null,
   );
