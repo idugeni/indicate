@@ -218,11 +218,11 @@ describe('Dashboard workspace', () => {
     expect(screen.getByRole('separator', { name: 'Bentangkan sidebar' })).toBeDefined();
   });
 
-  it('switches the title when an editorial module is selected', async () => {
+  it('opens the editorial library from the tenant Artikel navigation', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
-    fireEvent.click(screen.getByRole('button', { name: 'Compose' }));
-    expect(await screen.findByText('Artikel baru', {}, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Artikel' })[0]!);
+    expect(await screen.findByRole('region', { name: 'Content Library' }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
 
