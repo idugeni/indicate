@@ -169,7 +169,7 @@ describe('ContentLibraryV2', () => {
       { length: 134 },
       (_, index) => `https://tenant-${index + 1}.example/banjir-wonosobo`,
     );
-    const writeText = vi.fn(async () => undefined);
+    const writeText = vi.fn<(text: string) => Promise<void>>(async () => undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const data = {
       ...DATA,
@@ -190,7 +190,7 @@ describe('ContentLibraryV2', () => {
   });
 
   it('includes published assignment links and skips inactive or unpublished assignments', async () => {
-    const writeText = vi.fn(async () => undefined);
+    const writeText = vi.fn<(text: string) => Promise<void>>(async () => undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const data = {
       articles: [{ ...DATA.articles[0]!, publishedUrls: [], portalHostnames: [] }],
