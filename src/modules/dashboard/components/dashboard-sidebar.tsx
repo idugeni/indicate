@@ -23,7 +23,7 @@ const SIDEBAR_WIDTH = 272;
 const SIDEBAR_COLLAPSED_WIDTH = 68;
 
 /**
- * Render two tenant-facing areas and a separate grant-gated Super Admin area.
+ * Render three tenant-facing entries and a separate grant-gated Super Admin area.
  * Supporting views remain nested under their owning area.
  *
  * @param props.view - Active view, highlighted with `aria-current`.
