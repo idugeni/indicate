@@ -20,8 +20,8 @@ const ALL_PERMISSIONS = new Set<string>([
   INTEGRATIONS_PERMISSIONS.contentManage,
 ]);
 
-const openPalette = async (permissions: ReadonlySet<string>) => {
-  render(<CommandPalette permissions={permissions} />);
+const openPalette = async (permissions: ReadonlySet<string>, navigationMode: 'organization' | 'platform' = 'organization') => {
+  render(<CommandPalette permissions={permissions} navigationMode={navigationMode} />);
   fireEvent.click(screen.getByRole('button', { name: 'Buka navigasi cepat' }));
   return screen.findByLabelText('Cari perintah atau rute Dashboard');
 };
@@ -59,7 +59,7 @@ describe('Palet perintah', () => {
   });
 
   it('menyaring perintah sesuai kata kunci', async () => {
-    const input = await openPalette(ALL_PERMISSIONS);
+    const input = await openPalette(ALL_PERMISSIONS, 'platform');
     fireEvent.change(input, { target: { value: 'billing' } });
     expect(await screen.findByText('Billing')).toBeDefined();
     expect(screen.queryByText('Command Center')).toBe(null);
@@ -73,7 +73,7 @@ describe('Palet perintah', () => {
   });
 
   it('menavigasi ke rute saat opsi dipilih', async () => {
-    await openPalette(ALL_PERMISSIONS);
+    await openPalette(ALL_PERMISSIONS, 'platform');
     await screen.findByText('Billing');
     fireEvent.click(screen.getByRole('option', { name: /billing/i }));
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard?view=billing'));
