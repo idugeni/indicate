@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import dynamic from 'next/dynamic';
 import { parseAsString, useQueryState } from 'nuqs';
-import { Building2, SearchX, X } from 'lucide-react';
+import { SearchX, X } from 'lucide-react';
 import type { DashboardCommand } from '@/modules/dashboard/command';
 
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
@@ -49,6 +49,13 @@ const EditorialWorkspaceV2 = dynamic(
       default: module.EditorialWorkspaceV2,
     })),
   { loading: () => <DashboardSplitFormSkeleton /> },
+);
+const OrganizationProfileV2 = dynamic(
+  () =>
+    import('@/modules/dashboard/components/settings/organization-profile-form').then((module) => ({
+      default: module.OrganizationProfileForm,
+    })),
+  { loading: () => <DashboardViewSkeleton view="organization" /> },
 );
 const PersonalProfileV2 = dynamic(
   () =>
@@ -409,28 +416,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             />
           ) : null}
           {view === 'organization' ? (
-            <section aria-labelledby="organization-overview-title" className="space-y-5 rounded-xl border border-hairline bg-bg-raised p-5 sm:p-7">
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg border border-hairline bg-bg text-brass">
-                  <Building2 className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div className="min-w-0">
-                  <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-brass">Tenant Workspace</p>
-                  <h1 id="organization-overview-title" className="m-0 mt-1 break-words font-serif text-2xl font-semibold tracking-tight text-paper">{organizationName}</h1>
-                  <p className="m-0 mt-2 max-w-2xl text-sm leading-6 text-paper-dim">Ringkasan organisasi yang sedang aktif. Pengaturan domain, situs, akses, integrasi, dan operasi platform tidak ditampilkan di dashboard organisasi.</p>
-                </div>
-              </div>
-              <dl className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-hairline bg-bg p-4">
-                  <dt className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">ID Organisasi</dt>
-                  <dd className="m-0 mt-2 break-all font-mono text-xs text-paper">{organizationId}</dd>
-                </div>
-                <div className="rounded-lg border border-hairline bg-bg p-4">
-                  <dt className="font-mono text-[10px] uppercase tracking-wider text-paper-faint">Peran Akun</dt>
-                  <dd className="m-0 mt-2 font-sans text-sm font-medium text-paper">{organizationRole ?? 'Anggota organisasi'}</dd>
-                </div>
-              </dl>
-            </section>
+            <OrganizationProfileV2 organizationId={organizationId} organizationName={organizationName} organizationRole={organizationRole} />
           ) : null}
           {view === 'profile' ? <PersonalProfileV2 /> : null}
           {view === 'configuration' ? (

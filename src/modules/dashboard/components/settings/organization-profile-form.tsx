@@ -1,0 +1,191 @@
+'use client';
+
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import Image from 'next/image';
+import { Building2, Loader2, Save } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
+import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+
+interface OrganizationProfile {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly description: string;
+  readonly logoUrl: string | null;
+  readonly contactDetails: { readonly email?: string; readonly phone?: string; readonly website?: string; readonly address?: string };
+  readonly visualIdentity: { readonly primaryColor?: string; readonly secondaryColor?: string; readonly accentColor?: string };
+  readonly version: number;
+  readonly canManage: boolean;
+}
+
+async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
+  const response = await fetch(path, init);
+  const payload = await response.json().catch(() => null) as { message?: string; error?: { message?: string } } | null;
+  if (!response.ok) throw new Error(payload?.message ?? payload?.error?.message ?? `HTTP ${response.status}`);
+  return payload;
+}
+
+export function OrganizationProfileForm({ organizationId, organizationName, organizationRole }: {
+  readonly organizationId: string;
+  readonly organizationName: string;
+  readonly organizationRole: string | null;
+}) {
+  const nameId = useId();
+  const descriptionId = useId();
+  const logoId = useId();
+  const emailId = useId();
+  const phoneId = useId();
+  const websiteId = useId();
+  const addressId = useId();
+  const primaryId = useId();
+  const secondaryId = useId();
+  const accentId = useId();
+  const [profile, setProfile] = useState<OrganizationProfile | null>(null);
+  const [name, setName] = useState(organizationName);
+  const [description, setDescription] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [website, setWebsite] = useState('');
+  const [address, setAddress] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#1c1850');
+  const [secondaryColor, setSecondaryColor] = useState('#0d0b26');
+  const [accentColor, setAccentColor] = useState('#d2a93f');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    try {
+      const loaded = await requestJson(`/api/dashboard/organization?organizationId=${encodeURIComponent(organizationId)}`) as OrganizationProfile;
+      setProfile(loaded);
+      setName(loaded.name);
+      setDescription(loaded.description ?? '');
+      setLogoUrl(loaded.logoUrl ?? '');
+      setEmail(loaded.contactDetails.email ?? '');
+      setPhone(loaded.contactDetails.phone ?? '');
+      setWebsite(loaded.contactDetails.website ?? '');
+      setAddress(loaded.contactDetails.address ?? '');
+      setPrimaryColor(loaded.visualIdentity.primaryColor ?? '#1c1850');
+      setSecondaryColor(loaded.visualIdentity.secondaryColor ?? '#0d0b26');
+      setAccentColor(loaded.visualIdentity.accentColor ?? '#d2a93f');
+    } catch {
+      setError('Profil organisasi tidak dapat dimuat. Periksa akses dan koneksi, lalu muat ulang halaman.');
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => { if (!cancelled) void reload(); });
+    return () => { cancelled = true; };
+  }, [reload]);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (profile === null) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    void (async () => {
+      try {
+        const saved = await requestJson('/api/dashboard/organization', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            organizationId,
+            expectedVersion: profile.version,
+            name,
+            description,
+            logoUrl: logoUrl.trim() || null,
+            contactDetails: { email, phone, website, address },
+            visualIdentity: { primaryColor, secondaryColor, accentColor },
+          }),
+        }) as OrganizationProfile;
+        setProfile(saved);
+        setName(saved.name);
+        setNotice('Identitas organisasi berhasil disimpan.');
+      } catch (cause) {
+        setError(cause instanceof Error && cause.message.includes('409') ? 'Data organisasi berubah di sesi lain. Muat ulang sebelum menyimpan.' : cause instanceof Error ? cause.message : 'Identitas organisasi gagal disimpan.');
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
+
+  return (
+    <SectionCard icon={Building2} title="Identitas Organisasi" eyebrow="Profil tenant">
+      <div className="mb-4 rounded-lg border border-hairline bg-bg p-3 text-xs leading-5 text-paper-dim">
+        Identitas ini milik organisasi aktif, bukan pengaturan tampilan situs. Domain, template, SEO situs, integrasi, dan operasi tetap berada di area platform.
+        <span className="mt-1 block font-mono text-[10px] text-paper-faint">ID: {organizationId} · Peran: {organizationRole ?? 'Anggota organisasi'}</span>
+      </div>
+      {error ? <FormNotice tone="error">{error}</FormNotice> : null}
+      {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
+      {profile !== null && !profile.canManage ? <FormNotice tone="muted">Profil dapat dilihat, tetapi hanya pengelola peran atau anggota organisasi yang dapat menyimpan perubahan.</FormNotice> : null}
+      {profile === null ? <p className="m-0 py-4 text-sm text-paper-dim">Memuat identitas organisasi…</p> : (
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={nameId}>Nama organisasi</Label>
+              <Input id={nameId} value={name} onChange={(event) => setName(event.target.value)} maxLength={160} minLength={2} required disabled={busy || !profile.canManage} />
+              <p className="m-0 text-xs text-paper-faint">Slug sistem: {profile.slug} (tidak berubah saat nama diperbarui).</p>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={descriptionId}>Deskripsi</Label>
+              <Textarea id={descriptionId} value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={4} disabled={busy || !profile.canManage} placeholder="Jelaskan organisasi dan fokus penerbitannya…" />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={logoId}>URL logo organisasi (HTTPS)</Label>
+              <Input id={logoId} type="url" value={logoUrl} onChange={(event) => setLogoUrl(event.target.value)} placeholder="https://contoh.id/logo.png" disabled={busy || !profile.canManage} />
+              {logoUrl ? <Image src={logoUrl} alt="Pratinjau logo organisasi" width={64} height={64} unoptimized className="mt-2 h-16 w-16 rounded-lg border border-hairline bg-bg object-contain p-1" /> : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={emailId}>Email kontak</Label>
+              <Input id={emailId} type="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} disabled={busy || !profile.canManage} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={phoneId}>Telepon</Label>
+              <Input id={phoneId} value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={40} disabled={busy || !profile.canManage} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={websiteId}>Website organisasi (HTTPS)</Label>
+              <Input id={websiteId} type="url" value={website} onChange={(event) => setWebsite(event.target.value)} maxLength={2000} placeholder="https://organisasi.id" disabled={busy || !profile.canManage} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor={addressId}>Alamat / informasi kontak</Label>
+              <Textarea id={addressId} value={address} onChange={(event) => setAddress(event.target.value)} maxLength={500} rows={2} disabled={busy || !profile.canManage} />
+            </div>
+          </div>
+          <div className="space-y-3 rounded-lg border border-hairline p-4">
+            <div>
+              <h3 className="m-0 text-sm font-semibold text-paper">Identitas visual</h3>
+              <p className="m-0 mt-1 text-xs text-paper-dim">Warna merek organisasi, tidak mengubah warna template situs.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {([{ id: primaryId, label: 'Warna utama', value: primaryColor, set: setPrimaryColor }, { id: secondaryId, label: 'Warna sekunder', value: secondaryColor, set: setSecondaryColor }, { id: accentId, label: 'Warna aksen', value: accentColor, set: setAccentColor }] as const).map((color) => (
+                <div key={color.id} className="space-y-1.5">
+                  <Label htmlFor={color.id}>{color.label}</Label>
+                  <div className="flex items-center gap-2">
+                    <input id={color.id} type="color" value={color.value} onChange={(event) => color.set(event.target.value)} disabled={busy || !profile.canManage} aria-label={color.label} className="h-9 w-12 rounded border border-hairline bg-bg p-1" />
+                    <Input value={color.value} onChange={(event) => color.set(event.target.value)} pattern="^#[0-9a-fA-F]{6}$" maxLength={7} required disabled={busy || !profile.canManage} aria-label={`${color.label} hex`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4">
+            <p className="m-0 max-w-xl text-xs leading-5 text-paper-faint">Perubahan identitas dicatat dalam audit organisasi. Pengguna memerlukan hak kelola anggota atau peran untuk menyimpan.</p>
+            <Button type="submit" disabled={busy || !profile.canManage || name.trim().length < 2}>
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="mr-2 h-4 w-4" aria-hidden="true" />}
+              {busy ? 'Menyimpan…' : profile.canManage ? 'Simpan identitas' : 'Hanya lihat'}
+            </Button>
+          </div>
+        </form>
+      )}
+    </SectionCard>
+  );
+}
