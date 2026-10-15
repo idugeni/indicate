@@ -169,7 +169,7 @@ describe('ContentLibraryV2', () => {
       { length: 134 },
       (_, index) => `https://tenant-${index + 1}.example/banjir-wonosobo`,
     );
-    const writeText = vi.fn(async (_text: string) => undefined);
+    const writeText = vi.fn(async () => undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const data = {
       ...DATA,
@@ -190,7 +190,7 @@ describe('ContentLibraryV2', () => {
   });
 
   it('includes published assignment links and skips inactive or unpublished assignments', async () => {
-    const writeText = vi.fn(async (_text: string) => undefined);
+    const writeText = vi.fn(async () => undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const data = {
       articles: [{ ...DATA.articles[0]!, publishedUrls: [], portalHostnames: [] }],
@@ -213,7 +213,7 @@ describe('ContentLibraryV2', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(writeText.mock.calls[0]?.[0]).toBe(
-      '1. https://example.com/berita-custom\n2. https://tenant.example/banjir-wonosobo',
+      '1. https://example.com/berita-custom\n2. https://tenant.example/berita-custom',
     );
   });
 
