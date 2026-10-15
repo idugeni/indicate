@@ -183,7 +183,7 @@ describe('ContentLibraryV2', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const text = writeText.mock.calls[0]?.[0] ?? '';
-    const lines = text.split('\\n');
+    const lines = text.split('\n');
     expect(lines).toHaveLength(134);
     expect(lines[0]).toBe('1. https://tenant-1.example/banjir-wonosobo');
     expect(lines[133]).toBe('134. https://tenant-134.example/banjir-wonosobo');
@@ -213,7 +213,7 @@ describe('ContentLibraryV2', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(writeText.mock.calls[0]?.[0]).toBe(
-      '1. https://example.com/berita-custom\\n2. https://tenant.example/banjir-wonosobo',
+      '1. https://example.com/berita-custom\n2. https://tenant.example/banjir-wonosobo',
     );
   });
 
