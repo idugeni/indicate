@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
   ArchiveRestore,
+  Check,
   ChevronRight,
+  Copy,
   FileText,
   Loader2,
   Search,
@@ -48,13 +50,20 @@ interface AssignmentSummary {
   readonly siteId: string;
   readonly state: string;
   readonly active?: boolean;
+  readonly publishedUrl?: string | null;
   readonly publishedAt?: string | null;
+}
+
+interface BridgePublishedSummary {
+  readonly articleId: string;
+  readonly urls: readonly string[];
 }
 
 interface ContentLibraryModel {
   readonly articles?: readonly Row[];
   readonly sites?: readonly SiteSummary[];
   readonly articleSites?: readonly AssignmentSummary[];
+  readonly bridgePublished?: readonly BridgePublishedSummary[];
   readonly total?: number;
   readonly articlesNextCursor?: string | null;
 }
@@ -143,6 +152,45 @@ function publicationFacts(
   };
 }
 
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+/** Build the same published-link set used by Live Results without dropping portal assignments. */
+function publishedUrlsForArticle(
+  article: Row,
+  model: ContentLibraryModel,
+  siteHostnames: ReadonlyMap<string, string>,
+): readonly string[] {
+  const directUrls = article.publishedUrls ?? [];
+  const assignmentUrls = (model.articleSites ?? [])
+    .filter((assignment) =>
+      assignment.articleId === article.id &&
+      assignment.state === 'published' &&
+      assignment.active !== false,
+    )
+    .map((assignment) => {
+      if (assignment.publishedUrl) return assignment.publishedUrl;
+      const hostname = siteHostnames.get(assignment.siteId);
+      return hostname ? `https://${hostname}/${article.slug}` : null;
+    })
+    .filter((url): url is string => url !== null);
+  const bridgeUrls = (model.bridgePublished ?? [])
+    .filter((bridge) => bridge.articleId === article.id)
+    .flatMap((bridge) => bridge.urls);
+  return [...new Set([...directUrls, ...assignmentUrls, ...bridgeUrls].filter(isHttpUrl))];
+}
+
+function formatPublishedLinksForPaste(urls: readonly string[]): string {
+  return urls.map((url, index) => `${index + 1}. ${url}`).join('\\n');
+}
+
 export function ContentLibraryV2({
   data,
   command,
@@ -182,6 +230,8 @@ export function ContentLibraryV2({
   const [sort, setSort] = useState('published-desc');
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState<readonly string[]>([]);
+  const [copyingLinksFor, setCopyingLinksFor] = useState<string | null>(null);
+  const [copiedLinksFor, setCopiedLinksFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!onFilterApply) return;
@@ -236,6 +286,25 @@ export function ContentLibraryV2({
     const selectedRows = visible.filter((row) => selectedVisible.includes(row.id));
     for (const [index, row] of selectedRows.entries()) {
       await run(row, 'article.archive', index === selectedRows.length - 1);
+    }
+  };
+
+  const copyPublishedLinks = async (row: Row, urls: readonly string[]) => {
+    if (copyingLinksFor !== null) return;
+    setCopyingLinksFor(row.id);
+    setCopiedLinksFor(null);
+    try {
+      if (urls.length === 0) throw new Error('Artikel ini belum memiliki URL tayang.');
+      if (typeof navigator.clipboard?.writeText !== 'function') {
+        throw new Error('Clipboard tidak tersedia. Periksa izin browser, lalu coba lagi.');
+      }
+      await navigator.clipboard.writeText(formatPublishedLinksForPaste(urls));
+      setCopiedLinksFor(row.id);
+      toast.success(`${urls.length.toLocaleString('id-ID')} URL tayang berhasil disalin.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyalin URL tayang artikel.');
+    } finally {
+      setCopyingLinksFor(null);
     }
   };
 
@@ -335,6 +404,7 @@ export function ContentLibraryV2({
           {visible.map((row) => {
             const meta = resolveStatus(row.status);
             const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames);
+            const publishedLinks = publishedUrlsForArticle(row, model, siteHostnames);
             const isBusy = busy.includes(row.id);
             const transition = row.status === 'archived' ? 'article.restore' : 'article.archive';
             const statusTone = publication.isPublished ? STATUS_BADGE_TONE.ok : STATUS_BADGE_TONE[meta.tone];
@@ -357,6 +427,10 @@ export function ContentLibraryV2({
                   <div className="rounded bg-bg px-2 py-1.5"><dt className="text-[10px] text-paper-faint">Tayang</dt><dd className="m-0 break-words text-xs text-paper-dim">{publicationLabel}</dd></div>
                 </dl>
                 <div className="mt-3 flex flex-wrap justify-end gap-1">
+                  <Button variant="outline" size="sm" aria-label={`Salin semua tautan tayang artikel ${row.title}`} title={`Salin ${publishedLinks.length} URL tayang`} onClick={() => void copyPublishedLinks(row, publishedLinks)} disabled={publishedLinks.length === 0 || copyingLinksFor !== null}>
+                    {copyingLinksFor === row.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : copiedLinksFor === row.id ? <Check className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
+                    {copiedLinksFor === row.id ? 'Tersalin' : `Salin URL (${publishedLinks.length})`}
+                  </Button>
                   <Button variant="ghost" size="icon-xs" aria-label={`Ubah artikel ${row.title}`} onClick={() => crossOrg === true && row.organizationId ? onEditArticle?.(row.id, row.organizationId) : onEditArticle?.(row.id)} disabled={isBusy}><ChevronRight className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon-xs" aria-label={`${row.status === 'archived' ? 'Pulihkan' : 'Arsipkan'} artikel ${row.title}`} onClick={() => void run(row, transition)} disabled={isBusy}>{isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : row.status === 'archived' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
                   <Button variant="ghost" size="icon-xs" className="text-error" aria-label={`Hapus permanen artikel ${row.title}`} onClick={() => void run(row, 'article.delete')} disabled={isBusy}><Trash2 className="h-4 w-4" /></Button>
@@ -390,6 +464,7 @@ export function ContentLibraryV2({
               {visible.map((row) => {
                 const meta = resolveStatus(row.status);
                 const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames);
+                const publishedLinks = publishedUrlsForArticle(row, model, siteHostnames);
                 const isBusy = busy.includes(row.id);
                 const transition =
                   row.status === 'archived' ? 'article.restore' : 'article.archive';
@@ -453,6 +528,17 @@ export function ContentLibraryV2({
                       {publicationLabel}
                     </td>
                     <td className="p-3 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Salin semua tautan tayang artikel ${row.title}`}
+                        title={`Salin ${publishedLinks.length} URL tayang`}
+                        onClick={() => void copyPublishedLinks(row, publishedLinks)}
+                        disabled={publishedLinks.length === 0 || copyingLinksFor !== null}
+                      >
+                        {copyingLinksFor === row.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : copiedLinksFor === row.id ? <Check className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
+                        {copiedLinksFor === row.id ? 'Tersalin' : `Salin URL (${publishedLinks.length})`}
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon-xs"
