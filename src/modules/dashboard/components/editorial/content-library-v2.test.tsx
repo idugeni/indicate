@@ -201,7 +201,7 @@ describe('ContentLibraryV2', () => {
       ],
       articleSites: [
         { articleId: 'a-1', siteId: 'apex', state: 'published', publishedUrl: 'https://example.com/berita-custom' },
-        { articleId: 'a-1', siteId: 'tenant', state: 'published' },
+        { articleId: 'a-1', siteId: 'tenant', state: 'published', publishedUrl: 'https://tenant.example/berita-custom' },
         { articleId: 'a-1', siteId: 'draft', state: 'queued' },
       ],
       total: 1,
