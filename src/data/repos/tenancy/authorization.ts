@@ -248,7 +248,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
   }) {
     return this.database.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${authUserId}, true)`);
-      const current = await transaction.query.users.findFirst({ where: and(eq(users.authUserId, authUserId), eq(users.status, 'active')) });
+      const current = await transaction.query.users.findFirst({ where: and(or(eq(users.authUserId, authUserId), eq(users.neonAuthUserId, authUserId)), eq(users.status, 'active')) });
       if (current === undefined) return null;
       const set: Partial<{ displayName: string; bio: string | null; locale: string | null; timezone: string | null; avatarUrl: string | null; updatedAt: Date }> = { updatedAt: new Date() };
       if (patch.displayName !== undefined) set.displayName = patch.displayName;
