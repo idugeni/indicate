@@ -4,9 +4,6 @@ import { neonAuth } from '@/integrations/neon-auth/server';
 import { verifyTurnstileToken } from '@/core/security/turnstile-verify';
 import { TURNSTILE_TOKEN_HEADER } from '@/core/security/turnstile-contract';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
 const handlers = neonAuth.handler();
 export const GET = handlers.GET;
 
