@@ -7,6 +7,9 @@ export interface VerifiedAuthIdentity {
   readonly displayName: string;
   readonly avatarUrl: string | null;
   readonly email: string | null;
+}
+
+export interface VerifiedNeonIdentity extends VerifiedAuthIdentity {
   readonly emailVerified: true;
 }
 
@@ -15,7 +18,7 @@ export interface VerifiedAuthIdentity {
  * This only establishes the provider identity; application authorization is
  * still resolved against the local user, active tenant membership, and RBAC.
  */
-export async function getVerifiedNeonIdentity(): Promise<VerifiedAuthIdentity | null> {
+export async function getVerifiedNeonIdentity(): Promise<VerifiedNeonIdentity | null> {
   try {
     const { data: session, error } = await neonAuth.getSession();
     const user = session?.user;
