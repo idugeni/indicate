@@ -262,6 +262,7 @@ CREATE TABLE public.identity_link_audit_logs (
   CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
   CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
 );--> statement-breakpoint
+CREATE INDEX identity_link_audit_linked_at_idx ON public.identity_link_audit_logs (linked_at);--> statement-breakpoint
 ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
   FOR ALL USING (false) WITH CHECK (false);--> statement-breakpoint
@@ -269,4 +270,4 @@ REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;--> statement-br
 GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:6b69c1dd10ea2312151b3a029fd31a225bf87fb9f87ac84c5b86c4055f12d5e1');
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:8a32880a92f365c79835c3e2ef7c0a52d97636f556b708be16d7667ec4fc0064');
