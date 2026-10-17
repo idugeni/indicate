@@ -33,6 +33,7 @@ const summary = {
   existingNeonAccountsReused: 0,
   localProfilesLinked: 0,
   skippedMissingEmail: 0,
+  skippedUnverifiedEmail: 0,
   errors: 0,
 };
 
@@ -70,6 +71,14 @@ async function createNeonUser(legacy, email) {
 }
 
 async function linkLocalProfile(legacy, neonUser) {
+  // Migration may link only a legacy identity whose email was confirmed by the
+  // source provider. Unverified legacy accounts must complete the Neon Auth
+  // verification flow before their local profile can be linked.
+  if (!legacy.email_confirmed_at || neonUser.email_verified !== true) {
+    summary.skippedUnverifiedEmail += 1;
+    return;
+  }
+
   const rows = await db.unsafe(
     'SELECT id, neon_auth_user_id FROM public.users WHERE auth_user_id = $1 LIMIT 2',
     [legacy.id],
@@ -81,24 +90,40 @@ async function linkLocalProfile(legacy, neonUser) {
   if (local.neon_auth_user_id && local.neon_auth_user_id !== neonUser.id) {
     throw new Error('Local profile already links to a different Neon Auth identity');
   }
-  if (!local.neon_auth_user_id) {
-    const updated = await db.unsafe(
-      'UPDATE public.users SET neon_auth_user_id = $1, updated_at = now() WHERE id = $2 AND auth_user_id = $3 AND neon_auth_user_id IS NULL RETURNING id',
-      [neonUser.id, local.id, legacy.id],
+
+  let didLink = false;
+  await db.begin(async (tx) => {
+    const currentRows = await tx.unsafe(
+      'SELECT neon_auth_user_id FROM public.users WHERE id = $1 FOR UPDATE',
+      [local.id],
     );
-    if (updated.length !== 1) {
-      const check = await db.unsafe('SELECT neon_auth_user_id FROM public.users WHERE id = $1', [local.id]);
-      if (!check[0] || check[0].neon_auth_user_id !== neonUser.id) {
+    const current = currentRows[0];
+    if (!current) throw new Error('Local profile disappeared during identity migration');
+    if (current.neon_auth_user_id && current.neon_auth_user_id !== neonUser.id) {
+      throw new Error('Local profile already links to a different Neon Auth identity');
+    }
+
+    if (!current.neon_auth_user_id) {
+      // The database guard requires a transaction-local linkage intent. The
+      // email-confirmation check above is the migration's source-of-truth gate.
+      await tx.unsafe("SELECT set_config('app.neon_auth_identity_link', 'on', true)");
+      const updated = await tx.unsafe(
+        'UPDATE public.users SET neon_auth_user_id = $1, updated_at = now() WHERE id = $2 AND auth_user_id = $3 AND neon_auth_user_id IS NULL RETURNING id',
+        [neonUser.id, local.id, legacy.id],
+      );
+      if (updated.length !== 1) {
         throw new Error('Identity link did not persist; legacy data was not deleted');
       }
-    } else {
-      summary.localProfilesLinked += 1;
+      didLink = true;
     }
-  }
-  await db.unsafe(
-    'INSERT INTO public.identity_link_audit_logs (local_user_id, legacy_auth_user_id, neon_auth_user_id, request_id) SELECT $1, $2, $3, $4 WHERE NOT EXISTS (SELECT 1 FROM public.identity_link_audit_logs WHERE local_user_id = $1 AND legacy_auth_user_id = $2 AND neon_auth_user_id = $3)',
-    [local.id, legacy.id, neonUser.id, requestId],
-  );
+
+    await tx.unsafe(
+      'INSERT INTO public.identity_link_audit_logs (local_user_id, legacy_auth_user_id, neon_auth_user_id, request_id) SELECT $1, $2, $3, $4 WHERE NOT EXISTS (SELECT 1 FROM public.identity_link_audit_logs WHERE local_user_id = $1 AND legacy_auth_user_id = $2 AND neon_auth_user_id = $3)',
+      [local.id, legacy.id, neonUser.id, requestId],
+    );
+  });
+
+  if (didLink) summary.localProfilesLinked += 1;
 }
 
 try {
