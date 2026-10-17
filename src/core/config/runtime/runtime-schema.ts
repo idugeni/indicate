@@ -15,7 +15,7 @@ export interface RuntimeConfig {
     readonly status: string;
     readonly reserved: ReadonlySet<string>;
   };
-  readonly supabase: {
+  readonly database: {
     readonly pooledDatabaseUrl: string;
   };
   readonly cloudflare: {
