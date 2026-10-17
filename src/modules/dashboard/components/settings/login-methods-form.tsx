@@ -1,129 +1,77 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { KeyRound, Link2, Loader2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { KeyRound, Loader2 } from 'lucide-react';
 
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/password-input';
-import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
+import { neonAuthClient } from '@/integrations/neon-auth/client';
 
-interface LinkedIdentity {
-  readonly provider: string;
-}
-
+/** Password management for Neon email/password accounts. Social account linking is intentionally not available. */
 export function LoginMethodsForm() {
-  const [identities, setIdentities] = useState<readonly LinkedIdentity[] | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const reload = async () => {
-    try {
-      const supabase = createBrowserSupabaseClient();
-      const { data, error } = await supabase.auth.getUserIdentities();
-      if (error) throw error;
-      setIdentities(Object.freeze((data.identities ?? []).map(({ provider }) => ({ provider }))));
-    } catch {
-      setIdentities(null);
-    }
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.resolve().then(() => {
-      if (!cancelled) void reload();
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  const hasEmail = identities?.some(({ provider }) => provider === 'email') === true;
-  const hasGoogle = identities?.some(({ provider }) => provider === 'google') === true;
-
   const handleSetPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setNotice(null);
+    if (currentPassword.length === 0) {
+      setNotice('Masukkan kata sandi saat ini.');
+      return;
+    }
     if (password.length < 8 || password !== confirm) {
-      setNotice('Kata sandi minimal 8 karakter dan harus sama dengan konfirmasi.');
+      setNotice('Kata sandi baru minimal 8 karakter dan harus sama dengan konfirmasi.');
       return;
     }
     setBusy(true);
     try {
-      const supabase = createBrowserSupabaseClient();
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await neonAuthClient.changePassword({
+        currentPassword,
+        newPassword: password,
+      });
       if (error) throw error;
+      setCurrentPassword('');
       setPassword('');
       setConfirm('');
-      setNotice('Kata sandi tersimpan. Email ini kini bisa masuk dengan kata sandi.');
-      await reload();
+      setNotice('Kata sandi berhasil diperbarui.');
     } catch {
-      setNotice('Gagal menyimpan kata sandi. Coba lagi.');
+      setNotice('Gagal memperbarui kata sandi. Periksa kata sandi saat ini lalu coba lagi.');
     } finally {
       setBusy(false);
     }
   };
 
-  const handleLinkGoogle = async () => {
-    setBusy(true);
-    setNotice(null);
-    try {
-      const supabase = createBrowserSupabaseClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-      const { error } = await supabase.auth.linkIdentity({
-        provider: 'google',
-        options: { redirectTo: `${siteUrl}/auth/callback?next=%2Fdashboard` },
-      });
-      if (error) throw error;
-    } catch {
-      setNotice('Penautan Google gagal. Pastikan penautan manual aktif di pengaturan Auth.');
-      setBusy(false);
-    }
-  };
-
   return (
-    <SectionCard icon={KeyRound} title="Metode Login" eyebrow="Email · Google — satu akun yang sama">
-
+    <SectionCard icon={KeyRound} title="Kata Sandi" eyebrow="Neon Managed Auth · Email">
       <p className="m-0 font-sans text-xs text-paper-dim">
-        Tertaut: {identities === null ? 'memuat…' : identities.length === 0 ? '—' : identities.map(({ provider }) => provider).join(', ')}
+        Gunakan kata sandi saat ini untuk mengatur kata sandi baru. Login sosial tidak diaktifkan pada aplikasi ini.
       </p>
-
-      {!hasEmail ? (
-        <form noValidate onSubmit={handleSetPassword} className="mt-4 space-y-3">
-          <p className="m-0 font-sans text-xs text-paper-dim">
-            Anda masuk dengan Google. Buat kata sandi agar email ini juga bisa masuk langsung.
-          </p>
-          <PasswordInput
-            required minLength={8} autoComplete="new-password" disabled={busy}
-            value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Kata sandi baru"
-            className="h-8 font-sans text-xs"
-          />
-          <PasswordInput
-            required minLength={8} autoComplete="new-password" disabled={busy}
-            value={confirm} onChange={(event) => setConfirm(event.target.value)} placeholder="Konfirmasi kata sandi"
-            className="h-8 font-sans text-xs"
-          />
-          <Button
-            type="submit" variant="default" disabled={busy}
-          >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-            <span>Simpan Kata Sandi</span>
-          </Button>
-        </form>
-      ) : null}
-
-      {hasEmail && !hasGoogle ? (
-        <div className="mt-4">
-          <Button
-            type="button" variant="outline" onClick={() => void handleLinkGoogle()} disabled={busy}
-          >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Link2 className="h-3.5 w-3.5" aria-hidden="true" />}
-            <span>Tautkan Akun Google</span>
-          </Button>
-        </div>
-      ) : null}
-
+      <form noValidate onSubmit={handleSetPassword} className="mt-4 space-y-3">
+        <PasswordInput
+          required autoComplete="current-password" disabled={busy}
+          value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)}
+          placeholder="Kata sandi saat ini" className="h-8 font-sans text-xs"
+        />
+        <PasswordInput
+          required minLength={8} autoComplete="new-password" disabled={busy}
+          value={password} onChange={(event) => setPassword(event.target.value)}
+          placeholder="Kata sandi baru" className="h-8 font-sans text-xs"
+        />
+        <PasswordInput
+          required minLength={8} autoComplete="new-password" disabled={busy}
+          value={confirm} onChange={(event) => setConfirm(event.target.value)}
+          placeholder="Konfirmasi kata sandi baru" className="h-8 font-sans text-xs"
+        />
+        <Button type="submit" variant="default" disabled={busy}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
+          <span>Perbarui Kata Sandi</span>
+        </Button>
+      </form>
       {notice ? <FormNotice tone="muted">{notice}</FormNotice> : null}
     </SectionCard>
   );
