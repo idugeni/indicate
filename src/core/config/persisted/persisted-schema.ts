@@ -20,7 +20,7 @@ const hostnameField = z
 
 export const sharedDeploymentSchema = z
   .object({
-    supabaseProjectRef: z.string().regex(/^[a-z0-9]{8,32}$/),
+    neonProjectId: z.string().min(1),
     cloudflareAccountId: z.string().min(1),
     vercelProjectId: z.string().min(1),
     vercelTeamId: z.string().min(1),
