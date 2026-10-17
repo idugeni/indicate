@@ -1,2 +1,0 @@
-Regenerate migration checksum and generated bootstrap for the Neon identity migration.
-Retry bootstrap regeneration after the migration changed.
