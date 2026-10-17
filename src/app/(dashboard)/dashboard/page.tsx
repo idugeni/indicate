@@ -11,9 +11,8 @@ import { DASHBOARD_ACCESS_KEY_COOKIE } from '@/modules/auth/dashboard-access-key
 import { resolveAccessKeyActor } from '@/modules/auth/dashboard-access-keys/resolve-access-key-actor';
 import { buildAccessKeyOrganizationOptions } from '@/modules/auth/dashboard-access-keys/access-key-organizations';
 import { getDashboardSnapshot } from '@/modules/dashboard';
-import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
-import { createSupabaseSsrAuthAdapter, createHardenedSupabaseCookieStore } from '@/integrations/supabase/supabase-ssr';
+import { getVerifiedNeonIdentity } from '@/integrations/neon-auth/identity';
 import { getSharedRuntimeDatabase } from '@/data/client';
 import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorization';
 import { UuidGenerator } from '@/core/system/uuid-generator';
@@ -55,21 +54,7 @@ async function DashboardBody({
 }) {
   await connection();
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl, publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({
-      getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })),
-      set: (name, value, options) => {
-        try {
-          cookieStore.set(name, value, options);
-        } catch {
-          /* Cookie write can fail during RSC render; the proxy refreshes it. */
-        }
-      },
-    }),
-  });
-  const identity = await auth.verifyCookieSession();
+  const identity = await getVerifiedNeonIdentity();
   if (identity === null) return <AccessKeyDashboardBody cookieStore={cookieStore} searchParams={searchParams} />;
   const displayName = identity.displayName;
   const context = await getServerRuntimeContext();
