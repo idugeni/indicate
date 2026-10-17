@@ -21,6 +21,9 @@ const hostnameField = z
 export const sharedDeploymentSchema = z
   .object({
     neonProjectId: z.string().min(1),
+    // Temporary compatibility for the rollout window: the Neon SQL projection
+    // still exposes this legacy column so an older deployment can be rolled back.
+    supabaseProjectRef: z.string().nullable().optional(),
     cloudflareAccountId: z.string().min(1),
     vercelProjectId: z.string().min(1),
     vercelTeamId: z.string().min(1),
@@ -31,7 +34,12 @@ export const sharedDeploymentSchema = z
     version: z.number().int().positive(),
     updatedAt: z.string(),
   })
-  .strict();
+  .strict()
+  .transform((value) => {
+    const { supabaseProjectRef, ...deployment } = value;
+    void supabaseProjectRef;
+    return deployment;
+  });
 
 export const mediaPolicySchema = z
   .object({
