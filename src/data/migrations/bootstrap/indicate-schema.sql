@@ -302,7 +302,7 @@
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
---   289  20261017100000_neon_auth_identity_mapping  ledger sha256:0e1da45a7f6d4060dfa113a14feb472c85c2d219d2ab9abf1fdf1b58325c9ba0
+--   289  20261017100000_neon_auth_identity_mapping  ledger sha256:557678c68159d2c241d12dc0acb9597dfde6554e379c71010d702271a06cf5ad
 
 BEGIN;
 
@@ -24785,7 +24785,8 @@ BEGIN
   END IF;
 
   UPDATE public.shared_deployment_config AS s
-     SET neon_project_id = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}
+     SET neon_project_id = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}$' THEN s.neon_project_id ELSE p_supabase_project_ref END,
+         supabase_project_ref = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}$' THEN p_supabase_project_ref ELSE s.supabase_project_ref END,
          vercel_project_id = p_vercel_project_id,
          vercel_team_id = p_vercel_team_id,
          vercel_production_target_hostname = p_vercel_production_target_hostname,
@@ -24848,137 +24849,7 @@ REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;
 GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:716cb110a1490e18e342879a063272341fb7817cbab2b7ca51c35aef0879ac0a');
- THEN s.neon_project_id ELSE p_supabase_project_ref END,
-         supabase_project_ref = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}
-         vercel_project_id = p_vercel_project_id,
-         vercel_team_id = p_vercel_team_id,
-         vercel_production_target_hostname = p_vercel_production_target_hostname,
-         r2_account_id = p_r2_account_id,
-         r2_bucket_name = p_r2_bucket_name,
-         upstash_redis_resource_id = p_upstash_redis_resource_id,
-         version = version + 1,
-         updated_at = now()
-   WHERE s.id = 'singleton' AND s.version = p_expected_version
-   RETURNING s.version INTO v_after;
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:83bce7d0b559a1d40c478c39322eccb20f93cd18e02cfa35027b86a403493082');
 
-  IF v_after IS NULL THEN
-    RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000';
-  END IF;
-
-  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
-  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
-  VALUES (v_revision, current_setting('app.environment', true), now(), 'shared_deployment_config');
-
-  INSERT INTO public.runtime_config_audit_logs (
-    id, organization_id, actor_type, actor_id, environment, action, target_type,
-    target_id, expected_version, resulting_version, changed_fields, outcome, request_id
-  ) VALUES (
-    gen_random_uuid(), NULL, 'user', p_actor_id, current_setting('app.environment', true),
-    'update', 'shared_deployment_config', NULL, p_expected_version, v_after,
-    ARRAY['neon_project_id','cloudflare_account_id','vercel_project_id','vercel_team_id',
-          'vercel_production_target_hostname','r2_account_id','r2_bucket_name',
-          'upstash_redis_resource_id'],
-    'succeeded', current_setting('app.request_id', true)
-  );
-
-  INSERT INTO public.runtime_config_invalidation_intents (
-    id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at
-  ) VALUES (
-    gen_random_uuid(), v_revision, current_setting('app.environment', true), 'shared',
-    'pending', 0, now()
-  );
-
-  RETURN v_after;
-END
-$$;
-REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;
-
-CREATE TABLE public.identity_link_audit_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  local_user_id uuid NOT NULL REFERENCES public.users(id),
-  legacy_auth_user_id uuid NOT NULL,
-  neon_auth_user_id uuid NOT NULL,
-  request_id text NOT NULL,
-  linked_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
-  CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
-);
-CREATE INDEX identity_link_audit_linked_at_idx ON public.identity_link_audit_logs (linked_at);
-ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
-  FOR ALL USING (false) WITH CHECK (false);
-REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;
-GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;
-
-INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:045e46d1c5903c795bbe0a92748d48a1fc71f12d8bc50641e6d074787bc85f35');
- THEN p_supabase_project_ref ELSE s.supabase_project_ref END,
-         cloudflare_account_id = p_cloudflare_account_id,
-         vercel_project_id = p_vercel_project_id,
-         vercel_team_id = p_vercel_team_id,
-         vercel_production_target_hostname = p_vercel_production_target_hostname,
-         r2_account_id = p_r2_account_id,
-         r2_bucket_name = p_r2_bucket_name,
-         upstash_redis_resource_id = p_upstash_redis_resource_id,
-         version = version + 1,
-         updated_at = now()
-   WHERE s.id = 'singleton' AND s.version = p_expected_version
-   RETURNING s.version INTO v_after;
-
-  IF v_after IS NULL THEN
-    RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000';
-  END IF;
-
-  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
-  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
-  VALUES (v_revision, current_setting('app.environment', true), now(), 'shared_deployment_config');
-
-  INSERT INTO public.runtime_config_audit_logs (
-    id, organization_id, actor_type, actor_id, environment, action, target_type,
-    target_id, expected_version, resulting_version, changed_fields, outcome, request_id
-  ) VALUES (
-    gen_random_uuid(), NULL, 'user', p_actor_id, current_setting('app.environment', true),
-    'update', 'shared_deployment_config', NULL, p_expected_version, v_after,
-    ARRAY['neon_project_id','cloudflare_account_id','vercel_project_id','vercel_team_id',
-          'vercel_production_target_hostname','r2_account_id','r2_bucket_name',
-          'upstash_redis_resource_id'],
-    'succeeded', current_setting('app.request_id', true)
-  );
-
-  INSERT INTO public.runtime_config_invalidation_intents (
-    id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at
-  ) VALUES (
-    gen_random_uuid(), v_revision, current_setting('app.environment', true), 'shared',
-    'pending', 0, now()
-  );
-
-  RETURN v_after;
-END
-$$;
-REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;
-
-CREATE TABLE public.identity_link_audit_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  local_user_id uuid NOT NULL REFERENCES public.users(id),
-  legacy_auth_user_id uuid NOT NULL,
-  neon_auth_user_id uuid NOT NULL,
-  request_id text NOT NULL,
-  linked_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
-  CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
-);
-CREATE INDEX identity_link_audit_linked_at_idx ON public.identity_link_audit_logs (linked_at);
-ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
-  FOR ALL USING (false) WITH CHECK (false);
-REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;
-GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;
-
-INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:045e46d1c5903c795bbe0a92748d48a1fc71f12d8bc50641e6d074787bc85f35');
-
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0e1da45a7f6d4060dfa113a14feb472c85c2d219d2ab9abf1fdf1b58325c9ba0', 1792230000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('557678c68159d2c241d12dc0acb9597dfde6554e379c71010d702271a06cf5ad', 1792230000000);
 COMMIT;
