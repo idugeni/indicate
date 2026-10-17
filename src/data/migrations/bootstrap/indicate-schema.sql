@@ -302,7 +302,7 @@
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
---   289  20261017100000_neon_auth_identity_mapping  ledger sha256:58f817795de3d3c8d773240ee68647eb0020fa6c114034850f6de7f224d7b95d
+--   289  20261017100000_neon_auth_identity_mapping  ledger sha256:0701940d45687f667f937e47e4e9723e9166f027965b8e363a8905131e426ae0
 
 BEGIN;
 
@@ -24825,8 +24825,24 @@ $;
 REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;
 
-INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:8b011bb4524639ede4c24371cc4b60bf668e2976b16b940980abca7227407a75');
+CREATE TABLE public.identity_link_audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_user_id uuid NOT NULL REFERENCES public.users(id),
+  legacy_auth_user_id uuid NOT NULL,
+  neon_auth_user_id uuid NOT NULL,
+  request_id text NOT NULL,
+  linked_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
+  CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
+);
+ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
+  FOR ALL USING (false) WITH CHECK (false);
+REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;
+GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('58f817795de3d3c8d773240ee68647eb0020fa6c114034850f6de7f224d7b95d', 1792230000000);
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:6b69c1dd10ea2312151b3a029fd31a225bf87fb9f87ac84c5b86c4055f12d5e1');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0701940d45687f667f937e47e4e9723e9166f027965b8e363a8905131e426ae0', 1792230000000);
 COMMIT;
