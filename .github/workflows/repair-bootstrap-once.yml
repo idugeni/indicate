@@ -5,6 +5,11 @@ on:
       - feat/neon-managed-better-auth
     paths:
       - .bootstrap-repair-trigger
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .bootstrap-repair-trigger
 permissions:
   contents: write
 jobs:
