@@ -48,7 +48,7 @@ export function SignInForm() {
     try {
       const { error } = await neonAuthClient.signIn.email(
         { email: target, password },
-        captchaToken === null ? undefined : { fetchOptions: { headers: { 'cf-turnstile-response': captchaToken } } },
+        captchaToken === null ? undefined : { headers: { 'cf-turnstile-response': captchaToken } },
       );
       if (error) {
         setError('Kredensial tidak valid atau akun belum diverifikasi.');
