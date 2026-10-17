@@ -42,11 +42,11 @@ dokumen mana pun, termasuk dari sini.
 
 | Document | Status | Contents |
 |---|---|---|
-| [migrations](migrations.md) | Advisory | Forward-only Drizzle/PostgreSQL procedure, promotion gate, Supabase roles. |
+| [migrations](migrations.md) | Advisory | Forward-only Drizzle/PostgreSQL procedure, promotion gate, Neon PostgreSQL roles. |
 | [release](release.md) | Advisory | Readiness checks, release order (pre-release → promote → smoke → monitor), and rollback. Read-only, warns instead of blocking. |
 | [cloudflare baseline](cloudflare-baseline.md) | Living | Canonical per-zone values, new-zone checklist, review cadence. |
 | [domains](domains.md) | Living | Domain inventory, live counts, and the activation ledger. The one place that says how many domains, sites, and Vercel associations exist. |
-| [ops lessons](ops-lessons.md) | Living | Incident-derived procedures (tenant context, Supavisor sessions). |
+| [ops lessons](ops-lessons.md) | Living | Incident-derived procedures (tenant context, Neon pooler sessions). |
 | [regions](regions.md) | Living | Single source for province geography in `regions` (naming rules + 38-row roster). |
 | [vercel multi-tenant archive](vercel-multi-tenant/README.md) | Archive 2026-09-24 | Verbatim Vercel multi-tenant platform docs (10 pages) for internal reference. Upstream wins on conflict; excluded from `lint:md` and link checks. |
 
