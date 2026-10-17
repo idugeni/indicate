@@ -26,7 +26,7 @@ function hostnameCache(config: RuntimeConfig): HostnameCachePort | undefined {
 }
 function repository(config: RuntimeConfig, bootstrap: BootstrapConfig): DeliveryRepository {
   if (globalThis.indicateDeliveryRepository !== undefined) return globalThis.indicateDeliveryRepository;
-  const isPlaceholder = config.supabase.pooledDatabaseUrl.includes('abcdefghijklmnop') || config.supabase.pooledDatabaseUrl.includes('replace-password');
+  const isPlaceholder = config.database.pooledDatabaseUrl.includes('abcdefghijklmnop') || config.supabase.pooledDatabaseUrl.includes('replace-password');
   if (isPlaceholder) {
     throw new Error('delivery_repository_unconfigured');
   }
