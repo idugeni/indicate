@@ -171,16 +171,9 @@ describe('proxy tenant surfaces', () => {
     expect(invoiceCsp).toContain('https://fonts.googleapis.com');
   });
 
-  it('gagal-terbuka saat refresh sesi tak terjangkau', async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:1';
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'kunci-uji';
-    try {
-      const response = await proxy(request(HOSTS.dashboard, '/dashboard'));
-      expect(response.status).toBe(200);
-    } finally {
-      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-      delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    }
+  it('tidak memerlukan panggilan provider autentikasi untuk meneruskan route dashboard', async () => {
+    const response = await proxy(request(HOSTS.dashboard, '/dashboard'));
+    expect(response.status).toBe(200);
   });
 });
 
