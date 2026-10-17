@@ -212,7 +212,8 @@ BEGIN
   END IF;
 
   UPDATE public.shared_deployment_config AS s
-     SET neon_project_id = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}
+     SET neon_project_id = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}$' THEN s.neon_project_id ELSE p_supabase_project_ref END,
+         supabase_project_ref = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}$' THEN p_supabase_project_ref ELSE s.supabase_project_ref END,
          vercel_project_id = p_vercel_project_id,
          vercel_team_id = p_vercel_team_id,
          vercel_production_target_hostname = p_vercel_production_target_hostname,
