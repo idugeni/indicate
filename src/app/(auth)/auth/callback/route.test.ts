@@ -1,37 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveCallbackDestination, resolveCallbackFailureAlert, resolveTokenKind } from '@/app/(auth)/auth/callback/route-helpers';
+import { resolveCallbackDestination } from '@/app/(auth)/auth/callback/route-helpers';
 
-describe('resolveCallbackDestination', () => {
-  it('memakai dashboard kecuali alur recovery', () => {
+describe('resolveCallbackDestination with Neon Auth', () => {
+  it('defaults a successful verification callback to dashboard', () => {
+    expect(resolveCallbackDestination('signup', null)).toBe('/dashboard');
     expect(resolveCallbackDestination(null, null)).toBe('/dashboard');
-    expect(resolveCallbackDestination('recovery', null)).toBe('/update-password');
   });
 
-  it('mengutamakan next yang sudah dibersihkan', () => {
+  it('uses a sanitized local next destination', () => {
     expect(resolveCallbackDestination(null, '/dashboard?tab=ops')).toBe('/dashboard?tab=ops');
-    expect(resolveCallbackDestination('recovery', 'https://evil.example/phish')).toBe('/');
-  });
-});
-
-describe('resolveTokenKind', () => {
-  it('meneruskan tipe tautan email yang didukung', () => {
-    expect(resolveTokenKind('signup')).toBe('signup');
-    expect(resolveTokenKind('magiclink')).toBe('magiclink');
-    expect(resolveTokenKind('recovery')).toBe('recovery');
-    expect(resolveTokenKind('email')).toBe('email');
-  });
-
-  it('jatuh ke kode email untuk tipe asing', () => {
-    expect(resolveTokenKind(null)).toBe('email');
-    expect(resolveTokenKind('phone')).toBe('email');
-  });
-});
-
-describe('resolveCallbackFailureAlert', () => {
-  it('menandai galat provider terpisah dari tautan kedaluwarsa', () => {
-    expect(resolveCallbackFailureAlert(null)).toBe('unavailable');
-    expect(resolveCallbackFailureAlert('server_error')).toBe('provider');
-    expect(resolveCallbackFailureAlert('access_denied')).toBe('provider');
+    expect(resolveCallbackDestination(null, 'https://evil.example/phish')).toBe('/');
   });
 });
