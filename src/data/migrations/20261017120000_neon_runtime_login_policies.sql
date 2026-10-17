@@ -93,4 +93,4 @@ ALTER ROLE indicate_runtime_login SET statement_timeout = '15s';--> statement-br
 ALTER ROLE indicate_runtime_login SET lock_timeout = '5s';--> statement-breakpoint
 ALTER ROLE indicate_runtime_login SET idle_in_transaction_session_timeout = '30s';--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (289, 'neon_runtime_login_policies', 'sha256:0000000000000000000000000000000000000000000000000000000000000000');
+VALUES (289, 'neon_runtime_login_policies', 'sha256:89a8d2f98d073d4a1fc734e806a8c092d048042146ded105ee0b5d6daf5295b3');

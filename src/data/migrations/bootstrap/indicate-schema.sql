@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (289 migrations):
+-- Reviewed sources, in journal order (290 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -303,6 +303,7 @@
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
 --   289  20261017100000_neon_auth_identity_mapping  ledger sha256:557678c68159d2c241d12dc0acb9597dfde6554e379c71010d702271a06cf5ad
+--   290  20261017120000_neon_runtime_login_policies  ledger sha256:c3aa6c29858a7b42704d1122ba53227f2e7d37b5d7931abb5a458a780902f4cd
 
 BEGIN;
 
@@ -24852,4 +24853,106 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (288, 'neon_auth_identity_mapping', 'sha256:83bce7d0b559a1d40c478c39322eccb20f93cd18e02cfa35027b86a403493082');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('557678c68159d2c241d12dc0acb9597dfde6554e379c71010d702271a06cf5ad', 1792230000000);
+
+-- ----------------------------------------------------------------------
+-- 20261017120000_neon_runtime_login_policies
+-- ----------------------------------------------------------------------
+-- Provision the Neon password-bearing runtime login with the same explicit
+-- table/function grants and RLS policy targets as the application runtime role.
+-- Neon-managed role membership cannot be granted by the project owner role, so
+-- this keeps the login role separate and makes the RLS policies name it directly.
+-- Body digest: LF-normalize this file and replace its own checksum with zeros.
+DO $migration$
+DECLARE
+  item record;
+  role_list text;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'indicate_runtime_login') THEN
+    RAISE EXCEPTION 'Required Neon login role indicate_runtime_login is missing; provision it before applying this migration';
+  END IF;
+
+  REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM indicate_runtime_login;
+  REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM indicate_runtime_login;
+  REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA indicate_private FROM indicate_runtime_login;
+
+  GRANT USAGE ON SCHEMA public TO indicate_runtime_login;
+  GRANT USAGE ON SCHEMA indicate_private TO indicate_runtime_login;
+
+  FOR item IN
+    SELECT table_schema, table_name, privilege_type
+    FROM information_schema.role_table_grants
+    WHERE grantee = 'indicate_runtime'
+      AND table_schema = 'public'
+    ORDER BY table_name, privilege_type
+  LOOP
+    EXECUTE format(
+      'GRANT %s ON TABLE %I.%I TO indicate_runtime_login',
+      item.privilege_type, item.table_schema, item.table_name
+    );
+  END LOOP;
+
+  FOR item IN
+    SELECT n.nspname AS schema_name, c.relname AS sequence_name, acl.privilege_type
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('S', c.relowner))) AS acl
+    JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE c.relkind = 'S'
+      AND n.nspname = 'public'
+      AND grantee.rolname = 'indicate_runtime'
+    ORDER BY c.relname, acl.privilege_type
+  LOOP
+    EXECUTE format(
+      'GRANT %s ON SEQUENCE %I.%I TO indicate_runtime_login',
+      item.privilege_type, item.schema_name, item.sequence_name
+    );
+  END LOOP;
+
+  FOR item IN
+    SELECT n.nspname AS schema_name,
+           p.proname AS routine_name,
+           pg_get_function_identity_arguments(p.oid) AS identity_arguments,
+           acl.privilege_type
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+    JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE n.nspname = 'indicate_private'
+      AND grantee.rolname = 'indicate_runtime'
+      AND acl.privilege_type = 'EXECUTE'
+    ORDER BY p.proname, identity_arguments
+  LOOP
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO indicate_runtime_login',
+      item.schema_name, item.routine_name, item.identity_arguments
+    );
+  END LOOP;
+
+  FOR item IN
+    SELECT schemaname, tablename, policyname, roles
+    FROM pg_policies
+    WHERE roles @> ARRAY['indicate_runtime']::name[]
+      AND NOT roles @> ARRAY['indicate_runtime_login']::name[]
+    ORDER BY schemaname, tablename, policyname
+  LOOP
+    SELECT string_agg(quote_ident(role_name), ', ' ORDER BY role_name)
+      INTO role_list
+    FROM (
+      SELECT DISTINCT unnest(item.roles || ARRAY['indicate_runtime_login']::name[]) AS role_name
+    ) AS policy_roles;
+
+    EXECUTE format(
+      'ALTER POLICY %I ON %I.%I TO %s',
+      item.policyname, item.schemaname, item.tablename, role_list
+    );
+  END LOOP;
+END
+$migration$;
+ALTER ROLE indicate_runtime_login SET statement_timeout = '15s';
+ALTER ROLE indicate_runtime_login SET lock_timeout = '5s';
+ALTER ROLE indicate_runtime_login SET idle_in_transaction_session_timeout = '30s';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (289, 'neon_runtime_login_policies', 'sha256:89a8d2f98d073d4a1fc734e806a8c092d048042146ded105ee0b5d6daf5295b3');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c3aa6c29858a7b42704d1122ba53227f2e7d37b5d7931abb5a458a780902f4cd', 1792242000000);
 COMMIT;
