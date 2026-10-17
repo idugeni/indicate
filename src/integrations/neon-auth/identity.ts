@@ -18,7 +18,7 @@ export async function getVerifiedNeonIdentity(): Promise<VerifiedAuthIdentity | 
   try {
     const { data: session, error } = await neonAuth.getSession();
     const user = session?.user;
-    if (error || user == null || typeof user.id !== 'string' || user.id.length === 0) return null;
+    if (error || user == null || typeof user.id !== 'string' || user.id.length === 0 || user.emailVerified !== true) return null;
 
     const email = typeof user.email === 'string' && user.email.length > 0 ? user.email : null;
     const rawName = typeof user.name === 'string' ? user.name.trim() : '';
