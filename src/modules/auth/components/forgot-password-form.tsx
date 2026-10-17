@@ -43,7 +43,7 @@ export function ForgotPasswordForm() {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
       const { error } = await neonAuthClient.requestPasswordReset(
         { email: target, redirectTo: `${siteUrl}/update-password` },
-        captchaToken === null ? undefined : { fetchOptions: { headers: { 'cf-turnstile-response': captchaToken } } },
+        captchaToken === null ? undefined : { headers: { 'cf-turnstile-response': captchaToken } },
       );
       if (error) {
         setError('Jika akun dapat dipulihkan, instruksi akan dikirim. Periksa konfigurasi autentikasi atau coba lagi.');
