@@ -4,6 +4,7 @@ import {
   cachePolicySchema,
   mediaPolicySchema,
   persistedReadModelSchema,
+  sharedDeploymentSchema,
   publicationPolicySchema,
   rateLimitPolicySchema,
   webhookPolicySchema,
@@ -73,6 +74,27 @@ describe('rateLimitPolicySchema', () => {
     expect(
       rateLimitPolicySchema.safeParse({ endpointClass: 'mutation', allowance: 1001, windowSeconds: 3600, version: 1 }).success,
     ).toBe(false);
+  });
+});
+
+describe('sharedDeploymentSchema', () => {
+  it('accepts and strips the legacy Supabase projection during the Neon rollout window', () => {
+    const result = sharedDeploymentSchema.safeParse({
+      neonProjectId: 'soft-moon-84079595',
+      supabaseProjectRef: 'legacy-ref',
+      cloudflareAccountId: 'cf-1',
+      vercelProjectId: 'prj-1',
+      vercelTeamId: 'team-1',
+      vercelProductionTargetHostname: 'indicate.website',
+      r2AccountId: 'r2-1',
+      r2BucketName: 'indicate-media',
+      upstashRedisResourceId: 'redis-1',
+      version: 1,
+      updatedAt: '2026-10-17T00:00:00.000Z',
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data).not.toHaveProperty('supabaseProjectRef');
   });
 });
 
