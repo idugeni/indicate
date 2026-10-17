@@ -59,7 +59,7 @@ export function SignUpForm() {
           name: displayName.trim(),
           callbackURL: `${siteUrl}/auth/callback?flow=signup&next=%2Fdashboard`,
         },
-        captchaToken === null ? undefined : { fetchOptions: { headers: { 'cf-turnstile-response': captchaToken } } },
+        captchaToken === null ? undefined : { headers: { 'cf-turnstile-response': captchaToken } },
       );
       if (error) {
         setError(error.message);
