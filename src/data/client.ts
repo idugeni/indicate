@@ -7,8 +7,6 @@ import { recordOperation } from '@/core/observability/operation-metrics';
 import type { BootstrapConfig } from '@/core/config/bootstrap/bootstrap-schema';
 import * as schema from '@/data/schema';
 
-const RUNTIME_DATABASE_OPTIONS = '-c statement_timeout=15000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000';
-
 const DEFAULT_POOL_MAX = 6;
 const MAX_POOL_MAX = 20;
 
@@ -53,21 +51,15 @@ function poolMax(fallback: number): number {
   return parsed;
 }
 
-function withRuntimeDatabaseOptions(rawUrl: string): string {
-  const url = new URL(rawUrl);
-  url.searchParams.set('options', RUNTIME_DATABASE_OPTIONS);
-  return url.toString();
-}
-
 /**
  * Open the pooled runtime database.
  *
  * @param config - Bootstrap configuration providing the pooled URL.
  * @returns Frozen runtime client, database, and closer.
- * @remarks The Neon transaction pooler multiplexes server connections, but each warm Vercel instance still owns its client pool, and the pool must never be smaller than the largest burst of reads a single request issues. A saturated pool does not merely serialize: postgres.js hands queued queries to an already-busy connection during `onopen`, so with `max: 1` a second concurrent read is never dispatched and stays pending forever — no rejection, and no `statement_timeout`, because the statement never leaves the client. That wedges the warm instance, and every response depending on such a read streams a shell whose Suspense hole never closes, leaving the browser at `readyState: "loading"` and the visitor on a permanent spinner. The control-plane landing page issues three concurrent reads on its own, so the floor is set well above that; `DATABASE_POOL_MAX` raises it further when a surface needs more. Measured headroom is 57 usable connections against 16 in use, of which only two are Neon pooler backends, and twelve concurrent queries through the pooler complete normally. Startup options carry the timeout limits through Neon's transaction pooler, and they are load-bearing: the project default is `statement_timeout` 120000 with `lock_timeout` and `idle_in_transaction_session_timeout` disabled, so dropping the options would widen the statement budget from 15s to 120s.
+ * @remarks The Neon transaction pooler multiplexes server connections, but each warm Vercel instance still owns its client pool, and the pool must never be smaller than the largest burst of reads a single request issues. A saturated pool does not merely serialize: postgres.js hands queued queries to an already-busy connection during `onopen`, so with `max: 1` a second concurrent read is never dispatched and stays pending forever — no rejection, and no `statement_timeout`, because the statement never leaves the client. That wedges the warm instance, and every response depending on such a read streams a shell whose Suspense hole never closes, leaving the browser at `readyState: "loading"` and the visitor on a permanent spinner. The control-plane landing page issues three concurrent reads on its own, so the floor is set well above that; `DATABASE_POOL_MAX` raises it further when a surface needs more. Measured headroom is 57 usable connections against 16 in use, of which only two are Neon pooler backends, and twelve concurrent queries through the pooler complete normally. Neon’s transaction pooler rejects startup `options` containing `statement_timeout`; the runtime login therefore carries the 15s statement, 5s lock, and 30s idle-transaction limits as database role defaults, while the client deadline continues to bound stalled reads.
  */
 export function createRuntimeDatabase(config: BootstrapConfig) {
-  const client = postgres(withRuntimeDatabaseOptions(config.database.pooledUrl.reveal()), {
+  const client = postgres(config.database.pooledUrl.reveal(), {
     max: poolMax(DEFAULT_POOL_MAX),
     prepare: false,
     ssl: 'require',
