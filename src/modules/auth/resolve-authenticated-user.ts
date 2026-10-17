@@ -23,7 +23,7 @@ export async function resolveVerifiedLocalUser(
 }
 
 export async function resolveVerifiedUserOrganizations(
-  identity: { readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null },
+  identity: { readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null; readonly emailVerified: true },
   repository: AuthorizationRepository,
   identifiers: IdentifierGenerator,
 ): Promise<Result<{ readonly localUser: LocalUserIdentity; readonly organizations: readonly AccessibleOrganization[] }, 'IDENTITY_UNAVAILABLE'>> {
