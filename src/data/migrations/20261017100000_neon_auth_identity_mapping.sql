@@ -172,7 +172,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, public, indicate_private
-AS $
+AS $$
 BEGIN
   RETURN QUERY
   SELECT s.neon_project_id, s.supabase_project_ref, s.cloudflare_account_id, s.vercel_project_id, s.vercel_team_id,
@@ -181,7 +181,7 @@ BEGIN
   FROM public.shared_deployment_config AS s
   LIMIT 1;
 END
-$;--> statement-breakpoint
+$$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.read_runtime_config_shared() FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime;--> statement-breakpoint
 
@@ -253,7 +253,7 @@ BEGIN
 
   RETURN v_after;
 END
-$;--> statement-breakpoint
+$$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;--> statement-breakpoint
 
@@ -318,7 +318,7 @@ VALUES (288, 'neon_auth_identity_mapping', 'sha256:84c2360efc2e076ad9e0fb4577427
 
   RETURN v_after;
 END
-$;--> statement-breakpoint
+$$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;--> statement-breakpoint
 
@@ -383,7 +383,7 @@ VALUES (288, 'neon_auth_identity_mapping', 'sha256:045e46d1c5903c795bbe0a92748d4
 
   RETURN v_after;
 END
-$;--> statement-breakpoint
+$$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;--> statement-breakpoint
 
