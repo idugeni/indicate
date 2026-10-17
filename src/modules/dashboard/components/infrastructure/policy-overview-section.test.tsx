@@ -8,7 +8,7 @@ import { PolicyOverviewSection } from '@/modules/dashboard/components/infrastruc
 const SUMMARY = {
   policies: {
     deployment: {
-      supabaseProjectRef: 'ref-uji',
+      neonProjectId: 'ref-uji',
       cloudflareAccountId: 'akun-uji',
       vercelProjectId: 'proyek-uji',
       vercelTeamId: 'tim-uji',
