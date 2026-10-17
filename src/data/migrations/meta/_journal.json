@@ -2017,6 +2017,13 @@
       "when": 1791889200000,
       "tag": "20261013110000_global_category_tenant_bindings",
       "breakpoints": true
+    },
+    {
+      "idx": 288,
+      "version": "7",
+      "when": 1792230000000,
+      "tag": "20261017100000_neon_auth_identity_mapping",
+      "breakpoints": true
     }
   ]
 }
