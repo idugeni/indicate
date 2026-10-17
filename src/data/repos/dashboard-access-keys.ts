@@ -348,7 +348,7 @@ export class DrizzleDashboardAccessKeyRepository implements AccessKeyRepository 
   }
 
   /**
-   * Resolve one access-key identity row without a Supabase session.
+   * Resolve one access-key identity row without a Neon session.
    *
    * @param lookupId - Lookup half of the presented credential.
    * @returns Key, owner, and membership liveness in one SECURITY DEFINER roundtrip.
