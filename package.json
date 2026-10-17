@@ -27,8 +27,7 @@
     "multi-region",
     "nextjs",
     "postgresql",
-    "drizzle-orm",
-    "supabase"
+    "drizzle-orm"
   ],
   "scripts": {
     "dev": "next dev",
@@ -69,8 +68,6 @@
     "@neon/config": "^1.8.6",
     "@neon/env": "^1.5.3",
     "@shadcn/react": "^0.3.1",
-    "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.117.3",
     "@tanstack/react-table": "^9.2.6",
     "@tiptap/extension-color": "^3.31.4",
     "@tiptap/extension-highlight": "^3.31.4",
