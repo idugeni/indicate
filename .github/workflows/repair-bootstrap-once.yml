@@ -1,0 +1,56 @@
+name: One-time Neon bootstrap repair
+on:
+  push:
+    branches:
+      - feat/neon-managed-better-auth
+    paths:
+      - .bootstrap-repair-trigger
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .bootstrap-repair-trigger
+permissions:
+  contents: write
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/neon-managed-better-auth
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Recompute migration checksum and bootstrap
+        shell: bash
+        run: |
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const path = 'src/data/migrations/20261017120000_neon_runtime_login_policies.sql';
+          let raw = fs.readFileSync(path, 'utf8');
+          const match = raw.match(/sha256:[0-9a-f]{64}/);
+          if (!match) throw new Error('Migration checksum literal not found');
+          const normalized = raw.replace(/\r\n/g, '\n').replace(/sha256:[0-9a-f]{64}/g, 'sha256:' + '0'.repeat(64));
+          const digest = crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
+          raw = raw.replace(match[0], 'sha256:' + digest);
+          fs.writeFileSync(path, raw);
+          NODE
+          npm run db:bootstrap
+          npm run db:bootstrap:check
+      - name: Commit generated artifacts
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/migrations/20261017120000_neon_runtime_login_policies.sql src/data/migrations/bootstrap/indicate-schema.sql
+          if git diff --cached --quiet; then
+            echo "Bootstrap already synchronized."
+            exit 0
+          fi
+          git commit -m "chore(db): regenerate Neon runtime-login bootstrap"
+          git push origin HEAD:feat/neon-managed-better-auth
