@@ -21,7 +21,7 @@ export function SignUpForm() {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const ready = displayName.trim() !== '' && email.trim().includes('@') && password.length >= 8 && consent;
-  const { challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
+  const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
     useTurnstileChallenge(undefined, ready);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -51,11 +51,16 @@ export function SignUpForm() {
     }
 
     try {
-      const { error } = await neonAuthClient.signUp.email({
-        email: target,
-        password,
-        name: displayName.trim(),
-      });
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+      const { error } = await neonAuthClient.signUp.email(
+        {
+          email: target,
+          password,
+          name: displayName.trim(),
+          callbackURL: `${siteUrl}/auth/callback?flow=signup&next=%2Fdashboard`,
+        },
+        captchaToken === null ? undefined : { fetchOptions: { headers: { 'cf-turnstile-response': captchaToken } } },
+      );
       if (error) {
         setError(error.message);
         resetChallenge();
