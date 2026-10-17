@@ -9,7 +9,7 @@ import { ChartTip } from '@/modules/dashboard/components/shared/chart-tip';
 import { cachedJsonGet } from '@/modules/dashboard/components/shared/endpoint-cache';
 
 interface DeploymentOverview {
-  readonly supabaseProjectRef: string;
+  readonly neonProjectId: string;
   readonly cloudflareAccountId: string;
   readonly vercelProjectId: string;
   readonly vercelTeamId: string;
@@ -161,7 +161,7 @@ export function PolicyOverviewSection() {
             <PolicyGroup label={`Deployment · v${policies.deployment.version}`}>
               <DefinitionList
                 entries={[
-                  ['Supabase ref', policies.deployment.supabaseProjectRef],
+                  ['Neon project ID', policies.deployment.neonProjectId],
                   ['Cloudflare account', policies.deployment.cloudflareAccountId],
                   ['Vercel project', policies.deployment.vercelProjectId],
                   ['Vercel team', policies.deployment.vercelTeamId],
