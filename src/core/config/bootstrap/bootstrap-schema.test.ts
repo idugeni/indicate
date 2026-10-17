@@ -28,7 +28,7 @@ describe('validateBootstrapConfig sukses', () => {
     if (!result.success) return;
     expect(result.config.controlHosts.dashboard).toBe('indicate.website');
     expect(result.config.controlHosts.status).toBe('status.indicate.website');
-    expect(result.config.database.directUrl.reveal()).toBe('postgresql://user:pass@localhost:5432/indicate');
+    expect(result.config.database.directUrl.reveal()).toBe('postgresql://user:pass@ep-test.c-4.ap-southeast-1.aws.neon.tech/indicate?sslmode=require');
     expect(result.config.neonAuth.baseUrl).toBe('https://ep-test.neonauth.example/indicate/auth');
     expect(result.config.neonAuth.cookieSecret.reveal()).toBe('neon_cookie_signing_key_98aef02381_valid_length');
     expect(result.config.credentials.resendApiKey).toBe(null);
