@@ -302,7 +302,7 @@
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
---   289  20261017100000_neon_auth_identity_mapping  ledger sha256:0701940d45687f667f937e47e4e9723e9166f027965b8e363a8905131e426ae0
+--   289  20261017100000_neon_auth_identity_mapping  ledger sha256:49a215a236065b9ab8e00191c3358a0e4fd60fc0e85938f1d80595f5bea5a83c
 
 BEGIN;
 
@@ -24835,6 +24835,7 @@ CREATE TABLE public.identity_link_audit_logs (
   CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
   CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
 );
+CREATE INDEX identity_link_audit_linked_at_idx ON public.identity_link_audit_logs (linked_at);
 ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
   FOR ALL USING (false) WITH CHECK (false);
@@ -24842,7 +24843,7 @@ REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;
 GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:6b69c1dd10ea2312151b3a029fd31a225bf87fb9f87ac84c5b86c4055f12d5e1');
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:8a32880a92f365c79835c3e2ef7c0a52d97636f556b708be16d7667ec4fc0064');
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('0701940d45687f667f937e47e4e9723e9166f027965b8e363a8905131e426ae0', 1792230000000);
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('49a215a236065b9ab8e00191c3358a0e4fd60fc0e85938f1d80595f5bea5a83c', 1792230000000);
 COMMIT;
