@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { resolveVerifiedLocalUser, resolveVerifiedUserOrganizations } from '@/modules/auth/resolve-authenticated-user';
 
-const identity = { authUserId: 'auth-1', displayName: 'Operator', avatarUrl: null, email: 'op@example.test' };
+const identity = { authUserId: 'auth-1', displayName: 'Operator', avatarUrl: null, email: 'op@example.test', emailVerified: true as const };
 const activeUser = { id: 'user-1', authUserId: 'auth-1', displayName: 'Operator', avatarUrl: null, status: 'active' } as const;
 
 function harness(find: unknown, listOrgs: unknown = []) {
