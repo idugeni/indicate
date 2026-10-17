@@ -41,6 +41,13 @@ Email equality alone must never link a migrated account. The implemented mapping
 11. The production trusted origin is currently `https://indicate.website`. `verify_email_on_sign_up`, `verify_email_on_sign_in`, and `require_email_verification` are enabled in `neon_auth.project_config`; the config was read back and verified after the update. Add the production `NEON_AUTH_BASE_URL` and a generated `NEON_AUTH_COOKIE_SECRET` to the deployment environment after the code is approved. Do not broaden trusted origins to wildcards.
 12. Keep rollback available until the Neon cutover is verified. Do not delete the prior database/provider project or its backups as part of code review alone.
 
+## Production database connection roles
+
+- `DATABASE_POOL_URL` and `CI_DATABASE_POOL_URL` use the dedicated `indicate_runtime_login` role over Neon’s pooled endpoint. It receives application DML privileges and execution rights for the private runtime-config functions, without granting the schema-owner role to the application connection.
+- `DATABASE_DIRECT_URL` and `CI_DATABASE_DIRECT_URL` use the direct Neon endpoint with `neondb_owner` for migration and build-time schema operations only. Never use the owner URL as the pooled runtime connection.
+- CI loads encrypted Vercel environment values and validates the expected Neon pooler/direct hostnames before build. Connection strings and passwords must never be printed in logs.
+- The previous CI connection URLs had an empty password and the wrong login role. The production Vercel variables have now been replaced with the correct role/endpoint split. A fresh quality-gate run is required before merge.
+
 ## Acceptance criteria
 
 - Application runtime connects to Neon PostgreSQL and does not require Supabase database connection URLs or Supabase JS/SSR packages.
