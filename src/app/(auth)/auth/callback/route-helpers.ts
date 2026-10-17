@@ -1,15 +1,6 @@
 import { safeRedirectPath } from '@/core/security/safe-redirect-path';
 
-export function resolveTokenKind(tokenType: string | null): 'email' | 'signup' | 'magiclink' | 'recovery' {
-  return tokenType === 'signup' || tokenType === 'magiclink' || tokenType === 'recovery' ? tokenType : 'email';
+/** Resolve a local post-callback URL; reset tokens are handled by Neon Auth before this route. */
+export function resolveCallbackDestination(_flow: string | null, next: string | null): string {
+  return next === null ? '/dashboard' : safeRedirectPath(next);
 }
-
-export function resolveCallbackDestination(authType: string | null, next: string | null): string {
-  const fallback = authType === 'recovery' ? '/update-password' : '/dashboard';
-  return next === null ? fallback : safeRedirectPath(next);
-}
-
-export function resolveCallbackFailureAlert(providerError: string | null): 'provider' | 'unavailable' {
-  return providerError === null ? 'unavailable' : 'provider';
-}
-
