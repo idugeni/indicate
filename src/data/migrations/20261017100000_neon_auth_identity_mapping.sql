@@ -252,5 +252,21 @@ $;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;--> statement-breakpoint
 
+CREATE TABLE public.identity_link_audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_user_id uuid NOT NULL REFERENCES public.users(id),
+  legacy_auth_user_id uuid NOT NULL,
+  neon_auth_user_id uuid NOT NULL,
+  request_id text NOT NULL,
+  linked_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
+  CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
+);--> statement-breakpoint
+ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
+  FOR ALL USING (false) WITH CHECK (false);--> statement-breakpoint
+REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;--> statement-breakpoint
+GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;--> statement-breakpoint
+
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:8b011bb4524639ede4c24371cc4b60bf668e2976b16b940980abca7227407a75');
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:6b69c1dd10ea2312151b3a029fd31a225bf87fb9f87ac84c5b86c4055f12d5e1');
