@@ -302,7 +302,7 @@
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
---   289  20261017100000_neon_auth_identity_mapping  ledger sha256:ed2a1445ab95b398fe902d3fea6eefda7f9e18ebcf71c9201abe611a6e45b869
+--   289  20261017100000_neon_auth_identity_mapping  ledger sha256:58f817795de3d3c8d773240ee68647eb0020fa6c114034850f6de7f224d7b95d
 
 BEGIN;
 
@@ -24718,8 +24718,115 @@ AS $$
   LIMIT 1
 $$;
 
-INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:021be482aca2364b5835ff17a8a51f3d6fe53730f269ced2a7ea754096b3184d');
+ALTER TABLE public.shared_deployment_config
+  RENAME COLUMN supabase_project_ref TO neon_project_id;
 
-INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ed2a1445ab95b398fe902d3fea6eefda7f9e18ebcf71c9201abe611a6e45b869', 1792230000000);
+DROP FUNCTION indicate_private.read_runtime_config_shared();
+CREATE FUNCTION indicate_private.read_runtime_config_shared()
+RETURNS TABLE (
+  neon_project_id text,
+  cloudflare_account_id text,
+  vercel_project_id text,
+  vercel_team_id text,
+  vercel_production_target_hostname text,
+  r2_account_id text,
+  r2_bucket_name text,
+  upstash_redis_resource_id text,
+  version integer,
+  updated_at timestamptz
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $
+BEGIN
+  RETURN QUERY
+  SELECT s.neon_project_id, s.cloudflare_account_id, s.vercel_project_id, s.vercel_team_id,
+         s.vercel_production_target_hostname, s.r2_account_id, s.r2_bucket_name,
+         s.upstash_redis_resource_id, s.version, s.updated_at
+  FROM public.shared_deployment_config AS s
+  LIMIT 1;
+END
+$;
+REVOKE ALL ON FUNCTION indicate_private.read_runtime_config_shared() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime;
+
+DROP FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text);
+CREATE FUNCTION indicate_private.mutate_runtime_config_shared(
+  p_actor_id uuid,
+  p_expected_version integer,
+  p_neon_project_id text,
+  p_cloudflare_account_id text,
+  p_vercel_project_id text,
+  p_vercel_team_id text,
+  p_vercel_production_target_hostname text,
+  p_r2_account_id text,
+  p_r2_bucket_name text,
+  p_upstash_redis_resource_id text
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $
+DECLARE
+  v_after integer;
+  v_revision bigint;
+BEGIN
+  IF NOT indicate_private.has_platform_permission(p_actor_id, 'platform.runtime_config.manage') THEN
+    RAISE EXCEPTION 'platform runtime config permission denied' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.shared_deployment_config AS s
+     SET neon_project_id = p_neon_project_id,
+         cloudflare_account_id = p_cloudflare_account_id,
+         vercel_project_id = p_vercel_project_id,
+         vercel_team_id = p_vercel_team_id,
+         vercel_production_target_hostname = p_vercel_production_target_hostname,
+         r2_account_id = p_r2_account_id,
+         r2_bucket_name = p_r2_bucket_name,
+         upstash_redis_resource_id = p_upstash_redis_resource_id,
+         version = version + 1,
+         updated_at = now()
+   WHERE s.id = 'singleton' AND s.version = p_expected_version
+   RETURNING s.version INTO v_after;
+
+  IF v_after IS NULL THEN
+    RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000';
+  END IF;
+
+  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
+  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
+  VALUES (v_revision, current_setting('app.environment', true), now(), 'shared_deployment_config');
+
+  INSERT INTO public.runtime_config_audit_logs (
+    id, organization_id, actor_type, actor_id, environment, action, target_type,
+    target_id, expected_version, resulting_version, changed_fields, outcome, request_id
+  ) VALUES (
+    gen_random_uuid(), NULL, 'user', p_actor_id, current_setting('app.environment', true),
+    'update', 'shared_deployment_config', NULL, p_expected_version, v_after,
+    ARRAY['neon_project_id','cloudflare_account_id','vercel_project_id','vercel_team_id',
+          'vercel_production_target_hostname','r2_account_id','r2_bucket_name',
+          'upstash_redis_resource_id'],
+    'succeeded', current_setting('app.request_id', true)
+  );
+
+  INSERT INTO public.runtime_config_invalidation_intents (
+    id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at
+  ) VALUES (
+    gen_random_uuid(), v_revision, current_setting('app.environment', true), 'shared',
+    'pending', 0, now()
+  );
+
+  RETURN v_after;
+END
+$;
+REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:8b011bb4524639ede4c24371cc4b60bf668e2976b16b940980abca7227407a75');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('58f817795de3d3c8d773240ee68647eb0020fa6c114034850f6de7f224d7b95d', 1792230000000);
 COMMIT;
