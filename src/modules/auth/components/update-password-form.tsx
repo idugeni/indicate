@@ -6,9 +6,9 @@ import { Check } from 'lucide-react';
 
 import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
+import { neonAuthClient } from '@/integrations/neon-auth/client';
 
-/** Client password-update leaf; parent page stays a Server Component. */
+/** Password-update leaf; Neon Auth token in the reset URL proves access to the mailbox. */
 export function UpdatePasswordForm() {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -32,16 +32,22 @@ export function UpdatePasswordForm() {
       return;
     }
 
+    const token = new URLSearchParams(window.location.search).get('token')?.trim();
+    if (!token) {
+      setError('Tautan pemulihan tidak valid atau telah kedaluwarsa. Minta tautan baru.');
+      setBusy(false);
+      return;
+    }
+
     try {
-      const supabase = createBrowserSupabaseClient();
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await neonAuthClient.resetPassword({ newPassword: password, token });
       if (error) {
-        setError(error.message);
+        setError('Tautan pemulihan tidak valid atau telah kedaluwarsa. Minta tautan baru.');
         setBusy(false);
         return;
       }
       setDone(true);
-      setTimeout(() => router.push('/dashboard'), 1200);
+      setTimeout(() => router.push('/sign-in?auth=password-updated'), 1200);
     } catch {
       setError('Terjadi gangguan jaringan saat memperbarui kata sandi.');
       setBusy(false);
@@ -51,10 +57,8 @@ export function UpdatePasswordForm() {
   if (done) {
     return (
       <AuthAlert tone="success">
-        <span className="flex items-center gap-2 font-medium">
-          <Check className="h-4 w-4" /> Kata sandi diperbarui
-        </span>
-        <p className="mt-1 text-[#4c5b6b]">Mengalihkan ke workspace...</p>
+        <span className="flex items-center gap-2 font-medium"><Check className="h-4 w-4" /> Kata sandi diperbarui</span>
+        <p className="mt-1 text-[#4c5b6b]">Mengalihkan ke halaman masuk...</p>
       </AuthAlert>
     );
   }
@@ -62,24 +66,15 @@ export function UpdatePasswordForm() {
   return (
     <form noValidate onSubmit={handleSubmit} className="space-y-5">
       {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
-
       <div>
-        <AuthLabel htmlFor="password">
-          Kata sandi baru
-        </AuthLabel>
+        <AuthLabel htmlFor="password">Kata sandi baru</AuthLabel>
         <PasswordInput id="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimal 8 karakter" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
-
       <div>
-        <AuthLabel htmlFor="confirmation">
-          Konfirmasi kata sandi
-        </AuthLabel>
+        <AuthLabel htmlFor="confirmation">Konfirmasi kata sandi</AuthLabel>
         <PasswordInput id="confirmation" required minLength={8} autoComplete="new-password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="Ulangi kata sandi" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
-
-      <AuthSubmit busy={busy} busyLabel="Menyimpan...">
-        Simpan Kata Sandi
-      </AuthSubmit>
+      <AuthSubmit busy={busy} busyLabel="Menyimpan...">Simpan Kata Sandi</AuthSubmit>
     </form>
   );
 }
