@@ -31,30 +31,12 @@ vi.mock('next/cache', () => ({
   revalidatePath: (path: string) => { revalidatedPaths.push(path); },
 }));
 
-vi.mock('@/core/config/public-config', () => ({
-  getPublicConfig: () => ({
-    siteUrl: 'https://indicate.website',
-    supabaseUrl: 'https://proyek.supabase.co',
-    supabasePublishableKey: 'publishable-test-key',
-  }),
-}));
-
 vi.mock('@/core/config/runtime/runtime-context', () => ({
   getServerRuntimeContext: async () => ({ bootstrap: {} }),
 }));
 
 vi.mock('@/data/client', () => ({
   getSharedRuntimeDatabase: () => ({ db: {} }),
-}));
-
-vi.mock('@/integrations/supabase/supabase-ssr', () => ({
-  createSupabaseSsrAuthAdapter: () => ({
-    verifyCookieSession: async () => {
-      if (requestHeaders.get('x-no-session') === '1') return null;
-      return { authUserId: 'auth-1', displayName: 'Redaktur Uji', avatarUrl: null, email: 'redaktur@contoh.id' };
-    },
-  }),
-  createHardenedSupabaseCookieStore: (writer: unknown) => writer,
 }));
 
 const membershipState = vi.hoisted(() => ({
@@ -190,7 +172,7 @@ describe('switchActiveOrganization', () => {
     expect(recordedDenials).toHaveLength(0);
   });
 
-  it('mengizinkan access-key platform super-admin beralih lintas organisasi tanpa sesi Supabase', async () => {
+  it('mengizinkan access-key platform super-admin beralih lintas organisasi tanpa sesi Neon', async () => {
     requestHeaders.set('x-no-session', '1');
     requestHeaders.set('x-access-key', '1');
     membershipState.platformPermissions = ['platform.super_admin'];
