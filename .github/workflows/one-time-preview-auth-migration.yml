@@ -1,0 +1,63 @@
+name: One-time Neon Preview Auth Migration
+
+on:
+  push:
+    branches:
+      - feat/neon-auth-account-migration-final
+
+permissions:
+  contents: read
+
+jobs:
+  migrate-preview-auth:
+    if: contains(github.event.head_commit.message, '[run-preview-auth-migration]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    env:
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Resolve and verify Neon Preview configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_list="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
+            "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQKczC8kK")"
+
+          get_preview_value() {
+            local key="$1"
+            local expected="$2"
+            local ids
+            ids="$(jq -r --arg key "$key" '.envs[] | select(.key == $key and (.target | index("preview"))) | .id' <<< "$api_list")"
+            while IFS= read -r id; do
+              [ -n "$id" ] || continue
+              value="$(curl --fail --silent --show-error \
+                --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
+                "https://api.vercel.com/v1/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env/$id?teamId=team_HvgOzoFV92X1vjzqQKczC8kK" | jq -er '.value')"
+              if [[ "$value" == *"$expected"* ]]; then
+                printf '%s' "$value"
+                return 0
+              fi
+            done <<< "$ids"
+            echo "::error::No matching Preview environment value found for $key" >&2
+            return 1
+          }
+
+          direct_url="$(get_preview_value DATABASE_DIRECT_URL 'ep-gentle-darkness-b3xmup5a.c-4.ap-southeast-1.aws.neon.tech/')"
+          auth_url="$(get_preview_value NEON_AUTH_BASE_URL 'https://ep-gentle-darkness-b3xmup5a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth')"
+          [[ "$direct_url" =~ ^postgresql://[^:/@]+:[^@]+@ep-gentle-darkness-b3xmup5a\.c-4\.ap-southeast-1\.aws\.neon\.tech/ ]] || { echo "::error::Database URL is not the verified Preview branch"; exit 1; }
+          [[ "$auth_url" == "https://ep-gentle-darkness-b3xmup5a.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth" ]] || { echo "::error::Neon Auth URL is not the verified Preview branch"; exit 1; }
+          printf 'DATABASE_DIRECT_URL=%s\n' "$direct_url" >> "$GITHUB_ENV"
+          printf 'NEON_AUTH_BASE_URL=%s\n' "$auth_url" >> "$GITHUB_ENV"
+          echo "Preview target verified; credential values withheld."
+      - run: npm ci --no-audit --no-fund
+      - name: Run read-only migration preflight
+        run: node scripts/migrate-legacy-auth-to-neon.mjs
+      - name: Apply additive migration to Preview only
+        run: node scripts/migrate-legacy-auth-to-neon.mjs --apply --confirm-neon-auth-migration
