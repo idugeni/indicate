@@ -145,5 +145,112 @@ AS $$
   LIMIT 1
 $$;--> statement-breakpoint
 
+ALTER TABLE public.shared_deployment_config
+  RENAME COLUMN supabase_project_ref TO neon_project_id;--> statement-breakpoint
+
+DROP FUNCTION indicate_private.read_runtime_config_shared();--> statement-breakpoint
+CREATE FUNCTION indicate_private.read_runtime_config_shared()
+RETURNS TABLE (
+  neon_project_id text,
+  cloudflare_account_id text,
+  vercel_project_id text,
+  vercel_team_id text,
+  vercel_production_target_hostname text,
+  r2_account_id text,
+  r2_bucket_name text,
+  upstash_redis_resource_id text,
+  version integer,
+  updated_at timestamptz
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $
+BEGIN
+  RETURN QUERY
+  SELECT s.neon_project_id, s.cloudflare_account_id, s.vercel_project_id, s.vercel_team_id,
+         s.vercel_production_target_hostname, s.r2_account_id, s.r2_bucket_name,
+         s.upstash_redis_resource_id, s.version, s.updated_at
+  FROM public.shared_deployment_config AS s
+  LIMIT 1;
+END
+$;--> statement-breakpoint
+REVOKE ALL ON FUNCTION indicate_private.read_runtime_config_shared() FROM PUBLIC;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime;--> statement-breakpoint
+
+DROP FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text);--> statement-breakpoint
+CREATE FUNCTION indicate_private.mutate_runtime_config_shared(
+  p_actor_id uuid,
+  p_expected_version integer,
+  p_neon_project_id text,
+  p_cloudflare_account_id text,
+  p_vercel_project_id text,
+  p_vercel_team_id text,
+  p_vercel_production_target_hostname text,
+  p_r2_account_id text,
+  p_r2_bucket_name text,
+  p_upstash_redis_resource_id text
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $
+DECLARE
+  v_after integer;
+  v_revision bigint;
+BEGIN
+  IF NOT indicate_private.has_platform_permission(p_actor_id, 'platform.runtime_config.manage') THEN
+    RAISE EXCEPTION 'platform runtime config permission denied' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.shared_deployment_config AS s
+     SET neon_project_id = p_neon_project_id,
+         cloudflare_account_id = p_cloudflare_account_id,
+         vercel_project_id = p_vercel_project_id,
+         vercel_team_id = p_vercel_team_id,
+         vercel_production_target_hostname = p_vercel_production_target_hostname,
+         r2_account_id = p_r2_account_id,
+         r2_bucket_name = p_r2_bucket_name,
+         upstash_redis_resource_id = p_upstash_redis_resource_id,
+         version = version + 1,
+         updated_at = now()
+   WHERE s.id = 'singleton' AND s.version = p_expected_version
+   RETURNING s.version INTO v_after;
+
+  IF v_after IS NULL THEN
+    RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000';
+  END IF;
+
+  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
+  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
+  VALUES (v_revision, current_setting('app.environment', true), now(), 'shared_deployment_config');
+
+  INSERT INTO public.runtime_config_audit_logs (
+    id, organization_id, actor_type, actor_id, environment, action, target_type,
+    target_id, expected_version, resulting_version, changed_fields, outcome, request_id
+  ) VALUES (
+    gen_random_uuid(), NULL, 'user', p_actor_id, current_setting('app.environment', true),
+    'update', 'shared_deployment_config', NULL, p_expected_version, v_after,
+    ARRAY['neon_project_id','cloudflare_account_id','vercel_project_id','vercel_team_id',
+          'vercel_production_target_hostname','r2_account_id','r2_bucket_name',
+          'upstash_redis_resource_id'],
+    'succeeded', current_setting('app.request_id', true)
+  );
+
+  INSERT INTO public.runtime_config_invalidation_intents (
+    id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at
+  ) VALUES (
+    gen_random_uuid(), v_revision, current_setting('app.environment', true), 'shared',
+    'pending', 0, now()
+  );
+
+  RETURN v_after;
+END
+$;--> statement-breakpoint
+REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;--> statement-breakpoint
+
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:021be482aca2364b5835ff17a8a51f3d6fe53730f269ced2a7ea754096b3184d');
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:8b011bb4524639ede4c24371cc4b60bf668e2976b16b940980abca7227407a75');
