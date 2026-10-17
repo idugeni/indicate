@@ -6,7 +6,7 @@ const RUNTIME_CONTEXT = {
   },
   config: {
     hosts: { dashboard: 'indicate.website', api: 'api.indicate.website', webhook: 'webhook.indicate.website', reserved: [] },
-    supabase: { pooledDatabaseUrl: 'postgresql://indicate:secret@db.example.invalid:5432/postgres' },
+    database: { pooledDatabaseUrl: 'postgresql://indicate:secret@db.example.invalid:5432/postgres' },
     seo: { defaultAssetUrl: 'https://media.example.invalid' },
     r2: { publicHost: 'https://cdn.example.invalid' },
     cache: { defaultTtlSeconds: 60 },
