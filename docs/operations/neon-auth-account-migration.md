@@ -41,7 +41,6 @@ The script is idempotent by normalized email and local identity mapping. It link
 - Legacy password hashes are not copied. Newly created accounts require account recovery before users can choose their password.
 - No legacy auth data is removed. Reconcile counts and test real sign-ins before any eventual legacy-schema cleanup.
 
-
 ## Production execution record — 2026-10-18
 
 - A manual Neon snapshot named `pre-production-neon-auth-cutover-2026-10-18` was created and restored to a separate branch; the restored copy was checked for the expected legacy account/profile counts before continuing.
