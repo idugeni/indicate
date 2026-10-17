@@ -28,20 +28,32 @@ function getAuthConfig() {
   return { baseUrl: parsedUrl.toString().replace(/\/$/u, ''), cookieSecret };
 }
 
-const config = getAuthConfig();
+type NeonAuthInstance = ReturnType<typeof createNeonAuth>;
+let instance: NeonAuthInstance | undefined;
+
+function getNeonAuth(): NeonAuthInstance {
+  if (instance) return instance;
+  const config = getAuthConfig();
+  instance = createNeonAuth({
+    baseUrl: config.baseUrl,
+    cookies: {
+      secret: config.cookieSecret,
+      sessionDataTtl: 60,
+    },
+    logLevel: process.env.NODE_ENV === 'production' ? 'warn' : 'info',
+  });
+  return instance;
+}
 
 /**
- * Server-side Neon Managed Auth instance.
- *
- * This module only provides the authentication transport/session API. App-level
- * authorization must still resolve the Neon identity to a local user and verify
- * active membership/permissions before granting dashboard access.
+ * Lazy initialization keeps build-time module analysis independent of deployment
+ * secrets. The first real auth operation still validates configuration and fails
+ * closed when either required Neon Auth variable is missing or malformed.
  */
-export const neonAuth = createNeonAuth({
-  baseUrl: config.baseUrl,
-  cookies: {
-    secret: config.cookieSecret,
-    sessionDataTtl: 60,
+export const neonAuth = new Proxy({} as NeonAuthInstance, {
+  get(_target, property) {
+    const auth = getNeonAuth();
+    const value = Reflect.get(auth, property, auth) as unknown;
+    return typeof value === 'function' ? value.bind(auth) : value;
   },
-  logLevel: process.env.NODE_ENV === 'production' ? 'warn' : 'info',
 });
