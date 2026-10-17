@@ -1,0 +1,1 @@
+Temporary trigger for regenerating the committed database bootstrap from migration sources. Remove after the generated file is committed.
