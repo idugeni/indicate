@@ -94,8 +94,9 @@ jobs:
       group: quality-gate-build-${{ github.ref }}
       cancel-in-progress: true
     environment: production
-    # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
-    # Nilai diisi dari GitHub Secrets (repo settings) — JANGAN tulis literal di sini.
+    # Build/prerender uses the actual Neon production database. Database URLs
+    # and the public Neon Auth endpoint are loaded from Vercel; the cookie secret
+    # below is ephemeral for build validation only. Never log credential values.
     env:
       # Schema gate bersenjata di migrasi 197 (migration_gate_events tidak
       # kosong lagi), dan build menegakkannya: initializeContext memanggil
