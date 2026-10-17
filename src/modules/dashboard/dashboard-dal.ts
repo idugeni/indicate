@@ -22,7 +22,7 @@ import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorizati
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { buildPageviewKey } from '@/modules/site/pageview-contract';
-import type { VerifiedAuthIdentity } from '@/integrations/supabase/ports';
+import type { VerifiedAuthIdentity } from '@/integrations/neon-auth/identity';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 
 /** Snapshot cache keyed by (org, actor, sorted perms); failures throw so only successes cache (60s TTL). */
@@ -223,7 +223,7 @@ async function loadDashboardProjection(input: ProjectionInput): Promise<Dashboar
       }
       const value = await loadDashboardProjectionFromDatabase(input);
       const durationMs = Date.now() - started;
-      recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value), bytesKind: 'projection' });
+      recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'neon-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value), bytesKind: 'projection' });
       if (store !== null) await store.writeKey(key, value, DASHBOARD_REDIS_TTL_SECONDS);
       return value;
     },
@@ -275,7 +275,7 @@ async function loadAnalyticsProjection(input: AnalyticsInput): Promise<Analytics
       }
       const value = await loadAnalyticsProjectionFromDatabase(input);
       const durationMs = Date.now() - started;
-      recordOperation({ route: 'dashboard', operation: 'cache.analytics', provider: 'supabase-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value), bytesKind: 'projection' });
+      recordOperation({ route: 'dashboard', operation: 'cache.analytics', provider: 'neon-postgres', tenantId: input.organizationId, durationMs, cacheMiss: 1, payloadBytes: projectionBytes(value), bytesKind: 'projection' });
       if (store !== null) await store.writeKey(key, value, ANALYTICS_REDIS_TTL_SECONDS);
       return value;
     },
@@ -357,7 +357,7 @@ export async function fetchCachedAnalytics(
  * dashboard core is available.
  *
  * @param organizationId - Organization to snapshot; must match the resolved membership.
- * @param identity - Verified Supabase Auth identity for the session owner.
+ * @param identity - Verified Neon Auth identity for the session owner.
  * @param preResolved - Local user plus membership already resolved by the caller; skips duplicate lookups.
  * @returns Dashboard core snapshot, or null so the client falls back to live fetch.
  */
