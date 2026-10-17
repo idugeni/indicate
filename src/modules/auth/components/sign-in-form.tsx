@@ -19,7 +19,7 @@ export function SignInForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ready = email.trim().includes('@') && password.length > 0;
-  const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
+  const { challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
     useTurnstileChallenge(undefined, ready);
 
   const handleSubmit = async (event: React.FormEvent) => {
