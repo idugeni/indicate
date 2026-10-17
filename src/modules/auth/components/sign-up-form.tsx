@@ -8,8 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
-import { GoogleButton } from '@/modules/auth/components/google-button';
-import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
+import { neonAuthClient } from '@/integrations/neon-auth/client';
 import { TurnstileChallenge, useTurnstileChallenge } from '@/components/turnstile-challenge';
 
 /** Client sign-up leaf; parent page stays a Server Component. */
@@ -52,16 +51,10 @@ export function SignUpForm() {
     }
 
     try {
-      const supabase = createBrowserSupabaseClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-      const { error } = await supabase.auth.signUp({
+      const { error } = await neonAuthClient.signUp.email({
         email: target,
         password,
-        options: {
-          data: { display_name: displayName.trim(), terms_accepted_at: new Date().toISOString() },
-          emailRedirectTo: `${siteUrl}/auth/callback?next=%2Fdashboard`,
-          ...(captchaToken === null ? {} : { captchaToken }),
-        },
+        name: displayName.trim(),
       });
       if (error) {
         setError(error.message);
@@ -138,11 +131,9 @@ export function SignUpForm() {
         <>
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
-            <span className="font-mono text-[11px] text-[#5f6b7a]">ATAU</span>
-            <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
+              <div className="h-px flex-1 bg-[#e2ded2]" aria-hidden="true" />
           </div>
 
-          <GoogleButton />
         </>
       ) : null}
     </>
