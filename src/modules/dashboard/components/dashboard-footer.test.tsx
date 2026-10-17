@@ -12,7 +12,7 @@ describe('Footer dashboard', () => {
     expect(footer?.className).toContain('mt-auto');
     expect(footer?.className).not.toContain('sticky');
     expect(
-      screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash'),
+      screen.getByText('Next.js 16 · Neon · Better Auth · Drizzle · Cloudflare · Upstash'),
     ).toBeDefined();
   });
 });
