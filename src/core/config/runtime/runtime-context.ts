@@ -82,7 +82,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
       status: bootstrap.controlHosts.status,
       reserved: new Set(bootstrap.controlHosts.reserved),
     }),
-    supabase: Object.freeze({
+    database: Object.freeze({
       pooledDatabaseUrl: bootstrap.database.pooledUrl.reveal(),
     }),
     cloudflare: Object.freeze({
