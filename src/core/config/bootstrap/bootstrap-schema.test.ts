@@ -152,7 +152,7 @@ describe('validateBootstrapConfig gagal', () => {
     }
   });
 
-  it('mengizinkan production dengan site key Turnstile tanpa rahasia server auth', () => {
+  it('mengizinkan production dengan site key dan rahasia server Turnstile auth', () => {
     const secrets = Object.fromEntries(
       ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET'].map((name) => [name, 'kredensial-produksi-yang-cukup-panjang']),
     );
@@ -161,6 +161,7 @@ describe('validateBootstrapConfig gagal', () => {
       ...secrets,
       NODE_ENV: 'production',
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: '0x4AAAAAAE6hIUaGluz57tjx',
+      TURNSTILE_AUTH_SECRET: 'turnstile-auth-secret-production-is-long-enough',
     });
     expect(result.success).toBe(true);
     if (!result.success) return;
