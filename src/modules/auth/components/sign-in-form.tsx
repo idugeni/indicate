@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { TurnstileChallenge, useTurnstileChallenge } from '@/components/turnstile-challenge';
-import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
+import { neonAuthClient } from '@/integrations/neon-auth/client';
 
 /** Client sign-in leaf; parent page stays a Server Component. */
 export function SignInForm() {
@@ -46,12 +46,7 @@ export function SignInForm() {
     }
 
     try {
-      const supabase = createBrowserSupabaseClient();
-      const { error } = await supabase.auth.signInWithPassword({
-        email: target,
-        password,
-        ...(captchaToken === null ? {} : { options: { captchaToken } }),
-      });
+      const { error } = await neonAuthClient.signIn.email({ email: target, password });
       if (error) {
         setError('Kredensial tidak valid atau akun belum diverifikasi.');
         resetChallenge();
