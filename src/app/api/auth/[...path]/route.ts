@@ -4,11 +4,12 @@ import { neonAuth } from '@/integrations/neon-auth/server';
 import { verifyTurnstileToken } from '@/core/security/turnstile-verify';
 import { TURNSTILE_TOKEN_HEADER } from '@/core/security/turnstile-contract';
 
-const handlers = neonAuth.handler();
-export const GET = handlers.GET;
-
 /** Gate public email auth mutations with server-side Turnstile Siteverify when configured. */
 type AuthRouteContext = { readonly params: Promise<{ readonly path: string[] }> };
+
+export async function GET(request: NextRequest, context: AuthRouteContext) {
+  return neonAuth.handler().GET(request, context);
+}
 
 export async function POST(request: NextRequest, context: AuthRouteContext) {
   const { path } = await context.params;
@@ -32,5 +33,5 @@ export async function POST(request: NextRequest, context: AuthRouteContext) {
     }
   }
 
-  return handlers.POST(request, context);
+  return neonAuth.handler().POST(request, context);
 }
