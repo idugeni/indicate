@@ -11,12 +11,15 @@ const handlers = neonAuth.handler();
 export const GET = handlers.GET;
 
 /** Gate public email auth mutations with server-side Turnstile Siteverify when configured. */
-export async function POST(request: NextRequest) {
-  const path = new URL(request.url).pathname;
+type AuthRouteContext = { readonly params: Promise<{ readonly path: string[] }> };
+
+export async function POST(request: NextRequest, context: AuthRouteContext) {
+  const { path } = await context.params;
+  const authPath = path.join('/');
   const requiresChallenge =
-    path.endsWith('/sign-in/email') ||
-    path.endsWith('/sign-up/email') ||
-    path.endsWith('/request-password-reset');
+    authPath === 'sign-in/email' ||
+    authPath === 'sign-up/email' ||
+    authPath === 'request-password-reset';
 
   if (requiresChallenge && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
     const secret = process.env.TURNSTILE_AUTH_SECRET?.trim();
@@ -32,5 +35,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return handlers.POST(request);
+  return handlers.POST(request, context);
 }
