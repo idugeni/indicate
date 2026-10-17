@@ -16,7 +16,7 @@ export interface AuthorizationRepository {
   /** Uses a server-verified Neon Managed Auth identity; never accepts a browser-selected local User or Organization ID. */
   listActiveOrganizationsForUser(verifiedAuthUserId: string, targetOrganizationId?: string): Promise<readonly AccessibleOrganization[]>;
   findLocalUserByAuthIdentity(authUserId: string): Promise<LocalUserIdentity | null>;
-  linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null }): Promise<LocalUserIdentity>;
+  linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null; readonly emailVerified: true }): Promise<LocalUserIdentity>;
   /** Own profile for the My Profile form (null when inactive). */
   getOwnProfile(authUserId: string): Promise<{
     readonly displayName: string; readonly email: string | null; readonly bio: string | null;
