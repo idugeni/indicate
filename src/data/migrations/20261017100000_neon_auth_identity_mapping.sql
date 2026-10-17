@@ -146,12 +146,18 @@ AS $$
 $$;--> statement-breakpoint
 
 ALTER TABLE public.shared_deployment_config
-  RENAME COLUMN supabase_project_ref TO neon_project_id;--> statement-breakpoint
+  ADD COLUMN neon_project_id text;--> statement-breakpoint
+UPDATE public.shared_deployment_config
+   SET neon_project_id = 'soft-moon-84079595'
+ WHERE id = 'singleton';--> statement-breakpoint
+ALTER TABLE public.shared_deployment_config
+  ALTER COLUMN neon_project_id SET NOT NULL;--> statement-breakpoint
 
 DROP FUNCTION indicate_private.read_runtime_config_shared();--> statement-breakpoint
 CREATE FUNCTION indicate_private.read_runtime_config_shared()
 RETURNS TABLE (
   neon_project_id text,
+  supabase_project_ref text,
   cloudflare_account_id text,
   vercel_project_id text,
   vercel_team_id text,
@@ -169,7 +175,7 @@ SET search_path = pg_catalog, public, indicate_private
 AS $
 BEGIN
   RETURN QUERY
-  SELECT s.neon_project_id, s.cloudflare_account_id, s.vercel_project_id, s.vercel_team_id,
+  SELECT s.neon_project_id, s.supabase_project_ref, s.cloudflare_account_id, s.vercel_project_id, s.vercel_team_id,
          s.vercel_production_target_hostname, s.r2_account_id, s.r2_bucket_name,
          s.upstash_redis_resource_id, s.version, s.updated_at
   FROM public.shared_deployment_config AS s
@@ -183,7 +189,7 @@ DROP FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text,
 CREATE FUNCTION indicate_private.mutate_runtime_config_shared(
   p_actor_id uuid,
   p_expected_version integer,
-  p_neon_project_id text,
+  p_supabase_project_ref text,
   p_cloudflare_account_id text,
   p_vercel_project_id text,
   p_vercel_team_id text,
@@ -206,7 +212,136 @@ BEGIN
   END IF;
 
   UPDATE public.shared_deployment_config AS s
-     SET neon_project_id = p_neon_project_id,
+     SET neon_project_id = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}
+         vercel_project_id = p_vercel_project_id,
+         vercel_team_id = p_vercel_team_id,
+         vercel_production_target_hostname = p_vercel_production_target_hostname,
+         r2_account_id = p_r2_account_id,
+         r2_bucket_name = p_r2_bucket_name,
+         upstash_redis_resource_id = p_upstash_redis_resource_id,
+         version = version + 1,
+         updated_at = now()
+   WHERE s.id = 'singleton' AND s.version = p_expected_version
+   RETURNING s.version INTO v_after;
+
+  IF v_after IS NULL THEN
+    RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000';
+  END IF;
+
+  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
+  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
+  VALUES (v_revision, current_setting('app.environment', true), now(), 'shared_deployment_config');
+
+  INSERT INTO public.runtime_config_audit_logs (
+    id, organization_id, actor_type, actor_id, environment, action, target_type,
+    target_id, expected_version, resulting_version, changed_fields, outcome, request_id
+  ) VALUES (
+    gen_random_uuid(), NULL, 'user', p_actor_id, current_setting('app.environment', true),
+    'update', 'shared_deployment_config', NULL, p_expected_version, v_after,
+    ARRAY['neon_project_id','supabase_project_ref','cloudflare_account_id','vercel_project_id','vercel_team_id',
+          'vercel_production_target_hostname','r2_account_id','r2_bucket_name',
+          'upstash_redis_resource_id'],
+    'succeeded', current_setting('app.request_id', true)
+  );
+
+  INSERT INTO public.runtime_config_invalidation_intents (
+    id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at
+  ) VALUES (
+    gen_random_uuid(), v_revision, current_setting('app.environment', true), 'shared',
+    'pending', 0, now()
+  );
+
+  RETURN v_after;
+END
+$;--> statement-breakpoint
+REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;--> statement-breakpoint
+
+CREATE TABLE public.identity_link_audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_user_id uuid NOT NULL REFERENCES public.users(id),
+  legacy_auth_user_id uuid NOT NULL,
+  neon_auth_user_id uuid NOT NULL,
+  request_id text NOT NULL,
+  linked_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
+  CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
+);--> statement-breakpoint
+CREATE INDEX identity_link_audit_linked_at_idx ON public.identity_link_audit_logs (linked_at);--> statement-breakpoint
+ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
+  FOR ALL USING (false) WITH CHECK (false);--> statement-breakpoint
+REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;--> statement-breakpoint
+GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;--> statement-breakpoint
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:045e46d1c5903c795bbe0a92748d48a1fc71f12d8bc50641e6d074787bc85f35');
+ THEN s.neon_project_id ELSE p_supabase_project_ref END,
+         supabase_project_ref = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}
+         vercel_project_id = p_vercel_project_id,
+         vercel_team_id = p_vercel_team_id,
+         vercel_production_target_hostname = p_vercel_production_target_hostname,
+         r2_account_id = p_r2_account_id,
+         r2_bucket_name = p_r2_bucket_name,
+         upstash_redis_resource_id = p_upstash_redis_resource_id,
+         version = version + 1,
+         updated_at = now()
+   WHERE s.id = 'singleton' AND s.version = p_expected_version
+   RETURNING s.version INTO v_after;
+
+  IF v_after IS NULL THEN
+    RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000';
+  END IF;
+
+  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
+  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
+  VALUES (v_revision, current_setting('app.environment', true), now(), 'shared_deployment_config');
+
+  INSERT INTO public.runtime_config_audit_logs (
+    id, organization_id, actor_type, actor_id, environment, action, target_type,
+    target_id, expected_version, resulting_version, changed_fields, outcome, request_id
+  ) VALUES (
+    gen_random_uuid(), NULL, 'user', p_actor_id, current_setting('app.environment', true),
+    'update', 'shared_deployment_config', NULL, p_expected_version, v_after,
+    ARRAY['neon_project_id','cloudflare_account_id','vercel_project_id','vercel_team_id',
+          'vercel_production_target_hostname','r2_account_id','r2_bucket_name',
+          'upstash_redis_resource_id'],
+    'succeeded', current_setting('app.request_id', true)
+  );
+
+  INSERT INTO public.runtime_config_invalidation_intents (
+    id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at
+  ) VALUES (
+    gen_random_uuid(), v_revision, current_setting('app.environment', true), 'shared',
+    'pending', 0, now()
+  );
+
+  RETURN v_after;
+END
+$;--> statement-breakpoint
+REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;--> statement-breakpoint
+
+CREATE TABLE public.identity_link_audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_user_id uuid NOT NULL REFERENCES public.users(id),
+  legacy_auth_user_id uuid NOT NULL,
+  neon_auth_user_id uuid NOT NULL,
+  request_id text NOT NULL,
+  linked_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
+  CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
+);--> statement-breakpoint
+CREATE INDEX identity_link_audit_linked_at_idx ON public.identity_link_audit_logs (linked_at);--> statement-breakpoint
+ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
+  FOR ALL USING (false) WITH CHECK (false);--> statement-breakpoint
+REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;--> statement-breakpoint
+GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;--> statement-breakpoint
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:045e46d1c5903c795bbe0a92748d48a1fc71f12d8bc50641e6d074787bc85f35');
+ THEN p_supabase_project_ref ELSE s.supabase_project_ref END,
          cloudflare_account_id = p_cloudflare_account_id,
          vercel_project_id = p_vercel_project_id,
          vercel_team_id = p_vercel_team_id,
