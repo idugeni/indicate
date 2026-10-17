@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (288 migrations):
+-- Reviewed sources, in journal order (289 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -302,6 +302,7 @@
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
+--   289  20261017100000_neon_auth_identity_mapping  ledger sha256:ed2a1445ab95b398fe902d3fea6eefda7f9e18ebcf71c9201abe611a6e45b869
 
 BEGIN;
 
@@ -24566,4 +24567,159 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (287, 'global_category_tenant_bindings', 'sha256:998cd8db4bac03f2cbc85c8ad74b47a900b5a8d8f5ca852250d2599faa2118fc');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285', 1791889200000);
+
+-- ----------------------------------------------------------------------
+-- 20261017100000_neon_auth_identity_mapping
+-- ----------------------------------------------------------------------
+-- Keep legacy Supabase Auth IDs for rollback while adding a separate Neon Auth identity.
+-- Linking is allowed only after the application verifies the Neon email and sets a
+-- transaction-local intent flag. Local User IDs, memberships, roles, and access keys
+-- remain stable across the provider migration.
+
+ALTER TABLE public.users
+  ADD COLUMN neon_auth_user_id uuid;
+
+ALTER TABLE public.users
+  ADD CONSTRAINT users_neon_auth_user_id_unique UNIQUE (neon_auth_user_id);
+
+CREATE UNIQUE INDEX users_effective_auth_identity_unique
+  ON public.users (COALESCE(neon_auth_user_id, auth_user_id));
+
+CREATE OR REPLACE FUNCTION indicate_private.enforce_user_identity_immutable()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.auth_user_id IS DISTINCT FROM OLD.auth_user_id THEN
+    RAISE EXCEPTION 'user identity is immutable' USING ERRCODE = '42501';
+  END IF;
+  IF NEW.neon_auth_user_id IS DISTINCT FROM OLD.neon_auth_user_id THEN
+    IF OLD.neon_auth_user_id IS NOT NULL
+       OR NEW.neon_auth_user_id IS NULL
+       OR current_setting('app.neon_auth_identity_link', true) IS DISTINCT FROM 'on' THEN
+      RAISE EXCEPTION 'Neon identity may only be linked once through the verified linkage path' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION indicate_private.set_verified_user_context(requested_auth_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  requested_actor_id text;
+BEGIN
+  requested_actor_id := current_setting('app.actor_id', true);
+  IF requested_auth_user_id IS NULL OR requested_actor_id IS NULL OR requested_actor_id = '' THEN
+    RAISE EXCEPTION 'verified user context is required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id::text = requested_actor_id
+      AND (auth_user_id = requested_auth_user_id OR neon_auth_user_id = requested_auth_user_id)
+      AND status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'verified user context mismatch' USING ERRCODE = '42501';
+  END IF;
+  PERFORM set_config('app.auth_user_id', requested_auth_user_id::text, true);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION indicate_private.current_verified_user_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT id
+  FROM public.users
+  WHERE (auth_user_id = indicate_private.current_auth_user_id()
+         OR neon_auth_user_id = indicate_private.current_auth_user_id())
+    AND id::text = current_setting('app.actor_id', true)
+    AND status = 'active'
+  LIMIT 1
+$$;
+
+ALTER POLICY auth_identity_isolation_insert ON public.users
+  WITH CHECK (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  );
+
+ALTER POLICY auth_identity_isolation_select ON public.users
+  USING (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  );
+
+ALTER POLICY auth_identity_isolation_update ON public.users
+  USING (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  )
+  WITH CHECK (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  );
+
+CREATE OR REPLACE FUNCTION indicate_private.resolve_dashboard_access_key_identity(p_lookup_id text)
+RETURNS TABLE (
+  organization_id uuid,
+  key_id uuid,
+  user_id uuid,
+  auth_user_id uuid,
+  display_name text,
+  avatar_url text,
+  user_status record_status,
+  key_status api_key_status,
+  expires_at timestamp with time zone,
+  last_used_at timestamp with time zone,
+  salt text,
+  verification_hash text,
+  membership_status record_status,
+  role_id uuid,
+  role_tier role_tier,
+  role_active boolean
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT k.organization_id, k.id, u.id, COALESCE(u.neon_auth_user_id, u.auth_user_id),
+         u.display_name, u.avatar_url, u.status,
+         k.status, k.expires_at, k.last_used_at, k.salt, k.verification_hash,
+         m.status, m.role_id, r.tier, r.active
+  FROM public.dashboard_access_keys k
+  JOIN public.users u ON u.id = k.user_id
+  LEFT JOIN public.memberships m ON m.organization_id = k.organization_id AND m.user_id = k.user_id
+  LEFT JOIN public.roles r ON r.organization_id = m.organization_id AND r.id = m.role_id
+  WHERE k.lookup_id = p_lookup_id
+  LIMIT 1
+$$;
+
+CREATE OR REPLACE FUNCTION indicate_private.resolve_user_by_email(p_email text)
+RETURNS TABLE(id uuid, auth_user_id uuid, display_name text, status record_status)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT u.id, COALESCE(u.neon_auth_user_id, u.auth_user_id), u.display_name, u.status
+  FROM public.users AS u
+  WHERE lower(btrim(u.email)) = lower(btrim(p_email))
+    AND indicate_private.permission_has_platform_admin(indicate_private.current_verified_user_id())
+  LIMIT 1
+$$;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:021be482aca2364b5835ff17a8a51f3d6fe53730f269ced2a7ea754096b3184d');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('ed2a1445ab95b398fe902d3fea6eefda7f9e18ebcf71c9201abe611a6e45b869', 1792230000000);
 COMMIT;
