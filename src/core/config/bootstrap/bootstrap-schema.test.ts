@@ -5,7 +5,8 @@ import { validateBootstrapConfig } from '@/core/config/bootstrap/bootstrap-schem
 function validEnv(): Record<string, string | undefined> {
   return {
     NODE_ENV: 'test',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://abcdefgh1234.supabase.co',
+    NEON_AUTH_BASE_URL: 'https://ep-test.neonauth.example/indicate/auth',
+    NEON_AUTH_COOKIE_SECRET: 'neon_cookie_signing_key_98aef02381_valid_length',
     DATABASE_POOL_URL: 'postgresql://user:pass@localhost:5432/indicate',
     DATABASE_DIRECT_URL: 'postgresql://user:pass@localhost:5432/indicate',
     CLOUDFLARE_API_TOKEN: 'cf-token-123',
@@ -21,13 +22,15 @@ function validEnv(): Record<string, string | undefined> {
 }
 
 describe('validateBootstrapConfig sukses', () => {
-  it('menerima env lengkap dan membungkus secret', () => {
+  it('menerima env lengkap, membungkus secret, dan memakai Neon Auth', () => {
     const result = validateBootstrapConfig(validEnv());
     expect(result.success).toBe(true);
     if (!result.success) return;
     expect(result.config.controlHosts.dashboard).toBe('indicate.website');
     expect(result.config.controlHosts.status).toBe('status.indicate.website');
     expect(result.config.database.directUrl.reveal()).toBe('postgresql://user:pass@localhost:5432/indicate');
+    expect(result.config.neonAuth.baseUrl).toBe('https://ep-test.neonauth.example/indicate/auth');
+    expect(result.config.neonAuth.cookieSecret.reveal()).toBe('neon_cookie_signing_key_98aef02381_valid_length');
     expect(result.config.credentials.resendApiKey).toBe(null);
   });
 });
@@ -43,8 +46,12 @@ describe('validateBootstrapConfig gagal', () => {
     }
   });
 
-  it('menolak pasangan resend yang tidak lengkap', async () => {
-    const { validateBootstrapConfig } = await import('@/core/config/bootstrap/bootstrap-schema');
+  it('menolak kunci cookie Neon yang terlalu pendek', () => {
+    const result = validateBootstrapConfig({ ...validEnv(), NEON_AUTH_COOKIE_SECRET: 'too-short' });
+    expect(result.success).toBe(false);
+  });
+
+  it('menolak pasangan Resend yang tidak lengkap', () => {
     const result = validateBootstrapConfig({ ...validEnv(), RESEND_API_KEY: 'resend-key-123' });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -74,7 +81,7 @@ describe('validateBootstrapConfig gagal', () => {
     expect(result.success).toBe(false);
   });
 
-  it('mengizinkan kunci DATABASE_* milik Neon saat production', () => {
+  it('mengizinkan kunci DATABASE_* milik Neon saat production dan tetap menolak typo', () => {
     const result = validateBootstrapConfig({
       ...validEnv(),
       NODE_ENV: 'production',
@@ -86,6 +93,24 @@ describe('validateBootstrapConfig gagal', () => {
     if (!result.success) {
       expect(result.issues.some((issue) => issue.path === 'DATABASE_TYPO')).toBe(true);
       expect(result.issues.some((issue) => issue.path === 'DATABASE_URL')).toBe(false);
+    }
+  });
+
+  it('menolak URL database non-Neon saat production', () => {
+    const result = validateBootstrapConfig({
+      ...validEnv(),
+      NODE_ENV: 'production',
+      DATABASE_POOL_URL: 'postgresql://user:pass@db.example.com:5432/indicate',
+      DATABASE_DIRECT_URL: 'postgresql://user:pass@db.example.com:5432/indicate',
+      CLOUDFLARE_API_TOKEN: 'credential-production-long-enough-987654321',
+      CLOUDFLARE_ORIGIN_SECRET: 'credential-production-long-enough-987654321',
+      VERCEL_API_TOKEN: 'credential-production-long-enough-987654321',
+      GENERIC_WEBHOOK_SECRET: 'credential-production-long-enough-987654321',
+      CRON_SECRET: 'credential-production-long-enough-987654321',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.issues.some((issue) => issue.category === 'neon_database_host_required')).toBe(true);
     }
   });
 
@@ -127,7 +152,7 @@ describe('validateBootstrapConfig gagal', () => {
     }
   });
 
-  it('melanjutkan production saat widget auth punya site key tanpa secret server', () => {
+  it('mengizinkan production dengan site key Turnstile tanpa rahasia server auth', () => {
     const secrets = Object.fromEntries(
       ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ORIGIN_SECRET', 'VERCEL_API_TOKEN', 'GENERIC_WEBHOOK_SECRET', 'CRON_SECRET'].map((name) => [name, 'kredensial-produksi-yang-cukup-panjang']),
     );
@@ -164,115 +189,22 @@ describe('validateBootstrapConfig gagal', () => {
     expect(invalid.success).toBe(false);
   });
 
-  it('menerima kredensial google oauth dan smtp resend opsional', () => {
+  it('menerima kredensial Google OAuth opsional', () => {
     const valid = validateBootstrapConfig({
       ...validEnv(),
       GOOGLE_CLIENT_ID: '123456789012-abcdefghijklmnopqrstuvwx.apps.googleusercontent.com',
       GOOGLE_CLIENT_SECRET: 'GOCSPX-contohsecretcukupanjang',
       GOOGLE_REFRESH_TOKEN: 'refresh-token-contoh-yang-cukup-panjang',
-      RESEND_SMTP_PASS: 're_contohsecretcukupanjang1234',
     });
     expect(valid.success).toBe(true);
     if (!valid.success) return;
     expect(valid.config.credentials.googleClientId).toContain('.apps.googleusercontent.com');
-    expect(valid.config.credentials.resendSmtpPass).not.toBe(null);
     const badClient = validateBootstrapConfig({ ...validEnv(), GOOGLE_CLIENT_ID: 'bukan-client-id' });
     expect(badClient.success).toBe(false);
-  });
-
-});
-
-const REF = 'abcdefgh1234';
-const OTHER_REF = 'zyxwvuts9876';
-
-function identityEnv(database: { readonly pool: string; readonly direct: string }) {
-  return {
-    ...validEnv(),
-    SUPABASE_PROJECT_REF: REF,
-    DATABASE_POOL_URL: database.pool,
-    DATABASE_DIRECT_URL: database.direct,
-  };
-}
-
-function categoriesFor(env: Record<string, string | undefined>, key: 'DATABASE_POOL_URL' | 'DATABASE_DIRECT_URL') {
-  const result = validateBootstrapConfig(env);
-  if (result.success) return [];
-  return result.issues.filter((issue) => issue.path.includes(key)).map((issue) => issue.category);
-}
-
-describe('identitas project pada URL database', () => {
-  it('menerima host direct per-project', () => {
-    const env = identityEnv({
-      pool: `postgresql://indicate_runtime.${REF}:pw@db.${REF}.supabase.co:5432/postgres`,
-      direct: `postgresql://postgres:pw@db.${REF}.supabase.co:5432/postgres`,
-    });
-    expect(categoriesFor(env, 'DATABASE_POOL_URL')).toEqual([]);
-    expect(categoriesFor(env, 'DATABASE_DIRECT_URL')).toEqual([]);
-  });
-
-  it('menerima pooler dengan ref di username, karena bentuk inilah yang dipakai jaringan tanpa IPv6', () => {
-    const env = identityEnv({
-      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true`,
-      direct: `postgresql://postgres.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-    });
-    expect(validateBootstrapConfig(env).success).toBe(true);
-  });
-
-  it('menolak pooler tanpa ref di username walau password memuat ref', () => {
-    const env = identityEnv({
-      pool: `postgresql://postgres:pw-${REF}@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-      direct: `postgresql://postgres:pw@db.${REF}.supabase.co:5432/postgres`,
-    });
-    expect(categoriesFor(env, 'DATABASE_POOL_URL')).toContain('supabase_project_identity_mismatch');
-  });
-
-  it('menolak pooler yang menunjuk project lain', () => {
-    const env = identityEnv({
-      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
-      direct: `postgresql://postgres.${OTHER_REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-    });
-    expect(categoriesFor(env, 'DATABASE_DIRECT_URL')).toContain('supabase_project_identity_mismatch');
-  });
-
-  it('menolak username pooler kosong dan host asing', () => {
-    const emptyUser = identityEnv({
-      pool: `postgresql://:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-      direct: `postgresql://postgres:pw@db.${REF}.supabase.co:5432/postgres`,
-    });
-    expect(categoriesFor(emptyUser, 'DATABASE_POOL_URL')).toContain('supabase_project_identity_mismatch');
-
-    const foreignHost = identityEnv({
-      pool: `postgresql://indicate_runtime.${REF}:pw@db.${REF}.supabase.co:5432/postgres`,
-      direct: `postgresql://postgres:pw@db.other-project.supabase.co:5432/postgres`,
-    });
-    expect(categoriesFor(foreignHost, 'DATABASE_DIRECT_URL')).toContain('supabase_project_identity_mismatch');
-  });
-
-  it('menolak host yang hanya menyerupai pooler', () => {
-    const env = identityEnv({
-      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com.example.net:6543/postgres`,
-      direct: `postgresql://postgres:${REF}@db.${REF}.supabase.co:5432/postgres`,
-    });
-    expect(categoriesFor(env, 'DATABASE_POOL_URL')).toContain('supabase_project_identity_mismatch');
-  });
-
-  it('tetap menolak NEXT_PUBLIC_SUPABASE_URL project lain', () => {
-    const env = identityEnv({
-      pool: `postgresql://indicate_runtime.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres`,
-      direct: `postgresql://postgres.${REF}:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`,
-    });
-    const result = validateBootstrapConfig({ ...env, NEXT_PUBLIC_SUPABASE_URL: `https://${OTHER_REF}.supabase.co` });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.issues.some((issue) => issue.path.includes('NEXT_PUBLIC_SUPABASE_URL'))).toBe(true);
-    }
   });
 });
 
 describe('validateBootstrapConfig NEXT_PUBLIC_DISQUS_SHORTNAME', () => {
-  // The value is interpolated into https://<shortname>.disqus.com/embed.js on
-  // reader pages, so boot is the only place a deployment-wide bad value can be
-  // caught before it reaches production markup.
   it('menerima label forum yang valid', () => {
     const result = validateBootstrapConfig({ ...validEnv(), NEXT_PUBLIC_DISQUS_SHORTNAME: 'indicate-1' });
     expect(result.success).toBe(true);
