@@ -22,7 +22,7 @@ import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorizati
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { buildPageviewKey } from '@/modules/site/pageview-contract';
-import type { VerifiedNeonIdentity } from '@/integrations/neon-auth/identity';
+import type { VerifiedAuthIdentity, VerifiedNeonIdentity } from '@/integrations/neon-auth/identity';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 
 /** Snapshot cache keyed by (org, actor, sorted perms); failures throw so only successes cache (60s TTL). */
@@ -361,7 +361,7 @@ export async function fetchCachedAnalytics(
  * @param preResolved - Local user plus membership already resolved by the caller; skips duplicate lookups.
  * @returns Dashboard core snapshot, or null so the client falls back to live fetch.
  */
-export async function getDashboardSnapshot(organizationId: string, identity: VerifiedNeonIdentity, preResolved?: ResolvedDashboardIdentity): Promise<DashboardSnapshot | null> {
+export async function getDashboardSnapshot(organizationId: string, identity: VerifiedAuthIdentity, preResolved?: ResolvedDashboardIdentity): Promise<DashboardSnapshot | null> {
   try {
     let actorId: string;
     let verifiedAuthUserId: string;
