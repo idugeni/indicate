@@ -105,11 +105,10 @@ jobs:
       DASHBOARD_HOST: indicate.website
       API_HOST: api.indicate.website
       WEBHOOK_HOST: webhook.indicate.website
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
+      NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
       NEXT_PUBLIC_SITE_URL: https://indicate.website
       DEFAULT_LOCALE: id-ID
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       DATABASE_POOL_URL: ${{ secrets.DATABASE_POOL_URL }}
       DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
