@@ -155,13 +155,13 @@ jobs:
           pool_url="$(get_env_value CI_DATABASE_POOL_URL)"
           direct_url="$(get_env_value CI_DATABASE_DIRECT_URL)"
           auth_url="$(get_env_value NEON_AUTH_BASE_URL)"
-          [[ "$pool_url" == *"@ep-wild-frog-b3ri5wdp-pooler.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI pool URL is not the verified Neon pooler"; exit 1; }
-          [[ "$direct_url" == *"@ep-wild-frog-b3ri5wdp.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI direct URL is not the verified Neon endpoint"; exit 1; }
+          [[ "$pool_url" == *"@ep-purple-sunset-b3ieqkb7-pooler.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI pool URL is not the verified Neon pooler"; exit 1; }
+          [[ "$direct_url" == *"@ep-purple-sunset-b3ieqkb7.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI direct URL is not the verified Neon endpoint"; exit 1; }
           [[ "$pool_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI pool URL must include a non-empty username and password"; exit 1; }
           [[ "$direct_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI direct URL must include a non-empty username and password"; exit 1; }
           [[ "$pool_url" == *"indicate_runtime_login:"* ]] || { echo "::error::CI pool URL must use the least-privilege runtime login"; exit 1; }
           [[ "$direct_url" == *"neondb_owner:"* ]] || { echo "::error::CI direct URL must use the migration-only owner login"; exit 1; }
-          [[ "$auth_url" == "https://ep-wild-frog-b3ri5wdp.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth" ]] || { echo "::error::Neon Auth URL does not match production"; exit 1; }
+          [[ "$auth_url" == "https://ep-purple-sunset-b3ieqkb7.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth" ]] || { echo "::error::Neon Auth URL does not match production"; exit 1; }
           printf 'DATABASE_POOL_URL=%s\n' "$pool_url" >> "$GITHUB_ENV"
           printf 'DATABASE_DIRECT_URL=%s\n' "$direct_url" >> "$GITHUB_ENV"
           printf 'NEON_AUTH_BASE_URL=%s\n' "$auth_url" >> "$GITHUB_ENV"
