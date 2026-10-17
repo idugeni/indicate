@@ -159,7 +159,7 @@ export class DrizzleRuntimeConfigAdminRepository {
           vercel_team_id: string; vercel_production_target_hostname: string; r2_account_id: string;
           r2_bucket_name: string; upstash_redis_resource_id: string; version: number; updated_at_iso: string;
         }>(sql`
-          SELECT shared.supabase_project_ref AS neon_project_id, shared.cloudflare_account_id, shared.vercel_project_id,
+          SELECT shared.neon_project_id, shared.cloudflare_account_id, shared.vercel_project_id,
                  shared.vercel_team_id, shared.vercel_production_target_hostname, shared.r2_account_id,
                  shared.r2_bucket_name, shared.upstash_redis_resource_id, shared.version,
                  to_char(shared.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at_iso
