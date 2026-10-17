@@ -12,7 +12,7 @@ Gabungan dua dokumen yang sebelumnya terpisah: runbook readiness/rollback
 menggantikan dua file yang mengulang langkah yang sama.
 
 Topologi tidak berubah saat rilis: satu project Vercel `indicate` (`sin1`),
-satu database Supabase, dua bucket R2 media (privat + publik) + bucket audit
+satu database PostgreSQL Neon, dua bucket R2 media (privat + publik) + bucket audit
 WORM opsional, satu resource Upstash Redis. Cloudflare tetap otoritatif untuk
 nameserver, DNS, wildcard, proxy TLS, dan CDN; Vercel hanya hosting dengan
 asosiasi exact Site-domain. Tidak ada rilis yang boleh membuat project,
@@ -75,7 +75,7 @@ lalu mengecek:
 - urutan migrasi terpasang terhadap `meta/_journal.json`, gate
   `migration_gate_events.required_version`, dan versi snapshot konfigurasi
   (muncul via `GET /api/health` sebagai `configurationVersion`);
-- kesehatan Supabase Auth dan konektivitas PostgreSQL;
+- kesehatan Neon Managed Auth dan konektivitas Neon PostgreSQL;
 - kesehatan data plane S3 `HeadBucket` pada bucket terkonfigurasi memakai
   kredensial media production, tidak adanya custom domain publik, dan
   managed public domain yang dinonaktifkan;
@@ -110,8 +110,7 @@ lalu mengecek:
   mengirimnya otomatis sebagai Bearer) dan kedua route cron internal
   (`/api/internal/publishing` GET, `/api/internal/delivery/reconcile`
   GET/POST) hanya merespons terautentikasi; cron keep-alive harian
-  `/api/health` dari `vercel.json` terdaftar (mencegah auto-pause Supabase
-  Free — jangan dihapus selama masih di plan Free);
+  `/api/health` dari `vercel.json` terdaftar (untuk menjaga probe aplikasi tetap terukur — jangan mengklaim mencegah suspend compute tanpa verifikasi konfigurasi Neon);
 - postur proteksi edge: tepat satu lapisan memiliki tiap aturan — Vercel Bot
   Protection/WAF ruleset untuk penyalahgunaan portal dan Cloudflare Cache
   Rules (halaman/feed portal, Tiered Cache; jangan pernah 307 media
@@ -162,7 +161,7 @@ read-only ini.
       Cek manual setara: `npm run typecheck`, `npm run lint`,
       `npm test`, `npm run perf`, `npm run lint:docs`.
 - [ ] Migrasi database (bila ada file baru di `src/data/migrations/`):
-      backup Supabase dulu, terapkan tiap file SQL sesuai urutan
+      buat backup Neon dulu, terapkan tiap file SQL sesuai urutan
       `src/data/migrations/meta/_journal.json` dengan kredensial direct
       (`DATABASE_DIRECT_URL`), lalu verifikasi `GET /api/health`
       melaporkan snapshot version yang diharapkan. Rujukan:
