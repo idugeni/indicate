@@ -1,10 +1,10 @@
--- Neon-side read-model for production runtime-config snapshots (Fase 1 pilot).
+-- Optional Neon-side read-model for runtime-config snapshots.
 --
 -- Authority: Supabase stays the writer; this table is a derived, revision-keyed
 -- copy. Rows are written best-effort by the app's write-through path and read
 -- through the SnapshotSharedStore port. Any failure falls back to Supabase.
 -- Old revisions are deleted explicitly by the writer (Neon has no key TTL).
--- Applied manually to the linked Neon branch; this file is the source of truth.
+-- Apply only to a separately provisioned Neon read-model database; the app's primary database remains authoritative.
 
 CREATE TABLE IF NOT EXISTS neon_runtime_snapshots (
   environment text NOT NULL,
