@@ -19,7 +19,7 @@ export function SignInForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ready = email.trim().includes('@') && password.length > 0;
-  const { challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
+  const { captchaToken, challengeNonce, turnstilePending, resetChallenge, onChallengeToken } =
     useTurnstileChallenge(undefined, ready);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -46,7 +46,10 @@ export function SignInForm() {
     }
 
     try {
-      const { error } = await neonAuthClient.signIn.email({ email: target, password });
+      const { error } = await neonAuthClient.signIn.email(
+        { email: target, password },
+        captchaToken === null ? undefined : { fetchOptions: { headers: { 'cf-turnstile-response': captchaToken } } },
+      );
       if (error) {
         setError('Kredensial tidak valid atau akun belum diverifikasi.');
         resetChallenge();
