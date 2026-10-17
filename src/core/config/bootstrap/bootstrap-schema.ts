@@ -83,6 +83,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'GOOGLE_SITE_VERIFICATION',
   'INDEXNOW_KEY',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  'TURNSTILE_AUTH_SECRET',
   'NEXT_PUBLIC_DISQUS_SHORTNAME',
   'TURNSTILE_REPORT_SECRETS',
 ]);
@@ -164,6 +165,7 @@ const bootstrapSchema = z
     NEON_AUTH_BASE_URL: httpsUrlSchema,
     NEON_AUTH_COOKIE_SECRET: z.string().min(32, 'neon_auth_cookie_secret_too_short'),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    TURNSTILE_AUTH_SECRET: secretSchema.optional(),
     /**
      * Network Disqus forum. Optional so a deployment without comments still
      * boots; present but malformed is refused, because the value picks the
@@ -268,6 +270,13 @@ const bootstrapSchema = z
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'production') {
+      if (value.NEXT_PUBLIC_TURNSTILE_SITE_KEY !== undefined && (
+        value.TURNSTILE_AUTH_SECRET === undefined ||
+        value.TURNSTILE_AUTH_SECRET.length < 24 ||
+        PLACEHOLDER_SECRET_PATTERN.test(value.TURNSTILE_AUTH_SECRET)
+      )) {
+        context.addIssue({ code: 'custom', path: ['TURNSTILE_AUTH_SECRET'], message: 'production_turnstile_auth_secret_required' });
+      }
       const pooledHost = new URL(value.DATABASE_POOL_URL).hostname;
       const directHost = new URL(value.DATABASE_DIRECT_URL).hostname;
       if (!pooledHost.endsWith('.neon.tech')) {
@@ -345,6 +354,8 @@ export interface BootstrapConfig {
     readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
     readonly cronSecret: SecretString;
+    /** Siteverify secret for sign-in, signup, and account recovery challenges. */
+    readonly turnstileAuthSecret: SecretString | null;
     /** Siteverify secret per tenant report widget, keyed by site key; null when no widget is configured. */
     readonly turnstileReportSecrets: ReadonlyMap<string, SecretString> | null;
   }>;
@@ -414,6 +425,7 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
+      turnstileAuthSecret: value.TURNSTILE_AUTH_SECRET === undefined ? null : SecretString.fromPlain(value.TURNSTILE_AUTH_SECRET),
       turnstileReportSecrets: value.TURNSTILE_REPORT_SECRETS === undefined
         ? null
         : new Map(Object.entries(value.TURNSTILE_REPORT_SECRETS).map(([sitekey, secret]) => [sitekey, SecretString.fromPlain(secret)])),
