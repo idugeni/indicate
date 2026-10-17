@@ -6,9 +6,9 @@ import { Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AuthAlert, AuthLabel, AuthSubmit } from '@/modules/auth/components/auth-ui';
 import { TurnstileChallenge, useTurnstileChallenge } from '@/components/turnstile-challenge';
-import { createBrowserSupabaseClient } from '@/integrations/supabase/supabase-browser';
+import { neonAuthClient } from '@/integrations/neon-auth/client';
 
-/** Client recovery leaf; parent page stays a Server Component. */
+/** Client recovery leaf; Neon Auth sends the reset link, parent remains a Server Component. */
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -40,14 +40,13 @@ export function ForgotPasswordForm() {
     }
 
     try {
-      const supabase = createBrowserSupabaseClient();
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-      const { error } = await supabase.auth.resetPasswordForEmail(target, {
-        redirectTo: `${siteUrl}/auth/callback?next=%2Fupdate-password`,
-        ...(captchaToken === null ? {} : { captchaToken }),
-      });
+      const { error } = await neonAuthClient.requestPasswordReset(
+        { email: target, redirectTo: `${siteUrl}/update-password` },
+        captchaToken === null ? undefined : { fetchOptions: { headers: { 'cf-turnstile-response': captchaToken } } },
+      );
       if (error) {
-        setError(error.message);
+        setError('Jika akun dapat dipulihkan, instruksi akan dikirim. Periksa konfigurasi autentikasi atau coba lagi.');
         resetChallenge();
         setBusy(false);
         return;
@@ -64,10 +63,10 @@ export function ForgotPasswordForm() {
     return (
       <AuthAlert tone="success">
         <span className="flex items-center gap-2 font-medium">
-          <Send className="h-4 w-4" /> Tautan pemulihan terkirim
+          <Send className="h-4 w-4" /> Tautan pemulihan diproses
         </span>
         <p className="mt-1 text-[#4c5b6b]">
-          Periksa kotak masuk Anda dan ikuti tautan untuk membuat kata sandi baru.
+          Jika alamat email terdaftar, instruksi pemulihan akan dikirim. Periksa kotak masuk Anda.
         </p>
       </AuthAlert>
     );
@@ -76,14 +75,10 @@ export function ForgotPasswordForm() {
   return (
     <form noValidate onSubmit={handleSubmit} className="space-y-5">
       {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
-
       <div>
-        <AuthLabel htmlFor="email">
-          Alamat email
-        </AuthLabel>
+        <AuthLabel htmlFor="email">Alamat email</AuthLabel>
         <Input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@kabarjateng.org" className="border-[#1a2430]/20 bg-white font-sans dark:border-[#1a2430]/20 dark:bg-white" />
       </div>
-
       <TurnstileChallenge armed={ready} key={challengeNonce} onToken={onChallengeToken} />
       <AuthSubmit busy={busy} busyLabel="Mengirim..." icon={Send} disabled={turnstilePending}>
         Kirim Tautan Pemulihan
