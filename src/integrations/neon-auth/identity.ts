@@ -7,6 +7,7 @@ export interface VerifiedAuthIdentity {
   readonly displayName: string;
   readonly avatarUrl: string | null;
   readonly email: string | null;
+  readonly emailVerified: true;
 }
 
 /**
@@ -31,6 +32,7 @@ export async function getVerifiedNeonIdentity(): Promise<VerifiedAuthIdentity | 
       displayName,
       avatarUrl,
       email,
+      emailVerified: true,
     });
   } catch {
     return null;
