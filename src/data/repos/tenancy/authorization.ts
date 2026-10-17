@@ -158,6 +158,15 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
             throw new Error('Local account identity changed during Neon linkage');
           }
 
+          await transaction.execute(sql`
+            INSERT INTO public.identity_link_audit_logs (
+              id, local_user_id, legacy_auth_user_id, neon_auth_user_id, request_id, linked_at
+            ) VALUES (
+              gen_random_uuid(), ${existing.id}::uuid, ${existing.auth_user_id}::uuid,
+              ${input.authUserId}::uuid, ${crypto.randomUUID()}, now()
+            )
+          `);
+
           const activeMemberships = await transaction.execute<{ organization_id: string }>(sql`
             SELECT organization_id::text
             FROM public.memberships
