@@ -2024,6 +2024,13 @@
       "when": 1792230000000,
       "tag": "20261017100000_neon_auth_identity_mapping",
       "breakpoints": true
+    },
+    {
+      "idx": 289,
+      "version": "7",
+      "when": 1792242000000,
+      "tag": "20261017120000_neon_runtime_login_policies",
+      "breakpoints": true
     }
   ]
 }
