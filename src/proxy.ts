@@ -5,7 +5,6 @@ import { normalizeRequestHostname } from '@/core/hostname/normalize-request-host
 import { ensureRequestId, REQUEST_ID_HEADER } from '@/core/observability/request-id';
 import { ensureTraceContext, TRACEPARENT_HEADER } from '@/core/observability/trace-context';
 import { isServicePath } from '@/core/routing/control-plane-paths';
-import { nextWithSessionRefresh } from '@/integrations/supabase/supabase-edge-session';
 import {
   PLATFORM_ALLOWED_IPS_ENV,
   PLATFORM_ORIGIN_SECRET_ENV,
@@ -228,18 +227,6 @@ function isTenantDeniedPath(path: string): boolean {
 }
 
 /**
- * RSC surfaces that read the session server-side and need rotated cookies persisted.
- *
- * @param path - Request pathname.
- * @returns True when the edge must refresh the Supabase session before rendering.
- * @remarks Route handlers (`/auth/*`, `/api/*`) refresh through their own adapter
- * because their cookie writes succeed; public pages never carry a session, so only
- * the session-reading RSC pages pay the refresh round-trip.
- */
-function isSessionRefreshPath(path: string): boolean {
-  return path.startsWith('/dashboard') || path === '/update-password' || path.startsWith('/update-password/');
-}
-/**
  * Route edge requests to control or tenant surfaces.
  *
  * @param request - Incoming edge request.
@@ -255,9 +242,6 @@ export async function proxy(request: NextRequest) {
       requestHeaders.set('host', getControlHosts().dashboard);
       requestHeaders.set('x-forwarded-host', getControlHosts().dashboard);
     };
-    if (isSessionRefreshPath(request.nextUrl.pathname)) {
-      return nextWithSessionRefresh(request, () => nextWithCorrelation(request, rewriteLocal));
-    }
     return nextWithCorrelation(request, rewriteLocal);
   }
   if (localAuthority !== undefined && localAuthority.endsWith('.vercel.app')) {
@@ -265,9 +249,6 @@ export async function proxy(request: NextRequest) {
       requestHeaders.set('host', getControlHosts().dashboard);
       requestHeaders.set('x-forwarded-host', getControlHosts().dashboard);
     };
-    if (isSessionRefreshPath(request.nextUrl.pathname)) {
-      return nextWithSessionRefresh(request, () => nextWithCorrelation(request, rewritePreview));
-    }
     return nextWithCorrelation(request, rewritePreview);
   }
   const parsed = normalizeRequestHostname(rawHost);
@@ -303,7 +284,6 @@ export async function proxy(request: NextRequest) {
       redirect.headers.set(REQUEST_ID_HEADER, ensureRequestId(request.headers).requestId);
       return withSecurityHeaders(redirect);
     }
-    if (isSessionRefreshPath(path)) return nextWithSessionRefresh(request, () => nextWithCorrelation(request));
     return nextWithCorrelation(request);
   }
   if (parsed.hostname === api) {
