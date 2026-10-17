@@ -85,24 +85,11 @@ function proofResolved(): ResolvedAccessKeyActor {
   };
 }
 
-vi.mock('@/core/config/public-config', () => ({
-  getPublicConfig: () => ({
-    supabaseUrl: 'https://proof.supabase.co',
-    supabasePublishableKey: 'proof-key',
-  }),
-}));
-
-vi.mock('@/integrations/supabase/supabase-ssr', () => ({
-  createSupabaseSsrAuthAdapter: () => ({
-    verifyCookieSession: async () =>
-      shared.session
-        ? { authUserId: shared.authUserId, avatarUrl: null }
-        : null,
-  }),
-  createHardenedSupabaseCookieStore: (options: { getAll: () => unknown }) => ({
-    ...options,
-    set: () => {},
-  }),
+vi.mock('@/integrations/neon-auth/identity', () => ({
+  getVerifiedNeonIdentity: async () =>
+    shared.session
+      ? { authUserId: shared.authUserId, displayName: 'Proof', avatarUrl: null, email: 'proof@example.com' }
+      : null,
 }));
 
 vi.mock('@/modules/auth/resolve-authenticated-user', () => ({

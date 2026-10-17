@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (288 migrations):
+-- Reviewed sources, in journal order (290 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -302,6 +302,8 @@
 --   286  20261013000000_drop_legacy_article_taxonomy  ledger sha256:9538d38cdafa49fc1e6041b1f3a45fb9caa7c7396af870ed354b2ea35531c080
 --   287  20261013100000_global_category_delivery  ledger sha256:c6d6be025d89da02cdf09fd84adf2e92d94a8ef15f442cc23a26d03ae539fd01
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
+--   289  20261017100000_neon_auth_identity_mapping  ledger sha256:557678c68159d2c241d12dc0acb9597dfde6554e379c71010d702271a06cf5ad
+--   290  20261017120000_neon_runtime_login_policies  ledger sha256:c3aa6c29858a7b42704d1122ba53227f2e7d37b5d7931abb5a458a780902f4cd
 
 BEGIN;
 
@@ -24566,4 +24568,391 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (287, 'global_category_tenant_bindings', 'sha256:998cd8db4bac03f2cbc85c8ad74b47a900b5a8d8f5ca852250d2599faa2118fc');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285', 1791889200000);
+
+-- ----------------------------------------------------------------------
+-- 20261017100000_neon_auth_identity_mapping
+-- ----------------------------------------------------------------------
+-- Keep legacy Supabase Auth IDs for rollback while adding a separate Neon Auth identity.
+-- Linking is allowed only after the application verifies the Neon email and sets a
+-- transaction-local intent flag. Local User IDs, memberships, roles, and access keys
+-- remain stable across the provider migration.
+
+ALTER TABLE public.users
+  ADD COLUMN neon_auth_user_id uuid;
+
+ALTER TABLE public.users
+  ADD CONSTRAINT users_neon_auth_user_id_unique UNIQUE (neon_auth_user_id);
+
+CREATE UNIQUE INDEX users_effective_auth_identity_unique
+  ON public.users (COALESCE(neon_auth_user_id, auth_user_id));
+
+CREATE OR REPLACE FUNCTION indicate_private.enforce_user_identity_immutable()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.auth_user_id IS DISTINCT FROM OLD.auth_user_id THEN
+    RAISE EXCEPTION 'user identity is immutable' USING ERRCODE = '42501';
+  END IF;
+  IF NEW.neon_auth_user_id IS DISTINCT FROM OLD.neon_auth_user_id THEN
+    IF OLD.neon_auth_user_id IS NOT NULL
+       OR NEW.neon_auth_user_id IS NULL
+       OR current_setting('app.neon_auth_identity_link', true) IS DISTINCT FROM 'on' THEN
+      RAISE EXCEPTION 'Neon identity may only be linked once through the verified linkage path' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION indicate_private.set_verified_user_context(requested_auth_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  requested_actor_id text;
+BEGIN
+  requested_actor_id := current_setting('app.actor_id', true);
+  IF requested_auth_user_id IS NULL OR requested_actor_id IS NULL OR requested_actor_id = '' THEN
+    RAISE EXCEPTION 'verified user context is required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id::text = requested_actor_id
+      AND (auth_user_id = requested_auth_user_id OR neon_auth_user_id = requested_auth_user_id)
+      AND status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'verified user context mismatch' USING ERRCODE = '42501';
+  END IF;
+  PERFORM set_config('app.auth_user_id', requested_auth_user_id::text, true);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION indicate_private.current_verified_user_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT id
+  FROM public.users
+  WHERE (auth_user_id = indicate_private.current_auth_user_id()
+         OR neon_auth_user_id = indicate_private.current_auth_user_id())
+    AND id::text = current_setting('app.actor_id', true)
+    AND status = 'active'
+  LIMIT 1
+$$;
+
+ALTER POLICY auth_identity_isolation_insert ON public.users
+  WITH CHECK (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  );
+
+ALTER POLICY auth_identity_isolation_select ON public.users
+  USING (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  );
+
+ALTER POLICY auth_identity_isolation_update ON public.users
+  USING (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  )
+  WITH CHECK (
+    auth_user_id = indicate_private.current_auth_user_id()
+    OR neon_auth_user_id = indicate_private.current_auth_user_id()
+  );
+
+CREATE OR REPLACE FUNCTION indicate_private.resolve_dashboard_access_key_identity(p_lookup_id text)
+RETURNS TABLE (
+  organization_id uuid,
+  key_id uuid,
+  user_id uuid,
+  auth_user_id uuid,
+  display_name text,
+  avatar_url text,
+  user_status record_status,
+  key_status api_key_status,
+  expires_at timestamp with time zone,
+  last_used_at timestamp with time zone,
+  salt text,
+  verification_hash text,
+  membership_status record_status,
+  role_id uuid,
+  role_tier role_tier,
+  role_active boolean
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT k.organization_id, k.id, u.id, COALESCE(u.neon_auth_user_id, u.auth_user_id),
+         u.display_name, u.avatar_url, u.status,
+         k.status, k.expires_at, k.last_used_at, k.salt, k.verification_hash,
+         m.status, m.role_id, r.tier, r.active
+  FROM public.dashboard_access_keys k
+  JOIN public.users u ON u.id = k.user_id
+  LEFT JOIN public.memberships m ON m.organization_id = k.organization_id AND m.user_id = k.user_id
+  LEFT JOIN public.roles r ON r.organization_id = m.organization_id AND r.id = m.role_id
+  WHERE k.lookup_id = p_lookup_id
+  LIMIT 1
+$$;
+
+CREATE OR REPLACE FUNCTION indicate_private.resolve_user_by_email(p_email text)
+RETURNS TABLE(id uuid, auth_user_id uuid, display_name text, status record_status)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+  SELECT u.id, COALESCE(u.neon_auth_user_id, u.auth_user_id), u.display_name, u.status
+  FROM public.users AS u
+  WHERE lower(btrim(u.email)) = lower(btrim(p_email))
+    AND indicate_private.permission_has_platform_admin(indicate_private.current_verified_user_id())
+  LIMIT 1
+$$;
+
+ALTER TABLE public.shared_deployment_config
+  ADD COLUMN neon_project_id text;
+UPDATE public.shared_deployment_config
+   SET neon_project_id = 'soft-moon-84079595'
+ WHERE id = 'singleton';
+ALTER TABLE public.shared_deployment_config
+  ALTER COLUMN neon_project_id SET NOT NULL;
+
+DROP FUNCTION indicate_private.read_runtime_config_shared();
+CREATE FUNCTION indicate_private.read_runtime_config_shared()
+RETURNS TABLE (
+  neon_project_id text,
+  supabase_project_ref text,
+  cloudflare_account_id text,
+  vercel_project_id text,
+  vercel_team_id text,
+  vercel_production_target_hostname text,
+  r2_account_id text,
+  r2_bucket_name text,
+  upstash_redis_resource_id text,
+  version integer,
+  updated_at timestamptz
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT s.neon_project_id, s.supabase_project_ref, s.cloudflare_account_id, s.vercel_project_id, s.vercel_team_id,
+         s.vercel_production_target_hostname, s.r2_account_id, s.r2_bucket_name,
+         s.upstash_redis_resource_id, s.version, s.updated_at
+  FROM public.shared_deployment_config AS s
+  LIMIT 1;
+END
+$$;
+REVOKE ALL ON FUNCTION indicate_private.read_runtime_config_shared() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime;
+
+DROP FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text);
+CREATE FUNCTION indicate_private.mutate_runtime_config_shared(
+  p_actor_id uuid,
+  p_expected_version integer,
+  p_supabase_project_ref text,
+  p_cloudflare_account_id text,
+  p_vercel_project_id text,
+  p_vercel_team_id text,
+  p_vercel_production_target_hostname text,
+  p_r2_account_id text,
+  p_r2_bucket_name text,
+  p_upstash_redis_resource_id text
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+DECLARE
+  v_after integer;
+  v_revision bigint;
+BEGIN
+  IF NOT indicate_private.has_platform_permission(p_actor_id, 'platform.runtime_config.manage') THEN
+    RAISE EXCEPTION 'platform runtime config permission denied' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.shared_deployment_config AS s
+     SET neon_project_id = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}$' THEN s.neon_project_id ELSE p_supabase_project_ref END,
+         supabase_project_ref = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}$' THEN p_supabase_project_ref ELSE s.supabase_project_ref END,
+         vercel_project_id = p_vercel_project_id,
+         vercel_team_id = p_vercel_team_id,
+         vercel_production_target_hostname = p_vercel_production_target_hostname,
+         r2_account_id = p_r2_account_id,
+         r2_bucket_name = p_r2_bucket_name,
+         upstash_redis_resource_id = p_upstash_redis_resource_id,
+         version = version + 1,
+         updated_at = now()
+   WHERE s.id = 'singleton' AND s.version = p_expected_version
+   RETURNING s.version INTO v_after;
+
+  IF v_after IS NULL THEN
+    RAISE EXCEPTION 'runtime config version conflict' USING ERRCODE = '55000';
+  END IF;
+
+  v_revision := nextval(pg_get_serial_sequence('public.runtime_config_revisions', 'version'));
+  INSERT INTO public.runtime_config_revisions (version, environment, committed_at, mutation_kind)
+  VALUES (v_revision, current_setting('app.environment', true), now(), 'shared_deployment_config');
+
+  INSERT INTO public.runtime_config_audit_logs (
+    id, organization_id, actor_type, actor_id, environment, action, target_type,
+    target_id, expected_version, resulting_version, changed_fields, outcome, request_id
+  ) VALUES (
+    gen_random_uuid(), NULL, 'user', p_actor_id, current_setting('app.environment', true),
+    'update', 'shared_deployment_config', NULL, p_expected_version, v_after,
+    ARRAY['neon_project_id','supabase_project_ref','cloudflare_account_id','vercel_project_id','vercel_team_id',
+          'vercel_production_target_hostname','r2_account_id','r2_bucket_name',
+          'upstash_redis_resource_id'],
+    'succeeded', current_setting('app.request_id', true)
+  );
+
+  INSERT INTO public.runtime_config_invalidation_intents (
+    id, runtime_revision, environment, partition_kind, status, attempts, next_attempt_at
+  ) VALUES (
+    gen_random_uuid(), v_revision, current_setting('app.environment', true), 'shared',
+    'pending', 0, now()
+  );
+
+  RETURN v_after;
+END
+$$;
+REVOKE ALL ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.mutate_runtime_config_shared(uuid, integer, text, text, text, text, text, text, text, text) TO indicate_runtime;
+
+CREATE TABLE public.identity_link_audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_user_id uuid NOT NULL REFERENCES public.users(id),
+  legacy_auth_user_id uuid NOT NULL,
+  neon_auth_user_id uuid NOT NULL,
+  request_id text NOT NULL,
+  linked_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT identity_link_audit_local_user_unique UNIQUE (local_user_id),
+  CONSTRAINT identity_link_audit_neon_user_unique UNIQUE (neon_auth_user_id)
+);
+CREATE INDEX identity_link_audit_linked_at_idx ON public.identity_link_audit_logs (linked_at);
+ALTER TABLE public.identity_link_audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY identity_link_audit_deny_all ON public.identity_link_audit_logs
+  FOR ALL USING (false) WITH CHECK (false);
+REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;
+GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;
+
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:83bce7d0b559a1d40c478c39322eccb20f93cd18e02cfa35027b86a403493082');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('557678c68159d2c241d12dc0acb9597dfde6554e379c71010d702271a06cf5ad', 1792230000000);
+
+-- ----------------------------------------------------------------------
+-- 20261017120000_neon_runtime_login_policies
+-- ----------------------------------------------------------------------
+-- Provision the Neon password-bearing runtime login with the same explicit
+-- table/function grants and RLS policy targets as the application runtime role.
+-- Neon-managed role membership cannot be granted by the project owner role, so
+-- this keeps the login role separate and makes the RLS policies name it directly.
+-- Body digest: LF-normalize this file and replace its own checksum with zeros.
+DO $migration$
+DECLARE
+  item record;
+  role_list text;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'indicate_runtime_login') THEN
+    RAISE EXCEPTION 'Required Neon login role indicate_runtime_login is missing; provision it before applying this migration';
+  END IF;
+
+  REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM indicate_runtime_login;
+  REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM indicate_runtime_login;
+  REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA indicate_private FROM indicate_runtime_login;
+
+  GRANT USAGE ON SCHEMA public TO indicate_runtime_login;
+  GRANT USAGE ON SCHEMA indicate_private TO indicate_runtime_login;
+
+  FOR item IN
+    SELECT table_schema, table_name, privilege_type
+    FROM information_schema.role_table_grants
+    WHERE grantee = 'indicate_runtime'
+      AND table_schema = 'public'
+    ORDER BY table_name, privilege_type
+  LOOP
+    EXECUTE format(
+      'GRANT %s ON TABLE %I.%I TO indicate_runtime_login',
+      item.privilege_type, item.table_schema, item.table_name
+    );
+  END LOOP;
+
+  FOR item IN
+    SELECT n.nspname AS schema_name, c.relname AS sequence_name, acl.privilege_type
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('S', c.relowner))) AS acl
+    JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE c.relkind = 'S'
+      AND n.nspname = 'public'
+      AND grantee.rolname = 'indicate_runtime'
+    ORDER BY c.relname, acl.privilege_type
+  LOOP
+    EXECUTE format(
+      'GRANT %s ON SEQUENCE %I.%I TO indicate_runtime_login',
+      item.privilege_type, item.schema_name, item.sequence_name
+    );
+  END LOOP;
+
+  FOR item IN
+    SELECT n.nspname AS schema_name,
+           p.proname AS routine_name,
+           pg_get_function_identity_arguments(p.oid) AS identity_arguments,
+           acl.privilege_type
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+    JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE n.nspname = 'indicate_private'
+      AND grantee.rolname = 'indicate_runtime'
+      AND acl.privilege_type = 'EXECUTE'
+    ORDER BY p.proname, identity_arguments
+  LOOP
+    EXECUTE format(
+      'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO indicate_runtime_login',
+      item.schema_name, item.routine_name, item.identity_arguments
+    );
+  END LOOP;
+
+  FOR item IN
+    SELECT schemaname, tablename, policyname, roles
+    FROM pg_policies
+    WHERE roles @> ARRAY['indicate_runtime']::name[]
+      AND NOT roles @> ARRAY['indicate_runtime_login']::name[]
+    ORDER BY schemaname, tablename, policyname
+  LOOP
+    SELECT string_agg(quote_ident(role_name), ', ' ORDER BY role_name)
+      INTO role_list
+    FROM (
+      SELECT DISTINCT unnest(item.roles || ARRAY['indicate_runtime_login']::name[]) AS role_name
+    ) AS policy_roles;
+
+    EXECUTE format(
+      'ALTER POLICY %I ON %I.%I TO %s',
+      item.policyname, item.schemaname, item.tablename, role_list
+    );
+  END LOOP;
+END
+$migration$;
+ALTER ROLE indicate_runtime_login SET statement_timeout = '15s';
+ALTER ROLE indicate_runtime_login SET lock_timeout = '5s';
+ALTER ROLE indicate_runtime_login SET idle_in_transaction_session_timeout = '30s';
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (289, 'neon_runtime_login_policies', 'sha256:89a8d2f98d073d4a1fc734e806a8c092d048042146ded105ee0b5d6daf5295b3');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c3aa6c29858a7b42704d1122ba53227f2e7d37b5d7931abb5a458a780902f4cd', 1792242000000);
 COMMIT;

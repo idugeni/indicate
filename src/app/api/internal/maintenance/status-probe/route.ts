@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import { and, eq, lt, sql } from 'drizzle-orm';
 
-import { getPublicConfig } from '@/core/config/public-config';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { withApiAccess } from '@/core/observability/api-access';
@@ -88,9 +87,11 @@ async function handleGET(request: Request) {
       if (state.status !== 'healthy') throw new Error(state.category);
     }),
     checkAuth: timed(async () => {
-      const publicConfig = getPublicConfig(process.env);
-      const response = await fetch(`${publicConfig.supabaseUrl.replace(/\/$/, '')}/auth/v1/health`, {
-        headers: { apikey: publicConfig.supabasePublishableKey },
+      const baseUrl = process.env.NEON_AUTH_BASE_URL?.trim();
+      if (!baseUrl) throw new Error('Neon Auth base URL is not configured');
+      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/get-session`, {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
         signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) throw new Error(`auth health ${response.status}`);

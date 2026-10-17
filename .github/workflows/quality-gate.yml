@@ -94,8 +94,9 @@ jobs:
       group: quality-gate-build-${{ github.ref }}
       cancel-in-progress: true
     environment: production
-    # Build memprerender dengan snapshot runtime asli: butuh kredensial baca.
-    # Nilai diisi dari GitHub Secrets (repo settings) — JANGAN tulis literal di sini.
+    # Build/prerender uses the actual Neon production database. Database URLs
+    # and the public Neon Auth endpoint are loaded from Vercel; the cookie secret
+    # below is ephemeral for build validation only. Never log credential values.
     env:
       # Schema gate bersenjata di migrasi 197 (migration_gate_events tidak
       # kosong lagi), dan build menegakkannya: initializeContext memanggil
@@ -105,13 +106,8 @@ jobs:
       DASHBOARD_HOST: indicate.website
       API_HOST: api.indicate.website
       WEBHOOK_HOST: webhook.indicate.website
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_SITE_URL: https://indicate.website
       DEFAULT_LOCALE: id-ID
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      DATABASE_POOL_URL: ${{ secrets.DATABASE_POOL_URL }}
-      DATABASE_DIRECT_URL: ${{ secrets.DATABASE_DIRECT_URL }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ORIGIN_SECRET: ${{ secrets.CLOUDFLARE_ORIGIN_SECRET }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -137,6 +133,40 @@ jobs:
           key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-
+      - name: Load verified Neon production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_list="$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
+            "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQkczC8kK")"
+          get_env_id() {
+            jq -er --arg key "$1" '.envs[] | select(.key == $key and (.target | index("production"))) | .id' <<< "$api_list" | head -n1
+          }
+          get_env_value() {
+            local key="$1"
+            local id
+            id="$(get_env_id "$key")"
+            curl --fail --silent --show-error \
+              --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
+              "https://api.vercel.com/v1/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env/$id?teamId=team_HvgOzoFV92X1vjzqQkczC8kK" \
+              | jq -er '.value'
+          }
+          pool_url="$(get_env_value CI_DATABASE_POOL_URL)"
+          direct_url="$(get_env_value CI_DATABASE_DIRECT_URL)"
+          auth_url="$(get_env_value NEON_AUTH_BASE_URL)"
+          [[ "$pool_url" == *"@ep-little-sunset-b3h5fn1g-pooler.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI pool URL is not the verified Neon pooler"; exit 1; }
+          [[ "$direct_url" == *"@ep-little-sunset-b3h5fn1g.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI direct URL is not the verified Neon endpoint"; exit 1; }
+          [[ "$pool_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI pool URL must include a non-empty username and password"; exit 1; }
+          [[ "$direct_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI direct URL must include a non-empty username and password"; exit 1; }
+          [[ "$pool_url" == *"indicate_runtime_login:"* ]] || { echo "::error::CI pool URL must use the least-privilege runtime login"; exit 1; }
+          [[ "$direct_url" == *"neondb_owner:"* ]] || { echo "::error::CI direct URL must use the migration-only owner login"; exit 1; }
+          [[ "$auth_url" == "https://ep-little-sunset-b3h5fn1g.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth" ]] || { echo "::error::Neon Auth URL does not match production"; exit 1; }
+          printf 'DATABASE_POOL_URL=%s\n' "$pool_url" >> "$GITHUB_ENV"
+          printf 'DATABASE_DIRECT_URL=%s\n' "$direct_url" >> "$GITHUB_ENV"
+          printf 'NEON_AUTH_BASE_URL=%s\n' "$auth_url" >> "$GITHUB_ENV"
+          printf 'NEON_AUTH_COOKIE_SECRET=%s\n' "$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
+          echo "Loaded Neon production endpoints; credentials are withheld from logs."
       - run: npm ci --no-audit --no-fund
       - run: npm run build
 

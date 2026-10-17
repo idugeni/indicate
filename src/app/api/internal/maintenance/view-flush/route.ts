@@ -19,12 +19,12 @@ function auditFlushIssue(requestId: string, event: string, fields: Readonly<Reco
 /** Record one flush-phase sample; never throws. Counts only, no keys. */
 function recordFlushPhase(
   operation: 'flush.scan' | 'flush.pop' | 'flush.commit' | 'flush.restore',
-  provider: 'upstash-redis' | 'supabase-postgres',
+  provider: 'upstash-redis' | 'neon-postgres',
   started: number,
   sample: { readonly commands?: number | undefined; readonly status?: number | undefined; readonly tenantId?: string | undefined },
 ): void {
   const durationMs = Date.now() - started;
-  const isDb = provider === 'supabase-postgres';
+  const isDb = provider === 'neon-postgres';
   recordOperation({
     route: 'flush',
     operation,
@@ -215,9 +215,9 @@ async function handleGET(request: Request) {
             }
           }
         });
-        recordFlushPhase('flush.commit', 'supabase-postgres', commitStarted, { commands: commitQueries, status: 200, tenantId: organizationId });
+        recordFlushPhase('flush.commit', 'neon-postgres', commitStarted, { commands: commitQueries, status: 200, tenantId: organizationId });
       } catch (error) {
-        recordFlushPhase('flush.commit', 'supabase-postgres', commitStarted, { commands: commitQueries, status: 500, tenantId: organizationId });
+        recordFlushPhase('flush.commit', 'neon-postgres', commitStarted, { commands: commitQueries, status: 500, tenantId: organizationId });
         skipped += rows.length;
         const restoreStarted = Date.now();
         try {

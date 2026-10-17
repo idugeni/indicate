@@ -55,6 +55,7 @@ export const organizations = pgTable('organizations', {
 export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   authUserId: uuid('auth_user_id').notNull(),
+  neonAuthUserId: uuid('neon_auth_user_id'),
   displayName: text('display_name').notNull(),
   email: text('email'),
   avatarUrl: text('avatar_url'),
@@ -65,7 +66,23 @@ export const users = pgTable('users', {
   ...timestamps,
 }, (table) => [
   unique('users_auth_user_id_unique').on(table.authUserId),
+  unique('users_neon_auth_user_id_unique').on(table.neonAuthUserId),
+  uniqueIndex('users_effective_auth_identity_unique').on(sql`COALESCE(${table.neonAuthUserId}, ${table.authUserId})`),
   index('users_status_idx').on(table.status),
+]);
+
+/** Internal record of verified provider identity linkage, including platform-only users. */
+export const identityLinkAuditLogs = pgTable('identity_link_audit_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  localUserId: uuid('local_user_id').notNull().references(() => users.id),
+  legacyAuthUserId: uuid('legacy_auth_user_id').notNull(),
+  neonAuthUserId: uuid('neon_auth_user_id').notNull(),
+  requestId: text('request_id').notNull(),
+  linkedAt: timestamp('linked_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique('identity_link_audit_local_user_unique').on(table.localUserId),
+  unique('identity_link_audit_neon_user_unique').on(table.neonAuthUserId),
+  index('identity_link_audit_linked_at_idx').on(table.linkedAt),
 ]);
 
 export const roles = pgTable('roles', {

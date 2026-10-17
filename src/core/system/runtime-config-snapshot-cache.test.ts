@@ -16,7 +16,7 @@ function validModel(): PersistedRuntimeConfigReadModel {
     configurationVersion: 7,
     readAt: '2026-09-18T00:00:00.000Z',
     sharedDeployment: {
-      supabaseProjectRef: 'abcdefgh1234',
+      neonProjectId: 'soft-moon-84079595',
       cloudflareAccountId: 'cf-1',
       vercelProjectId: 'prj-1',
       vercelTeamId: 'team-1',

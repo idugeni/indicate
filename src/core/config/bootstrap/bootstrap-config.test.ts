@@ -4,7 +4,8 @@ import { RuntimeConfigurationError, getBootstrapConfig } from '@/core/config/boo
 
 const VALID = {
   NODE_ENV: 'test',
-  NEXT_PUBLIC_SUPABASE_URL: 'https://abcdefgh1234.supabase.co',
+  NEON_AUTH_BASE_URL: 'https://ep-test.neonauth.example/indicate/auth',
+  NEON_AUTH_COOKIE_SECRET: 'neon_cookie_signing_key_98aef02381_valid_length',
   DATABASE_POOL_URL: 'postgresql://user:pass@localhost:5432/indicate',
   DATABASE_DIRECT_URL: 'postgresql://user:pass@localhost:5432/indicate',
   CLOUDFLARE_API_TOKEN: 'cf-token-123',
@@ -34,10 +35,10 @@ describe('getBootstrapConfig', () => {
       'DASHBOARD_HOST',
       'API_HOST',
       'WEBHOOK_HOST',
-      'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+      'NEON_AUTH_BASE_URL',
+      'NEON_AUTH_COOKIE_SECRET',
       'DEFAULT_LOCALE',
       'SITE_DEFAULT_ASSET_URL',
-      'SUPABASE_PROJECT_REF',
       'R2_AUDIT_BUCKET_NAME',
       'R2_AUDIT_ACCESS_KEY_ID',
       'R2_AUDIT_SECRET_ACCESS_KEY',

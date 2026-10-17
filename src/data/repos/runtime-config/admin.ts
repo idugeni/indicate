@@ -47,7 +47,7 @@ export interface MediaPolicyUpdate {
 /** Read-only snapshot of platform policies for the UI overview (no secrets). */
 export interface RuntimePoliciesOverview {
   readonly deployment: {
-    readonly supabaseProjectRef: string; readonly cloudflareAccountId: string;
+    readonly neonProjectId: string; readonly cloudflareAccountId: string;
     readonly vercelProjectId: string; readonly vercelTeamId: string;
     readonly vercelProductionTargetHostname: string; readonly r2AccountId: string;
     readonly r2BucketName: string; readonly upstashRedisResourceId: string;
@@ -155,11 +155,12 @@ export class DrizzleRuntimeConfigAdminRepository {
       const [policyRows, sharedRows] = await Promise.all([
         this.readPolicyRows(transaction),
         transaction.execute<{
-          supabase_project_ref: string; cloudflare_account_id: string; vercel_project_id: string;
+          neon_project_id: string; cloudflare_account_id: string; vercel_project_id: string;
           vercel_team_id: string; vercel_production_target_hostname: string; r2_account_id: string;
           r2_bucket_name: string; upstash_redis_resource_id: string; version: number; updated_at_iso: string;
         }>(sql`
-          SELECT shared.supabase_project_ref, shared.cloudflare_account_id, shared.vercel_project_id,
+          -- The migration keeps the legacy projection during the deployment window; this reader consumes Neon only.
+          SELECT shared.neon_project_id, shared.cloudflare_account_id, shared.vercel_project_id,
                  shared.vercel_team_id, shared.vercel_production_target_hostname, shared.r2_account_id,
                  shared.r2_bucket_name, shared.upstash_redis_resource_id, shared.version,
                  to_char(shared.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at_iso
@@ -176,7 +177,7 @@ export class DrizzleRuntimeConfigAdminRepository {
         .sort((left, right) => (left.endpoint_class ?? '').localeCompare(right.endpoint_class ?? ''));
       return Object.freeze({
         deployment: deployment === undefined ? null : {
-          supabaseProjectRef: deployment.supabase_project_ref, cloudflareAccountId: deployment.cloudflare_account_id,
+          neonProjectId: deployment.neon_project_id, cloudflareAccountId: deployment.cloudflare_account_id,
           vercelProjectId: deployment.vercel_project_id, vercelTeamId: deployment.vercel_team_id,
           vercelProductionTargetHostname: deployment.vercel_production_target_hostname, r2AccountId: deployment.r2_account_id,
           r2BucketName: deployment.r2_bucket_name, upstashRedisResourceId: deployment.upstash_redis_resource_id,

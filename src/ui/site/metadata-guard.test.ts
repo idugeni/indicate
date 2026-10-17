@@ -12,8 +12,6 @@ const originalEnv = { ...process.env };
 
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL = 'https://dasbor.example/';
-  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://contoh.supabase.co';
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'kunci-publik-cukup-panjang';
 });
 
 afterEach(() => {

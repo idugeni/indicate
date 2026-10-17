@@ -233,7 +233,7 @@ describe('Dashboard workspace', () => {
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('mt-auto');
     expect(footer?.className).toContain('pt-8');
-    expect(screen.getByText('Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash')).toBeDefined();
+    expect(screen.getByText('Next.js 16 · Neon · Better Auth · Drizzle · Cloudflare · Upstash')).toBeDefined();
   });
 
   it('hides stale infrastructure content when switching modules', async () => {

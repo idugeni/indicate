@@ -12,7 +12,7 @@ export interface OperationSample {
   readonly route: string;
   /** Operation within the route, e.g. `http`, `redis.get`, `db:faqs`. */
   readonly operation: string;
-  /** Provider dimension, e.g. `vercel`, `upstash-redis`, `supabase-postgres`. */
+  /** Provider dimension, e.g. `vercel`, `upstash-redis`, `neon-postgres`. */
   readonly provider: string;
   /** Model dimension for AI operations, e.g. `gemini-2.5-flash`; omitted otherwise. */
   readonly model?: string | undefined;

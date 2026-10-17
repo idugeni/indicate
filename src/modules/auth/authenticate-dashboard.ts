@@ -2,12 +2,8 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { cookies } from 'next/headers';
 
 import type { ActorContext, AuthorizedTenantActorContext } from '@/core/operation-context';
-import { getPublicConfig } from '@/core/config/public-config';
 import { UuidGenerator } from '@/core/system/uuid-generator';
-import {
-  createHardenedSupabaseCookieStore,
-  createSupabaseSsrAuthAdapter,
-} from '@/integrations/supabase/supabase-ssr';
+import { getVerifiedNeonIdentity } from '@/integrations/neon-auth/identity';
 import type * as schema from '@/data/schema';
 import { DASHBOARD_PERMISSION_NAMES } from '@/modules/dashboard/permissions';
 import { PUBLISHING_PERMISSION_NAMES } from '@/modules/publishing/permissions';
@@ -37,7 +33,7 @@ export interface DashboardUser {
  * @param cookieStore - Request cookie store carrying either credential.
  * @param requestId - Correlation id stamped onto key-derived actors.
  * @returns Authenticated user, or null when neither credential verifies.
- * @remarks Supabase cookie sessions and dashboard access-key bearers are equal
+ * @remarks Neon sessions and dashboard access-key bearers are equal
  * citizens here: every dashboard route authenticates through this function, so
  * no route carries its own second auth branch.
  */
@@ -46,18 +42,7 @@ export async function authenticateDashboardUser(
   cookieStore: CookieStore,
   requestId: string,
 ): Promise<DashboardUser | null> {
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl,
-    publishableKey: publicConfig.supabasePublishableKey,
-    cookies: createHardenedSupabaseCookieStore({
-      getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })),
-      set: (name, value, options) => {
-        cookieStore.set(name, value, options);
-      },
-    }),
-  });
-  const identity = await auth.verifyCookieSession();
+  const identity = await getVerifiedNeonIdentity();
   if (identity !== null) {
     const authorization = new DrizzleAuthorizationRepository(database);
     const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());

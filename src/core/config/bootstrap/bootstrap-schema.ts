@@ -17,8 +17,8 @@ const INDICATE_NAMESPACE_PREFIXES = [
   'DASHBOARD_',
   'API_',
   'WEBHOOK_',
-  'NEXT_PUBLIC_SUPABASE_',
-  'SUPABASE_',
+  'NEON_AUTH_',
+  'NEON_',
   'DATABASE_',
   'CLOUDFLARE_',
   'VERCEL_',
@@ -36,10 +36,9 @@ const INDICATE_NAMESPACE_PREFIXES = [
 ] as const;
 
 /**
- * Exact third-party keys sharing an owned prefix. `neon env pull` writes
- * `DATABASE_URL`/`DATABASE_URL_UNPOOLED` next to the Supabase `DATABASE_*`
- * contract; exempting the exact names (never the prefix) keeps typo-catching
- * for real `DATABASE_*` keys intact.
+ * Exact third-party keys emitted by `neon env pull`. These are exempt from the
+ * strict `DATABASE_*` namespace check; application code uses explicit pooled
+ * and direct URL variables so connection selection is deterministic.
  */
 const NEON_MANAGED_KEYS: ReadonlySet<string> = new Set(['DATABASE_URL', 'DATABASE_URL_UNPOOLED']);
 
@@ -49,11 +48,10 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'API_HOST',
   'WEBHOOK_HOST',
   'STATUS_HOST',
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'NEON_AUTH_BASE_URL',
+  'NEON_AUTH_COOKIE_SECRET',
   'DEFAULT_LOCALE',
   'SITE_DEFAULT_ASSET_URL',
-  'SUPABASE_PROJECT_REF',
   'DATABASE_POOL_URL',
   'DATABASE_DIRECT_URL',
   'CLOUDFLARE_API_TOKEN',
@@ -77,7 +75,6 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'RESEND_API_KEY',
   'RESEND_DEFAULT_FROM',
   'RESEND_WEBHOOK_SECRET',
-  'RESEND_SMTP_PASS',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
   'GOOGLE_REFRESH_TOKEN',
@@ -86,6 +83,7 @@ const BOOTSTRAP_ALLOWED_KEYS = new Set<string>([
   'GOOGLE_SITE_VERIFICATION',
   'INDEXNOW_KEY',
   'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+  'TURNSTILE_AUTH_SECRET',
   'NEXT_PUBLIC_DISQUS_SHORTNAME',
   'TURNSTILE_REPORT_SECRETS',
 ]);
@@ -156,36 +154,6 @@ const turnstileReportSecrets = z
   });
 const httpsUrlSchema = z.url().refine((value) => value.startsWith('https://'), 'https_required');
 
-const SUPABASE_POOLER_HOST_SUFFIX = '.pooler.supabase.com';
-const SUPABASE_TENANT_USER_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_-]*\.(.+)$/;
-
-/**
- * Decide whether a Postgres URL can only reach one specific Supabase project.
- *
- * @param url - Parsed `postgresql://` URL from the environment.
- * @param projectRef - Supabase project ref that every other URL in the env must agree on.
- * @returns True when the URL cannot address a different project.
- * @remarks Two shapes qualify, and both bind the project as tightly as the other:
- *
- * - `db.<ref>.supabase.co`, whose hostname is per-project DNS.
- * - `….pooler.supabase.com` with a `<user>.<ref>` username, because Supavisor
- *   resolves the tenant from that suffix and refuses any other one, so the
- *   username rather than the shared pooler hostname is what binds the project.
- *
- * The second shape is not a convenience. Supabase publishes a project's direct
- * host as AAAA-only for some regions, so on an IPv4-only network
- * `db.<ref>.supabase.co` cannot resolve at all, and port 5432 on the pooler is
- * the supported way in. Requiring the ref inside the username is what keeps that
- * path from becoming a way to point the app at a stranger's database: a URL
- * without the ref suffix is rejected here rather than at connect time.
- */
-function supabaseDatabaseTargetsProject(url: URL, projectRef: string): boolean {
-  if (url.hostname === `db.${projectRef}.supabase.co`) return true;
-  if (!url.hostname.endsWith(SUPABASE_POOLER_HOST_SUFFIX)) return false;
-  const tenant = SUPABASE_TENANT_USER_PATTERN.exec(decodeURIComponent(url.username));
-  return tenant !== null && tenant[1] === projectRef;
-}
-
 const bootstrapSchema = z
   .object({
     NODE_ENV: z.enum(BOOTSTRAP_ENVIRONMENTS).default('development'),
@@ -194,9 +162,10 @@ const bootstrapSchema = z
     WEBHOOK_HOST: hostnameSchema.default('webhook.indicate.website'),
     STATUS_HOST: hostnameSchema.default('status.indicate.website'),
 
-    NEXT_PUBLIC_SUPABASE_URL: httpsUrlSchema,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(8).optional(),
+    NEON_AUTH_BASE_URL: httpsUrlSchema,
+    NEON_AUTH_COOKIE_SECRET: z.string().min(32, 'neon_auth_cookie_secret_too_short'),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    TURNSTILE_AUTH_SECRET: secretSchema.optional(),
     /**
      * Network Disqus forum. Optional so a deployment without comments still
      * boots; present but malformed is refused, because the value picks the
@@ -209,7 +178,6 @@ const bootstrapSchema = z
     TURNSTILE_REPORT_SECRETS: turnstileReportSecrets.optional(),
     DEFAULT_LOCALE: z.string().regex(/^[a-z]{2}-[A-Z]{2}$/).default('id-ID'),
     SITE_DEFAULT_ASSET_URL: httpsUrlSchema.default('https://indicate.website/assets/default.png'),
-    SUPABASE_PROJECT_REF: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
     DATABASE_POOL_URL: z.url({ protocol: /^postgresql$/ }),
     DATABASE_DIRECT_URL: z.url({ protocol: /^postgresql$/ }),
 
@@ -244,7 +212,6 @@ const bootstrapSchema = z
     RESEND_API_KEY: secretSchema.optional(),
     RESEND_DEFAULT_FROM: z.string().min(3).max(320).optional(),
     RESEND_WEBHOOK_SECRET: secretSchema.optional(),
-    RESEND_SMTP_PASS: secretSchema.optional(),
     GENERIC_WEBHOOK_SECRET: secretSchema,
     CRON_SECRET: secretSchema,
     GOOGLE_SITE_VERIFICATION: z
@@ -302,17 +269,24 @@ const bootstrapSchema = z
     }
   })
   .superRefine((value, context) => {
-    const projectRef = value.SUPABASE_PROJECT_REF;
-    if (projectRef !== undefined) {
-      const supabaseHost = new URL(value.NEXT_PUBLIC_SUPABASE_URL).hostname;
-      if (supabaseHost !== `${projectRef}.supabase.co`) {
-        context.addIssue({ code: 'custom', path: ['NEXT_PUBLIC_SUPABASE_URL'], message: 'supabase_project_identity_mismatch' });
+    if (value.NODE_ENV === 'production') {
+      if (value.NEXT_PUBLIC_TURNSTILE_SITE_KEY !== undefined && (
+        value.TURNSTILE_AUTH_SECRET === undefined ||
+        value.TURNSTILE_AUTH_SECRET.length < 24 ||
+        PLACEHOLDER_SECRET_PATTERN.test(value.TURNSTILE_AUTH_SECRET)
+      )) {
+        context.addIssue({ code: 'custom', path: ['TURNSTILE_AUTH_SECRET'], message: 'production_turnstile_auth_secret_required' });
       }
-      if (!supabaseDatabaseTargetsProject(new URL(value.DATABASE_POOL_URL), projectRef)) {
-        context.addIssue({ code: 'custom', path: ['DATABASE_POOL_URL'], message: 'supabase_project_identity_mismatch' });
+      const pooledHost = new URL(value.DATABASE_POOL_URL).hostname;
+      const directHost = new URL(value.DATABASE_DIRECT_URL).hostname;
+      if (!pooledHost.endsWith('.neon.tech')) {
+        context.addIssue({ code: 'custom', path: ['DATABASE_POOL_URL'], message: 'neon_database_host_required' });
       }
-      if (!supabaseDatabaseTargetsProject(new URL(value.DATABASE_DIRECT_URL), projectRef)) {
-        context.addIssue({ code: 'custom', path: ['DATABASE_DIRECT_URL'], message: 'supabase_project_identity_mismatch' });
+      if (!directHost.endsWith('.neon.tech')) {
+        context.addIssue({ code: 'custom', path: ['DATABASE_DIRECT_URL'], message: 'neon_database_host_required' });
+      }
+      if (value.NEON_AUTH_COOKIE_SECRET.length < 32 || PLACEHOLDER_SECRET_PATTERN.test(value.NEON_AUTH_COOKIE_SECRET)) {
+        context.addIssue({ code: 'custom', path: ['NEON_AUTH_COOKIE_SECRET'], message: 'production_secret_not_bounded' });
       }
     }
   });
@@ -335,11 +309,9 @@ export interface BootstrapConfig {
     readonly googleSiteVerification: string | null;
     readonly indexnowKey: string | null;
   }>;
-  readonly supabase: Readonly<{
-    readonly projectRef?: string;
-    readonly url: string;
-    /** Public, client-safe publishable key (not a secret). */
-    readonly publishableKey: string;
+  readonly neonAuth: Readonly<{
+    readonly baseUrl: string;
+    readonly cookieSecret: SecretString;
   }>;
   readonly database: Readonly<{
     readonly pooledUrl: SecretString;
@@ -374,8 +346,6 @@ export interface BootstrapConfig {
     /** Resend credential pair; null when transactional email is unconfigured. */
     readonly resendApiKey: SecretString | null;
     readonly resendDefaultFrom: string | null;
-    /** Resend SMTP password for Supabase Auth mailer; null when auth email uses another provider. */
-    readonly resendSmtpPass: SecretString | null;
     /** Google OAuth client for owner tooling; null when unused. */
     readonly googleClientId: string | null;
     readonly googleClientSecret: SecretString | null;
@@ -384,6 +354,8 @@ export interface BootstrapConfig {
     readonly resendWebhookSecret: SecretString | null;
     readonly genericWebhookSecret: SecretString;
     readonly cronSecret: SecretString;
+    /** Siteverify secret for sign-in, signup, and account recovery challenges. */
+    readonly turnstileAuthSecret: SecretString | null;
     /** Siteverify secret per tenant report widget, keyed by site key; null when no widget is configured. */
     readonly turnstileReportSecrets: ReadonlyMap<string, SecretString> | null;
   }>;
@@ -399,7 +371,6 @@ export type BootstrapConfigResult =
   | { readonly success: false; readonly issues: readonly ConfigIssue[] };
 
 function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
-  const projectRef = value.SUPABASE_PROJECT_REF;
   return Object.freeze({
     environment: 'production' as const,
     schemaGateMode: 'live' as const,
@@ -416,10 +387,9 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       googleSiteVerification: value.GOOGLE_SITE_VERIFICATION ?? null,
       indexnowKey: value.INDEXNOW_KEY ?? null,
     }),
-    supabase: Object.freeze({
-      projectRef,
-      url: value.NEXT_PUBLIC_SUPABASE_URL,
-      publishableKey: value.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
+    neonAuth: Object.freeze({
+      baseUrl: value.NEON_AUTH_BASE_URL,
+      cookieSecret: SecretString.fromPlain(value.NEON_AUTH_COOKIE_SECRET),
     }),
     database: Object.freeze({
       pooledUrl: SecretString.fromPlain(value.DATABASE_POOL_URL),
@@ -449,13 +419,13 @@ function toBootstrapConfig(value: ParsedBootstrap): BootstrapConfig {
       neonSnapshotDatabaseUrl: value.NEON_SNAPSHOT_DATABASE_URL === undefined ? null : SecretString.fromPlain(value.NEON_SNAPSHOT_DATABASE_URL),
       resendApiKey: value.RESEND_API_KEY === undefined ? null : SecretString.fromPlain(value.RESEND_API_KEY),
       resendDefaultFrom: value.RESEND_DEFAULT_FROM ?? null,
-      resendSmtpPass: value.RESEND_SMTP_PASS === undefined ? null : SecretString.fromPlain(value.RESEND_SMTP_PASS),
       googleClientId: value.GOOGLE_CLIENT_ID ?? null,
       googleClientSecret: value.GOOGLE_CLIENT_SECRET === undefined ? null : SecretString.fromPlain(value.GOOGLE_CLIENT_SECRET),
       googleRefreshToken: value.GOOGLE_REFRESH_TOKEN === undefined ? null : SecretString.fromPlain(value.GOOGLE_REFRESH_TOKEN),
       resendWebhookSecret: value.RESEND_WEBHOOK_SECRET === undefined ? null : SecretString.fromPlain(value.RESEND_WEBHOOK_SECRET),
       genericWebhookSecret: SecretString.fromPlain(value.GENERIC_WEBHOOK_SECRET),
       cronSecret: SecretString.fromPlain(value.CRON_SECRET),
+      turnstileAuthSecret: value.TURNSTILE_AUTH_SECRET === undefined ? null : SecretString.fromPlain(value.TURNSTILE_AUTH_SECRET),
       turnstileReportSecrets: value.TURNSTILE_REPORT_SECRETS === undefined
         ? null
         : new Map(Object.entries(value.TURNSTILE_REPORT_SECRETS).map(([sitekey, secret]) => [sitekey, SecretString.fromPlain(secret)])),

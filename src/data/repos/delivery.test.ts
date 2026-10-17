@@ -435,7 +435,7 @@ describe('readBridgeArticles', () => {
       const repository = new DrizzleDeliveryRepository({ execute: async () => rows } as never, 'https://portal.example/brand/default.jpg', null);
       await expect(repository.findActiveSitesByExactHostname('portal.example')).resolves.toHaveLength(1);
       expect(samples()).toHaveLength(1);
-      expect(samples()[0]).toMatchObject({ route: 'delivery', operation: 'delivery.tenant-resolve', provider: 'supabase-postgres', dbQueries: 1, tenantId: 'o1' });
+      expect(samples()[0]).toMatchObject({ route: 'delivery', operation: 'delivery.tenant-resolve', provider: 'neon-postgres', dbQueries: 1, tenantId: 'o1' });
       expect(JSON.stringify(samples())).not.toContain('portal.example');
     });
 

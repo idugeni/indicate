@@ -13,7 +13,7 @@ export type ConfigMutationKind =
   | 'site_settings';
 
 export interface PersistedSharedDeploymentRow {
-  readonly supabaseProjectRef: string;
+  readonly neonProjectId: string;
   readonly cloudflareAccountId: string;
   readonly vercelProjectId: string;
   readonly vercelTeamId: string;

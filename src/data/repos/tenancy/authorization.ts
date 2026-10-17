@@ -28,7 +28,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${verifiedAuthUserId}, true)`);
       const localUser = await transaction.query.users.findFirst({
         columns: { id: true },
-        where: and(eq(users.authUserId, verifiedAuthUserId), eq(users.status, 'active')),
+        where: and(or(eq(users.authUserId, verifiedAuthUserId), eq(users.neonAuthUserId, verifiedAuthUserId)), eq(users.status, 'active')),
       });
       if (localUser === undefined) return [];
       await transaction.execute(sql`SELECT set_config('app.actor_id', ${localUser.id}, true)`);
@@ -76,10 +76,10 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
   async findLocalUserByAuthIdentity(authUserId: string) {
     return this.database.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${authUserId}, true)`);
-      const user = await transaction.query.users.findFirst({ where: eq(users.authUserId, authUserId) });
+      const user = await transaction.query.users.findFirst({ where: or(eq(users.authUserId, authUserId), eq(users.neonAuthUserId, authUserId)) });
       return user === undefined ? null : {
         id: user.id,
-        authUserId: user.authUserId,
+        authUserId,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
         status: user.status,
@@ -87,10 +87,129 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
     });
   }
 
-  async linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null }) {
+  async linkLocalUser(input: { readonly id: string; readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null; readonly emailVerified: true }) {
+    if (input.email !== null && input.emailVerified !== true) {
+      throw new Error('Verified email is required to link an existing local account');
+    }
+
     return this.database.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${input.authUserId}, true)`);
-      await transaction.insert(users).values({ ...input, status: 'active' }).onConflictDoUpdate({
+
+      // Existing local users keep their stable local id and memberships. A new
+      // Neon identity may bind by email only after Neon Auth confirms the email.
+      const matches = input.email === null ? [] : await transaction.execute<{
+        id: string;
+        auth_user_id: string;
+        neon_auth_user_id: string | null;
+        display_name: string;
+        avatar_url: string | null;
+        status: string;
+      }>(sql`
+        SELECT id::text, auth_user_id::text, neon_auth_user_id::text,
+               display_name, avatar_url, status::text
+        FROM public.users
+        WHERE lower(btrim(email)) = lower(btrim(${input.email}))
+        ORDER BY id
+        LIMIT 2
+        FOR UPDATE
+      `);
+
+      if (matches.length > 1) {
+        throw new Error('Verified email maps to multiple local accounts; manual reconciliation is required');
+      }
+
+      const existing = matches[0];
+      if (existing !== undefined) {
+        if (existing.status !== 'active') {
+          throw new Error('The matching local account is not active');
+        }
+        if (existing.neon_auth_user_id !== null && existing.neon_auth_user_id !== input.authUserId) {
+          throw new Error('The local account is already linked to a different Neon identity');
+        }
+
+        if (existing.auth_user_id === input.authUserId || existing.neon_auth_user_id === input.authUserId) {
+          await transaction.execute(sql`
+            UPDATE public.users
+            SET display_name = ${input.displayName},
+                avatar_url = ${input.avatarUrl},
+                updated_at = now()
+            WHERE id = ${existing.id}::uuid
+          `);
+        } else {
+          await transaction.execute(sql`SELECT set_config('app.neon_auth_identity_link', 'on', true)`);
+          const linked = await transaction.execute<{
+            id: string;
+            display_name: string;
+            avatar_url: string | null;
+            status: string;
+          }>(sql`
+            UPDATE public.users
+            SET neon_auth_user_id = ${input.authUserId}::uuid,
+                display_name = ${input.displayName},
+                avatar_url = ${input.avatarUrl},
+                updated_at = now()
+            WHERE id = ${existing.id}::uuid
+              AND auth_user_id = ${existing.auth_user_id}::uuid
+              AND neon_auth_user_id IS NULL
+              AND status = 'active'
+            RETURNING id::text, display_name, avatar_url, status::text
+          `);
+          if (linked.length !== 1) {
+            throw new Error('Local account identity changed during Neon linkage');
+          }
+
+          await transaction.execute(sql`
+            INSERT INTO public.identity_link_audit_logs (
+              id, local_user_id, legacy_auth_user_id, neon_auth_user_id, request_id, linked_at
+            ) VALUES (
+              gen_random_uuid(), ${existing.id}::uuid, ${existing.auth_user_id}::uuid,
+              ${input.authUserId}::uuid, ${crypto.randomUUID()}, now()
+            )
+          `);
+
+          const activeMemberships = await transaction.execute<{ organization_id: string }>(sql`
+            SELECT organization_id::text
+            FROM public.memberships
+            WHERE user_id = ${existing.id}::uuid AND status = 'active'
+            ORDER BY organization_id
+          `);
+          for (const membership of activeMemberships) {
+            await transaction.execute(sql`
+              INSERT INTO public.audit_logs (
+                organization_id, id, actor_type, actor_id, entry_point, action,
+                target_type, target_id, outcome, changed_fields, "before", "after",
+                request_id, occurred_at
+              ) VALUES (
+                ${membership.organization_id}::uuid, gen_random_uuid(), 'user',
+                ${existing.id}, 'api', 'auth_identity_linked', 'user',
+                ${existing.id}, 'succeeded', ARRAY['neon_auth_user_id']::text[],
+                ${JSON.stringify({ authUserId: existing.auth_user_id })}::jsonb,
+                ${JSON.stringify({ authUserId: input.authUserId })}::jsonb,
+                ${crypto.randomUUID()}, now()
+              )
+            `);
+          }
+        }
+
+        return {
+          id: existing.id,
+          authUserId: input.authUserId,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+          status: existing.status as 'active' | 'inactive' | 'archived',
+        };
+      }
+
+      // A genuinely new identity gets a new local user. It does not inherit
+      // any existing tenant membership merely by signing up.
+      await transaction.insert(users).values({
+        id: input.id,
+        authUserId: input.authUserId,
+        displayName: input.displayName,
+        avatarUrl: input.avatarUrl,
+        email: input.email,
+        status: 'active',
+      }).onConflictDoUpdate({
         target: users.authUserId,
         set: {
           displayName: input.displayName,
@@ -99,11 +218,13 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
           updatedAt: new Date(),
         },
       });
-      const user = await transaction.query.users.findFirst({ where: eq(users.authUserId, input.authUserId) });
+      const user = await transaction.query.users.findFirst({
+        where: or(eq(users.authUserId, input.authUserId), eq(users.neonAuthUserId, input.authUserId)),
+      });
       if (user === undefined) throw new Error('Local identity linkage failed');
       return {
         id: user.id,
-        authUserId: user.authUserId,
+        authUserId: input.authUserId,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
         status: user.status,
@@ -114,7 +235,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
   async getOwnProfile(authUserId: string) {
     return this.database.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${authUserId}, true)`);
-      const user = await transaction.query.users.findFirst({ where: and(eq(users.authUserId, authUserId), eq(users.status, 'active')) });
+      const user = await transaction.query.users.findFirst({ where: and(or(eq(users.authUserId, authUserId), eq(users.neonAuthUserId, authUserId)), eq(users.status, 'active')) });
       if (user === undefined) return null;
       return {
         displayName: user.displayName,
@@ -136,7 +257,7 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
   }) {
     return this.database.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.auth_user_id', ${authUserId}, true)`);
-      const current = await transaction.query.users.findFirst({ where: and(eq(users.authUserId, authUserId), eq(users.status, 'active')) });
+      const current = await transaction.query.users.findFirst({ where: and(or(eq(users.authUserId, authUserId), eq(users.neonAuthUserId, authUserId)), eq(users.status, 'active')) });
       if (current === undefined) return null;
       const set: Partial<{ displayName: string; bio: string | null; locale: string | null; timezone: string | null; avatarUrl: string | null; updatedAt: Date }> = { updatedAt: new Date() };
       if (patch.displayName !== undefined) set.displayName = patch.displayName;
@@ -144,12 +265,12 @@ export class DrizzleAuthorizationRepository implements AuthorizationRepository {
       if (patch.locale !== undefined) set.locale = patch.locale;
       if (patch.timezone !== undefined) set.timezone = patch.timezone;
       if (patch.avatarUrl !== undefined) set.avatarUrl = patch.avatarUrl;
-      await transaction.update(users).set(set).where(eq(users.authUserId, authUserId));
-      const user = await transaction.query.users.findFirst({ where: eq(users.authUserId, authUserId) });
+      await transaction.update(users).set(set).where(or(eq(users.authUserId, authUserId), eq(users.neonAuthUserId, authUserId)));
+      const user = await transaction.query.users.findFirst({ where: or(eq(users.authUserId, authUserId), eq(users.neonAuthUserId, authUserId)) });
       if (user === undefined) throw new Error('Local identity update failed');
       return {
         id: user.id,
-        authUserId: user.authUserId,
+        authUserId,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
         status: user.status,

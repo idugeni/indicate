@@ -4,10 +4,10 @@
 > **Owner:** Platform team.
 > **Related:** [migrations](migrations.md) · [domains](domains.md)
 
-## 1. Tulis ke Supabase via MCP: selalu transaksi eksplisit + konteks tenant
+## 1. Tulis ke PostgreSQL Neon: selalu transaksi eksplisit + konteks tenant
 
 RLS dipaksa (`FORCE`) di tabel tenant dan koneksi berjalan lewat pooler
-(Supavisor) dengan GUC sisa sesi lain. Akibatnya baca/tulis tanpa konteks
+(Neon pooler) dengan GUC sisa sesi lain. Akibatnya baca/tulis tanpa konteks
 tidak deterministik: baris yang ada bisa terbaca hilang, FK gagal padahal
 baris ada.
 

@@ -60,7 +60,7 @@ export class DrizzleContentAdminRepository {
    * a table outgrows its ceiling, add keyset pagination to that editor tab
    * instead of raising the number; see `AGENTS.md` §"Database access & egress".
    *
-   * @param authUserId - Supabase Auth user id backing the platform grant.
+   * @param authUserId - Neon Auth user id backing the platform grant.
    * @param localUserId - Local user id checked against the platform permission.
    * @returns Quotes, FAQs, showcase entries, contact channels, and template presets.
    */

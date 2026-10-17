@@ -15,7 +15,7 @@ export const RUNTIME_CONFIG_SNAPSHOT_TTL_SECONDS = 300;
  * with the shared TTL pinned to the 300-second in-process entry, every window
  * fell through to a full read of `read_runtime_config_active_sites()` plus
  * `read_runtime_config_site_settings()` — 3.65 MB on the wire for 4,422 sites,
- * about 2.2 GB/day against a 5 GB monthly Supabase Free egress quota. A hit
+ * about 2.2 GB/day against a 5 GB monthly Neon database transfer and usage limits. A hit
  * slides this window forward, so the full read now happens once per committed
  * revision instead of once per window. Two further guards keep the monthly
  * Upstash bandwidth inside quota: the refresh re-adopts the in-process

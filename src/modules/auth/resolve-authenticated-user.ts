@@ -4,7 +4,7 @@ import type { IdentifierGenerator } from '@/core/system/ports';
 import type { Result } from '@/core/result';
 
 export async function resolveVerifiedLocalUser(
-  identity: { readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null },
+  identity: { readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null; readonly emailVerified: true },
   repository: AuthorizationRepository,
   identifiers: IdentifierGenerator,
 ): Promise<Result<LocalUserIdentity, 'IDENTITY_UNAVAILABLE'>> {
@@ -15,6 +15,7 @@ export async function resolveVerifiedLocalUser(
     displayName: identity.displayName,
     avatarUrl: identity.avatarUrl,
     email: identity.email,
+    emailVerified: identity.emailVerified,
   });
   return localUser.status === 'active'
     ? { ok: true, value: localUser }
@@ -22,7 +23,7 @@ export async function resolveVerifiedLocalUser(
 }
 
 export async function resolveVerifiedUserOrganizations(
-  identity: { readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null },
+  identity: { readonly authUserId: string; readonly displayName: string; readonly avatarUrl: string | null; readonly email: string | null; readonly emailVerified: true },
   repository: AuthorizationRepository,
   identifiers: IdentifierGenerator,
 ): Promise<Result<{ readonly localUser: LocalUserIdentity; readonly organizations: readonly AccessibleOrganization[] }, 'IDENTITY_UNAVAILABLE'>> {

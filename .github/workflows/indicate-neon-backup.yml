@@ -1,0 +1,67 @@
+name: INDICATE Neon Backup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    env:
+      NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_BACKUP_URL }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate backup secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${NEON_DATABASE_URL:-}" ]]; then
+            echo "::error::NEON_DATABASE_BACKUP_URL secret is empty or unavailable. Set it to the Neon production database connection URL."
+            exit 1
+          fi
+          if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+            echo "::error::BACKUP_ENCRYPTION_KEY secret is empty or unavailable."
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client and archive tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client zip unzip
+
+      - name: Dump Neon application database
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_dump --dbname="$NEON_DATABASE_URL" --no-owner --no-privileges --format=plain --file=neon-database.sql
+          test -s neon-database.sql
+
+      - name: Package, encrypt, and verify backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p indicate-neon-backup
+          mv neon-database.sql indicate-neon-backup/
+          printf 'Project: INDICATE\nProvider: Neon PostgreSQL\nGenerated (UTC): %s\nFormat: pg_dump logical SQL backup; application migrations are versioned in the repository.\n' "$(date -u +%FT%TZ)" > indicate-neon-backup/README.txt
+          (cd indicate-neon-backup && sha256sum neon-database.sql > SHA256SUMS)
+          zip -qr indicate-neon-backup.zip indicate-neon-backup
+          unzip -t indicate-neon-backup.zip
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 -in indicate-neon-backup.zip -out indicate-neon-backup.zip.enc -pass env:BACKUP_ENCRYPTION_KEY
+          test -s indicate-neon-backup.zip.enc
+          sha256sum indicate-neon-backup.zip.enc
+
+      - name: Upload encrypted backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: indicate-neon-backup-encrypted
+          path: indicate-neon-backup.zip.enc
+          retention-days: 1
+          if-no-files-found: error

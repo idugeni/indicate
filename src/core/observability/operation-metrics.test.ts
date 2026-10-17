@@ -100,7 +100,7 @@ describe('recordOperation aggregation', () => {
 
   it('menandai lapisan byte agar wire dan proyeksi tidak dijumlah silang', () => {
     recordOperation({ route: 'cache', operation: 'redis.set', provider: 'upstash-redis', durationMs: 5, payloadBytes: 100, bytesKind: 'wire' });
-    recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'supabase-postgres', durationMs: 50, payloadBytes: 100, bytesKind: 'projection' });
+    recordOperation({ route: 'dashboard', operation: 'cache.dashboard', provider: 'neon-postgres', durationMs: 50, payloadBytes: 100, bytesKind: 'projection' });
     flushOperationMetrics(1_060_000);
     const { operations } = rollupContext();
     expect(operations.find((entry) => entry.operation === 'redis.set')).toMatchObject({ bytesKinds: ['wire'] });

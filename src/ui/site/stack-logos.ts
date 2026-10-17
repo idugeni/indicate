@@ -13,7 +13,7 @@ export const STACK_LOGOS: readonly StackLogo[] = Object.freeze([
   { name: 'Base UI', file: '/brand/stack/base-ui.svg', role: 'Primitif' },
   { name: 'TypeScript', file: '/brand/stack/typescript.svg', role: 'Bahasa' },
   { name: 'PostgreSQL', file: '/brand/stack/postgresql.svg', role: 'Database' },
-  { name: 'Supabase', file: '/brand/stack/supabase.svg', role: 'Database & Auth' },
+  { name: 'Neon', file: '/brand/stack/neon.svg', role: 'PostgreSQL & Auth' },
   { name: 'Drizzle ORM', file: '/brand/stack/drizzle.svg', role: 'ORM' },
   { name: 'Zod', file: '/brand/stack/zod.svg', role: 'Validasi' },
   { name: 'Cloudflare', file: '/brand/stack/cloudflare.svg', role: 'DNS & R2' },

@@ -21,7 +21,7 @@ interface ActorContextBase {
 export type ActorContext =
   | (ActorContextBase & {
     readonly actorType: 'user';
-    /** Supabase Auth identity obtained from server-side session verification, never request input. */
+    /** Neon Auth identity obtained from server-side session verification, never request input. */
     readonly verifiedAuthUserId: string;
   })
   | (ActorContextBase & {
