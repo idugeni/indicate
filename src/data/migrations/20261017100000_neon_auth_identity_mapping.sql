@@ -202,7 +202,7 @@ RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public, indicate_private
-AS $
+AS $$
 DECLARE
   v_after integer;
   v_revision bigint;
