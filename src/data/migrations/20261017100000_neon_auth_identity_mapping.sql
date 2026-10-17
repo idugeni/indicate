@@ -275,7 +275,7 @@ REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;--> statement-br
 GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:84c2360efc2e076ad9e0fb4577427c73968dfa23d69dbebdeeab949233ff8041');
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:716cb110a1490e18e342879a063272341fb7817cbab2b7ca51c35aef0879ac0a');
  THEN s.neon_project_id ELSE p_supabase_project_ref END,
          supabase_project_ref = CASE WHEN p_supabase_project_ref ~ '^[a-z0-9]{20}
          vercel_project_id = p_vercel_project_id,
