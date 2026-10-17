@@ -49,7 +49,7 @@ export const runtimeConfigRevisions = pgTable('runtime_config_revisions', {
 /** Singleton deployment metadata; fixed key constrains to one row, allowlisted non-secret IDs only. */
 export const sharedDeploymentConfig = pgTable('shared_deployment_config', {
   id: text('id').primaryKey(),
-  neonProjectId: text('supabase_project_ref').notNull(),
+  neonProjectId: text('neon_project_id').notNull(),
   cloudflareAccountId: text('cloudflare_account_id').notNull(),
   vercelProjectId: text('vercel_project_id').notNull(),
   vercelTeamId: text('vercel_team_id').notNull(),
