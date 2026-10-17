@@ -13,7 +13,7 @@
 -- whose body was edited after its digest was written is caught rather than
 -- silently trusted.
 --
--- Reviewed sources, in journal order (290 migrations):
+-- Reviewed sources, in journal order (291 migrations):
 --   01  20260903000000_core_schema  ledger sha256:f7163225de73270a59d8675e2d44f0ea9706a96a01bde339f36b487e65218dc0
 --   02  20260903000500_security  ledger sha256:99d793ebab12f68ad323375409cef6cf7ef60460e36ff13d490173c18698b244
 --   03  20260903001000_publisher_actor_constraints  ledger sha256:3aa4a6b1ff287d891612bab6f7334887e3def437124c198b7766220177b806e2
@@ -304,6 +304,7 @@
 --   288  20261013110000_global_category_tenant_bindings  ledger sha256:f2bf88ab3ff9207a2b12c6e2a1e586d27dacc5cad6e196ba05aee8c182e0b285
 --   289  20261017100000_neon_auth_identity_mapping  ledger sha256:557678c68159d2c241d12dc0acb9597dfde6554e379c71010d702271a06cf5ad
 --   290  20261017120000_neon_runtime_login_policies  ledger sha256:c3aa6c29858a7b42704d1122ba53227f2e7d37b5d7931abb5a458a780902f4cd
+--   291  20261017131000_neon_runtime_config_projection  ledger sha256:f1466c393dceda8c651b39b135c65d45078a927023854df91bf329da0ac384fe
 
 BEGIN;
 
@@ -24955,4 +24956,46 @@ INSERT INTO public.indicate_schema_migrations(version, name, checksum)
 VALUES (289, 'neon_runtime_login_policies', 'sha256:89a8d2f98d073d4a1fc734e806a8c092d048042146ded105ee0b5d6daf5295b3');
 
 INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('c3aa6c29858a7b42704d1122ba53227f2e7d37b5d7931abb5a458a780902f4cd', 1792242000000);
+
+-- ----------------------------------------------------------------------
+-- 20261017131000_neon_runtime_config_projection
+-- ----------------------------------------------------------------------
+-- Remove the legacy Supabase project reference from the runtime projection
+-- after the Neon deployment is active. The table column remains temporarily
+-- for rollback evidence; the application only consumes neon_project_id.
+DROP FUNCTION indicate_private.read_runtime_config_shared();
+CREATE FUNCTION indicate_private.read_runtime_config_shared()
+RETURNS TABLE (
+  neon_project_id text,
+  cloudflare_account_id text,
+  vercel_project_id text,
+  vercel_team_id text,
+  vercel_production_target_hostname text,
+  r2_account_id text,
+  r2_bucket_name text,
+  upstash_redis_resource_id text,
+  version integer,
+  updated_at timestamptz
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, indicate_private
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT s.neon_project_id, s.cloudflare_account_id, s.vercel_project_id, s.vercel_team_id,
+         s.vercel_production_target_hostname, s.r2_account_id, s.r2_bucket_name,
+         s.upstash_redis_resource_id, s.version, s.updated_at
+  FROM public.shared_deployment_config AS s
+  LIMIT 1;
+END
+$$;
+REVOKE ALL ON FUNCTION indicate_private.read_runtime_config_shared() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime;
+GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime_login;
+INSERT INTO public.indicate_schema_migrations(version, name, checksum)
+VALUES (290, 'neon_runtime_config_projection', 'sha256:1d802bbecf62881320d93a6049be54af2b9bd4861626bda7f94896a16952b57a');
+
+INSERT INTO drizzle."__drizzle_migrations" ("hash", "created_at") VALUES ('f1466c393dceda8c651b39b135c65d45078a927023854df91bf329da0ac384fe', 1792242600000);
 COMMIT;

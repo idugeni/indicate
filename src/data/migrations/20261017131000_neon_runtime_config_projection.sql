@@ -33,4 +33,4 @@ REVOKE ALL ON FUNCTION indicate_private.read_runtime_config_shared() FROM PUBLIC
 GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.read_runtime_config_shared() TO indicate_runtime_login;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (290, 'neon_runtime_config_projection', 'sha256:0000000000000000000000000000000000000000000000000000000000000000');
+VALUES (290, 'neon_runtime_config_projection', 'sha256:1d802bbecf62881320d93a6049be54af2b9bd4861626bda7f94896a16952b57a');
