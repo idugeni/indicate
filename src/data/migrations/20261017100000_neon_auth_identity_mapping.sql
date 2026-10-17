@@ -270,4 +270,4 @@ REVOKE ALL ON TABLE public.identity_link_audit_logs FROM PUBLIC;--> statement-br
 GRANT INSERT ON TABLE public.identity_link_audit_logs TO indicate_runtime;--> statement-breakpoint
 
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (288, 'neon_auth_identity_mapping', 'sha256:8a32880a92f365c79835c3e2ef7c0a52d97636f556b708be16d7667ec4fc0064');
+VALUES (288, 'neon_auth_identity_mapping', 'sha256:045e46d1c5903c795bbe0a92748d48a1fc71f12d8bc50641e6d074787bc85f35');
