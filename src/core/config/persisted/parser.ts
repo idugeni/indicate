@@ -2,7 +2,7 @@ import { persistedReadModelSchema, type ParsedPersistedReadModel } from '@/core/
 import type { PersistedRuntimeConfigReadModel, RateLimitEndpointClass } from '@/core/config/persisted/read-model';
 
 export interface SharedDeploymentConfig {
-  readonly supabaseProjectRef: string;
+  readonly neonProjectId: string;
   readonly cloudflareAccountId: string;
   readonly vercelProjectId: string;
   readonly vercelTeamId: string;
