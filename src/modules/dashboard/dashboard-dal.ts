@@ -22,7 +22,7 @@ import { DrizzleAuthorizationRepository } from '@/data/repos/tenancy/authorizati
 import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { UuidGenerator } from '@/core/system/uuid-generator';
 import { buildPageviewKey } from '@/modules/site/pageview-contract';
-import type { VerifiedNeonIdentity } from '@/integrations/neon-auth/identity';
+import type { VerifiedAuthIdentity, VerifiedNeonIdentity } from '@/integrations/neon-auth/identity';
 import type { AuthorizedTenantActorContext } from '@/core/operation-context';
 
 /** Snapshot cache keyed by (org, actor, sorted perms); failures throw so only successes cache (60s TTL). */
@@ -361,7 +361,7 @@ export async function fetchCachedAnalytics(
  * @param preResolved - Local user plus membership already resolved by the caller; skips duplicate lookups.
  * @returns Dashboard core snapshot, or null so the client falls back to live fetch.
  */
-export async function getDashboardSnapshot(organizationId: string, identity: VerifiedNeonIdentity, preResolved?: ResolvedDashboardIdentity): Promise<DashboardSnapshot | null> {
+export async function getDashboardSnapshot(organizationId: string, identity: VerifiedAuthIdentity, preResolved?: ResolvedDashboardIdentity): Promise<DashboardSnapshot | null> {
   try {
     let actorId: string;
     let verifiedAuthUserId: string;
@@ -374,10 +374,14 @@ export async function getDashboardSnapshot(organizationId: string, identity: Ver
       permissions = [...preResolved.membership.orgPermissions, ...preResolved.membership.platformPermissions].sort();
       regionScopeId = preResolved.membership.regionId;
     } else {
+      // Access-key sessions supply a pre-resolved local actor above. A provider
+      // lookup without that context must carry the verified-email assertion.
+      if (!('emailVerified' in identity) || identity.emailVerified !== true) return null;
+      const verifiedIdentity = identity as VerifiedNeonIdentity;
       const context = await getServerRuntimeContext();
       const runtime = getSharedRuntimeDatabase(context.bootstrap);
       const authorization = new DrizzleAuthorizationRepository(runtime.db);
-      const local = await resolveVerifiedLocalUser(identity, authorization, new UuidGenerator());
+      const local = await resolveVerifiedLocalUser(verifiedIdentity, authorization, new UuidGenerator());
       if (!local.ok) return null;
       const membership = await authorization.findActiveMembership(organizationId, local.value.id);
       if (membership === null || !membership.roleActive) return null;
