@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-import { getPublicConfig } from '@/core/config/public-config';
-import { createHardenedSupabaseCookieStore, createSupabaseSsrAuthAdapter } from '@/integrations/supabase/supabase-ssr';
+import { neonAuth } from '@/integrations/neon-auth/server';
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
 import { createNonDisclosingDenial } from '@/core/errors';
 import { renderClearedAccessKeyCookie } from '@/modules/auth/dashboard-access-keys/cookie';
@@ -10,42 +9,21 @@ import { withApiAccess } from '@/core/observability/api-access';
 import { resolveRequestId } from '@/core/observability/request-id';
 import { resolveSignOutDestination } from './route-helpers';
 
-function withSupabaseCookies(cookieStore: Awaited<ReturnType<typeof cookies>>) {
-  return createHardenedSupabaseCookieStore({
-    getAll: () => cookieStore.getAll().map(({ name, value }) => ({ name, value })),
-    set: (name, value, options) => {
-      cookieStore.set(name, value, options);
-    },
-  });
-}
-
-/**
- * Resolve the post-sign-out redirect target.
- *
- * @param rawNext - Raw next param, or null when absent.
- * @returns Sanitized path, defaulting to sign-in.
- */
-
 async function handlePOST(request: NextRequest) {
   const requestId = resolveRequestId(request);
   if (denyCrossSiteMutation(request)) {
     return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   }
+
   const cookieStore = await cookies();
-  const publicConfig = getPublicConfig(process.env);
-  const auth = createSupabaseSsrAuthAdapter({
-    url: publicConfig.supabaseUrl,
-    publishableKey: publicConfig.supabasePublishableKey,
-    cookies: withSupabaseCookies(cookieStore),
-  });
-  await auth.signOut();
+  await neonAuth.signOut();
   try {
     cookieStore.delete('indicate-access-key');
   } catch {
-    /* Cookie delete can fail during RSC render; header fallback below still clears it. */
+    /* Header fallback still clears the independently signed access-key cookie. */
   }
-  const rawNext = request.nextUrl.searchParams.get('next');
-  const destination = resolveSignOutDestination(rawNext);
+
+  const destination = resolveSignOutDestination(request.nextUrl.searchParams.get('next'));
   const response = NextResponse.redirect(new URL(destination, request.url), { status: 303 });
   response.headers.append('Set-Cookie', renderClearedAccessKeyCookie());
   return response;
