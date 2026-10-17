@@ -62,7 +62,7 @@ export function SignUpForm() {
         captchaToken === null ? undefined : { headers: { 'cf-turnstile-response': captchaToken } },
       );
       if (error) {
-        setError(error.message);
+        setError(error.message ?? 'Pendaftaran gagal. Periksa data akun dan coba lagi.');
         resetChallenge();
         setBusy(false);
         return;
