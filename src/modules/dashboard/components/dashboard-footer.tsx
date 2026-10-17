@@ -12,7 +12,7 @@ export function DashboardFooter() {
           © {year} Indicate · PT Sanca Phena Cakra
         </p>
         <p className="m-0 truncate font-mono text-[11px] tabular-nums text-paper-faint">
-          Next.js 16 · Supabase · Drizzle · Cloudflare · Upstash
+          Next.js 16 · Neon · Better Auth · Drizzle · Cloudflare · Upstash
         </p>
       </div>
     </footer>
