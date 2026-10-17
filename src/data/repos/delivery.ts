@@ -243,7 +243,7 @@ function recordDeliveryRead(
   recordOperation({
     route: 'delivery',
     operation,
-    provider: 'supabase-postgres',
+    provider: 'neon-postgres',
     ...(organizationId === null ? {} : { tenantId: organizationId }),
     durationMs,
     dbQueries,
