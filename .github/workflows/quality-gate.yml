@@ -116,6 +116,7 @@ jobs:
       UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
       GENERIC_WEBHOOK_SECRET: ${{ secrets.GENERIC_WEBHOOK_SECRET }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      # Required by shared runtime configuration during static prerender.
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
     steps:
       - uses: actions/checkout@v7
@@ -135,38 +136,32 @@ jobs:
             ${{ runner.os }}-nextjs-
       - name: Load verified Neon production configuration
         shell: bash
+        env:
+          CI_DATABASE_POOL_URL: ${{ secrets.CI_DATABASE_POOL_URL }}
+          CI_DATABASE_DIRECT_URL: ${{ secrets.CI_DATABASE_DIRECT_URL }}
+          NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
         run: |
           set -euo pipefail
-          api_list="$(curl --fail --silent --show-error \
-            --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
-            "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQkczC8kK")"
-          get_env_id() {
-            jq -er --arg key "$1" '.envs[] | select(.key == $key and (.target | index("production"))) | .id' <<< "$api_list" | head -n1
-          }
-          get_env_value() {
-            local key="$1"
-            local id
-            id="$(get_env_id "$key")"
-            curl --fail --silent --show-error \
-              --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
-              "https://api.vercel.com/v1/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env/$id?teamId=team_HvgOzoFV92X1vjzqQkczC8kK" \
-              | jq -er '.value'
-          }
-          pool_url="$(get_env_value CI_DATABASE_POOL_URL)"
-          direct_url="$(get_env_value CI_DATABASE_DIRECT_URL)"
-          auth_url="$(get_env_value NEON_AUTH_BASE_URL)"
-          [[ "$pool_url" == *"@ep-purple-sunset-b3ieqkb7-pooler.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI pool URL is not the verified Neon pooler"; exit 1; }
-          [[ "$direct_url" == *"@ep-purple-sunset-b3ieqkb7.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI direct URL is not the verified Neon endpoint"; exit 1; }
-          [[ "$pool_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI pool URL must include a non-empty username and password"; exit 1; }
-          [[ "$direct_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI direct URL must include a non-empty username and password"; exit 1; }
-          [[ "$pool_url" == *"indicate_runtime_login:"* ]] || { echo "::error::CI pool URL must use the least-privilege runtime login"; exit 1; }
-          [[ "$direct_url" == *"neondb_owner:"* ]] || { echo "::error::CI direct URL must use the migration-only owner login"; exit 1; }
-          [[ "$auth_url" == "https://ep-purple-sunset-b3ieqkb7.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth" ]] || { echo "::error::Neon Auth URL does not match production"; exit 1; }
+          # Sensitive Vercel variables cannot be read back through the Vercel API.
+          # Inject their production values from GitHub Actions Secrets instead.
+          pool_url="${CI_DATABASE_POOL_URL:-}"
+          direct_url="${CI_DATABASE_DIRECT_URL:-}"
+          auth_url="${NEON_AUTH_BASE_URL:-}"
+          [[ -n "$pool_url" ]] || { echo "::error::Missing GitHub Actions secret CI_DATABASE_POOL_URL" >&2; exit 1; }
+          [[ -n "$direct_url" ]] || { echo "::error::Missing GitHub Actions secret CI_DATABASE_DIRECT_URL" >&2; exit 1; }
+          [[ -n "$auth_url" ]] || { echo "::error::Missing GitHub Actions secret NEON_AUTH_BASE_URL" >&2; exit 1; }
+          [[ "$pool_url" == *"@ep-purple-sunset-b3ieqkb7-pooler.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI pool URL is not the verified Neon pooler" >&2; exit 1; }
+          [[ "$direct_url" == *"@ep-purple-sunset-b3ieqkb7.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI direct URL is not the verified Neon endpoint" >&2; exit 1; }
+          [[ "$pool_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI pool URL must include a non-empty username and password" >&2; exit 1; }
+          [[ "$direct_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI direct URL must include a non-empty username and password" >&2; exit 1; }
+          [[ "$pool_url" == *"indicate_runtime_login:"* ]] || { echo "::error::CI pool URL must use the least-privilege runtime login" >&2; exit 1; }
+          [[ "$direct_url" == *"neondb_owner:"* ]] || { echo "::error::CI direct URL must use the migration-only owner login" >&2; exit 1; }
+          [[ "$auth_url" == "https://ep-purple-sunset-b3ieqkb7.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth" ]] || { echo "::error::Neon Auth URL does not match production" >&2; exit 1; }
           printf 'DATABASE_POOL_URL=%s\n' "$pool_url" >> "$GITHUB_ENV"
           printf 'DATABASE_DIRECT_URL=%s\n' "$direct_url" >> "$GITHUB_ENV"
           printf 'NEON_AUTH_BASE_URL=%s\n' "$auth_url" >> "$GITHUB_ENV"
           printf 'NEON_AUTH_COOKIE_SECRET=%s\n' "$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
-          echo "Loaded Neon production endpoints; credentials are withheld from logs."
+          echo "Loaded Neon production endpoints from GitHub Actions Secrets; credentials are withheld from logs."
       - run: npm ci --no-audit --no-fund
       - run: npm run build
 
