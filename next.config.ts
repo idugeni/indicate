@@ -72,10 +72,6 @@ const nextConfig: NextConfig = {
       ...tenantImagePatterns(),
       {
         protocol: 'https',
-        hostname: '*.supabase.co',
-      },
-      {
-        protocol: 'https',
         hostname: '*.r2.cloudflarestorage.com',
       },
       {
