@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import sharp from 'sharp';
 import { z } from 'zod';
 
 import { denyCrossSiteMutation } from '@/core/security/mutation-guard';
@@ -107,6 +106,7 @@ async function handlePOST(request: Request) {
   let leadMediaId: string | null = null;
   let mediaVersion = 1;
   if (parsed.data.cover !== undefined) {
+    const { default: sharp } = await import('sharp');
     const input = parsed.data.cover;
     const sourceBytes = Buffer.from(input.dataBase64, 'base64');
     if (sourceBytes.length === 0 || sourceBytes.length > runtimeContext.config.r2.maxBytes) {
