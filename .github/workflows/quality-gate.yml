@@ -141,7 +141,14 @@ jobs:
             --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
             "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQkczC8kK")"
           get_env_id() {
-            jq -er --arg key "$1" '.envs[] | select(.key == $key and (.target | index("production"))) | .id' <<< "$api_list" | head -n1
+            local key="$1"
+            local id
+            id="$(jq -r --arg key "$key" '[.envs[] | select(.key == $key and (.target | index("production")))] | first | .id // empty' <<< "$api_list")"
+            if [[ -z "$id" ]]; then
+              echo "::error::Missing production Vercel environment variable: $key"
+              return 1
+            fi
+            printf '%s' "$id"
           }
           get_env_value() {
             local key="$1"
