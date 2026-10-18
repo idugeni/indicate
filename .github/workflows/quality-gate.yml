@@ -156,7 +156,7 @@ jobs:
             id="$(get_env_id "$key")"
             curl --fail --silent --show-error \
               --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
-              "https://api.vercel.com/v1/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env/$id?teamId=team_HvgOzoFV92X1vjzqQkczC8kK" \
+              "https://api.vercel.com/v1/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env/$id?teamId=team_HvgOzoFV92X1vjzqQkczC8kK&decrypt=1" \
               | jq -er '.value'
           }
           pool_url="$(get_env_value CI_DATABASE_POOL_URL)"
