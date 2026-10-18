@@ -137,9 +137,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          api_list="$(curl --fail --silent --show-error \
+          api_list_file="$(mktemp)"
+          api_list_status="$(curl --silent --show-error --output "$api_list_file" --write-out '%{http_code}' \
             --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
-            "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQkczC8kK")"
+            "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQkczC8kK")" || {
+              echo "::error::Could not reach the Vercel environment API; check runner network access."
+              exit 1
+            }"
+          if [[ "$api_list_status" != "200" ]]; then
+            echo "::error::Vercel environment listing returned HTTP $api_list_status; verify VERCEL_API_TOKEN validity, team access, and project permissions."
+            exit 1
+          fi
+          api_list="$(cat "$api_list_file")"
+          rm -f "$api_list_file"
+          if ! jq -e '.envs | type == "array"' >/dev/null <<< "$api_list"; then
+            echo "::error::Vercel environment API returned an unexpected response schema; refusing to continue."
+            exit 1
+          fi
           get_env_id() {
             local key="$1"
             local id
@@ -154,10 +168,27 @@ jobs:
             local key="$1"
             local id
             id="$(get_env_id "$key")"
-            curl --fail --silent --show-error \
+            local response_file
+            local http_status
+            response_file="$(mktemp)"
+            http_status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
               --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
-              "https://api.vercel.com/v1/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env/$id?teamId=team_HvgOzoFV92X1vjzqQkczC8kK&decrypt=true" \
-              | jq -er '.value // empty' || { echo "::error::Could not decrypt/read production Vercel environment value for $key; check VERCEL_API_TOKEN permissions and env secret configuration"; return 1; }
+              "https://api.vercel.com/v1/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env/$id?teamId=team_HvgOzoFV92X1vjzqQkczC8kK&decrypt=true")" || {
+                rm -f "$response_file"
+                echo "::error::Could not reach the Vercel environment-value API for $key."
+                return 1
+              }
+            if [[ "$http_status" != "200" ]]; then
+              rm -f "$response_file"
+              echo "::error::Vercel environment-value API returned HTTP $http_status for $key; verify token permissions for decrypted production environment values."
+              return 1
+            fi
+            if ! jq -er '.value // empty' "$response_file"; then
+              rm -f "$response_file"
+              echo "::error::Vercel returned no decrypted value for $key; verify that the production variable exists and the token can decrypt it."
+              return 1
+            fi
+            rm -f "$response_file"
           }
           pool_url="$(get_env_value CI_DATABASE_POOL_URL)"
           direct_url="$(get_env_value CI_DATABASE_DIRECT_URL)"
