@@ -116,7 +116,6 @@ jobs:
       UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
       GENERIC_WEBHOOK_SECRET: ${{ secrets.GENERIC_WEBHOOK_SECRET }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
-      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -135,44 +134,20 @@ jobs:
             ${{ runner.os }}-nextjs-
       - name: Load verified Neon production configuration
         shell: bash
+        env:
+          CI_DATABASE_POOL_URL: ${{ secrets.CI_DATABASE_POOL_URL }}
+          CI_DATABASE_DIRECT_URL: ${{ secrets.CI_DATABASE_DIRECT_URL }}
+          NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
         run: |
           set -euo pipefail
-          # Vercel's per-variable endpoint intentionally omits values for encrypted
-          # variables. Use the same bulk-pull path as Vercel CLI instead, and never
-          # print values to logs.
-          api_list_file="$(mktemp)"
-          trap 'rm -f "$api_list_file"' EXIT
-          api_list_status="$(curl --silent --show-error --output "$api_list_file" --write-out '%{http_code}' \
-            --header "Authorization: Bearer ${VERCEL_API_TOKEN}" \
-            "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQkczC8kK&decrypt=true&source=vercel-cli:pull")" || {
-              echo "::error::Could not reach the Vercel environment API; check runner network access." >&2
-              exit 1
-            }
-          if [[ "$api_list_status" != "200" ]]; then
-            echo "::error::Vercel environment listing returned HTTP $api_list_status; verify VERCEL_API_TOKEN validity, team access, and project permissions." >&2
-            exit 1
-          fi
-          api_list="$(cat "$api_list_file")"
-          if ! jq -e '.envs | type == "array"' >/dev/null <<< "$api_list"; then
-            echo "::error::Vercel environment API returned an unexpected response schema; refusing to continue." >&2
-            exit 1
-          fi
-          get_env_value() {
-            local key="$1"
-            local value
-            value="$(jq -er --arg key "$key" '[.envs[] | select(.key == $key and (.target | index("production")))] | first | .value // empty' <<< "$api_list")" || {
-              echo "::error::Missing readable production value for $key. If this variable is marked Sensitive in Vercel, store it as a GitHub Actions secret for CI; Vercel does not expose Sensitive values through its API." >&2
-              return 1
-            }
-            if [[ -z "$value" ]]; then
-              echo "::error::Production value for $key is empty; refusing to build with incomplete Neon configuration." >&2
-              return 1
-            fi
-            printf '%s' "$value"
-          }
-          pool_url="$(get_env_value CI_DATABASE_POOL_URL)"
-          direct_url="$(get_env_value CI_DATABASE_DIRECT_URL)"
-          auth_url="$(get_env_value NEON_AUTH_BASE_URL)"
+          # Sensitive Vercel variables cannot be read back through the Vercel API.
+          # Inject their production values from GitHub Actions Secrets instead.
+          pool_url="${CI_DATABASE_POOL_URL:-}"
+          direct_url="${CI_DATABASE_DIRECT_URL:-}"
+          auth_url="${NEON_AUTH_BASE_URL:-}"
+          [[ -n "$pool_url" ]] || { echo "::error::Missing GitHub Actions secret CI_DATABASE_POOL_URL" >&2; exit 1; }
+          [[ -n "$direct_url" ]] || { echo "::error::Missing GitHub Actions secret CI_DATABASE_DIRECT_URL" >&2; exit 1; }
+          [[ -n "$auth_url" ]] || { echo "::error::Missing GitHub Actions secret NEON_AUTH_BASE_URL" >&2; exit 1; }
           [[ "$pool_url" == *"@ep-purple-sunset-b3ieqkb7-pooler.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI pool URL is not the verified Neon pooler" >&2; exit 1; }
           [[ "$direct_url" == *"@ep-purple-sunset-b3ieqkb7.c-4.ap-southeast-1.aws.neon.tech/"* ]] || { echo "::error::CI direct URL is not the verified Neon endpoint" >&2; exit 1; }
           [[ "$pool_url" =~ ^postgresql://[^:/@]+:[^@]+@ ]] || { echo "::error::CI pool URL must include a non-empty username and password" >&2; exit 1; }
@@ -184,7 +159,7 @@ jobs:
           printf 'DATABASE_DIRECT_URL=%s\n' "$direct_url" >> "$GITHUB_ENV"
           printf 'NEON_AUTH_BASE_URL=%s\n' "$auth_url" >> "$GITHUB_ENV"
           printf 'NEON_AUTH_COOKIE_SECRET=%s\n' "$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
-          echo "Loaded Neon production endpoints; credentials are withheld from logs."
+          echo "Loaded Neon production endpoints from GitHub Actions Secrets; credentials are withheld from logs."
       - run: npm ci --no-audit --no-fund
       - run: npm run build
 
