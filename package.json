@@ -149,7 +149,7 @@
     "esbuild@0.28.2": true,
     "protobufjs@7.6.6": true,
     "unrs-resolver@1.12.2": true,
-    "@google/genai@2.27.0": true
+    "@google/genai@2.30.0": true
   },
   "overrides": {
     "next": "16.4.2"
