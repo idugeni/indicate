@@ -143,7 +143,7 @@ jobs:
             "https://api.vercel.com/v10/projects/prj_GLknFyW3H6b9KBcvbJbwCN2TMcnt/env?teamId=team_HvgOzoFV92X1vjzqQkczC8kK")" || {
               echo "::error::Could not reach the Vercel environment API; check runner network access."
               exit 1
-            }"
+            }
           if [[ "$api_list_status" != "200" ]]; then
             echo "::error::Vercel environment listing returned HTTP $api_list_status; verify VERCEL_API_TOKEN validity, team access, and project permissions."
             exit 1
