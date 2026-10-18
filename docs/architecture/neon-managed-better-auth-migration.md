@@ -1,63 +1,37 @@
-# Full Neon migration: PostgreSQL and Managed Better Auth
+# INDICATE — Neon PostgreSQL and Managed Auth architecture
 
-## Scope
+## Authoritative services
 
-This PR moves INDICATE's application database and authentication/session provider to Neon. It is not an auth-only integration and does not switch production while this branch is under validation.
-
-Target architecture:
-
-- **Neon PostgreSQL** is the sole application database, connected through the existing Drizzle and `postgres` data layer.
+- **Neon PostgreSQL** is the sole application database, accessed through the existing Drizzle and `postgres` data layer.
 - **Neon Managed Auth (Better Auth)** is the sole interactive email/password authentication and session provider.
-- The app's own tables remain authoritative for local user status, organizations, memberships, roles, tenant permissions, platform/super-admin grants, audit records, and application settings.
-- **Upstash Redis**, Cloudflare, Vercel, R2, Resend, and the separate dashboard access-key capability remain independent and are not replaced by the Neon migration.
-- Google is not an interactive app sign-in provider in this target; any Google credentials used for operator/search tooling are separate.
-
-## Verified starting state
-
-- Neon project `Indicate`, production branch `production`, region `AWS ap-southeast-1`.
-- Neon Managed Auth (Better Auth) is now provisioned on the Neon `production` branch. The trusted origin `https://indicate.website` is configured. The Neon Auth user/account/session cohort was empty at provisioning time; existing accounts therefore still require verified first-login linking or recovery.
-- The application used a PostgreSQL/Drizzle layer and Supabase-specific bootstrap validation and identity/session adapters.
-- The application database import to Neon was previously checked for table, column, trigger, index, RLS-policy, and migration-journal counts. One import operation reported a failure, so this is evidence of progress, not proof of a clean production cutover.
-- The production deployment must remain on its currently verified provider until the gates below are passed.
+- The app-owned schema remains authoritative for local user status, organizations, memberships, roles, tenant permissions, platform/super-admin grants, audit records, and application settings.
+- **Cloudflare R2** provides media/object storage. **Upstash Redis** is an acceleration layer for queues, cache, rate limits, and the separate dashboard access-key capability. Neither is a database or identity authority.
+- Vercel hosts the Next.js application. Cloudflare remains authoritative for DNS, CDN, and edge TLS. Resend is the transactional email provider when configured.
+- Google credentials used for operator/search tooling are not interactive application sign-in credentials.
 
 ## Identity and authorization contract
 
-A Neon session proves only the provider identity. It does not grant organization access on its own. For each dashboard request, the application must resolve the verified Neon user ID to its local user record and then apply the existing active-user, active-membership, role, tenant-scope, and platform-permission checks. Dashboard access-key actors continue through their separate signed-cookie/Redis-backed path.
+A Neon session proves the provider identity; it does not grant organization access by itself. Every dashboard request must resolve the verified Neon user ID to a local application user and enforce active-user status, active membership, role, tenant scope, and platform permissions. Dashboard access-key actors continue through their separate signed-cookie/Redis-backed path.
 
-Email equality alone must never link a migrated account. The normal runtime linking path requires a signed Neon Auth session with `emailVerified === true`, a single case-normalized match to an active local user, an unclaimed `neon_auth_user_id`, and a transaction-local identity-link intent. The one-time administrative migration path is narrower: it requires the exact legacy `auth_user_id` relationship, a legacy source email explicitly marked confirmed, a one-to-one normalized email match to an existing Neon Auth identity, an unclaimed local profile, and a transaction-local linkage intent. It does not link legacy identities whose email was unverified, ambiguous matches, inactive accounts, or profiles already linked to another Neon identity. It preserves local user IDs, memberships, roles, and access keys. Each successful link is recorded in `identity_link_audit_logs`; runtime linking also audit-logs every active membership. New emails create a local user without inheriting any existing tenant membership. Neon Auth is configured to require email verification and send verification messages on signup and sign-in.
+Identity linking must require a verified Neon Auth session, `emailVerified === true`, one case-normalized match to an active local user, an unclaimed `neon_auth_user_id`, and a transaction-local identity-link intent. Conflicting links must fail closed and produce an auditable result.
 
-## Implementation and rollout gates
+## Production cutover record — 2026-10-18
 
-1. Route email/password sign-in, signup, email verification callback, password recovery, password reset, and sign-out through Neon Managed Auth. Interactive Google sign-in is removed.
-2. Use a single server-side Neon session adapter for dashboard authentication. Do not authorize from browser-selected local user IDs or unverified client metadata.
-3. Keep the local authorization repository and all tenant/RBAC/super-admin/access-key invariants unchanged.
-4. Require a server-only `NEON_AUTH_COOKIE_SECRET` of at least 32 characters, and validate the Neon Auth URL and production Neon PostgreSQL hostname at bootstrap.
-5. Keep Turnstile verification server-side on email sign-in, signup, and password-recovery requests whenever the auth challenge is configured. Missing server-side challenge configuration must fail closed in production.
-6. Replace Supabase-specific connection assumptions, SDK integrations, environment requirements, callback parameters, auth templates, and backup workflow with Neon equivalents. A transitive library used internally by the Neon SDK does not represent an app dependency on the Supabase service.
-7. Regenerate `package-lock.json` from `package.json`; do not hand-maintain the dependency graph. The lockfile, migration digest/bootstrap checks, typecheck, lint, focused auth tests, full test suite, and production build must pass.
-8. Prove the Neon application database is complete on the target branch, including required extensions, SQL functions referenced by policies, triggers, indexes, constraints, and migration journal. Investigate and close the previously reported import failure.
-9. The local-account mapping migration adds a separate `neon_auth_user_id` field while retaining legacy IDs for rollback. Prove the verified first-login/recovery path and determine whether existing passwords can be imported safely. If not, require verified reset/re-enrollment before cutover. Never assume an empty `neon_auth` user table can serve existing users.
-10. Run integration checks on a non-production Neon branch: verified/unverified/expired sessions, reset-token expiry, linked and unlinked identities, inactive local accounts, revoked memberships, cross-tenant requests, super-admin, dashboard access keys, cookie flags, Turnstile failure/outage, and email delivery.
-11. The production trusted origin is currently `https://indicate.website`. `verify_email_on_sign_up`, `verify_email_on_sign_in`, and `require_email_verification` are enabled in `neon_auth.project_config`; the config was read back and verified after the update. Add the production `NEON_AUTH_BASE_URL` and a generated `NEON_AUTH_COOKIE_SECRET` to the deployment environment after the code is approved. Do not broaden trusted origins to wildcards.
-12. Keep rollback available until the Neon cutover is verified. Do not delete the prior database/provider project or its backups as part of code review alone.
+- Production branch: Neon branch `production` in `AWS ap-southeast-1`.
+- The production database connection and Neon Auth endpoint are aligned to the same branch.
+- The production database no longer contains the former provider schemas `auth`, `storage`, `realtime`, or `supabase_migrations`.
+- Current verified counts: 63 Neon Auth identities, 61 local application profiles, and 61 identity-link audit records.
+- The production health endpoint returned `status: ok` and reported configuration sourced from PostgreSQL.
+- A protected recovery branch, `pre-cutover-restored-snapshot-2026-10-18`, remains available for investigation; it is not an automatic rollback.
 
-## Production database connection roles
+## Verification still required
 
-- `DATABASE_POOL_URL` and `CI_DATABASE_POOL_URL` use the dedicated `indicate_runtime_login` role over Neon’s pooled endpoint. It receives application DML privileges and execution rights for the private runtime-config functions, without granting the schema-owner role to the application connection.
-- `DATABASE_DIRECT_URL` and `CI_DATABASE_DIRECT_URL` use the direct Neon endpoint with `neondb_owner` for migration and build-time schema operations only. Never use the owner URL as the pooled runtime connection.
-- CI loads encrypted Vercel environment values and validates the expected Neon pooler/direct hostnames before build. Connection strings and passwords must never be printed in logs.
-- The previous CI connection URLs had an empty password and the wrong login role. The production Vercel variables have now been replaced with the correct role/endpoint split. A fresh quality-gate run is required before merge.
+The database cutover and health check do not prove an end-to-end user login. Before declaring authentication fully validated, test with an approved test account: password recovery email delivery, password update, sign-in, session persistence, logout, access-key login, Super Admin permissions, organization memberships, RBAC, and tenant isolation. Do not set a shared password for existing users.
 
-## Acceptance criteria
+## Security invariants
 
-- Application runtime connects to Neon PostgreSQL and does not require Supabase database connection URLs or Supabase JS/SSR packages.
-- Interactive email/password auth, verified sessions, signup, recovery/reset, and sign-out use Neon Managed Auth.
-- No Supabase session is required for any dashboard request.
-- Existing local users, organization membership/RBAC, platform super-admin, access-key authentication, audit behavior, and data integrity are preserved.
-- No auth secret is exposed to client-side environment variables or source control.
-- Dependency lockfile is generated by npm and CI gates pass.
-- Production environment cutover is performed only after database and account migration are verified, with a tested rollback plan.
-
-## Current branch state
-
-The branch now removes the Supabase integration directory, Supabase environment examples, Supabase backup workflow, and Supabase package dependencies. It also adds a versioned migration for Neon identity linkage and introduces `neon_project_id` while retaining the legacy `supabase_project_ref` projection during the deployment window so the currently live app remains compatible until the Neon build takes over. Historical migration files and imported legacy Supabase schemas are retained as migration history/rollback evidence; they are not runtime dependencies. This is not proof of production cutover. Keep the PR draft until CI, Neon email-verification settings, migration checks, and the existing-account end-to-end flow are verified.
+- Provider identity alone never grants application authorization.
+- Database access uses least-privilege runtime credentials; direct credentials are reserved for migrations and administration.
+- Secrets remain server-side and are not logged.
+- Redis is not durable authority for users, permissions, or audit records.
+- Recovery and access-key login remain separate flows with independent verification.
