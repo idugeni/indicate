@@ -682,7 +682,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           publishedAt: iso(pair.publishedAt),
           updatedAt: iso(detail.updated_at),
           articleSiteId: pair.bridgeId,
-          viewCount: pair.viewCount,
+          viewCount: detail.view_count ?? pair.viewCount,
           type: bridgeArticleType(detail.article_type),
           isSponsored: detail.is_sponsored,
           videoUrl: detail.video_url,
