@@ -105,4 +105,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBotId(nextConfig);
+const botIdConfig = withBotId(nextConfig);
+
+// BotID adds its own response headers. Preserve the application's existing
+// private/no-store policy by composing both header lists instead of replacing
+// the original headers() callback.
+const configWithBotId: NextConfig = {
+  ...botIdConfig,
+  async headers() {
+    const [applicationHeaders, botIdHeaders] = await Promise.all([
+      nextConfig.headers?.() ?? [],
+      botIdConfig.headers?.() ?? [],
+    ]);
+    return [...applicationHeaders, ...botIdHeaders];
+  },
+};
+
+export default configWithBotId;
