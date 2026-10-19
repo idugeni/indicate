@@ -96,7 +96,7 @@ export function GreenMinimalArticle({
             <ArticleRichBodyView
               body={article.body}
               bodyJson={article.bodyJson}
-              paragraphClassName="text-justify font-sans text-[17px] leading-[1.75] text-slate-800"
+              paragraphClassName="text-left font-sans text-[17px] leading-[1.75] text-slate-800"
               listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.75] text-slate-800 [list-style:disc]"
             />
           </div>
