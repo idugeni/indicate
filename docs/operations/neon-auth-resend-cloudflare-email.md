@@ -2,48 +2,66 @@
 
 ## Target architecture
 
-- **Neon Managed Auth / Better Auth** remains the source of truth for identity, sessions, email verification, and password-reset tokens.
-- **Resend SMTP** delivers Neon Auth's verification and recovery messages. Neon Auth must be configured with the custom SMTP provider; setting `RESEND_API_KEY` in the application alone does not change Neon Auth's managed sender.
-- **Cloudflare DNS** remains authoritative for the domain. Keep the existing Resend verification, DKIM, and SPF records intact. Cloudflare Email Routing is a separate inbound-mail feature and is not required for outbound authentication email.
+- **Neon Managed Auth / Better Auth** remains the source of truth for identity, sessions, verification codes, and password-reset tokens.
+- **Resend** delivers Neon Auth messages through the verified INDICATE sender. The application now has a signed Neon Auth webhook endpoint at `POST /api/webhooks/neon-auth`.
+- **Cloudflare DNS** remains authoritative for the domain. Keep Resend verification, DKIM, and SPF records intact. Cloudflare Email Routing is a separate inbound-mail feature and is not required for outbound authentication email.
 - **Supabase must not be used** for any active authentication, verification, or password-recovery path.
 
-## Neon Auth SMTP settings
+## What is implemented in the application
 
-Configure the production branch's Neon Auth email provider to `standard` / custom SMTP using the Resend SMTP credentials:
+`src/app/api/webhooks/neon-auth/route.ts`:
 
-| Setting | Value |
-| --- | --- |
-| SMTP host | `smtp.resend.com` |
-| Port | `465` (implicit TLS) or `587` (STARTTLS) |
-| Username | `resend` |
-| Password | A Resend API key with sending permission; store only in Neon Auth's secret field |
-| Sender email | `noreply@indicate.website` |
-| Sender name | `Indicate` |
+- Verifies Neon Auth's detached Ed25519 webhook signature against the Neon Auth JWKS.
+- Rejects stale signatures, unsupported event types, malformed OTPs, and unsafe or legacy Supabase magic-link URLs.
+- Sends OTP and magic-link emails through Resend using `RESEND_API_KEY` and `RESEND_DEFAULT_FROM`.
+- Uses escaped HTML for user-controlled content and returns generic errors without exposing tokens, codes, credentials, or provider details.
 
-Do not commit the API key, put it in this document, or expose it in logs. Use a dedicated Resend API key scoped to the required sending domain where available. The From address must be on a verified Resend domain.
+The webhook is intentionally fail-closed. It must be registered and subscribed to the correct Neon Auth events before it receives traffic. Do not point Neon Auth to this route until it has been deployed and the production environment variables are present.
 
-Neon documents this configuration under **Neon Auth → Email provider** and through `neon neon-auth config email-provider update`. If the provider remains `shared`, Neon will continue sending from its default `auth@mail.myneon.app` sender.
+## Required production configuration
 
-## Production acceptance checklist
+### 1. Vercel environment
 
-Do not mark this integration complete until every item below is evidenced:
+For the INDICATE production project, confirm these variables exist in Production:
 
-1. Read back the production Neon Auth email-provider configuration; it must report the custom SMTP provider and the expected sender. Never print the stored password.
-2. Send a provider test email to an authorized test mailbox and verify it arrives with From `Indicate <noreply@indicate.website>`.
-3. Register a controlled test account and confirm the email-verification code arrives, can be used once, and leads back to `https://indicate.website`.
-4. Request password recovery for that controlled account. Confirm the email arrives through Resend, its link uses the production INDICATE origin (not any `supabase.co` host), and the token can successfully set a new password.
-5. Sign in with the new password and verify the previous password no longer works.
-6. Inspect the latest Resend delivery event and verify successful delivery. Do not use historical email logs as evidence of the current provider.
-7. Re-read Neon Auth configuration after testing and confirm the provider remains custom SMTP.
-8. Search active application source, deployment configuration, and auth URLs for `supabase.co`, `SUPABASE_`, and legacy Supabase recovery endpoints. Historical records or migration notes must be clearly identified as historical, not active routes.
+- `NEON_AUTH_BASE_URL` — the exact production Neon Auth base URL.
+- `RESEND_API_KEY` — a Resend API key with sending permission for the verified domain.
+- `RESEND_DEFAULT_FROM` — recommended: `Indicate <noreply@indicate.website>`.
 
-## Cloudflare considerations
+The app bootstrap schema already recognizes `RESEND_API_KEY` and `RESEND_DEFAULT_FROM` as a required pair when either is set. Never commit credentials or print their values into logs.
 
-- Do not replace or delete existing DNS records blindly. Resend's verified status should be preserved.
-- Cloudflare Email Routing is for receiving/forwarding mail. Enable or modify it only when an inbound destination and the required MX/TXT records are known; it does not deliver Neon Auth's outbound verification or reset messages.
-- Avoid conflicting SPF records. If the domain already has SPF, merge authorized senders into the existing record rather than creating a second SPF TXT record.
-- Verify DKIM and SPF after any DNS changes. Do not change MX records merely to enable outbound Resend SMTP.
+### 2. Neon Auth webhook registration
 
-## Application-level transactional email
+After deploying this route to `https://indicate.website`, use the Neon Console's production branch Auth → Webhooks settings (or the corresponding Neon Auth webhook API) to register:
 
-The app's `RESEND_API_KEY` and `RESEND_DEFAULT_FROM` variables are for application code that sends its own transactional messages. They do not automatically configure Neon Managed Auth. Keep auth delivery configured at Neon Auth and app-specific messages sent by the app; do not create a second password-reset sender that bypasses Neon Auth's token lifecycle.
+- Endpoint: `https://indicate.website/api/webhooks/neon-auth`
+- Events: `send.otp` and `send.magic_link`
+
+Verify that the Neon Auth configuration points at the production URL and that both events are subscribed. Neon skips its default email delivery for subscribed events, so do not enable the subscription until the endpoint is live and its Resend credentials are configured.
+
+### 3. Cloudflare DNS and Resend
+
+- Preserve the existing verified Resend domain records for `indicate.website`.
+- Do not create a second SPF record. Merge senders into the existing SPF record if needed.
+- Do not alter MX records just to enable outbound sending. Cloudflare Email Routing only handles inbound forwarding.
+- The Resend account currently reports `indicate.website` and `safenca.id` as verified with sending enabled.
+
+## End-to-end acceptance checklist
+
+Do not call the integration complete until every item is evidenced:
+
+1. Production Vercel variables exist (verify names and targets without exposing values).
+2. The deployed webhook accepts a correctly signed Neon event and rejects unsigned, stale, and tampered requests.
+3. Neon Auth production has subscriptions for both `send.otp` and `send.magic_link` pointed at the deployed endpoint.
+4. A controlled test account receives an email-verification OTP through Resend and the code works once.
+5. A controlled test account receives a password-reset message through Resend; the link is for the current INDICATE/Neon Auth flow and contains no `supabase.co` host.
+6. The link successfully changes the password; the new password can sign in and the old one cannot.
+7. Resend shows a successful delivery event for the new test. Historical emails do not prove the current delivery route.
+8. A final source/config search finds no active Supabase auth endpoints, environment variables, or recovery links. Historical migration evidence must be clearly distinguished from active configuration.
+
+## Operational notes
+
+- The webhook sends the exact signed Neon-provided magic link so Neon Auth remains responsible for token generation and validation. It does not mint or validate auth tokens in the app.
+- The webhook uses a five-minute signature freshness window. If Neon retries an event after that window, it will be rejected; monitor delivery failures and verify Neon retry semantics before enabling subscriptions in production.
+- If only a custom sender is needed and branded templates are not needed, Neon also supports custom SMTP via `neon neon-auth config email-provider update --type standard`. For the webhook implementation in this repository, configure the event subscriptions above instead.
+- The app's `RESEND_*` environment variables do not automatically change Neon Auth's provider. The Neon Console/API configuration is a separate required step.
