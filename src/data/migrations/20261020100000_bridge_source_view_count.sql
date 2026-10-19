@@ -1,7 +1,8 @@
 -- Keep syndicated card reader counts aligned with the owning article detail.
 -- The assignment count is only a fallback: the owner article's published
 -- article_sites counter is the canonical value when that source assignment exists.
-CREATE OR REPLACE FUNCTION indicate_private.fetch_assigned_article_details(
+DROP FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]);--> statement-breakpoint
+CREATE FUNCTION indicate_private.fetch_assigned_article_details(
   requested_organization_id uuid,
   requested_article_ids uuid[]
 )
@@ -59,4 +60,4 @@ $$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (287, 'bridge_source_view_count', 'sha256:a7197ca33f1cc76a1a7c90b1e89fe4d544b3cbaf8c08722ac5e593a0261ace01');
+VALUES (287, 'bridge_source_view_count', 'sha256:bb9157f722e4fdcf539cb35726b8b4b0cddad48c29f9db0f0c94d30c719efcdb');
