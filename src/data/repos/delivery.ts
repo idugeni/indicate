@@ -137,6 +137,7 @@ type BridgeDetail = {
   readonly author_url: string | null;
   readonly cover_image_url: string | null;
   readonly lead_media_id: string | null;
+  readonly view_count: number | null;
   readonly published_at: Date | string;
   readonly updated_at: Date | string;
   readonly body: string;
@@ -682,7 +683,7 @@ export class DrizzleDeliveryRepository implements DeliveryRepository {
           publishedAt: iso(pair.publishedAt),
           updatedAt: iso(detail.updated_at),
           articleSiteId: pair.bridgeId,
-          viewCount: pair.viewCount,
+          viewCount: detail.view_count ?? pair.viewCount,
           type: bridgeArticleType(detail.article_type),
           isSponsored: detail.is_sponsored,
           videoUrl: detail.video_url,

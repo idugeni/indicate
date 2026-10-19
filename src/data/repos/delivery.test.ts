@@ -270,6 +270,7 @@ describe('readBridgeArticles', () => {
     author_url: null,
     cover_image_url: 'https://cdn.example/cover.jpg',
     lead_media_id: null,
+    view_count: null,
     published_at: new Date('2026-10-04T10:00:00.000Z'),
     updated_at: new Date('2026-10-04T10:00:00.000Z'),
     body: 'Isi lengkap berita UPT.',
@@ -333,7 +334,13 @@ describe('readBridgeArticles', () => {
     expect(site?.articles[0]).toMatchObject({ slug: 'berita-upt', categorySlug: 'pemasyarakatan', categoryName: 'Pemasyarakatan' });
   });
 
-  it('membawa tayangan bridge apa adanya alih-alih nol', async () => {
+  it('mengutamakan jumlah pembaca sumber artikel dibanding angka bridge yang tersimpan', async () => {
+    const { repository } = harness({ articles: [], bridgeAssignments: [{ ...bridgeAssignment, viewCount: 0 }], bridgeDetails: [{ ...bridgeDetail, view_count: 4821 }] });
+    const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
+    expect(site?.articles[0]).toMatchObject({ articleSiteId: 'bridge-1', viewCount: 4821 });
+  });
+
+  it('menggunakan angka bridge sebagai fallback bila sumber belum memiliki assignment tayang lokal', async () => {
     const { repository } = harness({ articles: [], bridgeAssignments: [{ ...bridgeAssignment, viewCount: 2500 }], bridgeDetails: [bridgeDetail] });
     const site = await repository.loadNetworkSite({ ...CONTEXT }, {});
     expect(site?.articles[0]).toMatchObject({ articleSiteId: 'bridge-1', viewCount: 2500 });
