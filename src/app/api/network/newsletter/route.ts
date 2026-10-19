@@ -14,7 +14,7 @@ import { EmailNewsletterService, newsletterSubscribeSchema } from '@/modules/int
 import { enforceNewsletterThrottle } from '@/modules/integrations/newsletter-throttle';
 
 async function handlePOST(request: Request) {
-  const botCheck = await checkBotId();
+  const botCheck = await checkBotId({ advancedOptions: { checkLevel: 'basic' } });
   if (botCheck.isBot) {
     return NextResponse.json({ error: 'Automated request denied.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
