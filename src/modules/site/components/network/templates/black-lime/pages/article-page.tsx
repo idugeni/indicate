@@ -96,7 +96,7 @@ export function BlackLimeArticle({
             <ArticleRichBodyView
               body={article.body}
               bodyJson={article.bodyJson}
-              paragraphClassName="text-justify font-sans text-[17px] leading-[1.75] text-[var(--tpl-ink,#f2f5e9)]"
+              paragraphClassName="text-left font-sans text-[17px] leading-[1.75] text-[var(--tpl-ink,#f2f5e9)]"
               listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.75] text-[var(--tpl-ink,#f2f5e9)] [list-style:disc]"
             />
           </div>

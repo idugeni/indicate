@@ -96,7 +96,7 @@ export function DarkNavyArticle({
             <ArticleRichBodyView
               body={article.body}
               bodyJson={article.bodyJson}
-              paragraphClassName="text-justify font-sans text-[17px] leading-[1.75] text-[var(--tpl-ink,#eaf0fb)]"
+              paragraphClassName="text-left font-sans text-[17px] leading-[1.75] text-[var(--tpl-ink,#eaf0fb)]"
               listClassName="space-y-2 pl-6 font-sans text-[17px] leading-[1.75] text-[var(--tpl-ink,#eaf0fb)] [list-style:disc]"
             />
           </div>

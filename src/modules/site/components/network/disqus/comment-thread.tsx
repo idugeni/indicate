@@ -145,16 +145,13 @@ export function CommentThread({
         />
       </h2>
       {/*
-       * Kartu terang: thread Disqus selalu terang (skema terang terdeteksi dari
-       * warna wadah), jadi kartu putih berradius menjaga kontras di semua
-       * template termasuk yang gelap. Warna eksplisit heksadesimal: Disqus
-       * mencicipi warna wadah untuk mewarnai thread-nya, tetapi parsernya
-       * hanya paham rgb/heks/nama dan melempar pada `lab()`/`oklch()` yang
-       * dihasilkan Tailwind v4 — thread macet dengan iframe kosong. Wadah ini
-       * hanya menaungi skrip Disqus; isi thread hidup di iframe terisolasi
-       * sehingga tampilan situs tidak berubah.
+       * Wrapper mengikuti token tema template agar tidak tampil sebagai kartu
+       * putih pada tema gelap. Warna teks inline tetap berupa hex karena parser
+       * Disqus tidak menerima lab()/oklch() dari Tailwind v4; warna itu hanya
+       * menjadi petunjuk skema bagi embed, sedangkan konten wrapper memakai
+       * token --tpl-ink/--tpl-card/--tpl-ring milik template aktif.
        */}
-      <div style={{ color: '#334155' }} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <div style={{ color: '#334155' }} className="mt-4 rounded-2xl border border-[var(--tpl-ring,#e2e8f0)] bg-[var(--tpl-card,#ffffff)] p-4 text-[var(--tpl-ink,#334155)] sm:p-5">
       {!expanded ? (
         <div>
           <p className="m-0 text-sm opacity-70">Diskusi pembaca dimuat hanya bila diminta agar halaman tetap ringan.</p>
