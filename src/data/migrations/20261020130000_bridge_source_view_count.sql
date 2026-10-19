@@ -60,4 +60,4 @@ $$;--> statement-breakpoint
 REVOKE ALL ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) FROM PUBLIC;--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION indicate_private.fetch_assigned_article_details(uuid, uuid[]) TO indicate_runtime;--> statement-breakpoint
 INSERT INTO public.indicate_schema_migrations(version, name, checksum)
-VALUES (287, 'bridge_source_view_count', 'sha256:bb9157f722e4fdcf539cb35726b8b4b0cddad48c29f9db0f0c94d30c719efcdb');
+VALUES (292, 'bridge_source_view_count', 'sha256:393a1d31ed67453cd50fee2e2e53674e5069ed3cf079439fa7eb2697cab28f96');

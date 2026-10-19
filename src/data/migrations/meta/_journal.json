@@ -2038,6 +2038,13 @@
       "when": 1792242600000,
       "tag": "20261017131000_neon_runtime_config_projection",
       "breakpoints": true
+    },
+    {
+      "idx": 291,
+      "version": "7",
+      "when": 1792439906127,
+      "tag": "20261020130000_bridge_source_view_count",
+      "breakpoints": true
     }
   ]
 }

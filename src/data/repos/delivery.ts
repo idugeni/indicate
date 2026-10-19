@@ -137,6 +137,7 @@ type BridgeDetail = {
   readonly author_url: string | null;
   readonly cover_image_url: string | null;
   readonly lead_media_id: string | null;
+  readonly view_count: number | null;
   readonly published_at: Date | string;
   readonly updated_at: Date | string;
   readonly body: string;
