@@ -202,6 +202,7 @@ const SidebarBody = memo(function SidebarBody({
   navigationMode = 'organization',
   view,
   collapsed,
+  onExpandSidebar,
   onSelectView,
   onRequestOrganizationSwitch,
   onOrganizationSwitchCommitted,
