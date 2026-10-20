@@ -35,7 +35,6 @@ interface MembershipModel {
   readonly memberships?: readonly MembershipRow[];
   readonly roles?: readonly RoleRow[];
   readonly invitations?: readonly InvitationRow[];
-  readonly regions?: readonly { readonly id: string; readonly name: string }[];
 }
 
 const STATUS_LABELS: Readonly<Record<string, string>> = {
@@ -71,7 +70,6 @@ export function MembershipWorkspaceV2({
   const roles = model.roles ?? [];
   const invitations = model.invitations ?? [];
   const roleNames = new Map(roles.map((role) => [role.id, role.name] as const));
-  const regionNames = new Map((model.regions ?? []).map((region) => [region.id, region.name] as const));
   const activeCount = members.filter((member) => member.status === 'active').length;
   const pendingCount = invitations.filter((invite) => invite.status === 'pending').length;
   const canManageRoles = permissions.has(DASHBOARD_PERMISSIONS.roleManage);
@@ -133,7 +131,7 @@ export function MembershipWorkspaceV2({
                     </td>
                     <td className="px-3 py-3 text-xs text-paper-dim">{roleNames.get(member.roleId) ?? 'Peran tidak tersedia'}</td>
                     <td className="px-3 py-3 text-xs text-paper-dim">
-                      {member.regionId ? (regionNames.get(member.regionId) ?? 'Wilayah terbatas') : 'Semua wilayah'}
+                      {member.regionId ? 'Wilayah terbatas' : 'Semua wilayah'}
                     </td>
                     <td className="px-3 py-3">
                       <Badge variant={statusTone(member.status)}>{STATUS_LABELS[member.status] ?? member.status}</Badge>
