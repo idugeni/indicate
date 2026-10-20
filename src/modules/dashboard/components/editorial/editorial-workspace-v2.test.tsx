@@ -94,6 +94,7 @@ describe('EditorialWorkspaceV2', () => {
       />,
     );
     expect(screen.getByTestId('inspector-fields').getAttribute('data-organization-mode')).toBe('true');
+    expect(screen.queryByText('Wilayah')).toBeNull();
 
     rerender(
       <EditorialWorkspaceV2
@@ -105,6 +106,7 @@ describe('EditorialWorkspaceV2', () => {
       />,
     );
     expect(screen.getByTestId('inspector-fields').getAttribute('data-organization-mode')).toBe('false');
+    expect(screen.getByText('Wilayah')).toBeDefined();
   });
 
   it('exposes the production save action through the existing form state contract', async () => {
