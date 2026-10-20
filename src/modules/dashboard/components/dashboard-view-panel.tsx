@@ -385,6 +385,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               onSubmit={(payload) => command('article.create', payload, { refresh: true })}
               command={command}
               organizationId={organizationId}
+              organizationMode={navigationMode === 'organization'}
               editArticleId={editArticleId ?? undefined}
               editOwnerOrganizationId={editOwnerOrganizationId ?? undefined}
               onExitEdit={exitEdit}
