@@ -107,7 +107,7 @@ describe('Dashboard workspace login modes', () => {
   it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
-    await screen.findByText('Indicate');
+    await screen.findByRole('navigation', { name: 'Navigasi sidebar Dashboard' });
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
     const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
     const articles = sidebar.getByRole('button', { name: 'Artikel' });
@@ -165,7 +165,7 @@ describe('Dashboard workspace login modes', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={tenantOrganization} />);
 
-    await screen.findByText('Indicate');
+    await screen.findByRole('navigation', { name: 'Navigasi sidebar Dashboard' });
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
     const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
     fireEvent.click(sidebar.getByRole('button', { name: 'Organisasi' }));
@@ -283,7 +283,7 @@ describe('Dashboard workspace', () => {
 
   it('does not restore the global Refresh action after navigation changes', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Indicate');
+    await screen.findByRole('navigation', { name: 'Navigasi sidebar Dashboard' });
     expect(screen.queryByRole('button', { name: /^Refresh$/ })).toBeNull();
   });
 
@@ -304,7 +304,7 @@ describe('Dashboard workspace', () => {
 
   it('opens the editorial library from the tenant Artikel navigation', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Indicate');
+    await screen.findByRole('navigation', { name: 'Navigasi sidebar Dashboard' });
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
     fireEvent.click(sidebar.getByRole('button', { name: 'Artikel' }));
     fireEvent.click(await sidebar.findByRole('button', { name: 'Content Library' }));
@@ -314,7 +314,7 @@ describe('Dashboard workspace', () => {
 
   it('keeps the footer after workspace content with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('Indicate');
+    await screen.findByRole('navigation', { name: 'Navigasi sidebar Dashboard' });
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('mt-auto');
@@ -382,7 +382,7 @@ describe('Dashboard workspace', () => {
         navigationMode="platform"
       />,
     );
-    await screen.findByText('Indicate');
+    await screen.findByRole('navigation', { name: 'Navigasi sidebar Dashboard' });
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
@@ -404,7 +404,7 @@ describe('Dashboard workspace', () => {
         navigationMode="platform"
       />,
     );
-    await screen.findByText('Indicate');
+    await screen.findByRole('navigation', { name: 'Navigasi sidebar Dashboard' });
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
