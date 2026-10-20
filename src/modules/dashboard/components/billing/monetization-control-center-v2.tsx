@@ -63,12 +63,15 @@ async function getJson(url: string) {
 export function MonetizationControlCenterV2({
   organizationId,
   permissions,
+  organizationMode = false,
 }: {
   readonly organizationId: string;
   readonly permissions: readonly string[];
+  readonly organizationMode?: boolean;
 }) {
   const isPlatform =
-    permissions.includes('platform.super_admin') || permissions.includes('platform.customer.admin');
+    !organizationMode &&
+    (permissions.includes('platform.super_admin') || permissions.includes('platform.customer.admin'));
   const [state, setState] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<readonly Invoice[]>([]);
   const [hasMoreInvoices, setHasMoreInvoices] = useState(false);
@@ -230,14 +233,15 @@ export function MonetizationControlCenterV2({
       <header className="flex flex-col gap-3 border-b border-hairline pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-brass">
-            Monetization Control Center
+            {organizationMode ? 'Organization Billing' : 'Monetization Control Center'}
           </p>
           <h1 className="m-0 mt-1 font-sans text-2xl font-semibold tracking-tight text-paper">
-            Revenue & Billing
+            {organizationMode ? 'Invoice' : 'Revenue & Billing'}
           </h1>
           <p className="m-0 mt-1 max-w-2xl text-xs leading-relaxed text-paper-dim">
-            Satu workspace untuk status akses, nilai tagihan, dan tindakan billing yang
-            terotorisasi.
+            {organizationMode
+              ? 'Daftar faktur dan status tagihan untuk organisasi yang sedang aktif. Perubahan pembayaran dikelola oleh administrator platform.'
+              : 'Satu workspace untuk status akses, nilai tagihan, dan tindakan billing yang terotorisasi.'}
           </p>
         </div>
         <Button
@@ -373,7 +377,7 @@ export function MonetizationControlCenterV2({
                 aria-label="Cari faktur"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cari nomor faktur atau organisasi…"
+                placeholder={organizationMode ? 'Cari nomor faktur…' : 'Cari nomor faktur atau organisasi…'}
                 className="pl-8 text-xs"
               />
             </div>
