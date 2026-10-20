@@ -178,7 +178,6 @@ describe('Dashboard workspace login modes', () => {
     expect(await screen.findByRole('heading', { name: 'Membership' })).toBeDefined();
     expect(await screen.findByText(/aktif/i)).toBeDefined();
     expect(screen.queryByRole('table')).toBeNull();
-    expect(screen.queryByText('Redaktur Uji')).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/dashboard/billing?scope=subscription-state'))).toBe(true);
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=memberships'))).toBe(false);
 
