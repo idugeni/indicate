@@ -91,7 +91,7 @@ function SeoMeter({
  * @param state - State, turunan memo, dan penangan aksi dari `useArticleFormState`.
  * @returns Kolom inspektor lengket dengan semua seksi metadata.
  */
-export function ArticleInspectorFields({ state }: { readonly state: ArticleFormState }) {
+export function ArticleInspectorFields({ state, organizationMode = false }: { readonly state: ArticleFormState; readonly organizationMode?: boolean }) {
   const {
     regionSelectId,
     nationalCheckId,
@@ -311,7 +311,7 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
                 Atribusi
               </p>
             </div>
-            {isUnrestricted ? (
+            {!organizationMode && isUnrestricted ? (
               <div className="flex items-start gap-2 rounded border border-hairline bg-bg p-2.5">
                 <Checkbox
                   id={nationalCheckId}
@@ -338,7 +338,7 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
                 </div>
               </div>
             ) : null}
-            {nationalActive ? null : (
+            {organizationMode || nationalActive ? null : (
               <div className="space-y-1.5">
                 <Label htmlFor={regionSelectId} className="font-mono text-xs text-paper-dim">
                   Wilayah
@@ -359,7 +359,7 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
               </div>
             )}
 
-            {nationalActive || provinceId === null ? null : (
+            {organizationMode || nationalActive || provinceId === null ? null : (
               <div className="space-y-1.5">
                 <Label htmlFor={citySelectId} className="font-mono text-xs text-paper-dim">
                   Kota / kabupaten
@@ -380,26 +380,30 @@ export function ArticleInspectorFields({ state }: { readonly state: ArticleFormS
               </div>
             )}
 
-            <Separator />
-
-            <div className="space-y-1.5">
-              <Label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
-                Penerbit
-              </Label>
-              <SearchCombobox
-                id={publisherSelectId}
-                name="publisherId"
-                disabled={isSubmitting}
-                placeholder="Mandiri (tanpa penerbit)"
-                allowEmpty
-                emptyLabel="Mandiri (tanpa penerbit)"
-                options={publisherOptions}
-                value={publisherId ?? ''}
-                onValueChange={handlePublisherChange}
-              />
-            </div>
-
-            <Separator />
+            {!organizationMode ? (
+              <>
+              <Separator />
+  
+              <div className="space-y-1.5">
+                <Label htmlFor={publisherSelectId} className="font-mono text-xs text-paper-dim">
+                  Penerbit
+                </Label>
+                <SearchCombobox
+                  id={publisherSelectId}
+                  name="publisherId"
+                  disabled={isSubmitting}
+                  placeholder="Mandiri (tanpa penerbit)"
+                  allowEmpty
+                  emptyLabel="Mandiri (tanpa penerbit)"
+                  options={publisherOptions}
+                  value={publisherId ?? ''}
+                  onValueChange={handlePublisherChange}
+                />
+              </div>
+  
+              <Separator />
+              </>
+            ) : null}
 
             <div className="space-y-1.5">
               <div className="flex items-baseline justify-between gap-2">
