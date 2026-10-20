@@ -79,12 +79,14 @@ function WorkspaceSurface({
   initialArticle,
   command,
   ownerOrganizationId,
+  organizationMode,
 }: {
   readonly form: ArticleFormState;
   readonly onExitEdit?: (() => void) | undefined;
   readonly initialArticle?: EditArticleInit | undefined;
   readonly command?: DashboardCommand;
   readonly ownerOrganizationId?: string | undefined;
+  readonly organizationMode: boolean;
 }) {
   const {
     status,
@@ -203,7 +205,7 @@ function WorkspaceSurface({
               </div>
               <Badge variant="outline" className="font-mono text-[10px]">{targetSiteIds.length} target</Badge>
             </div>
-            <ArticleInspectorFields state={form} />
+            <ArticleInspectorFields state={form} organizationMode={organizationMode} />
           </div>
 
           <div className="mt-4 rounded-xl border border-hairline bg-bg-raised/60 p-4">
@@ -252,6 +254,7 @@ function EditorLoader({
   command,
   organizationId,
   ownerOrganizationId,
+  organizationMode,
   onExitEdit,
 }: {
   readonly articleId: string;
@@ -259,6 +262,7 @@ function EditorLoader({
   readonly command: DashboardCommand;
   readonly organizationId: string;
   readonly ownerOrganizationId?: string | undefined;
+  readonly organizationMode: boolean;
   readonly onExitEdit?: (() => void) | undefined;
 }) {
   const effectiveOwnerOrganizationId = ownerOrganizationId ?? organizationId;
@@ -332,6 +336,7 @@ function EditorLoader({
       command={command}
       organizationId={organizationId}
       ownerOrganizationId={effectiveOwnerOrganizationId}
+      organizationMode={organizationMode}
       initialArticle={loaded}
       onExitEdit={onExitEdit}
     />
@@ -344,6 +349,7 @@ function LoadedEditor({
   organizationId,
   initialArticle,
   ownerOrganizationId,
+  organizationMode,
   onExitEdit,
 }: {
   readonly data: unknown;
@@ -351,6 +357,7 @@ function LoadedEditor({
   readonly organizationId: string;
   readonly initialArticle: EditArticleInit;
   readonly ownerOrganizationId?: string | undefined;
+  readonly organizationMode: boolean;
   readonly onExitEdit?: (() => void) | undefined;
 }) {
   const form = useArticleFormState({
@@ -363,7 +370,7 @@ function LoadedEditor({
     onEditSaved: onExitEdit,
   });
 
-  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} initialArticle={initialArticle} command={command} ownerOrganizationId={ownerOrganizationId} />;
+  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} initialArticle={initialArticle} command={command} ownerOrganizationId={ownerOrganizationId} organizationMode={organizationMode} />;
 }
 
 function CreateEditor({
@@ -371,12 +378,14 @@ function CreateEditor({
   onSubmit,
   command,
   organizationId,
+  organizationMode,
   onExitEdit,
 }: {
   readonly data: unknown;
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
   readonly command: DashboardCommand;
   readonly organizationId: string;
+  readonly organizationMode: boolean;
   readonly onExitEdit?: (() => void) | undefined;
 }) {
   const form = useArticleFormState({
@@ -386,7 +395,7 @@ function CreateEditor({
     organizationId,
   });
 
-  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} command={command} />;
+  return <WorkspaceSurface form={form} onExitEdit={onExitEdit} command={command} organizationMode={organizationMode} />;
 }
 
 export function EditorialWorkspaceV2({
@@ -397,6 +406,7 @@ export function EditorialWorkspaceV2({
   editArticleId,
   editOwnerOrganizationId,
   onExitEdit,
+  organizationMode = true,
 }: {
   readonly data: unknown;
   readonly onSubmit: (payload: unknown) => Promise<unknown>;
@@ -405,6 +415,7 @@ export function EditorialWorkspaceV2({
   readonly editArticleId?: string | undefined;
   readonly editOwnerOrganizationId?: string | undefined;
   readonly onExitEdit?: () => void;
+  readonly organizationMode?: boolean;
 }) {
   if (editArticleId) {
     return (
@@ -415,6 +426,7 @@ export function EditorialWorkspaceV2({
         command={command}
         organizationId={organizationId}
         ownerOrganizationId={editOwnerOrganizationId}
+        organizationMode={organizationMode}
         onExitEdit={onExitEdit}
       />
     );
@@ -426,6 +438,7 @@ export function EditorialWorkspaceV2({
       onSubmit={onSubmit}
       command={command}
       organizationId={organizationId}
+      organizationMode={organizationMode}
       onExitEdit={onExitEdit}
     />
   );
