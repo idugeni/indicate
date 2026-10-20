@@ -338,6 +338,7 @@ const SidebarBody = memo(function SidebarBody({
 export function DashboardSidebar(props: {
   readonly displayName: string;
   readonly avatarUrl: string | null;
+  readonly organizationLogoUrl: string | null;
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;
