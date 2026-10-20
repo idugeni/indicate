@@ -113,7 +113,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     icon: Users,
   },
   media: {
-    label: 'Media Library', title: 'Media Library', eyebrow: 'Asset Operations', group: 'editorial',
+    label: 'Media', title: 'Media Library', eyebrow: 'Asset Operations', group: 'editorial',
     description: 'Kelola aset visual yang dipakai oleh workflow editorial.',
     icon: FolderKanban,
   },
@@ -213,8 +213,8 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     label: 'Artikel',
     scope: 'organization',
     defaultView: 'articles',
-    navigationViews: ['articles', 'editorial', 'publishing', 'published', 'media', 'taxonomy', 'publishers'],
-    views: ['articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published'],
+    navigationViews: ['articles', 'editorial', 'media'],
+    views: ['articles', 'editorial', 'media'],
   },
   {
     id: 'organization',
