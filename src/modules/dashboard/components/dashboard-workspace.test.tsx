@@ -107,7 +107,7 @@ describe('Dashboard workspace login modes', () => {
   it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
-    await screen.findByText('INDICATE / NEWSROOM');
+    await screen.findByText('Indicate');
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
     const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
     const articles = sidebar.getByRole('button', { name: 'Artikel' });
@@ -165,7 +165,7 @@ describe('Dashboard workspace login modes', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={tenantOrganization} />);
 
-    await screen.findByText('INDICATE / NEWSROOM');
+    await screen.findByText('Indicate');
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
     const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
     fireEvent.click(sidebar.getByRole('button', { name: 'Organisasi' }));
@@ -176,8 +176,11 @@ describe('Dashboard workspace login modes', () => {
 
     fireEvent.click(sidebar.getByRole('button', { name: 'Membership' }));
     expect(await screen.findByRole('heading', { name: 'Membership' })).toBeDefined();
-    expect(await screen.findByRole('row', { name: /Redaktur Uji/ })).toBeDefined();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=memberships'))).toBe(true);
+    expect(await screen.findByText(/aktif/i)).toBeDefined();
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByText('Redaktur Uji')).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/dashboard/billing?scope=subscription-state'))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=memberships'))).toBe(false);
 
     fireEvent.click(sidebar.getByRole('button', { name: 'Invoice' }));
     expect(await screen.findByRole('heading', { name: 'Invoice' })).toBeDefined();
@@ -280,7 +283,7 @@ describe('Dashboard workspace', () => {
 
   it('does not restore the global Refresh action after navigation changes', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / NEWSROOM');
+    await screen.findByText('Indicate');
     expect(screen.queryByRole('button', { name: /^Refresh$/ })).toBeNull();
   });
 
@@ -288,7 +291,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
-    expect(await screen.findByText('INDICATE / NEWSROOM')).toBeDefined();
+    expect(await screen.findByText('Halo, Redaktur Uji.')).toBeDefined();
   });
 
   it('collapses and expands the sidebar through the edge rail', () => {
@@ -301,7 +304,7 @@ describe('Dashboard workspace', () => {
 
   it('opens the editorial library from the tenant Artikel navigation', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / NEWSROOM');
+    await screen.findByText('Indicate');
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
     fireEvent.click(sidebar.getByRole('button', { name: 'Artikel' }));
     fireEvent.click(await sidebar.findByRole('button', { name: 'Content Library' }));
@@ -311,7 +314,7 @@ describe('Dashboard workspace', () => {
 
   it('keeps the footer after workspace content with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / NEWSROOM');
+    await screen.findByText('Indicate');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('mt-auto');
@@ -376,9 +379,10 @@ describe('Dashboard workspace', () => {
         displayName="Redaktur Uji"
         organizations={ORGANIZATIONS}
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
+        navigationMode="platform"
       />,
     );
-    await screen.findByText('INDICATE / NEWSROOM');
+    await screen.findByText('Indicate');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
@@ -397,9 +401,10 @@ describe('Dashboard workspace', () => {
         displayName="Redaktur Uji"
         organizations={ORGANIZATIONS}
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
+        navigationMode="platform"
       />,
     );
-    await screen.findByText('INDICATE / NEWSROOM');
+    await screen.findByText('Indicate');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
