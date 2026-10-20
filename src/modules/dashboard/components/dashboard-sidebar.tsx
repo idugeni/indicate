@@ -112,7 +112,9 @@ export function DashboardNavList({
         const active = allowedViews.includes(view);
         const expanded = expandedArea === area.id;
         const Icon = VIEW_REGISTRY[defaultView].icon;
-        const children = navigationViews.filter((candidate) => candidate !== defaultView);
+        const children = navigationMode === 'organization' && area.id === 'articles'
+          ? navigationViews
+          : navigationViews.filter((candidate) => candidate !== defaultView);
 
         return (
           <section key={area.id} className="space-y-0.5">
