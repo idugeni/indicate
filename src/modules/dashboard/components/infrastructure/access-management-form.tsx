@@ -40,10 +40,14 @@ export function AccessManagementForm({
   data,
   command,
   organizationId,
+  canManageRoles = true,
+  canManageMemberships = true,
 }: {
   readonly data: unknown;
   readonly command: DashboardCommand;
   readonly organizationId: string;
+  readonly canManageRoles?: boolean;
+  readonly canManageMemberships?: boolean;
 }) {
   const model = data as {
     readonly roles?: readonly RoleOption[];
@@ -183,6 +187,7 @@ export function AccessManagementForm({
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      {canManageRoles ? (
       <SectionCard icon={KeyRound} title="Peran baru" eyebrow="Hak akses">
         <form noValidate onSubmit={handleCreateRole} className="space-y-3.5">
           <div className="space-y-1.5">
@@ -249,7 +254,9 @@ export function AccessManagementForm({
           </div>
         </form>
       </SectionCard>
+      ) : null}
 
+      {canManageMemberships ? (
       <SectionCard icon={UserPlus} title="Penetapan anggota" eyebrow="Peran & status">
         <form noValidate onSubmit={handleSaveMembership} className="space-y-3.5">
           <div className="space-y-1.5">
@@ -421,6 +428,7 @@ export function AccessManagementForm({
           </div>
         </form>
       </SectionCard>
+      ) : null}
     </div>
   );
 }
