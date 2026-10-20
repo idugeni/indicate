@@ -173,7 +173,7 @@ describe('Dashboard workspace login modes', () => {
 
     fireEvent.click(sidebar.getByRole('button', { name: 'Membership' }));
     expect(await screen.findByRole('heading', { name: 'Membership' })).toBeDefined();
-    expect(await screen.findByText('Redaktur Uji')).toBeDefined();
+    expect(await screen.findByRole('row', { name: /Redaktur Uji/ })).toBeDefined();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=configuration'))).toBe(true);
 
     fireEvent.click(sidebar.getByRole('button', { name: 'Invoice' }));
