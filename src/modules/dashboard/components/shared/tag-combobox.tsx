@@ -136,7 +136,23 @@ export function TagCombobox({
       onValueChange={(next) => {
         if (next !== null) commit(next.slice(0, maxItems));
       }}
-      onInputValueChange={(next) => setQuery(next)}
+      onInputValueChange={(next) => {
+        if (!next.includes(',')) {
+          setQuery(next);
+          return;
+        }
+        const parts = next.split(',');
+        const trailing = parts.pop() ?? '';
+        const additions = parts
+          .map((part) => normalizeValue(part))
+          .filter((tag) => tag !== '' && !tags.includes(tag));
+        const unique = [...new Set(additions)].filter((tag) => !tags.includes(tag));
+        const available = Math.max(0, maxItems - tags.length);
+        if (unique.length > 0 && available > 0) {
+          commit([...tags, ...unique.slice(0, available)]);
+        }
+        setQuery(trailing.trimStart());
+      }}
       itemToStringLabel={(itemValue: string) => itemValue ?? ''}
       disabled={disabled}
     >
