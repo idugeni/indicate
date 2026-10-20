@@ -199,7 +199,7 @@ describe('Dashboard workspace', () => {
 
   it('does not restore the global Refresh action after navigation changes', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
+    await screen.findByText('INDICATE / NEWSROOM');
     expect(screen.queryByRole('button', { name: /^Refresh$/ })).toBeNull();
   });
 
