@@ -296,6 +296,9 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
                     activeSubdomains: number(source.activeSubdomains),
                     activeSites: number(source.activeSites),
                     activeArticles: number(source.activeArticles),
+                    draftArticles: number(source.draftArticles),
+                    inReviewArticles: number(source.inReviewArticles),
+                    scheduledArticles: number(source.scheduledArticles),
                     archivedArticles: number(source.archivedArticles),
                     jobsByState: {
                       queued: number(jobs.queued),
