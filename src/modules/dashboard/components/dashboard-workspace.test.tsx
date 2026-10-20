@@ -107,6 +107,7 @@ describe('Dashboard workspace login modes', () => {
   it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
+    await screen.findByText('INDICATE / NEWSROOM');
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
     const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
     const articles = sidebar.getByRole('button', { name: 'Artikel' });
