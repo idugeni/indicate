@@ -317,6 +317,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
                     failedSiteOutcomes: number(source.failedSiteOutcomes),
                   }}
                   analytics={isAnalyticsProjection(source.analytics) ? source.analytics : null}
+                  navigationMode={navigationMode}
                   onSelectView={onSelectView}
                 />
               );
