@@ -146,7 +146,7 @@ export function CategoryCombobox({
         const parts = next.split(',');
         const trailing = parts.pop() ?? '';
         const names = [...new Set(parts.map((part) => part.trim()).filter(Boolean))];
-        let selected = [...value];
+        const selected = [...value];
         for (const name of names) {
           if (selected.length >= MAX_ITEMS) break;
           const matched = categories.find(
