@@ -99,9 +99,28 @@ describe('Dashboard workspace login modes', () => {
     for (const label of ['Dashboard', 'Artikel', 'Organisasi']) {
       expect(screen.getAllByRole('button', { name: label }).length).toBeGreaterThan(0);
     }
-    for (const hiddenLabel of ['Berita', 'Compose', 'Media Library', 'Live Results', 'Super Admin']) {
+    for (const hiddenLabel of ['Berita', 'Compose', 'Media', 'Delivery', 'Live Results', 'Taxonomy', 'Publishers', 'Super Admin']) {
       expect(screen.queryByRole('button', { name: hiddenLabel })).toBeNull();
     }
+  });
+
+  it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+
+    const dashboard = screen.getAllByRole('button', { name: 'Dashboard' })[0]!;
+    const articles = screen.getAllByRole('button', { name: 'Artikel' })[0]!;
+    expect(dashboard.getAttribute('aria-current')).toBe('page');
+
+    fireEvent.click(articles);
+
+    expect(await screen.findByRole('button', { name: 'Content Library' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Compose' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Media' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Delivery' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Live Results' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Taxonomy' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Publishers' })).toBeNull();
+    expect(dashboard.getAttribute('aria-current')).toBe('page');
   });
 
   it('shows only Super Admin navigation for a platform Super Admin login', () => {
