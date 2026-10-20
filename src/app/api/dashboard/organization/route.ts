@@ -55,9 +55,28 @@ function readIdentityProfile(stored: unknown): IdentityProfile {
   if (stored === undefined || stored === null) return defaultIdentityProfile;
   return identityProfileSchema.parse(stored);
 }
-function publicProfile(row: { id: string; name: string; slug: string; identityData: unknown; version: number }) {
+function publicProfile(row: { id: string; name: string; slug: string; identityData: unknown; customerMetadata?: unknown; version: number }) {
   const identity = readIdentityProfile(row.identityData);
-  return { id: row.id, name: row.name, slug: row.slug, ...identity, version: row.version };
+  // Older tenant records store contact information at the customer_metadata root.
+  // Keep explicit organizationIdentity values authoritative, using legacy fields only as fallbacks.
+  const metadata = row.customerMetadata && typeof row.customerMetadata === 'object' && !Array.isArray(row.customerMetadata)
+    ? row.customerMetadata as Record<string, unknown>
+    : {};
+  const contactDetails = identity.contactDetails;
+  const legacyString = (key: string) => typeof metadata[key] === 'string' ? (metadata[key] as string).trim() : '';
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    ...identity,
+    contactDetails: {
+      ...contactDetails,
+      ...(!contactDetails.phone && legacyString('phone') ? { phone: legacyString('phone') } : {}),
+      ...(!contactDetails.address && legacyString('address') ? { address: legacyString('address') } : {}),
+      ...(!contactDetails.website && legacyString('site_url') ? { website: legacyString('site_url') } : {}),
+    },
+    version: row.version,
+  };
 }
 
 async function resolveActor(organizationId: string, requestId: string) {
@@ -85,6 +104,7 @@ async function handleGET(request: Request) {
         name: organizations.name,
         slug: organizations.slug,
         identityData: sql<unknown>`${organizations.customerMetadata} -> 'organizationIdentity'`,
+        customerMetadata: organizations.customerMetadata,
         version: organizations.version,
       }).from(organizations).where(eq(organizations.id, actor.organizationId)).limit(1);
     });
