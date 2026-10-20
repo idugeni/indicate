@@ -39,7 +39,7 @@ function request(url: string, method = 'GET', body?: unknown) {
   });
 }
 
-function setDatabase(current = CURRENT) {
+function setDatabase(current: typeof CURRENT & { readonly customerMetadata?: unknown } = CURRENT) {
   const updatedRows = vi.fn().mockResolvedValue([{
     id: ORG,
     name: 'Organisasi Baru',
@@ -79,6 +79,26 @@ describe('API identitas organisasi', () => {
     const response = await GET(request(`https://app.test/api/dashboard/organization?organizationId=${ORG}`));
     expect(response.status).toBe(404);
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it('memetakan kontak metadata tenant lama sebagai fallback identitas', async () => {
+    setDatabase({
+      ...CURRENT,
+      customerMetadata: {
+        phone: '(0294) 579229',
+        address: 'Sopoyono, Wonosari, Kendal',
+        site_url: 'https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-kendal',
+      },
+    });
+    const response = await GET(request(`https://app.test/api/dashboard/organization?organizationId=${ORG}`));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      contactDetails: {
+        phone: '(0294) 579229',
+        address: 'Sopoyono, Wonosari, Kendal',
+        website: 'https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-kendal',
+      },
+    });
   });
 
   it('menolak perubahan tanpa hak kelola peran atau anggota', async () => {

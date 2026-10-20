@@ -57,6 +57,13 @@ const OrganizationProfileV2 = dynamic(
     })),
   { loading: () => <DashboardViewSkeleton view="organization" /> },
 );
+const MembershipWorkspaceV2 = dynamic(
+  () =>
+    import('@/modules/dashboard/components/settings/membership-workspace-v2').then((module) => ({
+      default: module.MembershipWorkspaceV2,
+    })),
+  { loading: () => <DashboardViewSkeleton view="memberships" /> },
+);
 const PersonalProfileV2 = dynamic(
   () =>
     import('@/modules/dashboard/components/settings/profile-form').then((module) => ({
@@ -173,6 +180,7 @@ const SELF_FETCHING_V2_VIEWS: ReadonlySet<View> = new Set<View>([
   'profile',
   'content',
   'billing',
+  'invoices',
   'moderation',
   'ai',
   'ads',
@@ -385,6 +393,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
               onSubmit={(payload) => command('article.create', payload, { refresh: true })}
               command={command}
               organizationId={organizationId}
+              organizationMode={navigationMode === 'organization'}
               editArticleId={editArticleId ?? undefined}
               editOwnerOrganizationId={editOwnerOrganizationId ?? undefined}
               onExitEdit={exitEdit}
@@ -418,6 +427,14 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
           {view === 'organization' ? (
             <OrganizationProfileV2 organizationId={organizationId} organizationName={organizationName} organizationRole={organizationRole} />
           ) : null}
+          {view === 'memberships' ? (
+            <MembershipWorkspaceV2
+              data={data}
+              command={command}
+              organizationId={organizationId}
+              permissions={permissions}
+            />
+          ) : null}
           {view === 'profile' ? <PersonalProfileV2 /> : null}
           {view === 'configuration' ? (
             <InfrastructureControlCenterV2
@@ -447,6 +464,13 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
             <MonetizationControlCenterV2
               organizationId={organizationId}
               permissions={[...permissions]}
+            />
+          ) : null}
+          {view === 'invoices' ? (
+            <MonetizationControlCenterV2
+              organizationId={organizationId}
+              permissions={[...permissions]}
+              organizationMode
             />
           ) : null}
           {view === 'audit' ? (

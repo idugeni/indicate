@@ -26,7 +26,7 @@ import type { Result } from '@/core/result';
 const organizationSchema = z.uuid();
 const querySchema = z.object({
   organizationId: organizationSchema,
-  view: z.enum(['dashboard', 'configuration', 'publishers', 'editorial', 'taxonomy', 'articles', 'published', 'analytics', 'audit', 'operations']),
+  view: z.enum(['dashboard', 'configuration', 'memberships', 'publishers', 'editorial', 'taxonomy', 'articles', 'published', 'analytics', 'audit', 'operations']),
   regionId: organizationSchema.optional(), siteId: organizationSchema.optional(), categoryId: organizationSchema.optional(), publisherId: organizationSchema.optional(), authorId: organizationSchema.optional(),
   publicationState: z.enum(['queued', 'processing', 'published', 'failed', 'retrying', 'unpublished']).optional(), search: z.string().max(300).optional(),
   siteHostname: z.string().max(253).optional(),
@@ -107,6 +107,7 @@ async function handleGET(request: Request) {
       ? actor.actorType === 'user'
         ? await fetchCachedDashboard(actor)
         : { ok: false as const, error: createNonDisclosingDenial(requestId) }
+      : parsed.data.view === 'memberships' ? await service.listMemberships(actor)
       : parsed.data.view === 'configuration' ? await service.listConfiguration(actor, { search: parsed.data.search })
       : parsed.data.view === 'publishers' ? await service.listPublishers(actor, { search: parsed.data.search })
       : parsed.data.view === 'editorial' ? await service.listEditorial(actor, { ...editorialFilter, limit: 0 })

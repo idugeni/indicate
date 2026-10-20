@@ -36,6 +36,7 @@ export function DashboardNavList({
   permissions,
   collapsed = false,
   onSelect,
+  onExpandSidebar,
   navigationMode = 'organization',
 }: {
   readonly view: View;
@@ -43,6 +44,7 @@ export function DashboardNavList({
   readonly permissions: ReadonlySet<string>;
   readonly collapsed?: boolean;
   readonly onSelect: (view: View) => void;
+  readonly onExpandSidebar?: (() => void) | undefined;
 }) {
   const visibleAreas = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode);
   const activeArea = visibleAreas.find((area) => area.views.includes(view));
@@ -75,7 +77,14 @@ export function DashboardNavList({
                 variant="ghost"
                 aria-current={view === defaultView ? 'page' : undefined}
                 aria-label={area.label}
-                onClick={() => onSelect(defaultView)}
+                onClick={() => {
+                  if (navigationMode === 'organization' && area.id === 'articles') {
+                    setExpandedArea('articles');
+                    onExpandSidebar?.();
+                    return;
+                  }
+                  onSelect(defaultView);
+                }}
                 className={`mx-auto flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${
                   area.views.includes(view)
                     ? 'bg-indigo-400/10 text-white ring-1 ring-indigo-400/15'
@@ -103,7 +112,9 @@ export function DashboardNavList({
         const active = allowedViews.includes(view);
         const expanded = expandedArea === area.id;
         const Icon = VIEW_REGISTRY[defaultView].icon;
-        const children = navigationViews.filter((candidate) => candidate !== defaultView);
+        const children = navigationMode === 'organization' && area.id === 'articles'
+          ? navigationViews
+          : navigationViews.filter((candidate) => candidate !== defaultView);
 
         return (
           <section key={area.id} className="space-y-0.5">
@@ -111,8 +122,14 @@ export function DashboardNavList({
               <Button
                 type="button"
                 variant="ghost"
-                aria-current={view === defaultView ? 'page' : undefined}
-                onClick={() => onSelect(defaultView)}
+                aria-current={view === defaultView && !(navigationMode === 'organization' && area.id === 'articles') ? 'page' : undefined}
+                onClick={() => {
+                  if (navigationMode === 'organization' && area.id === 'articles') {
+                    setExpandedArea('articles');
+                    return;
+                  }
+                  onSelect(defaultView);
+                }}
                 className={`flex min-w-0 flex-1 items-center justify-start gap-2.5 rounded-md px-2.5 py-2 text-left font-sans text-[13px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass/60 ${active ? 'bg-white/[0.05] text-paper' : 'text-[#8e99b0] hover:bg-white/[0.04] hover:text-white'}`}
               >
                 <Icon className="h-4 w-4 flex-none text-paper-faint" aria-hidden="true" />
@@ -140,7 +157,8 @@ export function DashboardNavList({
             {expanded && children.length > 0 ? (
               <div className="ml-4 space-y-0.5 border-l border-white/[0.08] pl-2">
                 {children.map((navView) => {
-                  const { label, icon: ChildIcon } = VIEW_REGISTRY[navView];
+                  const { icon: ChildIcon } = VIEW_REGISTRY[navView];
+                  const label = area.navigationLabels?.[navView] ?? VIEW_REGISTRY[navView].label;
                   const isActive = view === navView;
                   return (
                     <Button
@@ -187,6 +205,7 @@ const SidebarBody = memo(function SidebarBody({
   navigationMode = 'organization',
   view,
   collapsed,
+  onExpandSidebar,
   onSelectView,
   onRequestOrganizationSwitch,
   onOrganizationSwitchCommitted,
@@ -200,6 +219,7 @@ const SidebarBody = memo(function SidebarBody({
   readonly navigationMode?: DashboardMode;
   readonly view: View;
   readonly collapsed: boolean;
+  readonly onExpandSidebar?: (() => void) | undefined;
   readonly onSelectView: (view: View) => void;
   readonly onRequestOrganizationSwitch: (organizationId: string) => void;
   readonly onOrganizationSwitchCommitted: (organizationId: string) => void;
@@ -265,6 +285,7 @@ const SidebarBody = memo(function SidebarBody({
           navigationMode={navigationMode}
           collapsed={collapsed}
           onSelect={onSelectView}
+          onExpandSidebar={onExpandSidebar}
         />
       </nav>
 
@@ -339,7 +360,7 @@ export function DashboardSidebar(props: {
           : 'transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
       )}
     >
-      <SidebarBody {...props} collapsed={collapsed} />
+      <SidebarBody {...props} collapsed={collapsed} onExpandSidebar={() => setCollapsed(false)} />
 
       <SidebarResizeRail
         width={renderedWidth}

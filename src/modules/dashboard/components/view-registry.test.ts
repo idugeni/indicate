@@ -12,8 +12,8 @@ import {
 } from '@/modules/dashboard/components/view-registry';
 
 describe('Dashboard V2 view registry', () => {
-  it('registers all 21 dashboard views with explicit metadata', () => {
-    expect(ALL_VIEWS).toHaveLength(21);
+  it('registers all 23 dashboard views with explicit metadata', () => {
+    expect(ALL_VIEWS).toHaveLength(23);
     for (const view of ALL_VIEWS) {
       expect(VIEW_REGISTRY[view].title.trim()).not.toBe('');
       expect(VIEW_REGISTRY[view].description.trim()).not.toBe('');
@@ -47,12 +47,24 @@ describe('Primary dashboard navigation', () => {
     ]);
     expect(tenantAreas.map((area) => area.navigationViews)).toEqual([
       ['dashboard'],
-      ['articles', 'editorial', 'publishing', 'published', 'media', 'taxonomy', 'publishers'],
-      ['organization'],
+      ['articles', 'editorial', 'media'],
+      ['organization', 'memberships', 'invoices'],
     ]);
-    expect(PRIMARY_NAV_AREAS.find((area) => area.id === 'articles')?.views).toEqual(
-      expect.arrayContaining(['articles', 'editorial', 'media', 'taxonomy', 'publishing', 'published']),
-    );
+    expect(PRIMARY_NAV_AREAS.find((area) => area.id === 'articles')?.views).toEqual([
+      'articles',
+      'editorial',
+      'media',
+    ]);
+    expect(canAccessViewInMode('memberships', new Set([DASHBOARD_PERMISSIONS.membershipRead]), 'organization')).toBe(true);
+    expect(canAccessViewInMode('invoices', new Set([INTEGRATIONS_PERMISSIONS.subscriptionRead]), 'organization')).toBe(true);
+    expect(canAccessViewInMode('memberships', new Set([DASHBOARD_PERMISSIONS.membershipRead]), 'platform')).toBe(false);
+    expect(canAccessViewInMode('invoices', new Set([INTEGRATIONS_PERMISSIONS.subscriptionRead]), 'platform')).toBe(false);
+
+    const organizationPermissions = new Set<string>();
+    for (const restrictedView of ['publishing', 'published', 'taxonomy', 'publishers'] as const) {
+      expect(canAccessViewInMode(restrictedView, organizationPermissions, 'organization')).toBe(false);
+      expect(canAccessViewInMode(restrictedView, organizationPermissions, 'platform')).toBe(true);
+    }
     expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'platform').map((area) => area.label)).toEqual(['Super Admin']);
     for (const scope of ['organization', 'platform'] as const) {
       const scopedViews = PRIMARY_NAV_AREAS.filter((area) => area.scope === scope).flatMap((area) => area.views);

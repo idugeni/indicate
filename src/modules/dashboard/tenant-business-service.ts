@@ -254,12 +254,55 @@ export class TenantBusinessService {
         siteTotalInScope: scopedSites.length,
         siteLimit: CONFIGURATION_SITE_LIMIT,
         siteSearch: needle === '' ? null : needle,
-        roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
+        roles: (roleManage?.roles ?? membershipState?.roles ?? []).map((role) => roleManage !== null ? roleJson(role) : ({ id: role.id, name: role.name })), memberships: membershipState?.memberships ?? [],
         activationAttempts, invitations,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       } };
     } catch (error) {
       return this.internal(actor, error, 'dashboard.query.failed', 'configuration.list', 'configuration');
+    }
+  }
+
+  /**
+   * Read membership-only data for the tenant access page.
+   *
+   * Unlike the infrastructure projection, this response contains no domains,
+   * sites, site settings, or cache controls. Mutations continue to use the
+   * existing permission-checked membership and invitation commands.
+   */
+  async listMemberships(actor: AuthorizedTenantActorContext) {
+    if (
+      !actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipRead) &&
+      !actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage)
+    ) {
+      return this.denied(actor, 'membership.list', 'membership');
+    }
+    const permission = actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipRead)
+      ? DASHBOARD_PERMISSIONS.membershipRead
+      : DASHBOARD_PERMISSIONS.membershipManage;
+    try {
+      const scope = await this.repository.readConfigurationScope(actor, permission);
+      let invitations: readonly InvitationSummary[] = [];
+      if (actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage)) {
+        try {
+          invitations = await this.repository.listInvitations(actor, DASHBOARD_PERMISSIONS.membershipManage);
+        } catch (error) {
+          if (!(error instanceof DashboardAccessDeniedError)) throw error;
+        }
+      }
+      const canManageRoles = actor.permissionSet.has(DASHBOARD_PERMISSIONS.roleManage);
+      return {
+        ok: true as const,
+        value: {
+          organizationName: scope.organizationName,
+          memberships: scope.memberships,
+          roles: scope.roles.map((role) => canManageRoles ? roleJson(role) : ({ id: role.id, name: role.name })),
+          invitations,
+        },
+      };
+    } catch (error) {
+      if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'membership.list', 'membership');
+      return this.internal(actor, error, 'dashboard.query.failed', 'membership.list', 'membership', permission);
     }
   }
 

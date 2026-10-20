@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
@@ -99,9 +99,87 @@ describe('Dashboard workspace login modes', () => {
     for (const label of ['Dashboard', 'Artikel', 'Organisasi']) {
       expect(screen.getAllByRole('button', { name: label }).length).toBeGreaterThan(0);
     }
-    for (const hiddenLabel of ['Berita', 'Compose', 'Media Library', 'Live Results', 'Super Admin']) {
+    for (const hiddenLabel of ['Berita', 'Compose', 'Media', 'Delivery', 'Live Results', 'Taxonomy', 'Publishers', 'Super Admin']) {
       expect(screen.queryByRole('button', { name: hiddenLabel })).toBeNull();
     }
+  });
+
+  it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+
+    await screen.findByText('INDICATE / NEWSROOM');
+    const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
+    const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
+    const articles = sidebar.getByRole('button', { name: 'Artikel' });
+    expect(dashboard.getAttribute('aria-current')).toBe('page');
+
+    fireEvent.click(articles);
+
+    expect(await sidebar.findByRole('button', { name: 'Content Library' })).toBeDefined();
+    expect(sidebar.getByRole('button', { name: 'Compose' })).toBeDefined();
+    expect(sidebar.getByRole('button', { name: 'Media' })).toBeDefined();
+    expect(sidebar.queryByRole('button', { name: 'Delivery' })).toBeNull();
+    expect(sidebar.queryByRole('button', { name: 'Live Results' })).toBeNull();
+    expect(sidebar.queryByRole('button', { name: 'Taxonomy' })).toBeNull();
+    expect(sidebar.queryByRole('button', { name: 'Publishers' })).toBeNull();
+    expect(dashboard.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('exposes Membership and Invoice under Organisasi and loads tenant-scoped pages', async () => {
+    const tenantOrganization = [{
+      id: 'org-tenant',
+      name: 'Org Uji',
+      role: 'admin',
+      permissions: [
+        DASHBOARD_PERMISSIONS.membershipRead,
+        DASHBOARD_PERMISSIONS.membershipManage,
+        DASHBOARD_PERMISSIONS.roleManage,
+        INTEGRATIONS_PERMISSIONS.subscriptionRead,
+      ],
+    }] as never;
+    const fetchMock = vi.fn(async (url: unknown) => {
+      const target = String(url);
+      if (target.includes('/api/dashboard/billing?scope=subscription-state')) {
+        return { ok: true, json: async () => ({ state: 'active' }) };
+      }
+      if (target.includes('/api/dashboard/billing?scope=invoices')) {
+        return { ok: true, json: async () => [] };
+      }
+      if (target.includes('view=memberships')) {
+        return {
+          ok: true,
+          json: async () => ({
+            organizationName: 'Org Uji',
+            domains: [],
+            regions: [],
+            sites: [],
+            siteSettings: [],
+            roles: [{ id: 'role-1', name: 'Administrator' }],
+            memberships: [{ userId: 'user-1', displayName: 'Redaktur Uji', roleId: 'role-1', status: 'active', regionId: null, version: 1 }],
+            invitations: [],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={tenantOrganization} />);
+
+    await screen.findByText('INDICATE / NEWSROOM');
+    const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
+    fireEvent.click(sidebar.getByRole('button', { name: 'Buka submenu Organisasi' }));
+    expect(sidebar.getByRole('button', { name: 'Membership' })).toBeDefined();
+    expect(sidebar.getByRole('button', { name: 'Invoice' })).toBeDefined();
+
+    fireEvent.click(sidebar.getByRole('button', { name: 'Membership' }));
+    expect(await screen.findByRole('heading', { name: 'Membership' })).toBeDefined();
+    expect(await screen.findByRole('row', { name: /Redaktur Uji/ })).toBeDefined();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=memberships'))).toBe(true);
+
+    fireEvent.click(sidebar.getByRole('button', { name: 'Invoice' }));
+    expect(await screen.findByRole('heading', { name: 'Invoice' })).toBeDefined();
+    expect(await screen.findByText('Belum ada faktur untuk organisasi ini.')).toBeDefined();
+    expect(screen.queryByText('Platform Actions')).toBeNull();
   });
 
   it('shows only Super Admin navigation for a platform Super Admin login', () => {
@@ -221,7 +299,9 @@ describe('Dashboard workspace', () => {
   it('opens the editorial library from the tenant Artikel navigation', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / NEWSROOM');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Artikel' })[0]!);
+    const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
+    fireEvent.click(sidebar.getByRole('button', { name: 'Artikel' }));
+    fireEvent.click(await sidebar.findByRole('button', { name: 'Content Library' }));
     expect(await screen.findByRole('region', { name: 'Content Library' }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
@@ -336,7 +416,7 @@ describe('Dashboard workspace', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'publishers';
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} navigationMode="platform" />);
     await screen.findByText(/v1/, {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     await waitFor(() => expect(gets.filter((url) => url.includes('view=publishers'))).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     gets.length = 0;

@@ -52,7 +52,7 @@ vi.mock('@/modules/dashboard/components/editorial/article-composer-fields', () =
 }));
 
 vi.mock('@/modules/dashboard/components/editorial/article-inspector-fields', () => ({
-  ArticleInspectorFields: () => <div data-testid="inspector-fields">Inspector</div>,
+  ArticleInspectorFields: ({ organizationMode }: { readonly organizationMode?: boolean }) => <div data-testid="inspector-fields" data-organization-mode={String(organizationMode)}>Inspector</div>,
 }));
 
 vi.mock('@/modules/dashboard/components/editorial/liveblog-updates', () => ({
@@ -81,6 +81,32 @@ describe('EditorialWorkspaceV2', () => {
     expect(screen.getByText('Writing canvas')).toBeDefined();
     expect(screen.getByText('Publication inspector')).toBeDefined();
     expect(screen.getByText('Preflight')).toBeDefined();
+  });
+
+  it('passes organization mode to the compose inspector so tenant targeting controls can be hidden', () => {
+    const { rerender } = render(
+      <EditorialWorkspaceV2
+        data={{ regions: [] }}
+        onSubmit={submit}
+        command={command}
+        organizationId="org-1"
+        organizationMode
+      />,
+    );
+    expect(screen.getByTestId('inspector-fields').getAttribute('data-organization-mode')).toBe('true');
+    expect(screen.queryByText('Wilayah')).toBeNull();
+
+    rerender(
+      <EditorialWorkspaceV2
+        data={{ regions: [] }}
+        onSubmit={submit}
+        command={command}
+        organizationId="org-platform"
+        organizationMode={false}
+      />,
+    );
+    expect(screen.getByTestId('inspector-fields').getAttribute('data-organization-mode')).toBe('false');
+    expect(screen.getByText('Wilayah')).toBeDefined();
   });
 
   it('exposes the production save action through the existing form state contract', async () => {
