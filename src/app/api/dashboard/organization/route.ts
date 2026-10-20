@@ -217,11 +217,25 @@ async function handlePOST(request: Request) {
           ...(parsed.data.contactDetails.city ? { city: parsed.data.contactDetails.city } : {}),
         },
         visualIdentity: Object.fromEntries(Object.entries(parsed.data.visualIdentity).filter(([, value]) => value !== undefined)),
-        socialLinks: Object.fromEntries(Object.entries(parsed.data.socialLinks ?? {}).filter(([, value]) => value.trim() !== '')),
+        socialLinks: Object.fromEntries(Object.entries(parsed.data.socialLinks ?? currentIdentity.socialLinks ?? {}).filter(([, value]) => value.trim() !== '')),
       };
       const nextName = parsed.data.name;
-      const before = { name: current.name, description: currentIdentity.description, logoUrl: currentIdentity.logoUrl, contactDetails: currentIdentity.contactDetails, visualIdentity: currentIdentity.visualIdentity };
-      const after = { name: nextName, description: nextIdentity.description, logoUrl: nextIdentity.logoUrl, contactDetails: nextIdentity.contactDetails, visualIdentity: nextIdentity.visualIdentity };
+      const before = {
+        name: current.name,
+        description: currentIdentity.description,
+        logoUrl: currentIdentity.logoUrl,
+        contactDetails: currentIdentity.contactDetails,
+        visualIdentity: currentIdentity.visualIdentity,
+        socialLinks: currentIdentity.socialLinks ?? {},
+      };
+      const after = {
+        name: nextName,
+        description: nextIdentity.description,
+        logoUrl: nextIdentity.logoUrl,
+        contactDetails: nextIdentity.contactDetails,
+        visualIdentity: nextIdentity.visualIdentity,
+        socialLinks: nextIdentity.socialLinks ?? {},
+      };
       const changedFields = (Object.keys(after) as (keyof typeof after)[]).filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
       if (changedFields.length === 0) return { kind: 'saved' as const, profile: publicProfile(current, publisherContacts) };
       const updatedRows = await transaction.update(organizations).set({
