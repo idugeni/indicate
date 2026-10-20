@@ -125,6 +125,63 @@ describe('Dashboard workspace login modes', () => {
     expect(dashboard.getAttribute('aria-current')).toBe('page');
   });
 
+  it('exposes Membership and Invoice under Organisasi and loads tenant-scoped pages', async () => {
+    const tenantOrganization = [{
+      id: 'org-tenant',
+      name: 'Org Uji',
+      role: 'admin',
+      permissions: [
+        DASHBOARD_PERMISSIONS.membershipRead,
+        DASHBOARD_PERMISSIONS.membershipManage,
+        DASHBOARD_PERMISSIONS.roleManage,
+        INTEGRATIONS_PERMISSIONS.subscriptionRead,
+      ],
+    }] as never;
+    const fetchMock = vi.fn(async (url: unknown) => {
+      const target = String(url);
+      if (target.includes('/api/dashboard/billing?scope=subscription-state')) {
+        return { ok: true, json: async () => ({ state: 'active' }) };
+      }
+      if (target.includes('/api/dashboard/billing?scope=invoices')) {
+        return { ok: true, json: async () => [] };
+      }
+      if (target.includes('view=configuration')) {
+        return {
+          ok: true,
+          json: async () => ({
+            organizationName: 'Org Uji',
+            domains: [],
+            regions: [],
+            sites: [],
+            siteSettings: [],
+            roles: [{ id: 'role-1', name: 'Administrator' }],
+            memberships: [{ userId: 'user-1', displayName: 'Redaktur Uji', roleId: 'role-1', status: 'active', regionId: null, version: 1 }],
+            invitations: [],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={tenantOrganization} />);
+
+    await screen.findByText('INDICATE / NEWSROOM');
+    const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
+    fireEvent.click(sidebar.getByRole('button', { name: 'Buka submenu Organisasi' }));
+    expect(sidebar.getByRole('button', { name: 'Membership' })).toBeDefined();
+    expect(sidebar.getByRole('button', { name: 'Invoice' })).toBeDefined();
+
+    fireEvent.click(sidebar.getByRole('button', { name: 'Membership' }));
+    expect(await screen.findByRole('heading', { name: 'Membership' })).toBeDefined();
+    expect(await screen.findByText('Redaktur Uji')).toBeDefined();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=configuration'))).toBe(true);
+
+    fireEvent.click(sidebar.getByRole('button', { name: 'Invoice' }));
+    expect(await screen.findByRole('heading', { name: 'Invoice' })).toBeDefined();
+    expect(await screen.findByText('Belum ada faktur untuk organisasi ini.')).toBeDefined();
+    expect(screen.queryByText('Platform Actions')).toBeNull();
+  });
+
   it('shows only Super Admin navigation for a platform Super Admin login', () => {
     initialView = 'customers';
     const platformOrganizations = [{
