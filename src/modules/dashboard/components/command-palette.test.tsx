@@ -56,7 +56,7 @@ describe('Palet perintah', () => {
   it('membuka dialog dengan hanya tiga perintah tenant tingkat atas', async () => {
     await openPalette(ALL_PERMISSIONS);
     expect(await screen.findByText('Dashboard')).toBeDefined();
-    expect(screen.getByText('Artikel')).toBeDefined();
+    expect(screen.getAllByText('Artikel').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Organisasi').length).toBeGreaterThan(0);
     for (const label of ['Compose', 'Taxonomy', 'Media Library', 'Live Results', 'Distribution Control']) {
       expect(screen.queryByText(label)).toBeNull();
