@@ -180,6 +180,7 @@ const SELF_FETCHING_V2_VIEWS: ReadonlySet<View> = new Set<View>([
   'profile',
   'content',
   'billing',
+  'invoices',
   'moderation',
   'ai',
   'ads',
