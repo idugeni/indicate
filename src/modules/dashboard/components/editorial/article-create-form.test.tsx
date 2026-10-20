@@ -183,7 +183,7 @@ describe('Formulir tulis artikel', () => {
     expect(screen.getByText('Artikel baru')).toBeDefined();
     expect(screen.queryByText('Penyaluran Artikel')).toBeNull();
     expect(screen.queryByText('Pilih Artikel Target')).toBeNull();
-    expect(screen.getByRole('button', { name: /simpan draf/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Simpan dan Terbitkan' })).toBeDefined();
   });
 
   it('mengisi wilayah dan penerbit otomatis jika masing-masing hanya punya satu pilihan aktif', async () => {
@@ -390,7 +390,10 @@ describe('Formulir tulis artikel', () => {
   });
 
   it('mengirim artikel baru sebagai draf', async () => {
+    const user = userEvent.setup();
     const { submit, container } = setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Draf' }));
     const titleInput = screen.getByLabelText('Judul Artikel');
     fireEvent.change(titleInput, { target: { value: 'Judul Uji' } });
     fireEvent.blur(titleInput);
@@ -412,7 +415,7 @@ describe('Formulir tulis artikel', () => {
   it('merender composer dengan bilah aksi, rel atribusi, dan sumber', () => {
     setup({});
     expect(screen.getByRole('combobox', { name: 'Status artikel' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Simpan Draf' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Simpan dan Terbitkan' })).toBeDefined();
     expect(screen.getByRole('region', { name: 'Atribusi' })).toBeDefined();
     expect(screen.getByRole('region', { name: 'Sumber' })).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Terbitkan' })).toBeNull();
@@ -426,6 +429,8 @@ describe('Formulir tulis artikel', () => {
   it('mengirim deskripsi, kanonis, penulis, dan status draf', async () => {
     const user = userEvent.setup();
     const { submit, container } = setup({});
+    await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
+    await user.click(await screen.findByRole('option', { name: 'Draf' }));
     fireEvent.change(screen.getByLabelText('Judul Artikel'), { target: { value: 'Judul Uji' } });
     fireEvent.change(screen.getByLabelText('Sumber', { selector: 'input' }), {
       target: { value: 'Rilis Resmi' },
@@ -858,7 +863,7 @@ describe('Formulir tulis artikel', () => {
   it('mengganti label tombol simpan mengikuti status', async () => {
     const user = userEvent.setup();
     setup({});
-    expect(screen.getByRole('button', { name: 'Simpan Draf' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Simpan dan Terbitkan' })).toBeDefined();
     await user.click(screen.getByRole('combobox', { name: 'Status artikel' }));
     await user.click(await screen.findByRole('option', { name: 'Siap Reviu' }));
     expect(screen.getByRole('button', { name: 'Simpan untuk Reviu' })).toBeDefined();
@@ -1126,7 +1131,7 @@ describe('Formulir tulis artikel', () => {
     expect(within(stats).getByText(/1 mnt baca/)).toBeDefined();
     expect(
       (screen.getByRole('combobox', { name: 'Status artikel' }) as HTMLInputElement).value,
-    ).toBe('Draf');
+    ).toBe('Terbit Langsung');
   });
 
   it('menolak status terjadwal tanpa jadwal terbit', async () => {
