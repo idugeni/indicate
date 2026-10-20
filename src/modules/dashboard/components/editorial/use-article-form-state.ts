@@ -154,7 +154,7 @@ export function useArticleFormState({
   const [status, setStatus] = useState<string>(() =>
     initialArticle !== undefined && EDITABLE_ARTICLE_STATUSES.has(initialArticle.status)
       ? initialArticle.status
-      : 'draft',
+      : 'active',
   );
   /** Mode presentasi artikel; `standard` tanpa syarat tambahan. */
   const [articleType, setArticleType] = useState<ArticleType>(() =>
@@ -1708,7 +1708,8 @@ export function useArticleFormState({
       form.reset();
       setSlug('');
       setSlugTouched(false);
-      setStatus('draft');
+      setStatus('active');
+      setPublishOnSave(true);
       setArticleType('standard');
       setVideoUrl('');
       setAudioUrl('');
