@@ -1422,7 +1422,7 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
       ? { ...actor, regionScopeId: null }
       : this.platformOwnerActor(actor, parsed.data.ownerOrganizationId);
     try {
-      const value = await this.repository.executeForOrganization(ownerActor, parsed.data.ownerOrganizationId, async (transaction) => {
+      const readArticle = async (transaction: DashboardTransaction) => {
         const found = transaction.state.articles.find((candidate) => candidate.id === parsed.data.id);
         if (found === undefined) throw new DashboardAccessDeniedError();
         await transaction.refreshArticleContent(found.id);
@@ -1442,7 +1442,13 @@ createPublisher(actor: AuthorizedTenantActorContext, raw: unknown) {
             authors: (transaction.state.authors ?? []).map((author) => ({ id: author.id, displayName: author.displayName })),
           },
         };
-      }, ['articles', 'regions', 'publishers', 'categories', 'authors']);
+      };
+      const scope = ['articles', 'regions', 'publishers', 'categories', 'authors'] as const;
+      // Organization users must use their own membership permission path; the
+      // platform-managed path is reserved for cross-organization stewardship.
+      const value = sameOrg
+        ? await this.repository.execute(actor, DASHBOARD_PERMISSIONS.articleManage, readArticle, scope)
+        : await this.repository.executeForOrganization(ownerActor, parsed.data.ownerOrganizationId, readArticle, scope);
       return { ok: true as const, value };
     } catch (error) {
       if (error instanceof DashboardAccessDeniedError) return this.denied(actor, 'article.read', 'article');
