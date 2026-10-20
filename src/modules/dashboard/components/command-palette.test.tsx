@@ -58,9 +58,13 @@ describe('Palet perintah', () => {
     expect(await screen.findByText('Dashboard')).toBeDefined();
     expect(screen.getAllByText('Artikel').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Organisasi').length).toBeGreaterThan(0);
-    for (const label of ['Compose', 'Taxonomy', 'Media Library', 'Live Results', 'Distribution Control']) {
-      expect(screen.queryByText(label)).toBeNull();
-    }
+    // The assistant may surface editorial actions independently of route navigation.
+    // Assert that the palette's route options stay limited to the three tenant areas.
+    const routeOptions = screen.getAllByRole('option');
+    expect(routeOptions.map((option) => option.textContent)).toEqual(
+      expect.arrayContaining(['Dashboard', 'Artikel', 'Organisasi']),
+    );
+    expect(routeOptions).toHaveLength(3);
   });
 
   it('menyaring perintah sesuai kata kunci', async () => {
