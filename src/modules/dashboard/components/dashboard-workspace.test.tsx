@@ -114,13 +114,13 @@ describe('Dashboard workspace login modes', () => {
 
     fireEvent.click(articles);
 
-    expect(await screen.findByRole('button', { name: 'Content Library' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Compose' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Media' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Delivery' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Live Results' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Taxonomy' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Publishers' })).toBeNull();
+    expect(await sidebar.findByRole('button', { name: 'Content Library' })).toBeDefined();
+    expect(sidebar.getByRole('button', { name: 'Compose' })).toBeDefined();
+    expect(sidebar.getByRole('button', { name: 'Media' })).toBeDefined();
+    expect(sidebar.queryByRole('button', { name: 'Delivery' })).toBeNull();
+    expect(sidebar.queryByRole('button', { name: 'Live Results' })).toBeNull();
+    expect(sidebar.queryByRole('button', { name: 'Taxonomy' })).toBeNull();
+    expect(sidebar.queryByRole('button', { name: 'Publishers' })).toBeNull();
     expect(dashboard.getAttribute('aria-current')).toBe('page');
   });
 
