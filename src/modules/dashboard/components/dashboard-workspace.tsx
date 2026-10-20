@@ -95,7 +95,7 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
  * discarded for them (see the loading effect below), so a post-mutation
  * refetch here would only waste one GET per mutation. Panels own refresh.
  */
-const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['organization', 'profile', 'content', 'billing', 'moderation', 'ai', 'ads', 'customers']);
+const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['organization', 'profile', 'content', 'billing', 'invoices', 'moderation', 'ai', 'ads', 'customers']);
 
 const DASHBOARD_ARTICLE_PAGE_SIZE = 20;
 
@@ -223,7 +223,8 @@ export function DashboardWorkspace({
       const isArticleListing = targetView === 'articles' || targetView === 'published';
       const pageLimit = isArticleListing ? `&limit=${DASHBOARD_ARTICLE_PAGE_SIZE}` : '';
       const scopeSuffix = crossOrg && isArticleListing ? '&scope=all' : '';
-      const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}${pageLimit}${scopeSuffix}`;
+      const apiView = targetView === 'memberships' ? 'configuration' : targetView;
+      const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${apiView}${query}${pageLimit}${scopeSuffix}`;
       const key = `${targetOrg}|${targetView}|${query}||${scopeSuffix}`;
 
       try {
