@@ -138,7 +138,30 @@ export function CategoryCombobox({
       onValueChange={(next) => {
         if (next !== null) commit(next);
       }}
-      onInputValueChange={(next) => setQuery(next)}
+      onInputValueChange={(next) => {
+        if (!next.includes(',')) {
+          setQuery(next);
+          return;
+        }
+        const parts = next.split(',');
+        const trailing = parts.pop() ?? '';
+        const names = [...new Set(parts.map((part) => part.trim()).filter(Boolean))];
+        let selected = [...value];
+        for (const name of names) {
+          if (selected.length >= MAX_ITEMS) break;
+          const matched = categories.find(
+            (category) =>
+              !selected.includes(category.id) &&
+              normalizeCategoryKey(category.name) === normalizeCategoryKey(name),
+          );
+          const id = matched?.id ?? onCreateCategory(name);
+          if (id !== null && !selected.includes(id)) selected.push(id);
+        }
+        if (selected.length !== value.length || selected.some((id, index) => id !== value[index])) {
+          commit(selected);
+        }
+        setQuery(trailing.trimStart());
+      }}
       itemToStringLabel={(itemValue: string) => nameOf(itemValue ?? '')}
       disabled={disabled}
     >
