@@ -113,7 +113,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     icon: Users,
   },
   media: {
-    label: 'Media', title: 'Media Library', eyebrow: 'Asset Operations', group: 'editorial',
+    label: 'Media Library', title: 'Media Library', eyebrow: 'Asset Operations', group: 'editorial',
     description: 'Kelola aset visual yang dipakai oleh workflow editorial.',
     icon: FolderKanban,
   },
@@ -192,6 +192,8 @@ export interface PrimaryNavArea {
   readonly navigationViews?: readonly View[];
   /** Views authorized for this workspace mode, including contextual workflows. */
   readonly views: readonly View[];
+  /** Optional labels used only inside this navigation area. */
+  readonly navigationLabels?: Partial<Record<View, string>>;
 }
 
 /**
@@ -214,6 +216,7 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     scope: 'organization',
     defaultView: 'articles',
     navigationViews: ['articles', 'editorial', 'media'],
+    navigationLabels: { media: 'Media' },
     views: ['articles', 'editorial', 'media'],
   },
   {
