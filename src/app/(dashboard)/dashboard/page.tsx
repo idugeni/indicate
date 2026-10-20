@@ -56,12 +56,13 @@ async function DashboardBody({
   const cookieStore = await cookies();
   const identity = await getVerifiedNeonIdentity();
   if (identity === null) return <AccessKeyDashboardBody cookieStore={cookieStore} searchParams={searchParams} />;
-  const displayName = identity.displayName;
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const repository = new DrizzleAuthorizationRepository(runtime.db);
   const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in?auth=inactive');
   const localUser = discovery.value.localUser;
+  // Prefer the canonical local profile; provider names often fall back to the email username.
+  const displayName = localUser.displayName.trim() || identity.displayName;
   const platformPermissions: readonly string[] = await repository.listPlatformPermissions(localUser.id).catch((): readonly string[] => []);
   const isPlatformSuperAdmin = platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
   const memberships: ReadonlyMap<string, MembershipAuthorization> = isPlatformSuperAdmin
@@ -162,7 +163,7 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
   });
   const sessionIdentity = {
     authUserId: resolved.identity.authUserId,
-    displayName: resolved.displayName,
+    displayName: resolved.localUser.displayName.trim() || resolved.displayName,
     avatarUrl: resolved.avatarUrl,
     email: null,
   };
@@ -177,7 +178,7 @@ async function AccessKeyDashboardBody({ cookieStore, searchParams }: { readonly 
     });
   return (
     <DashboardWorkspace
-      displayName={resolved.displayName}
+      displayName={resolved.localUser.displayName.trim() || resolved.displayName}
       avatarUrl={resolved.localUser.avatarUrl ?? resolved.avatarUrl}
       organizations={organizations}
       initialDashboard={initialDashboard}

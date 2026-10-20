@@ -5,8 +5,8 @@ import {
   Archive,
   ArchiveRestore,
   Check,
-  ChevronRight,
   Copy,
+  Pencil,
   FileText,
   Loader2,
   Search,
@@ -57,6 +57,7 @@ interface AssignmentSummary {
 interface BridgePublishedSummary {
   readonly articleId: string;
   readonly urls: readonly string[];
+  readonly publishedAtMax?: string | null;
 }
 
 interface ContentLibraryModel {
@@ -110,6 +111,7 @@ function publicationFacts(
   article: Row,
   assignments: readonly AssignmentSummary[],
   siteHostnames: ReadonlyMap<string, string>,
+  bridgePublished: readonly BridgePublishedSummary[] = [],
 ): PublicationFacts {
   const articleAssignments = assignments.filter(
     (assignment) => assignment.articleId === article.id,
@@ -124,15 +126,25 @@ function publicationFacts(
   const publishedUrlHosts = (article.publishedUrls ?? [])
     .map(hostnameFromUrl)
     .filter((hostname): hostname is string => hostname !== null);
+  const bridgeUrlHosts = bridgePublished
+    .filter((entry) => entry.articleId === article.id)
+    .flatMap((entry) => entry.urls)
+    .map(hostnameFromUrl)
+    .filter((hostname): hostname is string => hostname !== null);
   const suppliedHosts = (article.portalHostnames ?? []).filter(
     (hostname) => hostname.trim() !== '',
   );
-  const portalHosts =
-    suppliedHosts.length > 0 ? suppliedHosts : [...assignedHosts, ...publishedUrlHosts];
+  const portalHosts = [
+    ...suppliedHosts,
+    ...assignedHosts,
+    ...publishedUrlHosts,
+    ...bridgeUrlHosts,
+  ];
   const publicationTimestamps = [
     article.publishedAtMax,
     article.publishedAt,
     ...publishedAssignments.map((assignment) => assignment.publishedAt ?? null),
+    ...bridgePublished.filter((entry) => entry.articleId === article.id).map((entry) => entry.publishedAtMax ?? null),
   ].filter(
     (timestamp): timestamp is string =>
       timestamp !== null && timestamp !== undefined && timestamp !== '',
@@ -143,7 +155,8 @@ function publicationFacts(
     (article.publishedUrls?.length ?? 0) > 0 ||
     article.publishedAtMax != null ||
     publishedAssignments.length > 0 ||
-    article.publishedAt != null;
+    article.publishedAt != null ||
+    bridgeUrlHosts.length > 0;
 
   return {
     isPublished,
@@ -396,9 +409,9 @@ export function ContentLibraryV2({
       ) : (
         <>
         <div className="space-y-2 md:hidden">
-          {visible.map((row) => {
+          {visible.map((row, index) => {
             const meta = resolveStatus(row.status);
-            const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames);
+            const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames, model.bridgePublished ?? []);
             const publishedLinks = publishedUrlsForArticle(row, model);
             const isBusy = busy.includes(row.id);
             const transition = row.status === 'archived' ? 'article.restore' : 'article.archive';
@@ -408,6 +421,7 @@ export function ContentLibraryV2({
             return (
               <article key={row.id} className="rounded-lg border border-hairline bg-bg-raised p-3">
                 <div className="flex items-start gap-2">
+                  <span aria-label={`Artikel nomor ${(safe - 1) * 20 + index + 1}`} className="flex h-6 min-w-6 flex-none items-center justify-center rounded-md bg-bg px-1.5 font-mono text-[10px] text-paper-faint">{(safe - 1) * 20 + index + 1}</span>
                   <Checkbox checked={selected.includes(row.id)} onCheckedChange={() => setSelected((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])} aria-label={`Pilih artikel ${row.title}`} disabled={isBusy} />
                   <div className="min-w-0 flex-1">
                     <button className="block w-full break-words text-left text-sm font-medium text-paper hover:text-brass" onClick={() => crossOrg === true && row.organizationId ? onEditArticle?.(row.id, row.organizationId) : onEditArticle?.(row.id)}>{row.title}</button>
@@ -421,12 +435,12 @@ export function ContentLibraryV2({
                   <div className="rounded bg-bg px-2 py-1.5"><dt className="text-[10px] text-paper-faint">Portal</dt><dd className="m-0 text-xs text-paper-dim">{publication.portalCount}</dd></div>
                   <div className="rounded bg-bg px-2 py-1.5"><dt className="text-[10px] text-paper-faint">Tayang</dt><dd className="m-0 break-words text-xs text-paper-dim">{publicationLabel}</dd></div>
                 </dl>
-                <div className="mt-3 flex flex-wrap justify-end gap-1">
-                  <Button variant="outline" size="sm" aria-label={`Salin semua tautan tayang artikel ${row.title}`} onClick={() => void copyPublishedLinks(row, publishedLinks)} disabled={publishedLinks.length === 0 || copyingLinksFor !== null}>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <Button variant="outline" size="sm" className="mr-auto" aria-label={`Salin semua tautan tayang artikel ${row.title}`} onClick={() => void copyPublishedLinks(row, publishedLinks)} disabled={publishedLinks.length === 0 || copyingLinksFor !== null}>
                     {copyingLinksFor === row.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : copiedLinksFor === row.id ? <Check className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
                     {copiedLinksFor === row.id ? 'Tersalin' : `Salin URL (${publishedLinks.length})`}
                   </Button>
-                  <Button variant="ghost" size="icon-xs" aria-label={`Ubah artikel ${row.title}`} onClick={() => crossOrg === true && row.organizationId ? onEditArticle?.(row.id, row.organizationId) : onEditArticle?.(row.id)} disabled={isBusy}><ChevronRight className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon-xs" aria-label={`Ubah artikel ${row.title}`} onClick={() => crossOrg === true && row.organizationId ? onEditArticle?.(row.id, row.organizationId) : onEditArticle?.(row.id)} disabled={isBusy}><Pencil className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon-xs" aria-label={`${row.status === 'archived' ? 'Pulihkan' : 'Arsipkan'} artikel ${row.title}`} onClick={() => void run(row, transition)} disabled={isBusy}>{isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : row.status === 'archived' ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>
                   <Button variant="ghost" size="icon-xs" className="text-error" aria-label={`Hapus permanen artikel ${row.title}`} onClick={() => void run(row, 'article.delete')} disabled={isBusy}><Trash2 className="h-4 w-4" /></Button>
                 </div>
@@ -435,9 +449,10 @@ export function ContentLibraryV2({
           })}
         </div>
         <div className="hidden overflow-x-auto rounded-lg border border-hairline bg-bg-raised md:block">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-hairline text-left font-mono text-[10px] uppercase text-paper-faint">
+                <th className="w-12 p-3 text-right">No.</th>
                 <th className="w-10 p-3">
                   <Checkbox
                     checked={selectedVisible.length === ids.length}
@@ -456,9 +471,9 @@ export function ContentLibraryV2({
               </tr>
             </thead>
             <tbody>
-              {visible.map((row) => {
+              {visible.map((row, index) => {
                 const meta = resolveStatus(row.status);
-                const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames);
+                const publication = publicationFacts(row, model.articleSites ?? [], siteHostnames, model.bridgePublished ?? []);
                 const publishedLinks = publishedUrlsForArticle(row, model);
                 const isBusy = busy.includes(row.id);
                 const transition =
@@ -475,6 +490,7 @@ export function ContentLibraryV2({
 
                 return (
                   <tr key={row.id} className="border-b border-hairline/60 hover:bg-bg-raised-2">
+                    <td className="p-3 text-right font-mono text-xs tabular-nums text-paper-faint">{(safe - 1) * 20 + index + 1}</td>
                     <td className="p-3">
                       <Checkbox
                         checked={selected.includes(row.id)}
@@ -541,7 +557,7 @@ export function ContentLibraryV2({
                         onClick={() => crossOrg === true && row.organizationId ? onEditArticle?.(row.id, row.organizationId) : onEditArticle?.(row.id)}
                         disabled={isBusy}
                       >
-                        <ChevronRight className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

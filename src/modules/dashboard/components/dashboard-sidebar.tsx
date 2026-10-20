@@ -47,17 +47,13 @@ export function DashboardNavList({
   const visibleAreas = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode);
   const activeArea = visibleAreas.find((area) => area.views.includes(view));
   const [expandedArea, setExpandedArea] = useState<string | null>(
-    activeArea !== undefined && activeArea.defaultView !== view ? activeArea.id : null,
+    activeArea?.id ?? null,
   );
 
   useEffect(() => {
     const selectedArea = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode).find((area) => area.views.includes(view));
     void Promise.resolve().then(() => {
-      setExpandedArea(
-        selectedArea !== undefined && selectedArea.defaultView !== view
-          ? selectedArea.id
-          : null,
-      );
+      setExpandedArea(selectedArea?.id ?? null);
     });
   }, [view, navigationMode]);
 

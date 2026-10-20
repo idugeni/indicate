@@ -47,7 +47,7 @@ describe('Primary dashboard navigation', () => {
     ]);
     expect(tenantAreas.map((area) => area.navigationViews)).toEqual([
       ['dashboard'],
-      ['articles'],
+      ['articles', 'editorial', 'publishing', 'published', 'media', 'taxonomy', 'publishers'],
       ['organization'],
     ]);
     expect(PRIMARY_NAV_AREAS.find((area) => area.id === 'articles')?.views).toEqual(

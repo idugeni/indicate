@@ -488,6 +488,9 @@ export interface DashboardProjection {
   readonly activeSubdomains: number;
   readonly activeSites: number;
   readonly activeArticles: number;
+  readonly draftArticles: number;
+  readonly inReviewArticles: number;
+  readonly scheduledArticles: number;
   readonly archivedArticles: number;
   readonly jobsByState: Readonly<Record<PublishingState, number>>;
   readonly successfulSiteOutcomes: number;

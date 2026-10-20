@@ -199,7 +199,7 @@ describe('Dashboard workspace', () => {
 
   it('does not restore the global Refresh action after navigation changes', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
+    await screen.findByText('INDICATE / NEWSROOM');
     expect(screen.queryByRole('button', { name: /^Refresh$/ })).toBeNull();
   });
 
@@ -207,7 +207,7 @@ describe('Dashboard workspace', () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     expect(screen.getByText('Indicate')).toBeDefined();
     expect(screen.getByText('Redaktur Uji')).toBeDefined();
-    expect(await screen.findByText('INDICATE / EXECUTIVE OVERVIEW')).toBeDefined();
+    expect(await screen.findByText('INDICATE / NEWSROOM')).toBeDefined();
   });
 
   it('collapses and expands the sidebar through the edge rail', () => {
@@ -220,7 +220,7 @@ describe('Dashboard workspace', () => {
 
   it('opens the editorial library from the tenant Artikel navigation', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
+    await screen.findByText('INDICATE / NEWSROOM');
     fireEvent.click(screen.getAllByRole('button', { name: 'Artikel' })[0]!);
     expect(await screen.findByRole('region', { name: 'Content Library' }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
@@ -228,7 +228,7 @@ describe('Dashboard workspace', () => {
 
   it('keeps the footer after workspace content with the owner label', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
-    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
+    await screen.findByText('INDICATE / NEWSROOM');
     const footer = screen.getByText(/PT Sanca Phena Cakra/).closest('footer');
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('mt-auto');
@@ -295,7 +295,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1, analytics: { articlesByRegion: [] } } }}
       />,
     );
-    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
+    await screen.findByText('INDICATE / NEWSROOM');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);
@@ -316,7 +316,7 @@ describe('Dashboard workspace', () => {
         initialDashboard={{ organizationId: 'org-1', data: { activeDomains: 1 } }}
       />,
     );
-    await screen.findByText('INDICATE / EXECUTIVE OVERVIEW');
+    await screen.findByText('INDICATE / NEWSROOM');
     await waitFor(() => {
       const urls = fetchMock.mock.calls.map(([url]) => String(url));
       expect(urls.some((url) => url.includes('view=analytics'))).toBe(true);

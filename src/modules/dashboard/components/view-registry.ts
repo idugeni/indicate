@@ -213,7 +213,7 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     label: 'Artikel',
     scope: 'organization',
     defaultView: 'articles',
-    navigationViews: ['articles'],
+    navigationViews: ['articles', 'editorial', 'publishing', 'published', 'media', 'taxonomy', 'publishers'],
     views: ['articles', 'editorial', 'taxonomy', 'publishers', 'media', 'publishing', 'published'],
   },
   {

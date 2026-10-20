@@ -572,7 +572,7 @@ export function DashboardWorkspace({
           <SheetContent
             side="left"
             aria-label="Navigasi workspace"
-            className="w-[min(20rem,85vw)] gap-0 overflow-hidden border-hairline bg-bg-raised p-0 shadow-none"
+            className="w-[min(20rem,85vw)] max-w-[20rem] gap-0 overflow-hidden border-hairline bg-bg-raised p-0 shadow-none"
           >
             <SheetHeader className="flex-none border-b border-hairline px-4 py-3 text-left">
               <SheetTitle className="flex items-center gap-2 font-sans text-sm font-bold tracking-tight text-paper">
