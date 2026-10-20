@@ -74,9 +74,11 @@ function harness(repoOverrides: Record<string, unknown> = {}) {
   };
   const repository = {
     hasPublishedBridges: vi.fn(async () => false),
-    execute: vi.fn(async (_actor: unknown, _permission: unknown, operation: (transaction: unknown) => unknown) =>
+    execute: vi.fn(async (actor: { readonly organizationId?: string }, _permission: unknown, operation: (transaction: unknown) => unknown) =>
       operation({
-        state: { organizationId: 'org-operator', articles: [], regions: [], articleSites: [], publishingJobs: [], articleCategories: [] },
+        state: actor.organizationId === OWNER
+          ? ownerState
+          : { organizationId: 'org-operator', articles: [], regions: [], articleSites: [], publishingJobs: [], articleCategories: [] },
         resolveUserDisplayName: async () => 'Operator',
         appendAudit: vi.fn(),
         refreshArticleContent: async () => false,
@@ -296,7 +298,8 @@ describe('TenantBusinessService cross-org steward', () => {
     if (!result.ok) throw new Error('expected ok');
     expect(result.value.article.id).toBe(ARTICLE);
     expect(result.value.lookups.categories).toEqual([{ id: 'c-berita', name: 'Berita' }]);
-    expect((repository.executeForOrganization as ReturnType<typeof vi.fn>).mock.calls[0]?.[1]).toBe(OWNER);
+    expect(repository.execute).toHaveBeenCalledTimes(1);
+    expect(repository.executeForOrganization).not.toHaveBeenCalled();
   });
 
   it('menolak edit.load se-org tanpa article.manage dan untuk redaksi terkunci region di luar cakupan', async () => {
