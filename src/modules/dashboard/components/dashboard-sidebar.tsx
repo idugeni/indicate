@@ -122,7 +122,7 @@ export function DashboardNavList({
               <Button
                 type="button"
                 variant="ghost"
-                aria-current={view === defaultView && !(navigationMode === 'organization' && area.id === 'articles') ? 'page' : undefined}
+                aria-current={view === defaultView && !(navigationMode === 'organization' && navigationViews.length > 1) ? 'page' : undefined}
                 onClick={() => {
                   if (navigationMode === 'organization' && navigationViews.length > 1) {
                     setExpandedArea(area.id);
