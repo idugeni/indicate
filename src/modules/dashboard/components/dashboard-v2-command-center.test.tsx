@@ -7,16 +7,16 @@ import type { AnalyticsProjection } from '@/modules/dashboard/models';
 afterEach(() => cleanup());
 
 describe('DashboardV2CommandCenter', () => {
-  it('renders operational metrics and routes quick actions to V2 workspaces', () => {
+  it('renders newsroom metrics and routes quick actions to V2 workspaces', () => {
     const onSelectView = vi.fn();
     render(
       <DashboardV2CommandCenter
         displayName="INDICATE"
         dashboard={{
-          activeDomains: 2,
-          activeSubdomains: 3,
-          activeSites: 4,
           activeArticles: 5,
+          draftArticles: 2,
+          inReviewArticles: 3,
+          scheduledArticles: 1,
           archivedArticles: 1,
           jobsByState: { queued: 2, processing: 1, published: 7, failed: 0, retrying: 0, unpublished: 0 },
           successfulSiteOutcomes: 8,
@@ -26,11 +26,12 @@ describe('DashboardV2CommandCenter', () => {
         onSelectView={onSelectView}
       />,
     );
-    expect(screen.getByText('INDICATE / EXECUTIVE OVERVIEW')).toBeTruthy();
-    expect(screen.getByText('Active domains')).toBeTruthy();
-    expect(screen.getAllByText('Published').length).toBeGreaterThan(0);
-    expect(screen.getByText('Delivery success')).toBeTruthy();
-    expect(screen.getByText('Total articles')).toBeTruthy();
+    expect(screen.getByText('INDICATE / NEWSROOM')).toBeTruthy();
+    expect(screen.getByText('Draft')).toBeTruthy();
+    expect(screen.getByText('Dalam review')).toBeTruthy();
+    expect(screen.getByText('Terjadwal')).toBeTruthy();
+    expect(screen.getByText('Distribusi berhasil')).toBeTruthy();
+    expect(screen.queryByText('Active domains')).toBeNull();
     expect(screen.getByRole('region', { name: 'Quick actions' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Write article/i }));
     expect(onSelectView).toHaveBeenCalledWith('editorial');
@@ -60,7 +61,7 @@ describe('DashboardV2CommandCenter', () => {
     render(
       <DashboardV2CommandCenter
         displayName="INDICATE"
-        dashboard={{ activeDomains: 0, activeSubdomains: 0, activeSites: 1, activeArticles: 0, archivedArticles: 0, jobsByState: { queued: 0, processing: 0, published: 0, failed: 0, retrying: 0, unpublished: 0 }, successfulSiteOutcomes: 0, failedSiteOutcomes: 0 }}
+        dashboard={{ activeArticles: 0, draftArticles: 0, inReviewArticles: 0, scheduledArticles: 0, archivedArticles: 0, jobsByState: { queued: 0, processing: 0, published: 0, failed: 0, retrying: 0, unpublished: 0 }, successfulSiteOutcomes: 0, failedSiteOutcomes: 0 }}
         analytics={analytics}
         onSelectView={vi.fn()}
       />,
