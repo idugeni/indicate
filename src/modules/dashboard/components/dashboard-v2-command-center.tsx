@@ -164,6 +164,7 @@ export function DashboardV2CommandCenter({
   dashboard,
   analytics,
   onSelectView,
+  canViewPublishing = false,
   navigationMode = 'organization',
 }: {
   readonly displayName: string;
@@ -173,6 +174,7 @@ export function DashboardV2CommandCenter({
   >;
   readonly analytics: AnalyticsProjection | null;
   readonly onSelectView: (view: View) => void;
+  readonly canViewPublishing?: boolean;
   readonly navigationMode?: DashboardMode;
 }) {
   const jobs = dashboard.jobsByState;
@@ -278,9 +280,11 @@ export function DashboardV2CommandCenter({
                 ? `${formatNumber(editorialAttention)} artikel masih membutuhkan tindak lanjut redaksi.`
                 : 'Tidak ada draft atau artikel yang menunggu review.'}
             </p>
-            <Button type="button" variant="outline" size="sm" onClick={() => onSelectView('publishing')}>
-              Lihat distribusi
-            </Button>
+            {canViewPublishing ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => onSelectView('publishing')}>
+                Lihat distribusi
+              </Button>
+            ) : null}
           </div>
         </section>
       </div>

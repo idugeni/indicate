@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
+import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   ALL_VIEWS,
   canAccessView,
@@ -61,10 +62,13 @@ describe('Primary dashboard navigation', () => {
     expect(canAccessViewInMode('invoices', new Set([INTEGRATIONS_PERMISSIONS.subscriptionRead]), 'platform')).toBe(false);
 
     const organizationPermissions = new Set<string>();
-    for (const restrictedView of ['publishing', 'published', 'taxonomy', 'publishers'] as const) {
+    for (const restrictedView of ['published', 'taxonomy', 'publishers'] as const) {
       expect(canAccessViewInMode(restrictedView, organizationPermissions, 'organization')).toBe(false);
       expect(canAccessViewInMode(restrictedView, organizationPermissions, 'platform')).toBe(true);
     }
+    expect(canAccessViewInMode('publishing', organizationPermissions, 'organization')).toBe(false);
+    expect(canAccessViewInMode('publishing', new Set([PUBLISHING_PERMISSIONS.publishingRead]), 'organization')).toBe(true);
+    expect(canAccessViewInMode('publishing', new Set([PUBLISHING_PERMISSIONS.publishingRead]), 'platform')).toBe(true);
     expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'platform').map((area) => area.label)).toEqual(['Super Admin']);
     for (const scope of ['organization', 'platform'] as const) {
       const scopedViews = PRIMARY_NAV_AREAS.filter((area) => area.scope === scope).flatMap((area) => area.views);

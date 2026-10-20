@@ -319,6 +319,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
                   }}
                   analytics={isAnalyticsProjection(source.analytics) ? source.analytics : null}
                   navigationMode={navigationMode}
+                  canViewPublishing={canAccessViewInMode('publishing', permissions, navigationMode)}
                   onSelectView={onSelectView}
                 />
               );
