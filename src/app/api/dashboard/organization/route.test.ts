@@ -81,6 +81,26 @@ describe('API identitas organisasi', () => {
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
+  it('memetakan kontak metadata tenant lama sebagai fallback identitas', async () => {
+    setDatabase({
+      ...CURRENT,
+      customerMetadata: {
+        phone: '(0294) 579229',
+        address: 'Sopoyono, Wonosari, Kendal',
+        site_url: 'https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-kendal',
+      },
+    });
+    const response = await GET(request(`https://app.test/api/dashboard/organization?organizationId=${ORG}`));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      contactDetails: {
+        phone: '(0294) 579229',
+        address: 'Sopoyono, Wonosari, Kendal',
+        website: 'https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-kendal',
+      },
+    });
+  });
+
   it('menolak perubahan tanpa hak kelola peran atau anggota', async () => {
     mocks.authorizeDashboardOrganization.mockResolvedValue({ ...ACTOR, permissionSet: new Set(['article.manage']) });
     const response = await POST(request('https://app.test/api/dashboard/organization', 'POST', {
