@@ -86,7 +86,7 @@ export function MembershipWorkspaceV2({
             Membership
           </h1>
           <p className="m-0 mt-1 max-w-2xl text-xs leading-relaxed text-paper-dim">
-            Anggota, peran, status keanggotaan, dan undangan untuk organisasi yang sedang aktif.
+            Anggota, peran, status keanggotaan, dan undangan untuk organisasi yang sedang aktif. Status di halaman ini hanya menunjukkan keanggotaan, bukan status pembayaran.
           </p>
         </div>
         <Badge variant="outline" className="w-fit gap-1.5">
@@ -107,6 +107,10 @@ export function MembershipWorkspaceV2({
           </div>
         ))}
       </section>
+
+      <p role="note" className="m-0 rounded-md border border-hairline bg-bg-raised px-4 py-3 text-xs leading-relaxed text-paper-dim">
+        Status <strong className="font-semibold text-paper">Aktif</strong> berarti keanggotaan berlaku. Tagihan belum lunas atau terlambat ditampilkan terpisah di halaman Invoice dan tidak dengan sendirinya mengubah status keanggotaan.
+      </p>
 
       <SectionCard icon={Users} title="Anggota organisasi" eyebrow="Daftar tenant aktif">
         {members.length === 0 ? (
