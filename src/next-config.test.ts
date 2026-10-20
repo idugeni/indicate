@@ -16,8 +16,17 @@ describe('next.config cache headers', () => {
     ]) {
       expect(sources).toContain(source);
     }
-    for (const entry of headers ?? []) {
-      expect(entry.headers).toEqual([{ key: 'Cache-Control', value: 'private, no-store, max-age=0' }]);
+    for (const source of sources.filter((value) => [
+      '/dashboard/:path*',
+      '/sign-in/:path*',
+      '/sign-up/:path*',
+      '/update-password/:path*',
+      '/api/:path*',
+    ].includes(value))) {
+      const matchingEntries = (headers ?? []).filter((entry) => entry.source === source);
+      expect(matchingEntries.some((entry) =>
+        entry.headers.some((header) => header.key === 'Cache-Control' && header.value === 'private, no-store, max-age=0')
+      )).toBe(true);
     }
   });
 

@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withBotId } from 'botid/next/config';
 import { getControlHosts, isProductionEdge, parseMvpRootHosts } from '@/core/config/edge-hosts';
 
 type RemotePattern = NonNullable<NonNullable<NextConfig['images']>['remotePatterns']>[number];
@@ -104,4 +105,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const botIdConfig = withBotId(nextConfig);
+
+// BotID adds its own response headers. Preserve the application's existing
+// private/no-store policy by composing both header lists instead of replacing
+// the original headers() callback.
+const configWithBotId: NextConfig = {
+  ...botIdConfig,
+  async headers() {
+    const [applicationHeaders, botIdHeaders] = await Promise.all([
+      nextConfig.headers?.() ?? [],
+      botIdConfig.headers?.() ?? [],
+    ]);
+    return [...applicationHeaders, ...botIdHeaders];
+  },
+};
+
+export default configWithBotId;

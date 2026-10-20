@@ -1,3 +1,4 @@
+import { checkBotId } from 'botid/server';
 import { headers } from 'next/headers';
 import { connection, NextResponse } from 'next/server';
 
@@ -13,6 +14,10 @@ import { EmailNewsletterService, newsletterSubscribeSchema } from '@/modules/int
 import { enforceNewsletterThrottle } from '@/modules/integrations/newsletter-throttle';
 
 async function handlePOST(request: Request) {
+  const botCheck = await checkBotId({ advancedOptions: { checkLevel: 'basic' } });
+  if (botCheck.isBot) {
+    return NextResponse.json({ error: 'Automated request denied.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
+  }
   await connection();
   const requestId = resolveRequestId(request);
   const noStore = { 'Cache-Control': 'no-store' };
