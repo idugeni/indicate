@@ -292,9 +292,6 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
                 <DashboardV2CommandCenter
                   displayName={displayName}
                   dashboard={{
-                    activeDomains: number(source.activeDomains),
-                    activeSubdomains: number(source.activeSubdomains),
-                    activeSites: number(source.activeSites),
                     activeArticles: number(source.activeArticles),
                     draftArticles: number(source.draftArticles),
                     inReviewArticles: number(source.inReviewArticles),
