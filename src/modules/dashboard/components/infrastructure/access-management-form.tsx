@@ -257,6 +257,7 @@ export function AccessManagementForm({
       ) : null}
 
       {canManageMemberships ? (
+      <>
       <SectionCard icon={UserPlus} title="Penetapan anggota" eyebrow="Peran & status">
         <form noValidate onSubmit={handleSaveMembership} className="space-y-3.5">
           <div className="space-y-1.5">
@@ -428,6 +429,7 @@ export function AccessManagementForm({
           </div>
         </form>
       </SectionCard>
+      </>
       ) : null}
     </div>
   );
