@@ -155,7 +155,8 @@ export function DashboardNavList({
             {expanded && children.length > 0 ? (
               <div className="ml-4 space-y-0.5 border-l border-white/[0.08] pl-2">
                 {children.map((navView) => {
-                  const { label, icon: ChildIcon } = VIEW_REGISTRY[navView];
+                  const { icon: ChildIcon } = VIEW_REGISTRY[navView];
+                  const label = area.navigationLabels?.[navView] ?? VIEW_REGISTRY[navView].label;
                   const isActive = view === navView;
                   return (
                     <Button
