@@ -44,7 +44,7 @@ export function DashboardNavList({
   readonly permissions: ReadonlySet<string>;
   readonly collapsed?: boolean;
   readonly onSelect: (view: View) => void;
-  readonly onExpandSidebar?: () => void;
+  readonly onExpandSidebar?: (() => void) | undefined;
 }) {
   const visibleAreas = PRIMARY_NAV_AREAS.filter((area) => area.scope === navigationMode);
   const activeArea = visibleAreas.find((area) => area.views.includes(view));
@@ -216,7 +216,7 @@ const SidebarBody = memo(function SidebarBody({
   readonly navigationMode?: DashboardMode;
   readonly view: View;
   readonly collapsed: boolean;
-  readonly onExpandSidebar?: () => void;
+  readonly onExpandSidebar?: (() => void) | undefined;
   readonly onSelectView: (view: View) => void;
   readonly onRequestOrganizationSwitch: (organizationId: string) => void;
   readonly onOrganizationSwitchCommitted: (organizationId: string) => void;
