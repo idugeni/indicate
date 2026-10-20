@@ -95,7 +95,7 @@ function resolveApiEndpoint(target: View | string): 'publishing' | 'integrations
  * discarded for them (see the loading effect below), so a post-mutation
  * refetch here would only waste one GET per mutation. Panels own refresh.
  */
-const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['organization', 'profile', 'content', 'billing', 'invoices', 'moderation', 'ai', 'ads', 'customers']);
+const SELF_FETCHING_VIEWS: ReadonlySet<View> = new Set<View>(['organization', 'profile', 'content', 'billing', 'invoices', 'memberships', 'moderation', 'ai', 'ads', 'customers']);
 
 const DASHBOARD_ARTICLE_PAGE_SIZE = 20;
 
