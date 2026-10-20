@@ -82,7 +82,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   memberships: {
     label: 'Membership', title: 'Membership', eyebrow: 'Organization Access', group: 'system',
     description: 'Lihat anggota organisasi, peran, status keanggotaan, dan undangan sesuai izin akun.',
-    icon: Users, requiredAnyPermission: [DASHBOARD_PERMISSIONS.membershipRead, DASHBOARD_PERMISSIONS.membershipManage, DASHBOARD_PERMISSIONS.roleManage],
+    icon: Users, requiredAnyPermission: [DASHBOARD_PERMISSIONS.membershipRead, DASHBOARD_PERMISSIONS.membershipManage],
   },
   invoices: {
     label: 'Invoice', title: 'Invoice', eyebrow: 'Organization Billing', group: 'system',
