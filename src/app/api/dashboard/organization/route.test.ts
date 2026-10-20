@@ -39,7 +39,7 @@ function request(url: string, method = 'GET', body?: unknown) {
   });
 }
 
-function setDatabase(current = CURRENT) {
+function setDatabase(current: typeof CURRENT & { readonly customerMetadata?: unknown } = CURRENT) {
   const updatedRows = vi.fn().mockResolvedValue([{
     id: ORG,
     name: 'Organisasi Baru',
