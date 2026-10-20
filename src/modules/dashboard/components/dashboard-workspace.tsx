@@ -223,8 +223,7 @@ export function DashboardWorkspace({
       const isArticleListing = targetView === 'articles' || targetView === 'published';
       const pageLimit = isArticleListing ? `&limit=${DASHBOARD_ARTICLE_PAGE_SIZE}` : '';
       const scopeSuffix = crossOrg && isArticleListing ? '&scope=all' : '';
-      const apiView = targetView === 'memberships' ? 'configuration' : targetView;
-      const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${apiView}${query}${pageLimit}${scopeSuffix}`;
+      const url = `/api/dashboard/${endpoint}?organizationId=${encodeURIComponent(targetOrg)}&view=${targetView}${query}${pageLimit}${scopeSuffix}`;
       const key = `${targetOrg}|${targetView}|${query}||${scopeSuffix}`;
 
       try {
