@@ -15,7 +15,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import type { AnalyticsProjection, DashboardProjection, TaskDay } from '@/modules/dashboard/models';
-import type { View } from '@/modules/dashboard/components/dashboard-types';
+import type { DashboardMode, View } from '@/modules/dashboard/components/dashboard-types';
 import { PublicationTrend } from '@/modules/dashboard/components/analytics/trend';
 import { SiteStack } from '@/modules/dashboard/components/analytics/primary-bento';
 import { Timeline } from '@/modules/dashboard/components/analytics/timeline';
@@ -164,6 +164,7 @@ export function DashboardV2CommandCenter({
   dashboard,
   analytics,
   onSelectView,
+  navigationMode = 'organization',
 }: {
   readonly displayName: string;
   readonly dashboard: Pick<
@@ -172,6 +173,7 @@ export function DashboardV2CommandCenter({
   >;
   readonly analytics: AnalyticsProjection | null;
   readonly onSelectView: (view: View) => void;
+  readonly navigationMode?: DashboardMode;
 }) {
   const jobs = dashboard.jobsByState;
   const queued = safeNumber(jobs.queued);
@@ -194,6 +196,96 @@ export function DashboardV2CommandCenter({
   const latest = analytics?.aktivitasTerbaru ?? [];
   const posture = failed > 0 ? 'Needs attention' : retrying > 0 ? 'Degraded' : 'Operational';
   const postureTone = failed > 0 ? 'bad' : retrying > 0 ? 'warn' : 'good';
+
+  if (navigationMode === 'organization') {
+    const editorialAttention = dashboard.inReviewArticles + dashboard.draftArticles;
+    const hasDeliveryIssues = failed > 0 || retrying > 0;
+
+    return (
+      <div className="min-w-0 space-y-5">
+        <header className="rounded-2xl border border-hairline bg-bg-raised p-4 sm:p-6">
+          <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-paper-dim">
+            Dashboard Organisasi
+          </p>
+          <h1 className="m-0 mt-2 font-sans text-2xl font-semibold tracking-tight text-paper sm:text-3xl">
+            Halo, {displayName}.
+          </h1>
+          <p className="m-0 mt-2 max-w-2xl text-sm leading-relaxed text-paper-dim">
+            Ringkasan singkat pekerjaan berita dan distribusi organisasi Anda.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={() => onSelectView('editorial')}>
+              <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              Tulis berita
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => onSelectView('articles')}>
+              Kelola artikel
+            </Button>
+          </div>
+        </header>
+
+        <section aria-label="Ringkasan berita organisasi" className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
+          {[
+            { label: 'Draft', value: dashboard.draftArticles, icon: FileText },
+            { label: 'Perlu review', value: dashboard.inReviewArticles, icon: Clock3 },
+            { label: 'Terjadwal', value: dashboard.scheduledArticles, icon: Clock3 },
+            { label: 'Berita terbit', value: dashboard.activeArticles, icon: Send },
+          ].map(({ label, value, icon: Icon }) => (
+            <div key={label} className="rounded-xl border border-hairline bg-bg-raised p-3 sm:p-4">
+              <div className="flex items-center gap-2 text-paper-dim">
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                <span className="text-xs">{label}</span>
+              </div>
+              <p className="m-0 mt-3 font-mono text-2xl font-semibold tabular-nums text-paper">
+                {formatNumber(value)}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        <section aria-label="Status distribusi" className="rounded-xl border border-hairline bg-bg-raised p-3 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="m-0 text-sm font-semibold text-paper">Status distribusi</h2>
+              <p className="m-0 mt-1 text-xs text-paper-dim">
+                {hasDeliveryIssues
+                  ? 'Ada pekerjaan distribusi yang perlu diperiksa.'
+                  : 'Tidak ada kendala distribusi yang terdeteksi.'}
+              </p>
+            </div>
+            <StatusPill
+              label={hasDeliveryIssues ? 'Perlu diperiksa' : 'Berjalan normal'}
+              tone={failed > 0 ? 'bad' : hasDeliveryIssues ? 'warn' : 'good'}
+            />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-hairline/70 p-2.5 sm:p-3">
+              <p className="m-0 text-xs text-paper-dim">Distribusi gagal</p>
+              <p className="m-0 mt-1 font-mono text-xl font-semibold tabular-nums text-paper">{formatNumber(failed)}</p>
+            </div>
+            <div className="rounded-lg border border-hairline/70 p-3">
+              <p className="m-0 text-xs text-paper-dim">Menunggu percobaan ulang</p>
+              <p className="m-0 mt-1 font-mono text-xl font-semibold tabular-nums text-paper">{formatNumber(retrying)}</p>
+            </div>
+            <div className="rounded-lg border border-hairline/70 p-3">
+              <p className="m-0 text-xs text-paper-dim">Sedang diproses</p>
+              <p className="m-0 mt-1 font-mono text-xl font-semibold tabular-nums text-paper">{formatNumber(activeWork)}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4">
+            <p className="m-0 text-xs text-paper-dim">
+              {editorialAttention > 0
+                ? `${formatNumber(editorialAttention)} artikel masih membutuhkan tindak lanjut redaksi.`
+                : 'Tidak ada draft atau artikel yang menunggu review.'}
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => onSelectView('publishing')}>
+              Lihat distribusi
+            </Button>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="min-w-0 space-y-5">

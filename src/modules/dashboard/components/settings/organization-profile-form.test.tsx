@@ -9,8 +9,9 @@ const PROFILE = {
   name: 'Portal Contoh',
   slug: 'portal-contoh',
   description: 'Penerbitan berita lokal',
-  logoUrl: null,
-  contactDetails: { email: 'redaksi@contoh.id', phone: '08123456789', website: 'https://contoh.id', address: 'Semarang' },
+  logoUrl: '/api/network/media/00000000-0000-4000-8000-000000000001',
+  contactDetails: { email: 'redaksi@contoh.id', phone: '08123456789', website: 'https://contoh.id', address: 'Semarang', city: 'Kota Semarang' },
+  socialLinks: { facebook: 'https://facebook.com/portal-contoh', instagram: 'https://instagram.com/portal-contoh' },
   visualIdentity: { primaryColor: '#1c1850', secondaryColor: '#0d0b26', accentColor: '#d2a93f' },
   version: 3,
   canManage: true,
@@ -37,6 +38,10 @@ describe('Form identitas organisasi', () => {
     expect(await screen.findByDisplayValue('Portal Contoh')).toBeDefined();
     expect(screen.getByDisplayValue('Penerbitan berita lokal')).toBeDefined();
     expect(screen.getByDisplayValue('redaksi@contoh.id')).toBeDefined();
+    expect(screen.getByDisplayValue('/api/network/media/00000000-0000-4000-8000-000000000001')).toBeDefined();
+    expect(screen.getByDisplayValue('Kota Semarang')).toBeDefined();
+    expect(screen.getByDisplayValue('https://facebook.com/portal-contoh')).toBeDefined();
+    expect(screen.getByDisplayValue('https://instagram.com/portal-contoh')).toBeDefined();
     expect(screen.getByText(/tidak mengubah warna template situs/i)).toBeDefined();
     expect(screen.queryByText(/pengaturan domain/i)).toBeDefined();
   });
@@ -48,10 +53,12 @@ describe('Form identitas organisasi', () => {
     fireEvent.change(nameField, { target: { value: 'Portal Contoh Baru' } });
     fireEvent.submit(nameField.closest('form') as HTMLFormElement);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/dashboard/organization', expect.objectContaining({ method: 'POST' })));
-    const payload = JSON.parse(String(fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')?.[1]?.body)) as { expectedVersion: number; organizationId: string; name: string };
+    const payload = JSON.parse(String(fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')?.[1]?.body)) as { expectedVersion: number; organizationId: string; name: string; contactDetails: { city: string }; socialLinks: Record<string, string> };
     expect(payload.expectedVersion).toBe(3);
     expect(payload.organizationId).toBe(PROFILE.id);
     expect(payload.name).toBe('Portal Contoh Baru');
+    expect(payload.contactDetails.city).toBe('Kota Semarang');
+    expect(payload.socialLinks).toEqual({ facebook: 'https://facebook.com/portal-contoh', instagram: 'https://instagram.com/portal-contoh' });
     expect(await screen.findByText('Identitas organisasi berhasil disimpan.')).toBeDefined();
   });
 

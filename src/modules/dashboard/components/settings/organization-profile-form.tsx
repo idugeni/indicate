@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import Image from 'next/image';
-import { Building2, Loader2, Save } from 'lucide-react';
+import { Building2, Loader2, Save, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
+import { SOCIAL_FIELD_DEFS } from '@/modules/site/company-contact';
 
 interface OrganizationProfile {
   readonly id: string;
@@ -17,7 +18,8 @@ interface OrganizationProfile {
   readonly slug: string;
   readonly description: string;
   readonly logoUrl: string | null;
-  readonly contactDetails: { readonly email?: string; readonly phone?: string; readonly website?: string; readonly address?: string };
+  readonly contactDetails: { readonly email?: string; readonly phone?: string; readonly website?: string; readonly address?: string; readonly city?: string };
+  readonly socialLinks?: Readonly<Record<string, string>>;
   readonly visualIdentity: { readonly primaryColor?: string; readonly secondaryColor?: string; readonly accentColor?: string };
   readonly version: number;
   readonly canManage: boolean;
@@ -42,6 +44,8 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
   const phoneId = useId();
   const websiteId = useId();
   const addressId = useId();
+  const cityId = useId();
+  const socialIdPrefix = useId();
   const primaryId = useId();
   const secondaryId = useId();
   const accentId = useId();
@@ -53,6 +57,9 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
+  const [newSocialKey, setNewSocialKey] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#1c1850');
   const [secondaryColor, setSecondaryColor] = useState('#0d0b26');
   const [accentColor, setAccentColor] = useState('#d2a93f');
@@ -71,6 +78,10 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
       setPhone(loaded.contactDetails.phone ?? '');
       setWebsite(loaded.contactDetails.website ?? '');
       setAddress(loaded.contactDetails.address ?? '');
+      setCity(loaded.contactDetails.city ?? '');
+      const loadedSocialLinks = { ...(loaded.socialLinks ?? {}) };
+      setSocialLinks(loadedSocialLinks);
+      setNewSocialKey(SOCIAL_FIELD_DEFS.find((field) => !(field.key in loadedSocialLinks))?.key ?? '');
       setPrimaryColor(loaded.visualIdentity.primaryColor ?? '#1c1850');
       setSecondaryColor(loaded.visualIdentity.secondaryColor ?? '#0d0b26');
       setAccentColor(loaded.visualIdentity.accentColor ?? '#d2a93f');
@@ -101,8 +112,9 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
             expectedVersion: profile.version,
             name,
             description,
-            logoUrl: logoUrl.trim() || null,
-            contactDetails: { email, phone, website, address },
+            logoUrl: logoUrl.trim(),
+            contactDetails: { email, phone, website, address, city },
+            socialLinks: Object.fromEntries(Object.entries(socialLinks).map(([key, value]) => [key, value.trim()]).filter(([, value]) => value !== '')),
             visualIdentity: { primaryColor, secondaryColor, accentColor },
           }),
         }) as OrganizationProfile;
@@ -137,10 +149,11 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor={descriptionId}>Deskripsi</Label>
               <Textarea id={descriptionId} value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={4} disabled={busy || !profile.canManage} placeholder="Jelaskan organisasi dan fokus penerbitannya…" />
+              <p className="m-0 text-xs leading-5 text-paper-faint">Jika belum ada deskripsi khusus yang tersimpan, artikel dapat menampilkan bio publisher bawaan. Bio bawaan itu tidak disalin otomatis sebagai deskripsi resmi organisasi.</p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor={logoId}>URL logo organisasi (HTTPS)</Label>
-              <Input id={logoId} type="url" value={logoUrl} onChange={(event) => setLogoUrl(event.target.value)} placeholder="https://contoh.id/logo.png" disabled={busy || !profile.canManage} />
+              <Input id={logoId} type="text" inputMode="url" value={logoUrl} onChange={(event) => setLogoUrl(event.target.value)} placeholder="https://contoh.id/logo.png" disabled={busy || !profile.canManage} />
               {logoUrl ? <Image src={logoUrl} alt="Pratinjau logo organisasi" width={64} height={64} unoptimized className="mt-2 h-16 w-16 rounded-lg border border-hairline bg-bg object-contain p-1" /> : null}
             </div>
             <div className="space-y-1.5">
@@ -158,6 +171,79 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor={addressId}>Alamat / informasi kontak</Label>
               <Textarea id={addressId} value={address} onChange={(event) => setAddress(event.target.value)} maxLength={500} rows={2} disabled={busy || !profile.canManage} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={cityId}>Kota / wilayah</Label>
+              <Input id={cityId} value={city} onChange={(event) => setCity(event.target.value)} maxLength={160} disabled={busy || !profile.canManage} />
+            </div>
+          </div>
+          <div className="space-y-3 rounded-lg border border-hairline p-4">
+            <div>
+              <h3 className="m-0 text-sm font-semibold text-paper">Media sosial dan kanal resmi</h3>
+              <p className="m-0 mt-1 text-xs text-paper-dim">Kanal yang sudah tercatat pada profil publisher diprefill dari sana. URL baru harus menggunakan HTTPS.</p>
+            </div>
+            {SOCIAL_FIELD_DEFS.some((field) => field.key in socialLinks) ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SOCIAL_FIELD_DEFS.filter((field) => field.key in socialLinks).map((field) => (
+                  <div key={field.key} className="space-y-1.5">
+                    <Label htmlFor={`${socialIdPrefix}-${field.key}`}>{field.label}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`${socialIdPrefix}-${field.key}`}
+                        type="url"
+                        value={socialLinks[field.key] ?? ''}
+                        onChange={(event) => setSocialLinks((current) => ({ ...current, [field.key]: event.target.value }))}
+                        placeholder={field.placeholder}
+                        maxLength={2000}
+                        disabled={busy || !profile.canManage}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Hapus kanal ${field.label}`}
+                        disabled={busy || !profile.canManage}
+                        onClick={() => {
+                          setSocialLinks((current) => {
+                            const next = { ...current };
+                            delete next[field.key];
+                            return next;
+                          });
+                          setNewSocialKey(field.key);
+                        }}
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="m-0 text-xs text-paper-faint">Belum ada tautan media sosial yang tersimpan.</p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="Pilih kanal untuk ditambahkan"
+                value={newSocialKey}
+                onChange={(event) => setNewSocialKey(event.target.value)}
+                disabled={busy || !profile.canManage || SOCIAL_FIELD_DEFS.every((field) => field.key in socialLinks)}
+                className="h-9 min-w-0 flex-1 rounded-md border border-hairline-strong bg-bg px-3 font-sans text-xs text-paper"
+              >
+                {SOCIAL_FIELD_DEFS.filter((field) => !(field.key in socialLinks)).map((field) => (
+                  <option key={field.key} value={field.key}>{field.label}</option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy || !profile.canManage || newSocialKey === '' || newSocialKey in socialLinks}
+                onClick={() => {
+                  setSocialLinks((current) => ({ ...current, [newSocialKey]: '' }));
+                  setNewSocialKey(SOCIAL_FIELD_DEFS.find((field) => !(field.key in socialLinks) && field.key !== newSocialKey)?.key ?? '');
+                }}
+              >
+                Tambah kanal
+              </Button>
             </div>
           </div>
           <div className="space-y-3 rounded-lg border border-hairline p-4">

@@ -24,6 +24,7 @@ describe('DashboardV2CommandCenter', () => {
         }}
         analytics={null}
         onSelectView={onSelectView}
+        navigationMode="platform"
       />,
     );
     expect(screen.getByText('INDICATE / NEWSROOM')).toBeTruthy();
@@ -64,6 +65,7 @@ describe('DashboardV2CommandCenter', () => {
         dashboard={{ activeArticles: 0, draftArticles: 0, inReviewArticles: 0, scheduledArticles: 0, archivedArticles: 0, jobsByState: { queued: 0, processing: 0, published: 0, failed: 0, retrying: 0, unpublished: 0 }, successfulSiteOutcomes: 0, failedSiteOutcomes: 0 }}
         analytics={analytics}
         onSelectView={vi.fn()}
+        navigationMode="platform"
       />,
     );
     expect(screen.queryByText(uuid)).toBeNull();

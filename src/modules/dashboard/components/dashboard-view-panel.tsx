@@ -181,6 +181,7 @@ const SELF_FETCHING_V2_VIEWS: ReadonlySet<View> = new Set<View>([
   'content',
   'billing',
   'invoices',
+  'memberships',
   'moderation',
   'ai',
   'ads',
@@ -317,6 +318,7 @@ const DashboardViewPanel = memo(function DashboardViewPanel({
                     failedSiteOutcomes: number(source.failedSiteOutcomes),
                   }}
                   analytics={isAnalyticsProjection(source.analytics) ? source.analytics : null}
+                  navigationMode={navigationMode}
                   onSelectView={onSelectView}
                 />
               );
