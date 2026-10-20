@@ -254,7 +254,7 @@ export class TenantBusinessService {
         siteTotalInScope: scopedSites.length,
         siteLimit: CONFIGURATION_SITE_LIMIT,
         siteSearch: needle === '' ? null : needle,
-        roles: (roleManage?.roles ?? []).map(roleJson), memberships: membershipState?.memberships ?? [],
+        roles: (membershipState?.roles ?? []).map((role) => ({ id: role.id, name: role.name })), memberships: membershipState?.memberships ?? [],
         activationAttempts, invitations,
         regionScope: scopeRegion === undefined || scopeRegion === null ? null : { id: scopeRegion.id, name: scopeRegion.name },
       } };
