@@ -1,8 +1,9 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { ComponentType, ReactNode } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { BrandPanel } from '@/modules/auth/components/brand-panel';
+import { SERVICE_NAME } from '@/ui/site/marketing-content';
 
 type AuthIcon = ComponentType<{ className?: string }>;
 
@@ -20,35 +21,43 @@ export function AuthPage({
 }) {
   return (
     <main className="flex min-h-screen supports-[min-height:100svh]:min-h-svh items-center justify-center bg-[#f4f2ec] px-4 py-6 text-[#1a2430] [color-scheme:light] sm:px-6 sm:py-8">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[#e2ded2] bg-white shadow-[0_24px_64px_-32px_rgba(26,36,48,0.35)] md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <BrandPanel />
-        <section className="flex min-w-0 items-center justify-center px-6 py-10 sm:px-10 sm:py-12 md:px-12">
-          <div className="mx-auto w-full max-w-md">
-            <Link
-              href="/"
-              className="font-mono text-[11px] uppercase tracking-wider text-[#5f6b7a] transition-colors hover:text-[#1a2430]"
-            >
-              ← Indicate
-            </Link>
-            <p className="m-0 mt-6 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-[#8a5f1c]">
-              <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
-              Akses workspace
-            </p>
-            <h1 className="m-0 mt-3 font-sans text-2xl font-bold tracking-tight text-[#1a2430]">
-              {title}
-            </h1>
-            <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-[#4c5b6b]">
-              {lede}
-            </p>
-            <div className="mt-8">{children}</div>
-            {footer ? (
-              <div className="mt-8 border-t border-[#e2ded2] pt-5 font-sans text-xs text-[#5f6b7a]">
-                {footer}
-              </div>
-            ) : null}
+      <section className="w-full max-w-md rounded-2xl border border-[#e2ded2] bg-white p-6 shadow-[0_24px_64px_-32px_rgba(26,36,48,0.35)] sm:p-8">
+        <Link href="/" className="mb-6 flex items-center gap-3 no-underline" aria-label={`${SERVICE_NAME} beranda`}>
+          <span className="flex h-9 w-9 items-center justify-center rounded bg-[#f4f2ec]">
+            <Image
+              unoptimized
+              src="/brand/indicate-mark.svg"
+              alt=""
+              aria-hidden="true"
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+            />
+          </span>
+          <span className="grid leading-none">
+            <span className="font-sans text-lg font-semibold tracking-tight text-[#1a2430]">{SERVICE_NAME}</span>
+            <span className="mt-1 font-mono text-[10px] tracking-[0.18em] text-[#5f6b7a] uppercase">
+              Publishing infrastructure
+            </span>
+          </span>
+        </Link>
+        <p className="m-0 flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-wider text-[#8a5f1c]">
+          <span aria-hidden="true" className="h-px w-8 flex-none bg-[#b88d3a]" />
+          Akses workspace
+        </p>
+        <h1 className="m-0 mt-3 font-sans text-2xl font-bold tracking-tight text-[#1a2430]">
+          {title}
+        </h1>
+        <p className="m-0 mt-2 font-sans text-sm leading-relaxed text-[#4c5b6b]">
+          {lede}
+        </p>
+        <div className="mt-8">{children}</div>
+        {footer ? (
+          <div className="mt-8 border-t border-[#e2ded2] pt-5 font-sans text-xs text-[#5f6b7a]">
+            {footer}
           </div>
-        </section>
-      </div>
+        ) : null}
+      </section>
     </main>
   );
 }
