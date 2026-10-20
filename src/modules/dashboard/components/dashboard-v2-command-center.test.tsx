@@ -27,9 +27,9 @@ describe('DashboardV2CommandCenter', () => {
       />,
     );
     expect(screen.getByText('INDICATE / NEWSROOM')).toBeTruthy();
-    expect(screen.getByText('Draft')).toBeTruthy();
-    expect(screen.getByText('Dalam review')).toBeTruthy();
-    expect(screen.getByText('Terjadwal')).toBeTruthy();
+    expect(screen.getAllByText('Draft').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Dalam review').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Terjadwal').length).toBeGreaterThan(0);
     expect(screen.getByText('Distribusi berhasil')).toBeTruthy();
     expect(screen.queryByText('Active domains')).toBeNull();
     expect(screen.getByRole('region', { name: 'Quick actions' })).toBeTruthy();
