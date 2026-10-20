@@ -33,6 +33,8 @@ export type IconComponent = ComponentType<{
 export type View =
   | 'dashboard'
   | 'organization'
+  | 'memberships'
+  | 'invoices'
   | 'profile'
   | 'configuration'
   | 'publishers'
@@ -76,6 +78,16 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
     label: 'Organisasi', title: 'Organisasi', eyebrow: 'Tenant Identity', group: 'system',
     description: 'Ringkasan organisasi yang sedang aktif. Pengaturan infrastruktur dan administrasi platform berada di Super Admin.',
     icon: Building2,
+  },
+  memberships: {
+    label: 'Membership', title: 'Membership', eyebrow: 'Organization Access', group: 'system',
+    description: 'Lihat anggota organisasi, peran, status keanggotaan, dan undangan sesuai izin akun.',
+    icon: Users, requiredAnyPermission: [DASHBOARD_PERMISSIONS.membershipRead, DASHBOARD_PERMISSIONS.membershipManage, DASHBOARD_PERMISSIONS.roleManage],
+  },
+  invoices: {
+    label: 'Invoice', title: 'Invoice', eyebrow: 'Organization Billing', group: 'system',
+    description: 'Lihat faktur dan status tagihan milik organisasi yang sedang aktif.',
+    icon: CreditCard, requiredPermission: INTEGRATIONS_PERMISSIONS.subscriptionRead,
   },
   profile: {
     label: 'Profil Saya', title: 'Profil Saya', eyebrow: 'Personal Identity', group: 'system',
@@ -224,8 +236,8 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     label: 'Organisasi',
     scope: 'organization',
     defaultView: 'organization',
-    navigationViews: ['organization'],
-    views: ['organization', 'profile'],
+    navigationViews: ['organization', 'memberships', 'invoices'],
+    views: ['organization', 'memberships', 'invoices', 'profile'],
   },
   {
     id: 'super-admin',
