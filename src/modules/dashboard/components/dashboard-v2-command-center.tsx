@@ -5,11 +5,8 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
-  Globe2,
-  Layers3,
   RefreshCw,
   Send,
-  Server,
   Sparkles,
   TriangleAlert,
 } from 'lucide-react';
@@ -171,7 +168,7 @@ export function DashboardV2CommandCenter({
   readonly displayName: string;
   readonly dashboard: Pick<
     DashboardProjection,
-    'activeDomains' | 'activeSubdomains' | 'activeSites' | 'activeArticles' | 'archivedArticles' | 'jobsByState' | 'successfulSiteOutcomes' | 'failedSiteOutcomes'
+    'activeArticles' | 'draftArticles' | 'inReviewArticles' | 'scheduledArticles' | 'archivedArticles' | 'jobsByState' | 'successfulSiteOutcomes' | 'failedSiteOutcomes'
   >;
   readonly analytics: AnalyticsProjection | null;
   readonly onSelectView: (view: View) => void;
@@ -205,13 +202,13 @@ export function DashboardV2CommandCenter({
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2.5">
               <StatusPill label={posture} tone={postureTone} />
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#68738a]">INDICATE / EXECUTIVE OVERVIEW</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#68738a]">INDICATE / NEWSROOM</span>
             </div>
             <h1 className="m-0 mt-4 max-w-3xl font-sans text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl lg:text-[2.75rem]">
               Good morning, {displayName}.
             </h1>
             <p className="m-0 mt-3 max-w-2xl font-sans text-sm leading-6 text-[#8f9ab0]">
-              Satu ruang untuk membaca kesehatan jaringan, memantau distribusi, dan menentukan tindakan berikutnya.
+              Ringkasan aktivitas berita organisasi Anda, dari penulisan hingga hasil distribusi.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -227,12 +224,12 @@ export function DashboardV2CommandCenter({
         </div>
 
         <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-          <Metric label="Active domains" value={formatNumber(dashboard.activeDomains)} detail="Registered network domains" icon={Layers3} />
-          <Metric label="Active sites" value={formatNumber(dashboard.activeSites)} detail={`${formatNumber(dashboard.activeSubdomains)} active subdomains`} icon={Globe2} />
-          <Metric label="Total articles" value={formatNumber(dashboard.activeArticles)} detail={`${formatNumber(dashboard.archivedArticles)} archived`} icon={FileText} />
-          <Metric label="Published" value={formatNumber(published)} detail="Published queue outcomes" icon={Send} tone="good" />
-          <Metric label="Delivery success" value={`${deliveryRate.toLocaleString('id-ID')}%`} detail={`${formatNumber(dashboard.successfulSiteOutcomes)} successful outcomes`} icon={CheckCircle2} tone={deliveryRate >= 95 ? 'good' : deliveryRate > 0 ? 'warn' : 'neutral'} />
-          <Metric label="Total views" value={formatNumber(views)} detail={analytics ? 'Current telemetry projection' : 'Waiting for telemetry'} icon={Activity} />
+          <Metric label="Draft" value={formatNumber(dashboard.draftArticles)} detail="Artikel yang masih disusun" icon={FileText} />
+          <Metric label="Dalam review" value={formatNumber(dashboard.inReviewArticles)} detail="Menunggu penyuntingan atau persetujuan" icon={Clock3} tone={dashboard.inReviewArticles > 0 ? 'warn' : 'neutral'} />
+          <Metric label="Terjadwal" value={formatNumber(dashboard.scheduledArticles)} detail="Siap diterbitkan sesuai jadwal" icon={Clock3} />
+          <Metric label="Berita terbit" value={formatNumber(dashboard.activeArticles)} detail={`${formatNumber(dashboard.archivedArticles)} diarsipkan`} icon={Send} tone="good" />
+          <Metric label="Distribusi berhasil" value={formatNumber(dashboard.successfulSiteOutcomes)} detail={`${deliveryRate.toLocaleString('id-ID')}% keberhasilan distribusi`} icon={CheckCircle2} tone={deliveryRate >= 95 ? 'good' : deliveryRate > 0 ? 'warn' : 'neutral'} />
+          <Metric label="Pembaca" value={formatNumber(views)} detail={analytics ? 'Telemetri pembaca organisasi' : 'Menunggu telemetri'} icon={Activity} />
         </div>
       </header>
 
@@ -262,37 +259,12 @@ export function DashboardV2CommandCenter({
           </div>
         </Surface>
 
-        <Surface className="xl:col-span-4" label="Network posture">
-          <SectionHeading eyebrow="02 / Network posture" title="System at a glance" />
+        <Surface className="xl:col-span-4" label="Editorial summary">
+          <SectionHeading eyebrow="02 / Newsroom" title="Ringkasan redaksi" />
           <div className="mt-5 space-y-3">
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-sans text-xs text-[#8e99b0]">Domains</span>
-                <span className="font-mono text-sm font-semibold tabular-nums text-white">{formatNumber(dashboard.activeDomains)}</span>
-              </div>
-              <div className="mt-3 h-1.5 rounded-full bg-white/[0.06]">
-                <div className="h-full rounded-full bg-indigo-400" style={{ width: dashboard.activeDomains > 0 ? '100%' : '0%' }} />
-              </div>
-            </div>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-sans text-xs text-[#8e99b0]">Delivery health</span>
-                <span className="font-mono text-sm font-semibold tabular-nums text-white">{deliveryRate.toLocaleString('id-ID')}%</span>
-              </div>
-              <div className="mt-3 h-1.5 rounded-full bg-white/[0.06]">
-                <div className={`h-full rounded-full ${deliveryRate >= 95 ? 'bg-emerald-400' : 'bg-amber-400'}`} style={{ width: `${Math.min(100, deliveryRate)}%` }} />
-              </div>
-            </div>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-sans text-xs text-[#8e99b0]">Network sites</span>
-                <span className="font-mono text-sm font-semibold tabular-nums text-white">{formatNumber(dashboard.activeSites)}</span>
-              </div>
-              <div className="mt-3 flex items-center gap-2 text-[11px] text-[#68738a]">
-                <Server className="h-3.5 w-3.5" aria-hidden="true" />
-                Active tenant surfaces
-              </div>
-            </div>
+            <AttentionItem label="Draft" value={dashboard.draftArticles} description="Artikel yang masih dapat dilanjutkan." tone="good" />
+            <AttentionItem label="Dalam review" value={dashboard.inReviewArticles} description="Artikel yang membutuhkan review redaksi." tone={dashboard.inReviewArticles > 0 ? 'warn' : 'good'} />
+            <AttentionItem label="Terjadwal" value={dashboard.scheduledArticles} description="Artikel yang menunggu waktu terbit." tone="good" />
           </div>
         </Surface>
 
@@ -312,22 +284,22 @@ export function DashboardV2CommandCenter({
               </div>
             </Surface>
 
-            <Surface className="xl:col-span-7" label="Delivery by site">
-              <SectionHeading eyebrow="05 / Delivery" title="Where distribution stands" detail="Komposisi outcome per situs, sehingga masalah jaringan terlihat sebagai exception." />
+            <Surface className="xl:col-span-7" label="Distribution status">
+              <SectionHeading eyebrow="05 / Distribution" title="Status distribusi" detail="Pantau hasil distribusi otomatis dan exception yang membutuhkan tindakan." />
               <div className="mt-5">
                 <SiteStack results={analytics.outcomesBySiteAndState} label={siteName} />
               </div>
             </Surface>
 
-            <Surface className="xl:col-span-5" label="Site performance">
-              <SectionHeading eyebrow="06 / Performance" title="Site performance" />
+            <Surface className="xl:col-span-5" label="Reader performance">
+              <SectionHeading eyebrow="06 / Performance" title="Performa pembaca" />
               <div className="mt-5">
                 <SiteViewsBar rows={analytics.viewsBySite ?? []} label={siteName} />
               </div>
             </Surface>
 
-            <Surface className="xl:col-span-12" label="Network intelligence">
-              <SectionHeading eyebrow="07 / Network intelligence" title="Who is driving the network?" detail="Ranking berdasarkan projection yang sudah tersedia; tidak ada data sintetis." />
+            <Surface className="xl:col-span-12" label="Editorial intelligence">
+              <SectionHeading eyebrow="07 / Editorial intelligence" title="Kinerja konten organisasi" detail="Ringkasan performa berdasarkan projection produksi yang sudah tersedia." />
               <div className="mt-5 grid gap-4 lg:grid-cols-3">
                 <TopRanked title="Top sites" rows={topSites.map((row) => ({ ...row, key: dimensionLabel(row.key, analytics.siteLabels, 'Situs tidak tersedia') }))} />
                 <TopRanked title="Top publishers" rows={topPublishers.map((row) => ({ ...row, key: dimensionLabel(row.key, analytics.publisherLabels, 'Penerbit tidak tersedia') }))} />
@@ -361,7 +333,7 @@ export function DashboardV2CommandCenter({
             ['Write article', 'editorial', FileText],
             ['Publishing queue', 'publishing', Send],
             ['Analytics', 'analytics', Activity],
-            ['Network configuration', 'configuration', Layers3],
+            ['Kelola artikel', 'articles', FileText],
           ] as const).map(([label, target, Icon]) => (
             <button
               key={String(target)}
@@ -387,9 +359,9 @@ export function DashboardV2CommandCenter({
           Production data only
         </div>
         <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.14em] text-[#59657c]">
-          <span>{formatNumber(dashboard.activeSites)} sites</span>
-          <span>{formatNumber(dashboard.activeArticles)} articles</span>
-          <span>{formatNumber(views)} views</span>
+          <span>{formatNumber(dashboard.draftArticles)} draft</span>
+          <span>{formatNumber(dashboard.activeArticles)} terbit</span>
+          <span>{formatNumber(views)} pembaca</span>
         </div>
       </div>
     </div>
