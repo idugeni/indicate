@@ -1569,8 +1569,8 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'published') AS "jobsPublished",
           (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'failed') AS "jobsFailed",
           (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'retrying') AS "jobsRetrying",
-          (SELECT count(*)::int FROM article_sites WHERE organization_id = ${actor.organizationId} AND state = 'published') AS "successfulSiteOutcomes",
-          (SELECT count(*)::int FROM article_sites WHERE organization_id = ${actor.organizationId} AND state = 'failed') AS "failedSiteOutcomes",
+          (SELECT count(*)::int FROM portal_assignments WHERE source_organization_id = ${actor.organizationId} AND state = 'published') AS "successfulSiteOutcomes",
+          (SELECT count(*)::int FROM portal_assignments WHERE source_organization_id = ${actor.organizationId} AND state = 'failed') AS "failedSiteOutcomes",
           (SELECT count(*)::int FROM media WHERE organization_id = ${actor.organizationId} AND state = 'active') AS "activeMedia"
       `);
       if (row === undefined) throw new DashboardAccessDeniedError();
