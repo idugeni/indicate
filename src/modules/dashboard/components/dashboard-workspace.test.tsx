@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
@@ -107,8 +107,9 @@ describe('Dashboard workspace login modes', () => {
   it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 
-    const dashboard = screen.getAllByRole('button', { name: 'Dashboard' })[0]!;
-    const articles = screen.getAllByRole('button', { name: 'Artikel' })[0]!;
+    const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
+    const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
+    const articles = sidebar.getByRole('button', { name: 'Artikel' });
     expect(dashboard.getAttribute('aria-current')).toBe('page');
 
     fireEvent.click(articles);
@@ -240,7 +241,9 @@ describe('Dashboard workspace', () => {
   it('opens the editorial library from the tenant Artikel navigation', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
     await screen.findByText('INDICATE / NEWSROOM');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Artikel' })[0]!);
+    const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
+    fireEvent.click(sidebar.getByRole('button', { name: 'Artikel' }));
+    fireEvent.click(await sidebar.findByRole('button', { name: 'Content Library' }));
     expect(await screen.findByRole('region', { name: 'Content Library' }, { timeout: LAZY_MODULE_TIMEOUT_MS })).toBeDefined();
     expect(screen.queryByText('Belum ada data')).toBeNull();
   });
@@ -355,7 +358,7 @@ describe('Dashboard workspace', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     initialView = 'publishers';
-    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} navigationMode="platform" />);
     await screen.findByText(/v1/, {}, { timeout: LAZY_MODULE_TIMEOUT_MS });
     await waitFor(() => expect(gets.filter((url) => url.includes('view=publishers'))).toHaveLength(1), { timeout: LAZY_MODULE_TIMEOUT_MS });
     gets.length = 0;
