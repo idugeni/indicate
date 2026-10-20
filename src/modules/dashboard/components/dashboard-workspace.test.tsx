@@ -145,7 +145,7 @@ describe('Dashboard workspace login modes', () => {
       if (target.includes('/api/dashboard/billing?scope=invoices')) {
         return { ok: true, json: async () => [] };
       }
-      if (target.includes('view=configuration')) {
+      if (target.includes('view=memberships')) {
         return {
           ok: true,
           json: async () => ({
@@ -174,7 +174,7 @@ describe('Dashboard workspace login modes', () => {
     fireEvent.click(sidebar.getByRole('button', { name: 'Membership' }));
     expect(await screen.findByRole('heading', { name: 'Membership' })).toBeDefined();
     expect(await screen.findByRole('row', { name: /Redaktur Uji/ })).toBeDefined();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=configuration'))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('view=memberships'))).toBe(true);
 
     fireEvent.click(sidebar.getByRole('button', { name: 'Invoice' }));
     expect(await screen.findByRole('heading', { name: 'Invoice' })).toBeDefined();
