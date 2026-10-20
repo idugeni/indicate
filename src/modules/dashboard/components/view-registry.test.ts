@@ -47,12 +47,19 @@ describe('Primary dashboard navigation', () => {
     ]);
     expect(tenantAreas.map((area) => area.navigationViews)).toEqual([
       ['dashboard'],
-      ['articles', 'editorial', 'publishing', 'published', 'media', 'taxonomy', 'publishers'],
+      ['articles', 'editorial', 'media'],
       ['organization'],
     ]);
-    expect(PRIMARY_NAV_AREAS.find((area) => area.id === 'articles')?.views).toEqual(
-      expect.arrayContaining(['articles', 'editorial', 'media', 'taxonomy', 'publishing', 'published']),
-    );
+    expect(PRIMARY_NAV_AREAS.find((area) => area.id === 'articles')?.views).toEqual([
+      'articles',
+      'editorial',
+      'media',
+    ]);
+    const organizationPermissions = new Set<string>();
+    for (const restrictedView of ['publishing', 'published', 'taxonomy', 'publishers'] as const) {
+      expect(canAccessViewInMode(restrictedView, organizationPermissions, 'organization')).toBe(false);
+      expect(canAccessViewInMode(restrictedView, organizationPermissions, 'platform')).toBe(true);
+    }
     expect(PRIMARY_NAV_AREAS.filter((area) => area.scope === 'platform').map((area) => area.label)).toEqual(['Super Admin']);
     for (const scope of ['organization', 'platform'] as const) {
       const scopedViews = PRIMARY_NAV_AREAS.filter((area) => area.scope === scope).flatMap((area) => area.views);
