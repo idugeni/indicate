@@ -56,7 +56,6 @@ async function DashboardBody({
   const cookieStore = await cookies();
   const identity = await getVerifiedNeonIdentity();
   if (identity === null) return <AccessKeyDashboardBody cookieStore={cookieStore} searchParams={searchParams} />;
-  // Prefer the canonical local profile; provider names often fall back to the email username.\n  const displayNameFallback = identity.displayName;
   const context = await getServerRuntimeContext();
   const runtime = getSharedRuntimeDatabase(context.bootstrap);
   const repository = new DrizzleAuthorizationRepository(runtime.db);
