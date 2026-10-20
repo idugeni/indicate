@@ -104,6 +104,21 @@ describe('Dashboard workspace login modes', () => {
     }
   });
 
+  it('shows the active organization logo in sidebar identity when the organization profile has one', async () => {
+    const logoUrl = '/api/network/media/00000000-0000-4000-8000-000000000001';
+    const fetchMock = vi.fn(async (url: unknown) => {
+      if (String(url).includes('/api/dashboard/organization?organizationId=org-1')) {
+        return { ok: true, json: async () => ({ logoUrl }) };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/dashboard/organization?organizationId=org-1'))).toBe(true));
+    await waitFor(() => expect(Array.from(container.querySelectorAll('img')).some((image) => image.getAttribute('src') === logoUrl)).toBe(true));
+  });
+
   it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
     render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
 

@@ -12,6 +12,7 @@ import { auditLogs, organizations, publishers } from '@/data/schema';
 import { SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
+import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 
 const uuidSchema = z.uuid();
 const organizationQuerySchema = z.object({ organizationId: uuidSchema });
@@ -112,8 +113,8 @@ function publicProfile(
     name: row.name,
     slug: row.slug,
     ...identity,
-    description: firstText(identity.description, publisher.bio, metadata.description) ?? '',
-    logoUrl: identity.logoUrl === '' ? null : identity.logoUrl ?? safeLogoValue(publisher.logoUrl),
+    description: firstText(identity.description, publisher.bio, metadata.description) ?? DEFAULT_PUBLISHER_BIO,
+    logoUrl: safeLogoValue(identity.logoUrl) ?? safeLogoValue(publisher.logoUrl),
     contactDetails: {
       ...contactDetails,
       ...(!contactDetails.email && parsedLegacyEmail?.success ? { email: parsedLegacyEmail.data } : {}),

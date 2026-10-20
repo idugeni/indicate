@@ -31,6 +31,10 @@ export function clearAvatarCache(): void {
 export function DashboardAvatar({ displayName, avatarRef = null }: { readonly displayName: string; readonly avatarRef?: string | null }) {
   const isRemote = avatarRef?.startsWith('https://') === true;
   const isPrivate = avatarRef?.startsWith('r2:') === true;
+  const isInternalImage = typeof avatarRef === 'string' && (
+    /^\/api\/network\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(avatarRef) ||
+    /^\/brand\/[a-z0-9_-]+(?:[./-][a-z0-9_-]+)*\.(?:svg|png|jpe?g|webp)$/iu.test(avatarRef)
+  );
   const [privateUrl, setPrivateUrl] = useState<string | null>(() => {
     if (!isPrivate || avatarRef === null || avatarRef === undefined) return null;
     const hit = avatarCache.get(avatarRef);
@@ -81,7 +85,7 @@ export function DashboardAvatar({ displayName, avatarRef = null }: { readonly di
     };
   }, [avatarRef, isPrivate]);
 
-  const url = isRemote && typeof avatarRef === 'string' ? avatarRef : isPrivate ? privateUrl : null;
+  const url = typeof avatarRef === 'string' && (isRemote || isInternalImage) ? avatarRef : isPrivate ? privateUrl : null;
 
   return (
     <Avatar className="h-7 w-7 flex-none border border-hairline">

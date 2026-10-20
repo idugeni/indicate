@@ -39,6 +39,7 @@ describe('Form identitas organisasi', () => {
     expect(screen.getByDisplayValue('Penerbitan berita lokal')).toBeDefined();
     expect(screen.getByDisplayValue('redaksi@contoh.id')).toBeDefined();
     expect(screen.getByDisplayValue('/api/network/media/00000000-0000-4000-8000-000000000001')).toBeDefined();
+    expect(screen.getByRole('img', { name: 'Logo Portal Contoh' })).toBeDefined();
     expect(screen.getByDisplayValue('Kota Semarang')).toBeDefined();
     expect(screen.getByDisplayValue('https://facebook.com/portal-contoh')).toBeDefined();
     expect(screen.getByDisplayValue('https://instagram.com/portal-contoh')).toBeDefined();

@@ -28,6 +28,15 @@ describe('Avatar pemilik workspace', () => {
     expect(fallback(container)).toBe('RE');
   });
 
+  it('menampilkan logo organisasi dari path media internal tanpa meminta endpoint avatar pribadi', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const logo = '/api/network/media/00000000-0000-4000-8000-000000000001';
+    const { container } = render(<DashboardAvatar displayName="Lapas Kendal" avatarRef={logo} />);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(logo);
+  });
+
   it('meminta endpoint avatar sekali untuk referensi privat r2', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ url: 'https://r2.contoh.id/temporary.png' }) }));
     vi.stubGlobal('fetch', fetchMock);

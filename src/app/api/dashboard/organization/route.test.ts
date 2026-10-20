@@ -20,6 +20,7 @@ vi.mock('@/core/security/mutation-guard', () => ({ denyCrossSiteMutation: mocks.
 
 import { GET, POST } from '@/app/api/dashboard/organization/route';
 import { publishers } from '@/data/schema';
+import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
 const USER = { authUserId: '22222222-2222-4222-8222-222222222222', localUserId: '33333333-3333-4333-8333-333333333333', avatarUrl: null, accessKey: null };
@@ -148,6 +149,30 @@ describe('API identitas organisasi', () => {
         website: 'https://pemasyarakatanjateng.id/satker/lapas-terbuka-kelas-ii-b-kendal',
       },
       socialLinks: { facebook: 'https://facebook.com/upt-kendal' },
+    });
+  });
+
+  it('mempertahankan logo publisher dan bio bawaan saat identitas organisasi tersimpan kosong', async () => {
+    const logoUrl = '/api/network/media/00000000-0000-4000-8000-000000000001';
+    setDatabase(
+      {
+        ...CURRENT,
+        identityData: {
+          schemaVersion: 1,
+          description: '',
+          logoUrl: '',
+          contactDetails: {},
+          visualIdentity: {},
+        },
+      },
+      [{ name: CURRENT.name, contacts: { logoUrl, bio: '' } }],
+    );
+
+    const response = await GET(request(`https://app.test/api/dashboard/organization?organizationId=${ORG}`));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      logoUrl,
+      description: DEFAULT_PUBLISHER_BIO,
     });
   });
 

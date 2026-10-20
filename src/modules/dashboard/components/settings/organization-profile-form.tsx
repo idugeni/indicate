@@ -131,9 +131,20 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
 
   return (
     <SectionCard icon={Building2} title="Identitas Organisasi" eyebrow="Profil tenant">
-      <div className="mb-4 rounded-lg border border-hairline bg-bg p-3 text-xs leading-5 text-paper-dim">
-        Identitas ini milik organisasi aktif, bukan pengaturan tampilan situs. Domain, template, SEO situs, integrasi, dan operasi tetap berada di area platform.
-        <span className="mt-1 block font-mono text-[10px] text-paper-faint">ID: {organizationId} · Peran: {organizationRole ?? 'Anggota organisasi'}</span>
+      <div className="mb-4 flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3">
+        {logoUrl.trim() !== '' ? (
+          <Image src={logoUrl} alt={`Logo ${name || 'organisasi'}`} width={56} height={56} unoptimized className="h-14 w-14 flex-none rounded-xl border border-hairline bg-bg-raised object-contain p-1" />
+        ) : (
+          <span className="flex h-14 w-14 flex-none items-center justify-center rounded-xl border border-hairline bg-bg-raised text-paper-faint">
+            <Building2 className="h-6 w-6" aria-hidden="true" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1 text-xs leading-5 text-paper-dim">
+          <p className="m-0 font-semibold text-paper">{name || organizationName}</p>
+          <p className="m-0 mt-1">{description.trim() || 'Deskripsi organisasi belum tersedia.'}</p>
+          <p className="m-0 mt-1">Identitas milik organisasi aktif, bukan pengaturan tampilan situs. Domain, template, SEO situs, integrasi, dan operasi tetap berada di area platform.</p>
+          <span className="mt-1 block font-mono text-[10px] text-paper-faint">ID: {organizationId} · Peran: {organizationRole ?? 'Anggota organisasi'}</span>
+        </div>
       </div>
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
