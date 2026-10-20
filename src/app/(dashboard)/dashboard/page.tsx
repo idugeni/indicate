@@ -62,6 +62,8 @@ async function DashboardBody({
   const repository = new DrizzleAuthorizationRepository(runtime.db);
   const discovery = await resolveVerifiedUserOrganizations(identity, repository, new UuidGenerator()); if (!discovery.ok) redirect('/sign-in?auth=inactive');
   const localUser = discovery.value.localUser;
+  // Prefer the canonical local profile; provider names often fall back to the email username.
+  const displayName = localUser.displayName.trim() || identity.displayName;
   const platformPermissions: readonly string[] = await repository.listPlatformPermissions(localUser.id).catch((): readonly string[] => []);
   const isPlatformSuperAdmin = platformPermissions.includes(INTEGRATIONS_PERMISSIONS.superAdmin);
   const memberships: ReadonlyMap<string, MembershipAuthorization> = isPlatformSuperAdmin
