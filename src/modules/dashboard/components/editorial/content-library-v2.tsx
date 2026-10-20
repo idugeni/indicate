@@ -57,6 +57,7 @@ interface AssignmentSummary {
 interface BridgePublishedSummary {
   readonly articleId: string;
   readonly urls: readonly string[];
+  readonly publishedAtMax?: string | null;
 }
 
 interface ContentLibraryModel {
@@ -143,6 +144,7 @@ function publicationFacts(
     article.publishedAtMax,
     article.publishedAt,
     ...publishedAssignments.map((assignment) => assignment.publishedAt ?? null),
+    ...bridgePublished.filter((entry) => entry.articleId === article.id).map((entry) => entry.publishedAtMax ?? null),
   ].filter(
     (timestamp): timestamp is string =>
       timestamp !== null && timestamp !== undefined && timestamp !== '',
@@ -153,7 +155,8 @@ function publicationFacts(
     (article.publishedUrls?.length ?? 0) > 0 ||
     article.publishedAtMax != null ||
     publishedAssignments.length > 0 ||
-    article.publishedAt != null;
+    article.publishedAt != null ||
+    bridgeUrlHosts.length > 0;
 
   return {
     isPublished,
