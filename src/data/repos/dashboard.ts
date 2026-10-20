@@ -1551,7 +1551,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
       const organization = await transaction.select({ id: organizations.id }).from(organizations).where(and(eq(organizations.id, actor.organizationId), eq(organizations.status, 'active'))).limit(1);
       if (organization.length !== 1) throw new DashboardAccessDeniedError();
       const [row] = await transaction.execute<{
-        readonly activeDomains: number; readonly activeSubdomains: number; readonly activeSites: number; readonly activeArticles: number; readonly archivedArticles: number;
+        readonly activeDomains: number; readonly activeSubdomains: number; readonly activeSites: number; readonly activeArticles: number; readonly draftArticles: number; readonly inReviewArticles: number; readonly scheduledArticles: number; readonly archivedArticles: number;
         readonly jobsQueued: number; readonly jobsProcessing: number; readonly jobsPublished: number; readonly jobsFailed: number; readonly jobsRetrying: number;
         readonly successfulSiteOutcomes: number; readonly failedSiteOutcomes: number; readonly activeMedia: number;
       }>(sql`
@@ -1560,6 +1560,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
           (SELECT count(*)::int FROM sites s JOIN domains d ON d.organization_id = ${actor.organizationId} AND d.id = s.domain_id WHERE s.organization_id = ${actor.organizationId} AND s.status = 'active' AND s.normalized_hostname <> d.normalized_hostname) AS "activeSubdomains",
           (SELECT count(*)::int FROM sites WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeSites",
           (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'active') AS "activeArticles",
+          (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'draft') AS "draftArticles",
+          (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'in_review') AS "inReviewArticles",
+          (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'scheduled') AS "scheduledArticles",
           (SELECT count(*)::int FROM articles WHERE organization_id = ${actor.organizationId} AND status = 'archived') AS "archivedArticles",
           (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'queued') AS "jobsQueued",
           (SELECT count(*)::int FROM publishing_jobs WHERE organization_id = ${actor.organizationId} AND state = 'processing') AS "jobsProcessing",
@@ -1579,6 +1582,9 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         activeSubdomains: row.activeSubdomains,
         activeSites: row.activeSites,
         activeArticles: row.activeArticles,
+        draftArticles: row.draftArticles,
+        inReviewArticles: row.inReviewArticles,
+        scheduledArticles: row.scheduledArticles,
         archivedArticles: row.archivedArticles,
         jobsByState: { queued: row.jobsQueued, processing: row.jobsProcessing, published: row.jobsPublished, failed: row.jobsFailed, retrying: row.jobsRetrying } as DashboardProjection['jobsByState'],
         successfulSiteOutcomes: row.successfulSiteOutcomes,
