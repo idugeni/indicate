@@ -98,9 +98,15 @@ function publicProfile(
   const socialLinks = identity.socialLinks ?? Object.fromEntries(
     SOCIAL_ORDER.flatMap((key) => {
       const value = firstText(publisher[key]);
-      return value === undefined ? [] : [[key, value]];
+      if (value === undefined) return [];
+      const parsed = httpsUrlSchema.safeParse(value);
+      return parsed.success ? [[key, parsed.data]] : [];
     }),
   );
+  const legacyEmail = firstText(publisher.email, metadata.email);
+  const parsedLegacyEmail = legacyEmail === undefined ? undefined : z.string().email().safeParse(legacyEmail);
+  const legacyWebsite = firstText(publisher.website, publisher.detailUrl, metadata.website, metadata.detailUrl, metadata.site_url);
+  const parsedLegacyWebsite = legacyWebsite === undefined ? undefined : httpsUrlSchema.safeParse(legacyWebsite);
   return {
     id: row.id,
     name: row.name,
@@ -110,11 +116,11 @@ function publicProfile(
     logoUrl: identity.logoUrl === '' ? null : identity.logoUrl ?? safeLogoValue(publisher.logoUrl),
     contactDetails: {
       ...contactDetails,
-      ...(!contactDetails.email && firstText(publisher.email, metadata.email) ? { email: firstText(publisher.email, metadata.email) } : {}),
+      ...(!contactDetails.email && parsedLegacyEmail?.success ? { email: parsedLegacyEmail.data } : {}),
       ...(!contactDetails.phone && firstText(publisher.phone, metadata.phone) ? { phone: firstText(publisher.phone, metadata.phone) } : {}),
       ...(!contactDetails.address && firstText(publisher.address, metadata.address) ? { address: firstText(publisher.address, metadata.address) } : {}),
       ...(!contactDetails.city && firstText(publisher.city, metadata.city) ? { city: firstText(publisher.city, metadata.city) } : {}),
-      ...(!contactDetails.website && firstText(publisher.website, publisher.detailUrl, metadata.website, metadata.detailUrl, metadata.site_url) ? { website: firstText(publisher.website, publisher.detailUrl, metadata.website, metadata.detailUrl, metadata.site_url) } : {}),
+      ...(!contactDetails.website && parsedLegacyWebsite?.success ? { website: parsedLegacyWebsite.data } : {}),
     },
     socialLinks,
     version: row.version,
