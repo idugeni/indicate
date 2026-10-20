@@ -135,6 +135,7 @@ async function handlePOST(request: Request) {
         name: organizations.name,
         slug: organizations.slug,
         identityData: sql<unknown>`${organizations.customerMetadata} -> 'organizationIdentity'`,
+        customerMetadata: organizations.customerMetadata,
         version: organizations.version,
       }).from(organizations).where(eq(organizations.id, actor.organizationId)).limit(1);
       const current = currentRows[0];
@@ -168,6 +169,7 @@ async function handlePOST(request: Request) {
         name: organizations.name,
         slug: organizations.slug,
         identityData: sql<unknown>`${organizations.customerMetadata} -> 'organizationIdentity'`,
+        customerMetadata: organizations.customerMetadata,
         version: organizations.version,
       });
       const updated = updatedRows[0];
