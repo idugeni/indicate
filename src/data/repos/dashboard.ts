@@ -1324,7 +1324,7 @@ export class DrizzleDashboardRepository implements DashboardRepository {
         list.push(link.categoryId);
         categoryIdsByArticle.set(link.articleId, list);
       }
-      const bridgeRows = articleIds.length === 0 || filter.publicationState === undefined ? [] : await transaction.execute<{
+      const bridgeRows = articleIds.length === 0 ? [] : await transaction.execute<{
         source_article_id: string; url: string; published_at: Date | string;
       }>(sql`SELECT * FROM indicate_private.list_own_bridge_urls(${organizationId}::uuid, ${sqlStringArray(articleIds)}::uuid[])`);
       const bridgeByArticle = new Map<string, { urls: string[]; publishedAtMax: string | null }>();
