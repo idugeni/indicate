@@ -44,7 +44,7 @@ function request(url: string, method = 'GET', body?: unknown) {
 type PublisherFixture = { readonly name: string; readonly contacts: Record<string, unknown> };
 
 function setDatabase(
-  current: typeof CURRENT & { readonly customerMetadata?: unknown } = CURRENT,
+  current: Omit<typeof CURRENT, 'identityData'> & { readonly identityData?: unknown; readonly customerMetadata?: unknown } = CURRENT,
   publisherFixtures: readonly PublisherFixture[] = [],
 ) {
   const updatedRows = vi.fn().mockResolvedValue([{
