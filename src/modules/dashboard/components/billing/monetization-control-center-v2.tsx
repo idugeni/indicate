@@ -5,6 +5,8 @@ import {
   BadgeCheck,
   CircleDollarSign,
   FileDown,
+  Eye,
+  Printer,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -95,6 +97,7 @@ export function MonetizationControlCenterV2({
   const [nowMs] = useState(() => Date.now());
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'paid' | 'unpaid' | 'voided'>('all');
   const [query, setQuery] = useState('');
+  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -258,6 +261,82 @@ export function MonetizationControlCenterV2({
 
       {error ? <FormNotice tone="error">{error}</FormNotice> : null}
       {notice ? <FormNotice tone="success">{notice}</FormNotice> : null}
+      {previewInvoice ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPreviewInvoice(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="invoice-preview-title"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-hairline bg-bg-raised p-5 text-paper shadow-2xl sm:p-8"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline pb-5">
+              <div>
+                <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-brass">Invoice preview</p>
+                <h2 id="invoice-preview-title" className="m-0 mt-2 text-xl font-semibold">Faktur {previewInvoice.number}</h2>
+                <p className="m-0 mt-1 text-xs text-paper-dim">{previewInvoice.organizationName || customerName(previewInvoice.organizationId)}</p>
+              </div>
+              <Badge variant="outline" className="capitalize">{previewInvoice.status}</Badge>
+            </div>
+            <div className="grid gap-4 py-5 sm:grid-cols-2">
+              <div>
+                <p className="m-0 text-[10px] uppercase tracking-wider text-paper-faint">Total tagihan</p>
+                <p className="m-0 mt-1 font-mono text-2xl font-semibold">{money(previewInvoice.amountIdr)}</p>
+              </div>
+              <div>
+                <p className="m-0 text-[10px] uppercase tracking-wider text-paper-faint">Tanggal terbit</p>
+                <p className="m-0 mt-1 text-sm">{formatDate(previewInvoice.createdAt)}</p>
+              </div>
+              <div>
+                <p className="m-0 text-[10px] uppercase tracking-wider text-paper-faint">Jatuh tempo</p>
+                <p className="m-0 mt-1 text-sm">{previewInvoice.dueAt ? formatDate(previewInvoice.dueAt) : '—'}</p>
+              </div>
+              <div>
+                <p className="m-0 text-[10px] uppercase tracking-wider text-paper-faint">Tanggal pembayaran</p>
+                <p className="m-0 mt-1 text-sm">{previewInvoice.paidAt ? formatDate(previewInvoice.paidAt) : 'Belum dibayar'}</p>
+              </div>
+              <div>
+                <p className="m-0 text-[10px] uppercase tracking-wider text-paper-faint">Metode pembayaran</p>
+                <p className="m-0 mt-1 text-sm">{previewInvoice.paymentMethod || '—'}</p>
+              </div>
+              <div>
+                <p className="m-0 text-[10px] uppercase tracking-wider text-paper-faint">Versi faktur</p>
+                <p className="m-0 mt-1 text-sm">{previewInvoice.version}</p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-hairline bg-bg p-4">
+              <p className="m-0 text-[10px] uppercase tracking-wider text-paper-faint">Keterangan / periode layanan</p>
+              <p className="m-0 mt-2 whitespace-pre-wrap text-sm">{previewInvoice.billingNote || 'Tidak ada keterangan.'}</p>
+            </div>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => window.print()}>
+                <Printer className="h-3.5 w-3.5" aria-hidden="true" /> Cetak preview
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  const invoice = previewInvoice;
+                  setPreviewInvoice(null);
+                  window.open(
+                    `/api/dashboard/billing/invoice/${invoice.id}?organizationId=${encodeURIComponent(invoice.organizationId)}`,
+                    '_blank',
+                    'noopener',
+                  );
+                }}
+              >
+                <FileDown className="h-3.5 w-3.5" aria-hidden="true" /> Unduh PDF
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setPreviewInvoice(null)}>Tutup</Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
 
       <section
         aria-label="Ringkasan finansial"
@@ -431,6 +510,14 @@ export function MonetizationControlCenterV2({
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPreviewInvoice(invoice)}
+                      >
+                        <Eye className="h-3.5 w-3.5" aria-hidden="true" /> Lihat preview
+                      </Button>
+                      <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() =>
@@ -441,7 +528,7 @@ export function MonetizationControlCenterV2({
                           )
                         }
                       >
-                        <FileDown className="h-3.5 w-3.5" aria-hidden="true" /> Unduh
+                        <FileDown className="h-3.5 w-3.5" aria-hidden="true" /> Unduh PDF
                       </Button>
                       {isPlatform && invoice.status === 'unpaid' ? (
                         <Button
