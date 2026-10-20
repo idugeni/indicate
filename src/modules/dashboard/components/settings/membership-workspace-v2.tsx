@@ -44,8 +44,8 @@ const STATUS_LABELS: Readonly<Record<string, string>> = {
   archived: 'Diarsipkan',
 };
 
-function statusTone(status: string): 'success' | 'secondary' | 'outline' {
-  if (status === 'active') return 'success';
+function statusTone(status: string): 'default' | 'secondary' | 'outline' {
+  if (status === 'active') return 'default';
   if (status === 'inactive') return 'secondary';
   return 'outline';
 }
