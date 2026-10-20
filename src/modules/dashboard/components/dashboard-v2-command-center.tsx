@@ -203,7 +203,7 @@ export function DashboardV2CommandCenter({
 
     return (
       <div className="min-w-0 space-y-5">
-        <header className="rounded-2xl border border-hairline bg-bg-raised p-5 sm:p-6">
+        <header className="rounded-2xl border border-hairline bg-bg-raised p-4 sm:p-6">
           <p className="m-0 font-mono text-[10px] uppercase tracking-[0.18em] text-paper-dim">
             Dashboard Organisasi
           </p>
@@ -224,14 +224,14 @@ export function DashboardV2CommandCenter({
           </div>
         </header>
 
-        <section aria-label="Ringkasan berita organisasi" className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Ringkasan berita organisasi" className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
           {[
             { label: 'Draft', value: dashboard.draftArticles, icon: FileText },
             { label: 'Perlu review', value: dashboard.inReviewArticles, icon: Clock3 },
             { label: 'Terjadwal', value: dashboard.scheduledArticles, icon: Clock3 },
             { label: 'Berita terbit', value: dashboard.activeArticles, icon: Send },
           ].map(({ label, value, icon: Icon }) => (
-            <div key={label} className="rounded-xl border border-hairline bg-bg-raised p-4">
+            <div key={label} className="rounded-xl border border-hairline bg-bg-raised p-3 sm:p-4">
               <div className="flex items-center gap-2 text-paper-dim">
                 <Icon className="h-4 w-4" aria-hidden="true" />
                 <span className="text-xs">{label}</span>
@@ -243,7 +243,7 @@ export function DashboardV2CommandCenter({
           ))}
         </section>
 
-        <section aria-label="Status distribusi" className="rounded-xl border border-hairline bg-bg-raised p-4 sm:p-5">
+        <section aria-label="Status distribusi" className="rounded-xl border border-hairline bg-bg-raised p-3 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="m-0 text-sm font-semibold text-paper">Status distribusi</h2>
@@ -258,8 +258,8 @@ export function DashboardV2CommandCenter({
               tone={failed > 0 ? 'bad' : hasDeliveryIssues ? 'warn' : 'good'}
             />
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-hairline/70 p-3">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-hairline/70 p-2.5 sm:p-3">
               <p className="m-0 text-xs text-paper-dim">Distribusi gagal</p>
               <p className="m-0 mt-1 font-mono text-xl font-semibold tabular-nums text-paper">{formatNumber(failed)}</p>
             </div>
