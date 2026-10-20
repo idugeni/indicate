@@ -78,8 +78,8 @@ export function DashboardNavList({
                 aria-current={view === defaultView ? 'page' : undefined}
                 aria-label={area.label}
                 onClick={() => {
-                  if (navigationMode === 'organization' && area.id === 'articles') {
-                    setExpandedArea('articles');
+                  if (navigationMode === 'organization' && navigationViews.length > 1) {
+                    setExpandedArea(area.id);
                     onExpandSidebar?.();
                     return;
                   }
@@ -112,7 +112,7 @@ export function DashboardNavList({
         const active = allowedViews.includes(view);
         const expanded = expandedArea === area.id;
         const Icon = VIEW_REGISTRY[defaultView].icon;
-        const children = navigationMode === 'organization' && area.id === 'articles'
+        const children = navigationMode === 'organization' && navigationViews.length > 1
           ? navigationViews
           : navigationViews.filter((candidate) => candidate !== defaultView);
 
@@ -124,8 +124,8 @@ export function DashboardNavList({
                 variant="ghost"
                 aria-current={view === defaultView && !(navigationMode === 'organization' && area.id === 'articles') ? 'page' : undefined}
                 onClick={() => {
-                  if (navigationMode === 'organization' && area.id === 'articles') {
-                    setExpandedArea('articles');
+                  if (navigationMode === 'organization' && navigationViews.length > 1) {
+                    setExpandedArea(area.id);
                     return;
                   }
                   onSelect(defaultView);

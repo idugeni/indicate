@@ -228,7 +228,7 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     scope: 'organization',
     defaultView: 'articles',
     navigationViews: ['articles', 'editorial', 'media'],
-    navigationLabels: { media: 'Media' },
+    navigationLabels: { media: 'Media', organization: 'Profil Organisasi' },
     views: ['articles', 'editorial', 'media'],
   },
   {

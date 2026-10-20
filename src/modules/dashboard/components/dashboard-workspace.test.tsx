@@ -167,7 +167,10 @@ describe('Dashboard workspace login modes', () => {
 
     await screen.findByText('INDICATE / NEWSROOM');
     const sidebar = within(screen.getByRole('navigation', { name: 'Navigasi sidebar Dashboard' }));
-    fireEvent.click(sidebar.getByRole('button', { name: 'Buka submenu Organisasi' }));
+    const dashboard = sidebar.getByRole('button', { name: 'Dashboard' });
+    fireEvent.click(sidebar.getByRole('button', { name: 'Organisasi' }));
+    expect(dashboard.getAttribute('aria-current')).toBe('page');
+    expect(sidebar.getByRole('button', { name: 'Profil Organisasi' })).toBeDefined();
     expect(sidebar.getByRole('button', { name: 'Membership' })).toBeDefined();
     expect(sidebar.getByRole('button', { name: 'Invoice' })).toBeDefined();
 
