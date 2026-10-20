@@ -61,11 +61,11 @@ function toEditArticleInit(value: unknown): EditArticleInit | null {
   };
 }
 
-function readiness(state: ArticleFormState) {
+function readiness(state: ArticleFormState, organizationMode: boolean) {
   const checks = [
     { label: 'Judul', ok: state.titleText.trim().length > 0 },
     { label: 'Slug', ok: state.slug.trim().length > 0 },
-    { label: 'Wilayah', ok: state.provinceId !== null || state.nationalActive },
+    ...(!organizationMode ? [{ label: 'Wilayah', ok: state.provinceId !== null || state.nationalActive }] : []),
     { label: 'Isi', ok: state.bodyText.trim().length > 0 && state.bodyJsonProblem === null },
     { label: 'Kategori', ok: state.effectiveCategoryIds.length > 0 },
   ];
@@ -102,7 +102,7 @@ function WorkspaceSurface({
     bodyJsonProblem,
     modeProblem,
   } = form;
-  const health = readiness(form);
+  const health = readiness(form, organizationMode);
   const statusCoerced =
     form.editOriginalStatus !== null &&
     !ARTICLE_STATUS_OPTIONS.some((option) => option.value === form.editOriginalStatus);
@@ -201,7 +201,7 @@ function WorkspaceSurface({
             <div className="mb-4 flex items-center justify-between gap-3 border-b border-hairline pb-3">
               <div>
                 <p className="m-0 font-mono text-[10px] uppercase tracking-wider text-brass">Publication inspector</p>
-                <p className="m-0 mt-1 text-xs text-paper-faint">Metadata, SEO, cover, attribution, targeting</p>
+                <p className="m-0 mt-1 text-xs text-paper-faint">{organizationMode ? "Metadata, SEO, sampul, dan atribusi" : "Metadata, SEO, cover, attribution, targeting"}</p>
               </div>
               <Badge variant="outline" className="font-mono text-[10px]">{targetSiteIds.length} target</Badge>
             </div>
