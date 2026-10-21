@@ -345,6 +345,17 @@ describe('Dashboard workspace', () => {
     expect(footer).not.toBeNull();
     expect(footer?.className).toContain('mt-auto');
     expect(footer?.className).toContain('pt-8');
+    expect(screen.queryByText('Next.js 16 · Neon · Better Auth · Drizzle · Cloudflare · Upstash')).toBeNull();
+  });
+
+  it('shows the technology stack in the platform dashboard footer', () => {
+    render(
+      <DashboardWorkspace
+        displayName="Super Admin"
+        organizations={ORGANIZATIONS}
+        navigationMode="platform"
+      />,
+    );
     expect(screen.getByText('Next.js 16 · Neon · Better Auth · Drizzle · Cloudflare · Upstash')).toBeDefined();
   });
 

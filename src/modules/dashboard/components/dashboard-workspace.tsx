@@ -709,7 +709,7 @@ export function DashboardWorkspace({
           crossOrg={crossOrg}
           navigationMode={navigationMode}
         />
-        <DashboardFooter />
+        <DashboardFooter showTechStack={navigationMode === 'platform'} />
         </div>
       </div>
     </TooltipProvider>
