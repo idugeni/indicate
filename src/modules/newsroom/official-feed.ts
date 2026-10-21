@@ -209,8 +209,18 @@ export function extractOfficialArticleText(html: string): string {
     ?? /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1]
     ?? /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1];
   if (body === undefined || body === null) return '';
-  const articleBody = ['widget-baca-juga', 'detail-share', 'audio-player', 'generate-ai-summary', 'post-tags', 'post-share', 'about-author']
-    .reduce((value, className) => removeDivClassBlocks(value, className), body);
+  const articleBody = [
+    'widget-baca-juga',
+    'related',
+    'related-news',
+    'related-articles',
+    'detail-share',
+    'audio-player',
+    'generate-ai-summary',
+    'post-tags',
+    'post-share',
+    'about-author',
+  ].reduce((value, className) => removeDivClassBlocks(value, className), body);
   return cleanText(
     articleBody
       .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\b[^>]*>[\s\S]*?<\/(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\s*>/gi, ' ')
