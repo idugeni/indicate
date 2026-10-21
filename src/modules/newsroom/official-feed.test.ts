@@ -4,9 +4,12 @@ import {
   extractOfficialArticleText,
   isOfficialNewsHost,
   isOfficialNewsUrl,
+  isTrustedNewsArticleUrl,
+  isTrustedNewsHost,
   jakartaDayKey,
   parseOfficialNewsFeed,
   parseOfficialNewsIndex,
+  parseTrustedNewsFeed,
 } from '@/modules/newsroom/official-feed';
 
 describe('official newsroom source feed', () => {
@@ -88,6 +91,37 @@ describe('official newsroom source feed', () => {
   it('extracts the primary article body from the official Ditjenpas page template', () => {
     const html = '<section id="main"><div class="post-content"><div class="post-text text-style"><p>Fakta resmi satu.</p><p>Fakta resmi dua.</p></div><div class="post-tags">Related links should not become article text.</div></div></section>';
     expect(extractOfficialArticleText(html)).toBe('Fakta resmi satu. Fakta resmi dua.');
+  });
+
+  it('allows only curated publisher-owned article URLs and excludes aggregators', () => {
+    expect(isTrustedNewsHost('https://www.antaranews.com/rss/terkini.xml')).toBe(true);
+    expect(isTrustedNewsHost('https://katadata.co.id/rss')).toBe(true);
+    expect(isTrustedNewsArticleUrl('https://www.antaranews.com/berita/5801345/judul-berita')).toBe(true);
+    expect(isTrustedNewsArticleUrl('https://katadata.co.id/finansial/bursa/abc/judul')).toBe(true);
+    expect(isTrustedNewsArticleUrl('https://www.antaranews.com/rss/terkini.xml')).toBe(false);
+    expect(isTrustedNewsArticleUrl('https://news.google.com/rss/articles/abc')).toBe(false);
+    expect(isTrustedNewsArticleUrl('http://www.antaranews.com/berita/123/judul')).toBe(false);
+    expect(isTrustedNewsArticleUrl('https://antaranews.com.evil.example/berita/123/judul')).toBe(false);
+  });
+
+  it('parses publisher-owned ANTARA and Katadata feeds and rejects off-list sources', () => {
+    const xml = `<rss><channel>
+      <item><title>ANTARA Headline Terbaru</title><link>https://www.antaranews.com/berita/100/berita-terbaru</link><description>Fakta terbaru yang dapat ditelusuri dari badan berita.</description><pubDate>Wed, 21 Oct 2026 12:45:00 +0700</pubDate></item>
+      <item><title>Berita Katadata Terbaru</title><link>https://katadata.co.id/finansial/bursa/abc/berita-katadata</link><description><![CDATA[<p>Data konteks terbaru dari penerbit.</p>]]></description><pubDate>Wed, 21 Oct 2026 12:40:00 +0700</pubDate></item>
+      <item><title>Aggregator Copy</title><link>https://news.google.com/rss/articles/abc</link><description>Not allowed</description><pubDate>Wed, 21 Oct 2026 12:50:00 +0700</pubDate></item>
+    </channel></rss>`;
+    const stories = parseTrustedNewsFeed(xml);
+    expect(stories).toHaveLength(2);
+    expect(stories[0]?.title).toBe('ANTARA Headline Terbaru');
+    expect(stories[1]?.url).toBe('https://katadata.co.id/finansial/bursa/abc/berita-katadata');
+    expect(stories[1]?.description).toContain('Data konteks terbaru dari penerbit.');
+  });
+
+  it('extracts article bodies from ANTARA and Katadata layouts without related-news chrome', () => {
+    const antara = '<div class="wrap__article-detail-content post-content"><p>Fakta utama ANTARA.</p><div class="related">Berita terkait.</div></div>';
+    const katadata = '<article class="detail"><h1>Judul</h1><div class="detail-body mb-4"><p>Fakta utama Katadata.</p><div class="widget-baca-juga">Related.</div></div></article>';
+    expect(extractOfficialArticleText(antara)).toBe('Fakta utama ANTARA. Berita terkait.');
+    expect(extractOfficialArticleText(katadata)).toContain('Fakta utama Katadata.');
   });
 
   it('uses the Jakarta calendar day rather than the UTC date', () => {
