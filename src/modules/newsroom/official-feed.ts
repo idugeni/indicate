@@ -33,7 +33,7 @@ function cleanText(value: string): string {
       .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
       .replace(/<[^>]+>/g, ' ')
-  ).replace(/[\u00a0\s]+/g, ' ').trim();
+  ).replace(/[\u00a0\s]+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
 }
 
 function readTag(block: string, tag: string): string {
