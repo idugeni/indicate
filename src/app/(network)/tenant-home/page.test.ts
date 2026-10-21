@@ -1,6 +1,15 @@
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeNetworkSite } from '@/modules/delivery/network-test-fixtures';
+
+const { mockedConnection } = vi.hoisted(() => ({
+  mockedConnection: vi.fn(async () => undefined),
+}));
+
+vi.mock('next/server', () => ({
+  connection: mockedConnection,
+}));
 
 const CONTEXT = {
   normalizedHostname: 'portal.example',
@@ -43,7 +52,19 @@ vi.mock('@/modules/delivery', () => ({
   }),
 }));
 
-const { generateMetadata } = await import('@/app/(network)/tenant-home/page');
+const { default: TenantHomePage, generateMetadata } = await import('@/app/(network)/tenant-home/page');
+
+describe('tenant home rendering', () => {
+  it('waits for the request before resolving host-specific tenant content', async () => {
+    const page = TenantHomePage() as ReactElement<{ children: ReactElement }>;
+    const content = page.props.children;
+    const renderContent = content.type as () => Promise<unknown>;
+
+    await renderContent();
+
+    expect(mockedConnection).toHaveBeenCalledOnce();
+  });
+});
 
 describe('tenant home metadata', () => {
   it('menerbitkan dimensi gambar brand dari data situs, bukan hardcode', async () => {

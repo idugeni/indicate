@@ -11,6 +11,7 @@ import { NeonSnapshotStore } from '@/integrations/neon/neon-snapshot-store';
 import { UpstashSnapshotStore } from '@/integrations/redis/upstash-snapshot-store';
 import { HrTimeMonotonicClock } from '@/core/system/monotonic-clock';
 import { getSharedRuntimeDatabase } from '@/data/client';
+import { CURRENT_REQUIRED_SCHEMA_VERSION } from '@/data/schema-version';
 import { assertDistinctR2Buckets, deriveRedisNamespace } from '@/core/config/runtime/derived-values';
 import { RuntimeConfigReadError } from '@/modules/persisted-config/ports';
 import type { RuntimeConfig } from '@/core/config/runtime/runtime-schema';
@@ -23,21 +24,16 @@ export interface RuntimeContext {
   readonly config: RuntimeConfig;
 }
 
-let hydratedPromise: Promise<RuntimeContext> | null = null;
-
 /**
- * Single-flight server runtime context via the bounded cache.
+ * Build a request context over the process-wide snapshot cache.
  *
- * @remarks Build prerender must not read/write the shared cache: besides being invalid for runtime, the extra network layer can hang the build worker. Rejected hydration clears the single-flight so later requests retry transient faults; the pool is shared process-wide and never closed by callers.
+ * @remarks Do not memoize this context promise: that pins derived runtime config
+ * for the lifetime of a warm serverless instance and bypasses both the snapshot
+ * TTL and explicit local invalidation. The snapshot cache itself is single-flight
+ * and bounded, so repeated calls do not repeat full database reads.
  */
 export async function getServerRuntimeContext(): Promise<RuntimeContext> {
-  if (hydratedPromise === null) {
-    hydratedPromise = initializeContext().catch((error: unknown) => {
-      hydratedPromise = null;
-      throw error;
-    });
-  }
-  return hydratedPromise;
+  return initializeContext();
 }
 
 let cache: RuntimeConfigSnapshotCache | null = null;
@@ -62,6 +58,22 @@ export async function invalidateServerRuntimeConfig(environment: string): Promis
   } catch {
     /* the entry TTL bounds how long a stale snapshot can survive */
   }
+}
+
+/**
+ * Apply one durable invalidation intent to this instance's snapshot cache.
+ *
+ * @param runtimeRevision - Committed configuration revision carried by the intent.
+ * @remarks Older or duplicate revisions are no-ops. A cold instance has no
+ * process-local snapshot to invalidate; its next request hydrates the current
+ * persisted revision. Other warm instances compare the persisted revision when
+ * their bounded snapshot entry expires.
+ */
+export function invalidateRuntimeConfigRevision(runtimeRevision: number): void {
+  if (!Number.isSafeInteger(runtimeRevision) || runtimeRevision < 0) {
+    throw new RangeError('runtime_config_invalidation_revision_out_of_range');
+  }
+  cache?.invalidate({ runtimeRevision });
 }
 
 function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigSnapshot): RuntimeConfig {
@@ -178,8 +190,10 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
 /**
  * Fail-closed schema gate (docs/migrations.md promotion gate): when a
  * required_version row exists, the applied ledger must satisfy it or the
- * process refuses to activate. No row means disarmed (pre-production) and
- * behavior is unchanged. Versions are not secrets.
+ * process refuses to activate. The application release also carries its own
+ * minimum schema version, so a missing or stale database gate cannot permit
+ * newer code to run against an older schema. A database gate may require an
+ * even newer version during a staged migration. Versions are not secrets.
  *
  * A refusal also writes the evidence: the gate row records what was actually
  * applied next to what was required, and the error names when the ledger last
@@ -189,8 +203,7 @@ function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigS
  */
 export async function assertSchemaGate(client: Pick<ReturnType<typeof getSharedRuntimeDatabase>, 'client'>['client']): Promise<void> {
   const gates = await client<{ required_version: number }[]>`SELECT required_version FROM public.migration_gate_events ORDER BY checked_at DESC LIMIT 1`;
-  const required = gates[0]?.required_version;
-  if (required === undefined) return;
+  const required = Math.max(gates[0]?.required_version ?? 0, CURRENT_REQUIRED_SCHEMA_VERSION);
   const ledgers = await client<{ applied_version: number | null; applied_at: Date | string | null }[]>`
     SELECT version::int AS applied_version, applied_at
       FROM public.indicate_schema_migrations
@@ -198,13 +211,17 @@ export async function assertSchemaGate(client: Pick<ReturnType<typeof getSharedR
      LIMIT 1`;
   const applied = ledgers[0]?.applied_version ?? 0;
   if (applied < required) {
-    try {
-      await client`
-        INSERT INTO public.migration_gate_events (id, required_version, actual_version, status)
-        VALUES (${crypto.randomUUID()}::uuid, ${required}::int, ${applied}::int, 'failed'::public.task_status)
-      `;
-    } catch {
-      // Evidence is best effort; the refusal below is the contract.
+    // Production builds connect to the production database for prerender validation.
+    // Keep that validation read-only while preserving the fail-closed release gate.
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      try {
+        await client`
+          INSERT INTO public.migration_gate_events (id, required_version, actual_version, status)
+          VALUES (${crypto.randomUUID()}::uuid, ${required}::int, ${applied}::int, 'failed'::public.task_status)
+        `;
+      } catch {
+        // Evidence is best effort; the refusal below is the contract.
+      }
     }
     const appliedAt = ledgers[0]?.applied_at ?? null;
     throw new Error(`schema_gate_unsatisfied: applied=${applied} required=${required} applied_at=${appliedAt instanceof Date ? appliedAt.toISOString() : String(appliedAt ?? 'unknown')}`);
