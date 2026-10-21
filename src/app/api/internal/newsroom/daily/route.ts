@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { and, desc, eq, gte, ilike, inArray, lt } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lt } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
 import { authorized } from '@/app/api/internal/auth';
@@ -13,7 +13,6 @@ import { articles, publishers, sites } from '@/data/schema';
 import { generateArticleDraft } from '@/modules/ai/ai-usage';
 import { createServerAiServiceDeps } from '@/modules/ai/ai-service-runtime';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
-import { UuidGenerator } from '@/core/system/uuid-generator';
 import { createProductionIntegrations } from '@/modules/integrations/integrations-composition';
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
@@ -273,10 +272,10 @@ async function handleGET(request: Request) {
 
     const feedResponse = await fetch(OFFICIAL_RSS_URL, {
       headers: { Accept: 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8' },
-      redirect: 'error',
+      redirect: 'follow',
       signal: AbortSignal.timeout(10_000),
     });
-    if (!feedResponse.ok) {
+    if (!feedResponse.ok || !isOfficialNewsUrl(feedResponse.url)) {
       logEvent('error', { event: 'newsroom.daily.feed_failed', requestId, context: { status: feedResponse.status, day: dayKey } });
       return NextResponse.json({ ok: false, error: 'official_feed_unavailable' }, { status: 503, headers: NO_STORE_HEADERS });
     }
