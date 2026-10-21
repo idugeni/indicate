@@ -58,12 +58,12 @@ async function main() {
   }
 }
 
-main().catch((error: unknown) => {
+main().catch((error) => {
   if (error instanceof SchemaGateError) {
     console.error(error.message);
   } else {
-    const fault = error as { code?: unknown } | null;
-    const code = typeof fault?.code === 'string' ? fault.code : 'unknown';
+    const fault = error && typeof error === 'object' ? error : null;
+    const code = fault && typeof fault.code === 'string' ? fault.code : 'unknown';
     console.error(`db_schema_gate_check_failed: code=${code}`);
   }
   process.exitCode = 1;
