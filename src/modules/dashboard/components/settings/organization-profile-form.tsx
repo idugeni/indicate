@@ -295,7 +295,7 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor={logoId}>Logo / gambar profil organisasi</Label>
-              <Input id={logoId} type="text" inputMode="url" value={logoUrl} onChange={(event) => { setLogoUrl(event.target.value); setLogoDraftPreview(null); }} placeholder="Unggah gambar atau masukkan URL HTTPS" disabled={busy || isLogoUploading || !profile.canManageLogo} />
+              <Input id={logoId} type="text" value={logoUrl} readOnly placeholder="Pilih gambar untuk membuat referensi media" disabled={busy || isLogoUploading || !profile.canManageLogo} />
               <div className="space-y-1.5">
                 <Label htmlFor={logoFileId}>Pilih gambar profil organisasi</Label>
                 <div className="flex flex-wrap items-center gap-2">
@@ -313,7 +313,7 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
                 </Button>
                 </div>
               </div>
-              <p className="m-0 text-xs leading-5 text-paper-faint">Gambar diunggah ke R2 melalui media organisasi dan disimpan sebagai referensi media stabil, bukan URL presigned. Simpan perubahan untuk memperbarui publisher, author box, serta cache metadata artikel.</p>
+              <p className="m-0 text-xs leading-5 text-paper-faint">Unggahan disimpan di R2 melalui pustaka media organisasi. Sistem menyimpan referensi media stabil, bukan URL presigned; jangan menempelkan URL R2 bertanda tangan di sini. Simpan perubahan untuk memperbarui publisher, author box, serta cache metadata artikel.</p>
               {logoUploadStatus ? <FormNotice tone={logoUploadStatus.startsWith('Gagal') || logoUploadStatus.includes('tidak valid') || logoUploadStatus.includes('tidak didukung') ? 'error' : 'muted'}>{logoUploadStatus}</FormNotice> : null}
               {(logoDraftPreview ?? organizationLogoPreviewSource(logoUrl, organizationId)) !== null ? (
                 <Image src={logoDraftPreview ?? organizationLogoPreviewSource(logoUrl, organizationId)!} alt="Pratinjau logo organisasi" width={96} height={96} unoptimized className="mt-2 h-24 w-24 rounded-xl border border-hairline bg-bg-raised object-contain p-2" />
