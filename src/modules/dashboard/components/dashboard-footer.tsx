@@ -3,7 +3,7 @@
  *
  * @returns Footer at the viewport bottom on short pages and after content on long pages.
  */
-export function DashboardFooter({ showTechStack }: { readonly showTechStack: boolean }) {
+export function DashboardFooter({ showTechStack = true }: { readonly showTechStack?: boolean } = {}) {
   const year = new Date().getFullYear();
   return (
     <footer className="mt-auto flex-none bg-bg/95 pt-8 backdrop-blur">
