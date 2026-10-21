@@ -143,14 +143,14 @@ export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[]
 
 function extractDivClassContent(html: string, className: string): string | null {
   const openingPattern = new RegExp(
-    '<div\\b(?=[^>]*\\bclass=["\\'][^"\\']*\\b' + className + '(?:\\s|["\\'])[^"\\']*["\\'])[^>]*>',
+    '<div\\b(?=[^>]*\\bclass="[^"]*\\b' + className + '(?:\\s|")[^"]*")[^>]*>',
     'i',
   );
   const opening = openingPattern.exec(html);
   if (opening === null) return null;
 
   const contentStart = opening.index + opening[0].length;
-  const tags = /<\/?div\\b[^>]*>/gi;
+  const tags = /<\/?div\b[^>]*>/gi;
   tags.lastIndex = contentStart;
   let depth = 1;
   let match: RegExpExecArray | null;
@@ -172,14 +172,14 @@ export function extractOfficialArticleText(html: string): string {
   const body = extractDivClassContent(html, 'post-text')
     ?? extractDivClassContent(html, 'detail-body')
     ?? extractDivClassContent(html, 'wrap__article-detail-content')
-    ?? /<article\\b[^>]*>([\\s\\S]*?)<\\/article>/i.exec(html)?.[1]
-    ?? /<main\\b[^>]*>([\\s\\S]*?)<\\/main>/i.exec(html)?.[1]
+    ?? /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1]
+    ?? /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1]
     ?? html;
   return cleanText(
     body
-      .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\\b[^>]*>[\\s\\S]*?<\\/(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\\s*>/gi, ' ')
-      .replace(/<br\\s*\\/?\\s*>/gi, '\\n')
-      .replace(/<\\/(?:p|div|li|h[1-6])\\s*>/gi, '\\n')
+      .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\b[^>]*>[\s\S]*?<\/(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\s*>/gi, ' ')
+      .replace(/<br\s*\/?\s*>/gi, '\n')
+      .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
   ).slice(0, 12_000);
 }
 
