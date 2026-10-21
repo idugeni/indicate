@@ -11,6 +11,36 @@ The application database and interactive authentication are provided by Neon. Us
 
 Never commit real URLs/passwords or print environment values into logs. The runtime bootstrap requires production database URLs to use a Neon host and validates the auth URL and cookie secret.
 
+## Release schema gate
+
+The application pins its minimum supported schema in
+`src/data/schema-version.ts`. Keep `CURRENT_REQUIRED_SCHEMA_VERSION` equal
+to the number of ordered entries in `src/data/migrations/meta/_journal.json`;
+the schema-gate unit test checks this contract. The runtime gate enforces the
+higher of that application minimum and the latest configured database
+`migration_gate_events.required_version`, even when no database gate row
+exists. A deployment built from newer code therefore fails closed when the
+database ledger is behind.
+
+Production builds use the production database for prerender validation. During
+`NEXT_PHASE=phase-production-build`, a rejected schema gate does not write a
+failure event; it reports the mismatch and fails the build without mutating
+production. Apply the reviewed migration with the migration-owner procedure
+before promoting a release that requires it.
+
+## Runtime configuration invalidation
+
+The scheduled `/api/internal/delivery/reconcile?scope=invalidation` endpoint
+processes delivery-cache tasks and the durable runtime-configuration
+invalidation-intent queue. The latter claims intents through the existing
+security-definer functions, applies an idempotent process-local snapshot
+invalidation, and completes or reschedules each claim using its fencing token.
+Snapshot versions are embedded in shared-cache keys; other warm instances
+refresh from the authoritative revision when their bounded local snapshot
+expires. The reconciler is restricted to the production deployment because
+the database claim function operates over all runtime-config intents in its
+target database.
+
 ## Review and apply a migration
 
 1. Confirm the target Neon project and branch, and create/verify a recoverable backup before modifying schema.
