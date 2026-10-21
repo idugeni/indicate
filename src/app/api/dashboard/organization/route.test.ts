@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getSharedRuntimeDatabase: vi.fn(),
   denyCrossSiteMutation: vi.fn(),
   transaction: vi.fn(),
+  enqueuePublisherInvalidation: vi.fn(),
 }));
 
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => new Map()) }));
@@ -16,10 +17,11 @@ vi.mock('@/modules/auth/authenticate-dashboard', () => ({
 }));
 vi.mock('@/core/config/runtime/runtime-context', () => ({ getServerRuntimeContext: mocks.getServerRuntimeContext }));
 vi.mock('@/data/client', () => ({ getSharedRuntimeDatabase: mocks.getSharedRuntimeDatabase }));
+vi.mock('@/data/repos/dashboard', () => ({ DrizzleDashboardRepository: class { enqueuePublisherInvalidation = mocks.enqueuePublisherInvalidation; } }));
 vi.mock('@/core/security/mutation-guard', () => ({ denyCrossSiteMutation: mocks.denyCrossSiteMutation }));
 
 import { GET, POST } from '@/app/api/dashboard/organization/route';
-import { publishers } from '@/data/schema';
+import { media, publishers } from '@/data/schema';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
@@ -41,11 +43,12 @@ function request(url: string, method = 'GET', body?: unknown) {
   });
 }
 
-type PublisherFixture = { readonly name: string; readonly contacts: Record<string, unknown> };
+type PublisherFixture = { readonly id?: string; readonly name: string; readonly type?: string; readonly attributionLabel?: string; readonly contacts: Record<string, unknown>; readonly evidenceReference?: string | null; readonly version?: number; readonly verificationStatus?: string; readonly verifiedBy?: string | null; readonly verifiedAt?: Date | null };
 
 function setDatabase(
   current: Omit<typeof CURRENT, 'identityData'> & { readonly identityData?: unknown; readonly customerMetadata?: unknown } = CURRENT,
   publisherFixtures: readonly PublisherFixture[] = [],
+  mediaFixtures: readonly Record<string, unknown>[] = [],
 ) {
   const updatedRows = vi.fn().mockResolvedValue([{
     id: ORG,
@@ -67,7 +70,7 @@ function setDatabase(
     select: vi.fn(() => ({
       from: vi.fn((table: unknown) => ({
         where: vi.fn(() => ({
-          limit: vi.fn(async (limit: number) => (table === publishers ? publisherFixtures.slice(0, limit) : [current].slice(0, limit))),
+          limit: vi.fn(async (limit: number) => (table === publishers ? publisherFixtures.slice(0, limit) : table === media ? mediaFixtures.slice(0, limit) : [current].slice(0, limit))),
           orderBy: vi.fn(() => ({
             limit: vi.fn(async (limit: number) => publisherFixtures.slice(0, limit)),
           })),
@@ -84,6 +87,7 @@ function setDatabase(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.enqueuePublisherInvalidation.mockResolvedValue(1);
   mocks.denyCrossSiteMutation.mockReturnValue(false);
   mocks.getServerRuntimeContext.mockResolvedValue({ bootstrap: {} });
   mocks.authenticateDashboardUser.mockResolvedValue(USER);
@@ -174,6 +178,74 @@ describe('API identitas organisasi', () => {
       logoUrl,
       description: DEFAULT_PUBLISHER_BIO,
     });
+  });
+
+  it('mengganti logo organisasi sekaligus publisher dan menjadwalkan invalidasi metadata artikel', async () => {
+    const mediaId = '44444444-4444-4444-8444-444444444444';
+    const publisherId = '55555555-5555-4555-8555-555555555555';
+    const previousLogo = 'https://cdn.contoh.id/logo-lama.png';
+    const nextLogo = `/api/network/media/${mediaId}`;
+    const { tx } = setDatabase(
+      {
+        ...CURRENT,
+        identityData: {
+          schemaVersion: 1,
+          description: 'Profil resmi',
+          logoUrl: previousLogo,
+          contactDetails: {},
+          visualIdentity: {},
+          socialLinks: {},
+        },
+      },
+      [{
+        id: publisherId,
+        name: CURRENT.name,
+        type: 'organization',
+        attributionLabel: 'Humas Organisasi',
+        contacts: { logoUrl: previousLogo, bio: 'Bio resmi' },
+        evidenceReference: null,
+        version: 7,
+        verificationStatus: 'verified',
+        verifiedBy: USER.localUserId,
+        verifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+      }],
+      [{
+        id: mediaId,
+        organizationId: ORG,
+        purpose: 'organization-asset',
+        state: 'active',
+        organizationAsset: true,
+        objectKey: `o/${ORG}/p/organization-asset/2026/10/logo.webp`,
+      }],
+    );
+    mocks.authorizeDashboardOrganization.mockResolvedValue({
+      ...ACTOR,
+      permissionSet: new Set(['role.manage', 'publisher.manage']),
+    });
+
+    const response = await POST(request('https://app.test/api/dashboard/organization', 'POST', {
+      organizationId: ORG,
+      expectedVersion: 4,
+      name: CURRENT.name,
+      description: 'Profil resmi',
+      logoUrl: nextLogo,
+      contactDetails: {},
+      socialLinks: {},
+      visualIdentity: {},
+    }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ logoUrl: nextLogo, canManageLogo: true });
+    expect(tx.update).toHaveBeenCalledTimes(2);
+    const publisherUpdate = tx.update.mock.results[1]?.value as { set: ReturnType<typeof vi.fn> };
+    expect(publisherUpdate.set.mock.calls[0]?.[0]).toMatchObject({
+      contacts: { logoUrl: nextLogo, bio: 'Bio resmi' },
+      version: 8,
+      verificationStatus: 'unverified',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
+    expect(mocks.enqueuePublisherInvalidation).toHaveBeenCalledWith(expect.anything(), 'publisher.manage', publisherId);
   });
 
   it('menolak perubahan tanpa hak kelola peran atau anggota', async () => {
