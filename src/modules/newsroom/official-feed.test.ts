@@ -120,8 +120,10 @@ describe('official newsroom source feed', () => {
   it('extracts article bodies from ANTARA and Katadata layouts without related-news chrome', () => {
     const antara = '<div class="wrap__article-detail-content post-content"><p>Fakta utama ANTARA.</p><div class="related">Berita terkait.</div></div>';
     const katadata = '<article class="detail"><h1>Judul</h1><div class="detail-body mb-4"><p>Fakta utama Katadata.</p><div class="widget-baca-juga">Related.</div></div></article>';
-    expect(extractOfficialArticleText(antara)).toBe('Fakta utama ANTARA. Berita terkait.');
+    expect(extractOfficialArticleText(antara)).toBe('Fakta utama ANTARA.');
     expect(extractOfficialArticleText(katadata)).toContain('Fakta utama Katadata.');
+    expect(extractOfficialArticleText(katadata)).not.toContain('Related.');
+    expect(extractOfficialArticleText('<html><body><nav>Menu</nav><div class="cookie-banner">Cookie settings</div></body></html>')).toBe('');
   });
 
   it('uses the Jakarta calendar day rather than the UTC date', () => {
