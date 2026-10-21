@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { and, desc, eq, gte, inArray, lt } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
 import { authorized } from '@/app/api/internal/auth';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
