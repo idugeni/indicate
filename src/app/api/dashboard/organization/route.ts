@@ -117,7 +117,7 @@ function publicProfile(
     slug: row.slug,
     ...identity,
     description: firstText(identity.description, publisher.bio, metadata.description) ?? DEFAULT_PUBLISHER_BIO,
-    logoUrl: identity.logoUrl === '' ? null : safeLogoValue(identity.logoUrl) ?? safeLogoValue(publisher.logoUrl),
+    logoUrl: safeLogoValue(identity.logoUrl) ?? safeLogoValue(publisher.logoUrl),
     contactDetails: {
       ...contactDetails,
       ...(!contactDetails.email && parsedLegacyEmail?.success ? { email: parsedLegacyEmail.data } : {}),

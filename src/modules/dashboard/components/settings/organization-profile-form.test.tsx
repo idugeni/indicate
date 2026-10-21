@@ -61,7 +61,7 @@ describe('Form identitas organisasi', () => {
     expect(payload.name).toBe('Portal Contoh Baru');
     expect(payload.contactDetails.city).toBe('Kota Semarang');
     expect(payload.socialLinks).toEqual({ facebook: 'https://facebook.com/portal-contoh', instagram: 'https://instagram.com/portal-contoh' });
-    expect(await screen.findByText('Identitas organisasi berhasil disimpan.')).toBeDefined();
+    expect(await screen.findByText('Identitas organisasi berhasil disimpan. Logo publisher dan metadata artikel ikut disinkronkan.')).toBeDefined();
   });
 
   it('menyediakan pemilih file logo dan menyimpan pilihan hapus lewat submit profil', async () => {
