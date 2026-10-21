@@ -33,7 +33,12 @@ async function reconcileRuntimeConfigIntents(
     });
     logEvent('info', {
       event: 'runtime-config.invalidation.reconcile',
-      context: result,
+      context: {
+        claimed: result.claimed,
+        completed: result.completed,
+        failed: result.failed,
+        stranded: result.stranded,
+      },
     });
     return result;
   } catch {
