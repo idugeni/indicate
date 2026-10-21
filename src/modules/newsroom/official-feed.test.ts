@@ -85,6 +85,11 @@ describe('official newsroom source feed', () => {
       .toBe('Judul Fakta penting.');
   });
 
+  it('extracts the primary article body from the official Ditjenpas page template', () => {
+    const html = '<section id="main"><div class="post-content"><div class="post-text text-style"><p>Fakta resmi satu.</p><p>Fakta resmi dua.</p></div><div class="post-tags">Related links should not become article text.</div></div></section>';
+    expect(extractOfficialArticleText(html)).toBe('Fakta resmi satu. Fakta resmi dua.');
+  });
+
   it('uses the Jakarta calendar day rather than the UTC date', () => {
     expect(jakartaDayKey(new Date('2026-10-20T17:15:00.000Z'))).toBe('2026-10-21');
   });
