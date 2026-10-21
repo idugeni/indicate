@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/internal/newsroom/daily",
-      "schedule": "0 0-12 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/internal/delivery/reconcile?scope=provisioning",
