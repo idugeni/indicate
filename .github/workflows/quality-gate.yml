@@ -98,11 +98,9 @@ jobs:
     # and the public Neon Auth endpoint are loaded from Vercel; the cookie secret
     # below is ephemeral for build validation only. Never log credential values.
     env:
-      # Schema gate bersenjata di migrasi 197 (migration_gate_events tidak
-      # kosong lagi), dan build menegakkannya: initializeContext memanggil
-      # assertSchemaGate tanpa phase guard, jadi job ini memverifikasi nyawa
-      # terhadap database produksi. Migrasi baru harus diterapkan ke produksi
-      # lebih dulu sebelum build ini bisa hijau.
+      # The code-level schema minimum is enforced by the read-only preflight
+      # step below, because prerendered paths may catch runtime config errors.
+      # A reviewed forward migration must reach production before this release builds.
       DASHBOARD_HOST: indicate.website
       API_HOST: api.indicate.website
       WEBHOOK_HOST: webhook.indicate.website
@@ -163,6 +161,8 @@ jobs:
           printf 'NEON_AUTH_COOKIE_SECRET=%s\n' "$(openssl rand -base64 48 | tr -d '\n')" >> "$GITHUB_ENV"
           echo "Loaded Neon production endpoints from GitHub Actions Secrets; credentials are withheld from logs."
       - run: npm ci --no-audit --no-fund
+      - name: Verify production schema against this release (read-only)
+        run: npm run db:schema-gate:check
       - run: npm run build
 
   perf:
