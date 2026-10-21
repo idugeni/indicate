@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ComponentProps } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+
+vi.mock('@/components/ui/avatar', () => ({
+  Avatar: ({ children, ...props }: ComponentProps<'div'>) => <div data-slot="avatar" {...props}>{children}</div>,
+  AvatarFallback: ({ children, ...props }: ComponentProps<'span'>) => <span data-slot="avatar-fallback" {...props}>{children}</span>,
+  AvatarImage: ({ src, ...props }: ComponentProps<'img'>) => <img data-slot="avatar-image" src={src} {...props} />,
+}));
 
 import { DashboardWorkspace } from '@/modules/dashboard/components/dashboard-workspace';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';

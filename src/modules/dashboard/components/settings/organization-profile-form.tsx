@@ -294,7 +294,7 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
               <p className="m-0 text-xs leading-5 text-paper-faint">Jika belum ada deskripsi khusus yang tersimpan, artikel dapat menampilkan bio publisher bawaan. Bio bawaan itu tidak disalin otomatis sebagai deskripsi resmi organisasi.</p>
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor={logoId}>Logo / gambar profil organisasi</Label>
+              <Label htmlFor={logoId}>Referensi media logo (dikelola otomatis)</Label>
               <Input id={logoId} type="text" value={logoUrl} readOnly placeholder="Pilih gambar untuk membuat referensi media" disabled={busy || isLogoUploading || !profile.canManageLogo} />
               <div className="space-y-1.5">
                 <Label htmlFor={logoFileId}>Pilih gambar profil organisasi</Label>
