@@ -60,6 +60,22 @@ export async function invalidateServerRuntimeConfig(environment: string): Promis
   }
 }
 
+/**
+ * Apply one durable invalidation intent to this instance's snapshot cache.
+ *
+ * @param runtimeRevision - Committed configuration revision carried by the intent.
+ * @remarks Older or duplicate revisions are no-ops. A cold instance has no
+ * process-local snapshot to invalidate; its next request hydrates the current
+ * persisted revision. Other warm instances compare the persisted revision when
+ * their bounded snapshot entry expires.
+ */
+export function invalidateRuntimeConfigRevision(runtimeRevision: number): void {
+  if (!Number.isSafeInteger(runtimeRevision) || runtimeRevision < 0) {
+    throw new RangeError('runtime_config_invalidation_revision_out_of_range');
+  }
+  cache?.invalidate({ runtimeRevision });
+}
+
 function buildServiceConfig(bootstrap: BootstrapConfig, snapshot: RuntimeConfigSnapshot): RuntimeConfig {
   const shared = snapshot.sharedDeployment;
   const policies = snapshot.policies;
@@ -195,13 +211,17 @@ export async function assertSchemaGate(client: Pick<ReturnType<typeof getSharedR
      LIMIT 1`;
   const applied = ledgers[0]?.applied_version ?? 0;
   if (applied < required) {
-    try {
-      await client`
-        INSERT INTO public.migration_gate_events (id, required_version, actual_version, status)
-        VALUES (${crypto.randomUUID()}::uuid, ${required}::int, ${applied}::int, 'failed'::public.task_status)
-      `;
-    } catch {
-      // Evidence is best effort; the refusal below is the contract.
+    // Production builds connect to the production database for prerender validation.
+    // Keep that validation read-only while preserving the fail-closed release gate.
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      try {
+        await client`
+          INSERT INTO public.migration_gate_events (id, required_version, actual_version, status)
+          VALUES (${crypto.randomUUID()}::uuid, ${required}::int, ${applied}::int, 'failed'::public.task_status)
+        `;
+      } catch {
+        // Evidence is best effort; the refusal below is the contract.
+      }
     }
     const appliedAt = ledgers[0]?.applied_at ?? null;
     throw new Error(`schema_gate_unsatisfied: applied=${applied} required=${required} applied_at=${appliedAt instanceof Date ? appliedAt.toISOString() : String(appliedAt ?? 'unknown')}`);
