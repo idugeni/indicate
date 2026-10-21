@@ -18,9 +18,12 @@ import {
   extractOfficialArticleText,
   isOfficialNewsHost,
   isOfficialNewsUrl,
+  isTrustedNewsArticleUrl,
+  isTrustedNewsHost,
   jakartaDayKey,
   parseOfficialNewsFeed,
   parseOfficialNewsIndex,
+  parseTrustedNewsFeed,
   type OfficialNewsStory,
 } from '@/modules/newsroom/official-feed';
 import { withApiAccess } from '@/core/observability/api-access';
@@ -29,7 +32,14 @@ const NEWSROOM_ORGANIZATION_ID = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0';
 const NEWSROOM_PUBLISHER_ID = 'b7e4c210-9a35-4d68-8f13-2c6d5a90e7b4';
 const OFFICIAL_INDEX_URL = 'https://www.ditjenpas.go.id/';
 const OFFICIAL_RSS_URL = 'https://www.ditjenpas.go.id/rss/posts';
-const MAX_STORY_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+const TRUSTED_NEWS_FEEDS = [
+  { name: 'ANTARA Top News', url: 'https://www.antaranews.com/rss/top-news.xml', priority: 4 },
+  { name: 'Katadata', url: 'https://katadata.co.id/rss', priority: 3 },
+  { name: 'ANTARA Politik', url: 'https://www.antaranews.com/rss/politik.xml', priority: 2 },
+  { name: 'ANTARA Ekonomi', url: 'https://www.antaranews.com/rss/ekonomi.xml', priority: 2 },
+  { name: 'ANTARA Terkini', url: 'https://www.antaranews.com/rss/terkini.xml', priority: 1 },
+] as const;
+const MAX_STORY_AGE_MS = 36 * 60 * 60 * 1_000;
 const LOCK_TTL_SECONDS = 600;
 const DONE_TTL_SECONDS = 36 * 60 * 60;
 const NO_STORE_HEADERS = {
@@ -70,14 +80,14 @@ function dateWindow(dayKey: string): { readonly start: Date; readonly end: Date 
   };
 }
 
-async function fetchOfficialStoryText(story: OfficialNewsStory): Promise<string> {
+async function fetchTrustedStoryText(story: OfficialNewsStory): Promise<string> {
   try {
     const response = await fetch(story.url, {
       headers: { Accept: 'text/html,application/xhtml+xml;q=0.9' },
       redirect: 'error',
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok || !isOfficialNewsUrl(response.url)) return '';
+    if (!response.ok || !isTrustedNewsArticleUrl(response.url)) return '';
     const declaredLength = Number(response.headers.get('content-length') ?? 0);
     if (Number.isFinite(declaredLength) && declaredLength > 2_000_000) return '';
     const html = await response.text();
@@ -86,6 +96,11 @@ async function fetchOfficialStoryText(story: OfficialNewsStory): Promise<string>
   } catch {
     return '';
   }
+}
+
+function sourceLabel(story: OfficialNewsStory): string {
+  return story.sourceName
+    ?? new URL(story.url).hostname.replace(/^www\./i, '');
 }
 
 function dateLabel(iso: string | null): string {
