@@ -50,6 +50,7 @@
     "perf": "npm run perf:listing-payload && npm run perf:seal-coldstart && npm run perf:db-access && npm run perf:redis-namespace && npm run perf:ci-duplication",
     "db:bootstrap": "node scripts/db-bootstrap.mjs",
     "db:bootstrap:check": "node scripts/db-bootstrap.mjs --check",
+    "db:schema-gate:check": "node scripts/db-schema-gate-check.mjs",
     "check:no-any": "node scripts/check-no-any.mjs",
     "hygiene:publishers": "node scripts/db-publisher-hygiene.mjs",
     "hygiene:network": "node scripts/db-network-coverage.mjs",
