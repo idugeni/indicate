@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type ChangeEvent, type FormEvent } from 'react';
 import Image from 'next/image';
-import { Building2, Loader2, Save, X } from 'lucide-react';
+import { Building2, ImagePlus, Loader2, Save, Trash2, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/modules/dashboard/components/shared/section-card';
 import { FormNotice } from '@/modules/dashboard/components/shared/form-notice';
 import { SOCIAL_FIELD_DEFS } from '@/modules/site/company-contact';
+import { INLINE_COMPRESS, prepareImageUpload } from '@/modules/publishing/compress-image';
+import { normalizeImageSource } from '@/modules/publishing/heic-source';
 
 interface OrganizationProfile {
   readonly id: string;
@@ -23,6 +25,7 @@ interface OrganizationProfile {
   readonly visualIdentity: { readonly primaryColor?: string; readonly secondaryColor?: string; readonly accentColor?: string };
   readonly version: number;
   readonly canManage: boolean;
+  readonly canManageLogo?: boolean;
 }
 
 async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
@@ -32,6 +35,16 @@ async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   return payload;
 }
 
+function organizationLogoPreviewSource(logoUrl: string, organizationId: string): string | null {
+  if (logoUrl === '') return null;
+  const mediaReference = /^\/api\/network\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/iu.exec(logoUrl);
+  return mediaReference === null
+    ? logoUrl
+    : `/api/dashboard/organization/logo?organizationId=${encodeURIComponent(organizationId)}&mediaId=${mediaReference[1]}`;
+}
+
+const SUPPORTED_LOGO_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/x-icon']);
+
 export function OrganizationProfileForm({ organizationId, organizationName, organizationRole }: {
   readonly organizationId: string;
   readonly organizationName: string;
@@ -40,6 +53,7 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
   const nameId = useId();
   const descriptionId = useId();
   const logoId = useId();
+  const logoFileId = useId();
   const emailId = useId();
   const phoneId = useId();
   const websiteId = useId();
@@ -53,6 +67,9 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
   const [name, setName] = useState(organizationName);
   const [description, setDescription] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoDraftPreview, setLogoDraftPreview] = useState<string | null>(null);
+  const [logoUploadStatus, setLogoUploadStatus] = useState<string | null>(null);
+  const [isLogoUploading, setIsLogoUploading] = useState(false);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
@@ -96,9 +113,121 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
     return () => { cancelled = true; };
   }, [reload]);
 
+  useEffect(() => () => {
+    if (logoDraftPreview !== null) URL.revokeObjectURL(logoDraftPreview);
+  }, [logoDraftPreview]);
+
+  const handleLogoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (file === undefined) return;
+    if (profile === null || !profile.canManageLogo) {
+      setLogoUploadStatus('Akun ini tidak memiliki izin untuk mengganti logo publisher.');
+      return;
+    }
+
+    setIsLogoUploading(true);
+    setLogoUploadStatus('Menyiapkan gambar…');
+    setError(null);
+    void (async () => {
+      try {
+        const source = await normalizeImageSource(file, {
+          onConverting: () => setLogoUploadStatus('Mengonversi HEIC ke JPEG di perangkat…'),
+        });
+        if (source.size > INLINE_COMPRESS.maxSourceBytes) {
+          throw new Error('Ukuran gambar terlalu besar. Pilih gambar dengan ukuran lebih kecil.');
+        }
+        const prepared = await prepareImageUpload(source, { ...INLINE_COMPRESS, maxDimension: 1024, targetBytes: 184320 });
+        if (!SUPPORTED_LOGO_MEDIA_TYPES.has(prepared.mediaType)) {
+          throw new Error('Format gambar tidak didukung. Gunakan JPEG, PNG, WebP, atau AVIF.');
+        }
+
+        setLogoUploadStatus('Memesan penyimpanan media…');
+        const thumbSpec = prepared.thumb === null ? undefined : {
+          mediaType: 'image/webp' as const,
+          sizeBytes: prepared.thumb.sizeBytes,
+          checksum: prepared.thumb.checksum,
+        };
+        const reserved = await requestJson('/api/dashboard/publishing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            organizationId,
+            action: 'media.reserve',
+            payload: {
+              filename: prepared.filename,
+              mediaType: prepared.mediaType,
+              sizeBytes: prepared.sizeBytes,
+              checksum: prepared.checksum,
+              purpose: 'organization-asset',
+              owner: { kind: 'organization' },
+              ...(thumbSpec === undefined ? {} : { thumb: thumbSpec }),
+            },
+          }),
+        }) as {
+          readonly reservationId?: string;
+          readonly authorization?: { readonly url?: string; readonly requiredHeaders?: Record<string, string> };
+          readonly thumb?: { readonly authorization?: { readonly url?: string; readonly requiredHeaders?: Record<string, string> } } | null;
+        };
+        if (!reserved.reservationId || !reserved.authorization?.url || !reserved.authorization.requiredHeaders) {
+          throw new Error('Penyimpanan gambar tidak dapat disiapkan. Coba lagi.');
+        }
+
+        setLogoUploadStatus('Mengunggah gambar ke media organisasi…');
+        const uploaded = await fetch(reserved.authorization.url, {
+          method: 'PUT',
+          headers: reserved.authorization.requiredHeaders,
+          body: prepared.blob,
+        });
+        if (!uploaded.ok) throw new Error('Unggahan gambar gagal. Periksa koneksi lalu coba lagi.');
+
+        let completedThumb: { readonly sizeBytes: number; readonly checksum: string } | undefined;
+        const thumbAuthorization = reserved.thumb?.authorization;
+        if (prepared.thumb !== null && thumbAuthorization?.url && thumbAuthorization.requiredHeaders) {
+          const thumbUploaded = await fetch(thumbAuthorization.url, {
+            method: 'PUT',
+            headers: thumbAuthorization.requiredHeaders,
+            body: prepared.thumb.blob,
+          });
+          if (thumbUploaded.ok) completedThumb = { sizeBytes: prepared.thumb.sizeBytes, checksum: prepared.thumb.checksum };
+        }
+
+        setLogoUploadStatus('Memvalidasi media yang diunggah…');
+        const dimensions = prepared.width !== null && prepared.height !== null
+          ? { widthPx: prepared.width, heightPx: prepared.height }
+          : {};
+        const completed = await requestJson('/api/dashboard/publishing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            organizationId,
+            action: 'media.complete',
+            payload: {
+              reservationId: reserved.reservationId,
+              ...dimensions,
+              ...(completedThumb === undefined ? {} : { thumb: completedThumb }),
+            },
+          }),
+        }) as { readonly id?: unknown };
+        if (typeof completed.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(completed.id)) {
+          throw new Error('Media selesai diunggah, tetapi ID gambarnya tidak valid.');
+        }
+
+        setLogoDraftPreview(URL.createObjectURL(prepared.blob));
+        setLogoUrl(`/api/network/media/${completed.id}`);
+        setLogoUploadStatus('Gambar terunggah. Klik Simpan perubahan agar logo ikut diperbarui pada publisher dan artikel.');
+      } catch (cause) {
+        setLogoUploadStatus(cause instanceof Error ? cause.message : 'Gagal mengunggah logo organisasi.');
+      } finally {
+        setIsLogoUploading(false);
+      }
+    })();
+  };
+
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (profile === null) return;
+    if (profile === null || isLogoUploading) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -132,8 +261,8 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
   return (
     <SectionCard icon={Building2} title="Identitas Organisasi" eyebrow="Profil tenant">
       <div className="mb-4 flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3">
-        {logoUrl.trim() !== '' ? (
-          <Image src={logoUrl} alt={`Logo ${name || 'organisasi'}`} width={56} height={56} unoptimized className="h-14 w-14 flex-none rounded-xl border border-hairline bg-bg-raised object-contain p-1" />
+        {(logoDraftPreview ?? organizationLogoPreviewSource(logoUrl, organizationId)) !== null ? (
+          <Image src={logoDraftPreview ?? organizationLogoPreviewSource(logoUrl, organizationId)!} alt={`Logo ${name || 'organisasi'}`} width={56} height={56} unoptimized className="h-14 w-14 flex-none rounded-xl border border-hairline bg-bg-raised object-contain p-1" />
         ) : (
           <span className="flex h-14 w-14 flex-none items-center justify-center rounded-xl border border-hairline bg-bg-raised text-paper-faint">
             <Building2 className="h-6 w-6" aria-hidden="true" />
@@ -162,10 +291,28 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
               <Textarea id={descriptionId} value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={4} disabled={busy || !profile.canManage} placeholder="Jelaskan organisasi dan fokus penerbitannya…" />
               <p className="m-0 text-xs leading-5 text-paper-faint">Jika belum ada deskripsi khusus yang tersimpan, artikel dapat menampilkan bio publisher bawaan. Bio bawaan itu tidak disalin otomatis sebagai deskripsi resmi organisasi.</p>
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor={logoId}>URL logo organisasi (HTTPS)</Label>
-              <Input id={logoId} type="text" inputMode="url" value={logoUrl} onChange={(event) => setLogoUrl(event.target.value)} placeholder="https://contoh.id/logo.png" disabled={busy || !profile.canManage} />
-              {logoUrl ? <Image src={logoUrl} alt="Pratinjau logo organisasi" width={64} height={64} unoptimized className="mt-2 h-16 w-16 rounded-lg border border-hairline bg-bg object-contain p-1" /> : null}
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor={logoId}>Logo / gambar profil organisasi</Label>
+              <Input id={logoId} type="text" inputMode="url" value={logoUrl} onChange={(event) => { setLogoUrl(event.target.value); setLogoDraftPreview(null); }} placeholder="Unggah gambar atau masukkan URL HTTPS" disabled={busy || isLogoUploading || !profile.canManageLogo} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id={logoFileId}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif,image/x-icon,.ico,.heic,.heif"
+                  onChange={handleLogoFileChange}
+                  disabled={busy || isLogoUploading || !profile.canManageLogo}
+                  className="min-w-0 flex-1"
+                />
+                <Button type="button" variant="outline" disabled={busy || isLogoUploading || !profile.canManageLogo || logoUrl === ''} onClick={() => { setLogoUrl(''); setLogoDraftPreview(null); setLogoUploadStatus('Logo akan dihapus dari profil publisher setelah perubahan disimpan.'); }}>
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  Hapus logo
+                </Button>
+              </div>
+              <p className="m-0 text-xs leading-5 text-paper-faint">Gambar diunggah ke R2 melalui media organisasi dan disimpan sebagai referensi media stabil, bukan URL presigned. Simpan perubahan untuk memperbarui publisher, author box, serta cache metadata artikel.</p>
+              {logoUploadStatus ? <FormNotice tone={logoUploadStatus.startsWith('Gagal') || logoUploadStatus.includes('tidak valid') || logoUploadStatus.includes('tidak didukung') ? 'error' : 'muted'}>{logoUploadStatus}</FormNotice> : null}
+              {(logoDraftPreview ?? organizationLogoPreviewSource(logoUrl, organizationId)) !== null ? (
+                <Image src={logoDraftPreview ?? organizationLogoPreviewSource(logoUrl, organizationId)!} alt="Pratinjau logo organisasi" width={96} height={96} unoptimized className="mt-2 h-24 w-24 rounded-xl border border-hairline bg-bg-raised object-contain p-2" />
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={emailId}>Email kontak</Label>
