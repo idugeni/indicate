@@ -33,6 +33,7 @@ export function DashboardAvatar({ displayName, avatarRef = null }: { readonly di
   const isPrivate = avatarRef?.startsWith('r2:') === true;
   const isInternalImage = typeof avatarRef === 'string' && (
     /^\/api\/network\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(avatarRef) ||
+    /^\/api\/dashboard\/organization\/logo\?organizationId=[0-9a-f-]{36}&mediaId=[0-9a-f-]{36}$/iu.test(avatarRef) ||
     /^\/brand\/[a-z0-9_-]+(?:[./-][a-z0-9_-]+)*\.(?:svg|png|jpe?g|webp)$/iu.test(avatarRef)
   );
   const [privateUrl, setPrivateUrl] = useState<string | null>(() => {

@@ -170,7 +170,11 @@ export function DashboardWorkspace({
       .then(async (response) => {
         if (!response.ok) return null;
         const profile = await response.json() as { readonly logoUrl?: unknown };
-        return typeof profile.logoUrl === 'string' ? profile.logoUrl : null;
+        if (typeof profile.logoUrl !== 'string') return null;
+        const mediaReference = /^\/api\/network\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/iu.exec(profile.logoUrl);
+        return mediaReference === null
+          ? profile.logoUrl
+          : `/api/dashboard/organization/logo?organizationId=${encodeURIComponent(organizationId)}&mediaId=${mediaReference[1]}`;
       })
       .then((logoUrl) => {
         if (!controller.signal.aborted) setOrganizationLogoUrl(logoUrl);
