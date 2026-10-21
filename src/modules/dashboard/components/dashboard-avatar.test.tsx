@@ -6,6 +6,7 @@ import { cleanup, render, waitFor } from '@testing-library/react';
 vi.mock('@/components/ui/avatar', () => ({
   Avatar: ({ children, ...props }: ComponentProps<'div'>) => <div data-slot="avatar" {...props}>{children}</div>,
   AvatarFallback: ({ children, ...props }: ComponentProps<'span'>) => <span data-slot="avatar-fallback" {...props}>{children}</span>,
+  // eslint-disable-next-line @next/next/no-img-element -- Keep the avatar test double lightweight and inspectable.
   AvatarImage: ({ src, ...props }: ComponentProps<'img'>) => <img data-slot="avatar-image" src={src} {...props} />,
 }));
 
