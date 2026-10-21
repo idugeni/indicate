@@ -45,7 +45,22 @@ function readTag(block: string, tag: string): string {
   return expression.exec(block)?.[1] ?? '';
 }
 
-/** Only HTTPS on the official Ditjenpas host is accepted as a network source. */
+const TRUSTED_NEWS_DOMAINS = ['ditjenpas.go.id', 'antaranews.com', 'katadata.co.id'] as const;
+
+/** Only HTTPS article feeds from curated, publisher-owned domains are accepted. */
+export function isTrustedNewsHost(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:'
+      && TRUSTED_NEWS_DOMAINS.some((domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`))
+      && url.username === ''
+      && url.password === '';
+  } catch {
+    return false;
+  }
+}
+
+/** Official Ditjenpas source page or article, excluding the homepage root. */
 export function isOfficialNewsHost(raw: string): boolean {
   try {
     const url = new URL(raw);
@@ -58,7 +73,6 @@ export function isOfficialNewsHost(raw: string): boolean {
   }
 }
 
-/** A publishable story URL must also have a specific path, not just the homepage. */
 export function isOfficialNewsUrl(raw: string): boolean {
   try {
     const url = new URL(raw);
@@ -68,15 +82,26 @@ export function isOfficialNewsUrl(raw: string): boolean {
   }
 }
 
-/**
- * Parse a bounded RSS 2.0 feed without evaluating XML entities or remote DTDs.
- * Entries are deduplicated and ordered newest-first, with off-domain links rejected.
- */
-export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[] {
+export function isTrustedNewsArticleUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (!isTrustedNewsHost(raw) || url.pathname.length < 2) return false;
+    const path = url.pathname.toLowerCase();
+    return !path.startsWith('/rss/')
+      && !path.startsWith('/category/')
+      && !path.startsWith('/profile/')
+      && !path.startsWith('/login')
+      && !path.startsWith('/search');
+  } catch {
+    return false;
+  }
+}
+
+function parseNewsFeed(xml: string, acceptsUrl: (url: string) => boolean): readonly OfficialNewsStory[] {
   if (xml.length === 0 || xml.length > MAX_FEED_LENGTH || /<!DOCTYPE|<!ENTITY/i.test(xml)) {
     return [];
   }
-  const blocks = xml.match(/<item\b[^>]*>[\s\S]*?<\/item>/gi) ?? [];
+  const blocks = xml.match(/<item\\b[^>]*>[\\s\\S]*?<\\/item>/gi) ?? [];
   const seen = new Set<string>();
   const stories: OfficialNewsStory[] = [];
   for (const block of blocks) {
@@ -84,9 +109,10 @@ export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[]
     const rawLink = cleanText(readTag(block, 'link'));
     const description = cleanText(readTag(block, 'encoded') || readTag(block, 'description')).slice(0, 6000);
     const rawDate = cleanText(readTag(block, 'pubDate') || readTag(block, 'date'));
-    if (title.length < 8 || !isOfficialNewsUrl(rawLink)) continue;
+    if (title.length < 8 || !acceptsUrl(rawLink)) continue;
     const url = new URL(rawLink);
     url.hash = '';
+    url.search = '';
     const normalizedUrl = url.toString();
     if (seen.has(normalizedUrl)) continue;
     seen.add(normalizedUrl);
@@ -103,6 +129,16 @@ export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[]
     const rightTime = right.publishedAt === null ? 0 : Date.parse(right.publishedAt);
     return rightTime - leftTime;
   });
+}
+
+/** Publisher-owned, curated news feeds; never accept aggregator URLs as sources. */
+export function parseTrustedNewsFeed(xml: string): readonly OfficialNewsStory[] {
+  return parseNewsFeed(xml, isTrustedNewsArticleUrl);
+}
+
+/** Keep a narrow parser for the official Ditjenpas feed and its tests. */
+export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[] {
+  return parseNewsFeed(xml, isOfficialNewsUrl);
 }
 
 /** Extract the actual official article body; strip site chrome and interactive blocks. */
