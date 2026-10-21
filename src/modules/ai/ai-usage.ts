@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { executeAiQuery, type AiExecutionMode, type AiServiceDeps } from '@/modules/ai/ai-service';
+import { executeAiQuery, type AiServiceDeps } from '@/modules/ai/ai-service';
 import {
   ARTICLE_DRAFT_SCHEMA,
   COVER_CAPTION_SCHEMA,
@@ -222,11 +222,10 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
   readonly skipSemanticCache?: boolean | undefined;
   readonly requireModelOwner?: boolean | undefined;
   readonly gatewayOnlyProviders?: readonly string[] | undefined;
-}, depsOverride?: AiServiceDeps, mode: AiExecutionMode = 'interactive'): Promise<{ readonly ok: true; readonly text: string; readonly inlineData?: readonly { readonly mimeType: string; readonly base64: string }[] } | { readonly ok: false; readonly error: string }> {
+}): Promise<{ readonly ok: true; readonly text: string; readonly inlineData?: readonly { readonly mimeType: string; readonly base64: string }[] } | { readonly ok: false; readonly error: string }> {
   const scanned = scanPrompt(query.prompt);
   if (!scanned.ok) return { ok: false, error: scanned.reason };
-  const activeDeps = depsOverride ?? configured;
-  if (activeDeps === null) return { ok: false, error: BUSY_MESSAGE };
+  if (configured === null) return { ok: false, error: BUSY_MESSAGE };
   const producesNonTextMedia = (query.responseModalities ?? []).some((modality) => modality === 'IMAGE' || modality === 'AUDIO');
   if (producesNonTextMedia && (query.modelOverride === undefined || query.modelOverride === LOW_COST_TEXT_MODEL)) {
     return { ok: false, error: 'Tugas ini memerlukan model khusus untuk menghasilkan gambar atau audio.' };
@@ -236,7 +235,7 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
     : query.modelOverride === undefined ? query : { ...query, requireModelOwner: true };
   const thinkingConfig = routedQuery.thinkingConfig
     ?? (routedQuery.thinkingTask === undefined ? undefined : taskThinkingOverride(routedQuery.thinkingTask));
-  const result = await executeAiQuery(activeDeps, {
+  const result = await executeAiQuery(configured, {
     prompt: routedQuery.prompt,
     organizationId: organizationId ?? null,
     systemInstruction: routedQuery.systemInstruction,
@@ -247,7 +246,6 @@ export async function runQuery(callerRole: AiCallerRole, organizationId: string 
     ...(thinkingConfig === undefined ? {} : { thinkingConfig }),
     channel: 'web',
     callerRole,
-    mode,
     enableTools: false,
     ...(routedQuery.images === undefined ? {} : { images: [...routedQuery.images] }),
     ...(routedQuery.audio === undefined ? {} : { audio: [...routedQuery.audio] }),
@@ -347,14 +345,14 @@ export function buildDraftArticleInput(topic: string, points?: string): {
  * @param input.organizationId - Organisasi untuk cakupan kredensial dan audit.
  * @returns Draf artikel atau pesan sibuk yang aman.
  */
-export async function generateArticleDraft(input: { readonly topic: string; readonly points?: string; readonly organizationId?: string }, depsOverride?: AiServiceDeps, mode: AiExecutionMode = 'interactive'): Promise<{ readonly ok: true; readonly draft: ArticleDraft } | { readonly ok: false; readonly error: string }> {
+export async function generateArticleDraft(input: { readonly topic: string; readonly points?: string; readonly organizationId?: string }): Promise<{ readonly ok: true; readonly draft: ArticleDraft } | { readonly ok: false; readonly error: string }> {
   const built = buildDraftArticleInput(input.topic, input.points);
   if (!built.ok) return built;
   const result = await runQuery('editor', input.organizationId, {
     prompt: built.prompt,
     systemInstruction: built.systemInstruction, temperature: 0.7, maxOutputTokens: 2048, responseMimeType: 'application/json',
     responseSchema: ARTICLE_DRAFT_SCHEMA, thinkingTask: 'summarize',
-  }, depsOverride, mode);
+  });
   if (!result.ok) return result;
   const draft = parseArticleDraft(result.text, built.topic);
   if (draft === null) return { ok: false, error: BUSY_MESSAGE };
