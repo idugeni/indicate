@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ComponentProps } from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
+
+vi.mock('@/components/ui/avatar', () => ({
+  Avatar: ({ children, ...props }: ComponentProps<'div'>) => <div data-slot="avatar" {...props}>{children}</div>,
+  AvatarFallback: ({ children, ...props }: ComponentProps<'span'>) => <span data-slot="avatar-fallback" {...props}>{children}</span>,
+  // eslint-disable-next-line @next/next/no-img-element -- Keep the avatar test double lightweight and inspectable.
+  AvatarImage: ({ src, ...props }: ComponentProps<'img'>) => <img data-slot="avatar-image" src={src} {...props} />,
+}));
 
 import { clearAvatarCache, DashboardAvatar } from '@/modules/dashboard/components/dashboard-avatar';
 
@@ -26,6 +34,24 @@ describe('Avatar pemilik workspace', () => {
     const { container } = render(<DashboardAvatar displayName="Redaktur Utama" avatarRef="https://cdn.contoh.id/foto.png" />);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(fallback(container)).toBe('RE');
+  });
+
+  it('menampilkan logo organisasi dari path media internal tanpa meminta endpoint avatar pribadi', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const logo = '/api/network/media/00000000-0000-4000-8000-000000000001';
+    const { container } = render(<DashboardAvatar displayName="Lapas Kendal" avatarRef={logo} />);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(logo);
+  });
+
+  it('merender logo organisasi melalui jalur gambar dashboard yang stabil', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const logo = '/api/dashboard/organization/logo?organizationId=11111111-1111-4111-8111-111111111111&mediaId=22222222-2222-4222-8222-222222222222';
+    const { container } = render(<DashboardAvatar displayName="Lapas Kendal" avatarRef={logo} />);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(logo);
   });
 
   it('meminta endpoint avatar sekali untuk referensi privat r2', async () => {

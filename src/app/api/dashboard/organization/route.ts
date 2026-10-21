@@ -8,10 +8,13 @@ import { resolveRequestId } from '@/core/observability/request-id';
 import { createNonDisclosingDenial, createPublicError } from '@/core/errors';
 import { getServerRuntimeContext } from '@/core/config/runtime/runtime-context';
 import { getSharedRuntimeDatabase } from '@/data/client';
-import { auditLogs, organizations, publishers } from '@/data/schema';
+import { auditLogs, media, organizations, publishers } from '@/data/schema';
+import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
+import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
+import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 
 const uuidSchema = z.uuid();
 const organizationQuerySchema = z.object({ organizationId: uuidSchema });
@@ -82,6 +85,8 @@ function firstText(...values: readonly unknown[]): string | undefined {
   return undefined;
 }
 
+class OrganizationProfileConflict extends Error {}
+
 function safeLogoValue(value: unknown): string | null {
   const parsed = logoUrlSchema.safeParse(value);
   return parsed.success && parsed.data !== '' ? parsed.data : null;
@@ -112,8 +117,8 @@ function publicProfile(
     name: row.name,
     slug: row.slug,
     ...identity,
-    description: firstText(identity.description, publisher.bio, metadata.description) ?? '',
-    logoUrl: identity.logoUrl === '' ? null : identity.logoUrl ?? safeLogoValue(publisher.logoUrl),
+    description: firstText(identity.description, publisher.bio, metadata.description) ?? DEFAULT_PUBLISHER_BIO,
+    logoUrl: safeLogoValue(identity.logoUrl) ?? safeLogoValue(publisher.logoUrl),
     contactDetails: {
       ...contactDetails,
       ...(!contactDetails.email && parsedLegacyEmail?.success ? { email: parsedLegacyEmail.data } : {}),
@@ -158,8 +163,16 @@ async function handleGET(request: Request) {
       const row = rows[0];
       if (row === undefined) return null;
       const candidatePublishers = await transaction.select({
+        id: publishers.id,
         name: publishers.name,
+        type: publishers.type,
+        attributionLabel: publishers.attributionLabel,
         contacts: publishers.contacts,
+        evidenceReference: publishers.evidenceReference,
+        version: publishers.version,
+        verificationStatus: publishers.verificationStatus,
+        verifiedBy: publishers.verifiedBy,
+        verifiedAt: publishers.verifiedAt,
       }).from(publishers)
         .where(and(eq(publishers.organizationId, actor.organizationId), eq(publishers.status, 'active')))
         .orderBy(sql`CASE WHEN lower(${publishers.name}) = lower(${row.name}) THEN 0 ELSE 1 END`, asc(publishers.name))
@@ -169,7 +182,7 @@ async function handleGET(request: Request) {
       return { row, publisherContacts: primaryPublisher?.contacts };
     });
     if (profile === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    return NextResponse.json({ ...publicProfile(profile.row, profile.publisherContacts), canManage: actor.permissionSet.has(DASHBOARD_PERMISSIONS.roleManage) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage) });
+    return NextResponse.json({ ...publicProfile(profile.row, profile.publisherContacts), canManage: actor.permissionSet.has(DASHBOARD_PERMISSIONS.roleManage) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage), canManageLogo: actor.permissionSet.has(DASHBOARD_PERMISSIONS.publisherManage) && actor.permissionSet.has(PUBLISHING_PERMISSIONS.mediaManage) });
   } catch {
     return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'Profil organisasi tidak dapat dimuat.', requestId), { status: 503 });
   }
@@ -183,6 +196,7 @@ async function handlePOST(request: Request) {
   const context = await resolveActor(parsed.data.organizationId, requestId);
   if (context === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
   const { actor, database } = context;
+  let publisherInvalidationId: string | null = null;
   const mayManage = actor.permissionSet.has(DASHBOARD_PERMISSIONS.roleManage)
     || actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage);
   if (!mayManage) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
@@ -201,8 +215,16 @@ async function handlePOST(request: Request) {
       if (current === undefined) return { kind: 'missing' as const };
       if (current.version !== parsed.data.expectedVersion) return { kind: 'conflict' as const };
       const candidatePublishers = await transaction.select({
+        id: publishers.id,
         name: publishers.name,
+        type: publishers.type,
+        attributionLabel: publishers.attributionLabel,
         contacts: publishers.contacts,
+        evidenceReference: publishers.evidenceReference,
+        version: publishers.version,
+        verificationStatus: publishers.verificationStatus,
+        verifiedBy: publishers.verifiedBy,
+        verifiedAt: publishers.verifiedAt,
       }).from(publishers)
         .where(and(eq(publishers.organizationId, actor.organizationId), eq(publishers.status, 'active')))
         .orderBy(sql`CASE WHEN lower(${publishers.name}) = lower(${current.name}) THEN 0 ELSE 1 END`, asc(publishers.name))
@@ -214,7 +236,7 @@ async function handlePOST(request: Request) {
       const nextIdentity: IdentityProfile = {
         schemaVersion: 1,
         description: parsed.data.description,
-        logoUrl: parsed.data.logoUrl,
+        logoUrl: parsed.data.logoUrl ?? '',
         contactDetails: {
           ...(parsed.data.contactDetails.email ? { email: parsed.data.contactDetails.email } : {}),
           ...(parsed.data.contactDetails.phone ? { phone: parsed.data.contactDetails.phone } : {}),
@@ -243,43 +265,130 @@ async function handlePOST(request: Request) {
         socialLinks: nextIdentity.socialLinks ?? {},
       };
       const changedFields = (Object.keys(after) as (keyof typeof after)[]).filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
-      if (changedFields.length === 0) return { kind: 'saved' as const, profile: publicProfile(current, publisherContacts) };
-      const updatedRows = await transaction.update(organizations).set({
-        name: nextName,
-        customerMetadata: sql`jsonb_set(${organizations.customerMetadata}, '{organizationIdentity}', ${JSON.stringify(nextIdentity)}::jsonb, true)`,
-        version: current.version + 1,
-        updatedAt: new Date(),
-      }).where(and(eq(organizations.id, actor.organizationId), eq(organizations.version, current.version))).returning({
-        id: organizations.id,
-        name: organizations.name,
-        slug: organizations.slug,
-        identityData: sql<unknown>`${organizations.customerMetadata} -> 'organizationIdentity'`,
-        customerMetadata: organizations.customerMetadata,
-        version: organizations.version,
-      });
-      const updated = updatedRows[0];
-      if (updated === undefined) return { kind: 'conflict' as const };
-      await transaction.insert(auditLogs).values({
-        organizationId: actor.organizationId,
-        id: crypto.randomUUID(),
-        actorType: actor.actorType,
-        actorId: actor.actorId,
-        entryPoint: actor.entryPoint,
-        action: 'organization.identity.update',
-        targetType: 'organization',
-        targetId: actor.organizationId,
-        outcome: 'succeeded',
-        changedFields,
-        before: Object.fromEntries(changedFields.map((key) => [key, before[key]])),
-        after: Object.fromEntries(changedFields.map((key) => [key, after[key]])),
-        requestId,
-      });
-      return { kind: 'saved' as const, profile: publicProfile(updated, publisherContacts) };
+      const publisherContactRecord = recordOf(publisherContacts);
+      const currentPublisherLogo = firstText(publisherContactRecord.logoUrl) ?? null;
+      const nextPublisherLogo = nextIdentity.logoUrl === '' ? null : nextIdentity.logoUrl;
+      const publisherLogoChanged = primaryPublisher !== undefined && currentPublisherLogo !== nextPublisherLogo;
+      if (publisherLogoChanged && !actor.permissionSet.has(DASHBOARD_PERMISSIONS.publisherManage)) {
+        return { kind: 'publisher-access-denied' as const };
+      }
+
+      const currentEffectiveLogo = currentIdentity.logoUrl === ''
+        ? ''
+        : safeLogoValue(currentIdentity.logoUrl) ?? safeLogoValue(publisherContactRecord.logoUrl) ?? '';
+      const logoChanged = nextIdentity.logoUrl !== currentEffectiveLogo;
+      if ((logoChanged || publisherLogoChanged) && typeof nextIdentity.logoUrl === 'string' && nextIdentity.logoUrl !== '') {
+        const mediaReference = /^\/api\/network\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/iu.exec(nextIdentity.logoUrl);
+        if (mediaReference !== null) {
+          const asset = (await transaction.select({ id: media.id })
+            .from(media)
+            .where(and(
+              eq(media.organizationId, actor.organizationId),
+              eq(media.id, mediaReference[1]!),
+              eq(media.state, 'active'),
+              eq(media.organizationAsset, true),
+              eq(media.purpose, 'organization-asset'),
+            ))
+            .limit(1))[0];
+          if (asset === undefined) return { kind: 'invalid-logo' as const };
+        }
+      }
+
+      if (changedFields.length === 0 && !publisherLogoChanged) {
+        return { kind: 'saved' as const, profile: publicProfile(current, publisherContacts) };
+      }
+
+      let updated = current;
+      if (changedFields.length > 0) {
+        const updatedRows = await transaction.update(organizations).set({
+          name: nextName,
+          customerMetadata: sql`jsonb_set(${organizations.customerMetadata}, '{organizationIdentity}', ${JSON.stringify(nextIdentity)}::jsonb, true)`,
+          version: current.version + 1,
+          updatedAt: new Date(),
+        }).where(and(eq(organizations.id, actor.organizationId), eq(organizations.version, current.version))).returning({
+          id: organizations.id,
+          name: organizations.name,
+          slug: organizations.slug,
+          identityData: sql<unknown>`${organizations.customerMetadata} -> 'organizationIdentity'`,
+          customerMetadata: organizations.customerMetadata,
+          version: organizations.version,
+        });
+        const updatedRow = updatedRows[0];
+        if (updatedRow === undefined) throw new OrganizationProfileConflict();
+        updated = updatedRow;
+        await transaction.insert(auditLogs).values({
+          organizationId: actor.organizationId,
+          id: crypto.randomUUID(),
+          actorType: actor.actorType,
+          actorId: actor.actorId,
+          entryPoint: actor.entryPoint,
+          action: 'organization.identity.update',
+          targetType: 'organization',
+          targetId: actor.organizationId,
+          outcome: 'succeeded',
+          changedFields,
+          before: Object.fromEntries(changedFields.map((key) => [key, before[key]])),
+          after: Object.fromEntries(changedFields.map((key) => [key, after[key]])),
+          requestId,
+        });
+      }
+
+      let updatedPublisherContacts: unknown = publisherContacts;
+      if (publisherLogoChanged && primaryPublisher !== undefined) {
+        const nextContacts: Record<string, unknown> = { ...publisherContactRecord };
+        if (nextPublisherLogo === null) delete nextContacts.logoUrl;
+        else nextContacts.logoUrl = nextPublisherLogo;
+        const identityChanged = JSON.stringify(publisherContactRecord) !== JSON.stringify(nextContacts);
+        const publisherRows = await transaction.update(publishers).set({
+          contacts: nextContacts,
+          ...(identityChanged && primaryPublisher.verificationStatus === 'verified'
+            ? { verificationStatus: 'unverified' as const, verifiedBy: null, verifiedAt: null }
+            : {}),
+          version: primaryPublisher.version + 1,
+          updatedAt: new Date(),
+        }).where(and(
+          eq(publishers.organizationId, actor.organizationId),
+          eq(publishers.id, primaryPublisher.id),
+          eq(publishers.version, primaryPublisher.version),
+        )).returning({ id: publishers.id });
+        if (publisherRows[0] === undefined) throw new OrganizationProfileConflict();
+        publisherInvalidationId = primaryPublisher.id;
+        updatedPublisherContacts = nextContacts;
+        await transaction.insert(auditLogs).values({
+          organizationId: actor.organizationId,
+          id: crypto.randomUUID(),
+          actorType: actor.actorType,
+          actorId: actor.actorId,
+          entryPoint: actor.entryPoint,
+          action: 'publisher.update',
+          targetType: 'publisher',
+          targetId: primaryPublisher.id,
+          outcome: 'succeeded',
+          changedFields: ['contacts', ...(identityChanged && primaryPublisher.verificationStatus === 'verified' ? ['verificationStatus'] : [])],
+          before: { contacts: publisherContactRecord, verificationStatus: primaryPublisher.verificationStatus },
+          after: { contacts: nextContacts, verificationStatus: identityChanged && primaryPublisher.verificationStatus === 'verified' ? 'unverified' : primaryPublisher.verificationStatus },
+          requestId,
+        });
+      }
+      return { kind: 'saved' as const, profile: publicProfile(updated, updatedPublisherContacts) };
     });
-    if (result.kind === 'missing') return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
+    if (result.kind === 'missing' || result.kind === 'publisher-access-denied') return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
     if (result.kind === 'conflict') return NextResponse.json(createPublicError('CONFLICT', 'Identitas organisasi berubah di sesi lain. Muat ulang sebelum menyimpan lagi.', requestId), { status: 409 });
-    return NextResponse.json({ ...result.profile, canManage: true });
-  } catch {
+    if (result.kind === 'invalid-logo') return NextResponse.json(createPublicError('INVALID_INPUT', 'Pilih gambar aktif milik organisasi ini dari pustaka media atau unggah gambar baru.', requestId), { status: 400 });
+    if (publisherInvalidationId !== null) {
+      try {
+        await new DrizzleDashboardRepository(database).enqueuePublisherInvalidation(actor, DASHBOARD_PERMISSIONS.publisherManage, publisherInvalidationId);
+      } catch {
+        /* Publisher changes are committed; invalidate delivery best-effort, as in the publisher service. */
+      }
+    }
+    return NextResponse.json({
+      ...result.profile,
+      canManage: mayManage,
+      canManageLogo: actor.permissionSet.has(DASHBOARD_PERMISSIONS.publisherManage),
+    });
+  } catch (error) {
+    if (error instanceof OrganizationProfileConflict) return NextResponse.json(createPublicError('CONFLICT', 'Identitas organisasi berubah di sesi lain. Muat ulang sebelum menyimpan lagi.', requestId), { status: 409 });
     return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'Identitas organisasi gagal disimpan.', requestId), { status: 503 });
   }
 }

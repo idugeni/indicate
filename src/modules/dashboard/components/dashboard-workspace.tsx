@@ -144,6 +144,8 @@ export function DashboardWorkspace({
   const initialOrgId = organizations[0]?.id ?? '';
 
   const [organizationId, setOrganizationId] = useState(initialOrgId);
+  const [organizationLogo, setOrganizationLogo] = useState<{ readonly organizationId: string; readonly url: string | null } | null>(null);
+  const organizationLogoUrl = organizationLogo?.organizationId === organizationId ? organizationLogo.url : null;
   const [generation, setGeneration] = useState(initialOrgId ? 1 : 0);
   const [view, setView] = useDashboardView(navigationMode === 'platform' ? 'customers' : 'dashboard');
   const [payload, setPayload] = useState<{ readonly key: string; readonly body: unknown } | null>(null);
@@ -158,6 +160,28 @@ export function DashboardWorkspace({
     () => navigationMode === 'platform' && organizations.some((organization) => (organization.permissions ?? []).includes(INTEGRATIONS_PERMISSIONS.superAdmin)),
     [navigationMode, organizations],
   );
+
+  useEffect(() => {
+    if (organizationId === '') return;
+    const controller = new AbortController();
+    void fetch(`/api/dashboard/organization?organizationId=${encodeURIComponent(organizationId)}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const profile = await response.json() as { readonly logoUrl?: unknown };
+        if (typeof profile.logoUrl !== 'string') return null;
+        const mediaReference = /^\/api\/network\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/iu.exec(profile.logoUrl);
+        return mediaReference === null
+          ? profile.logoUrl
+          : `/api/dashboard/organization/logo?organizationId=${encodeURIComponent(organizationId)}&mediaId=${mediaReference[1]}`;
+      })
+      .then((logoUrl) => {
+        if (!controller.signal.aborted) setOrganizationLogo({ organizationId, url: logoUrl });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setOrganizationLogo({ organizationId, url: null });
+      });
+    return () => controller.abort();
+  }, [organizationId]);
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)');
@@ -514,6 +538,7 @@ export function DashboardWorkspace({
         <DashboardSidebar
           displayName={displayName}
           avatarUrl={avatarUrl}
+          organizationLogoUrl={organizationLogoUrl}
           organizations={organizations}
           activeOrganization={activeOrganization}
           permissions={activePermissions}
@@ -597,21 +622,24 @@ export function DashboardWorkspace({
               <Label htmlFor={drawerOrgId} className="font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
                 Organisasi
               </Label>
-              <div className="mt-1.5">
-                {organizations.length > 1 ? (
-                  <OrganizationSwitcher
-                    organizations={organizations}
-                    activeOrganizationId={organizationId}
-                    selectId={drawerOrgId}
-                    onSwitchRequested={handleSwitchRequested}
-                    onSwitchCommitted={handleSwitchCommitted}
-                    onSwitchFailed={handleSwitchFailed}
-                  />
-                ) : (
-                  <p className="truncate font-sans text-[13px] font-medium text-paper">
-                    {activeOrganization?.name ?? 'Belum ada organisasi'}
-                  </p>
-                )}
+              <div className="mt-1.5 flex items-center gap-2.5">
+                <DashboardAvatar displayName={activeOrganization?.name ?? 'Organisasi'} avatarRef={organizationLogoUrl} />
+                <div className="min-w-0 flex-1">
+                  {organizations.length > 1 ? (
+                    <OrganizationSwitcher
+                      organizations={organizations}
+                      activeOrganizationId={organizationId}
+                      selectId={drawerOrgId}
+                      onSwitchRequested={handleSwitchRequested}
+                      onSwitchCommitted={handleSwitchCommitted}
+                      onSwitchFailed={handleSwitchFailed}
+                    />
+                  ) : (
+                    <p className="truncate font-sans text-[13px] font-medium text-paper">
+                      {activeOrganization?.name ?? 'Belum ada organisasi'}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
             <div className="dashboard-scrollbar min-h-0 flex-1 space-y-6 overflow-y-auto px-2 py-4">
@@ -681,7 +709,7 @@ export function DashboardWorkspace({
           crossOrg={crossOrg}
           navigationMode={navigationMode}
         />
-        <DashboardFooter />
+        <DashboardFooter showTechStack={navigationMode === 'platform'} />
         </div>
       </div>
     </TooltipProvider>

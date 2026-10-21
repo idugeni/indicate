@@ -199,6 +199,7 @@ export function DashboardNavList({
 const SidebarBody = memo(function SidebarBody({
   displayName,
   avatarUrl,
+  organizationLogoUrl,
   organizations,
   activeOrganization,
   permissions,
@@ -213,6 +214,7 @@ const SidebarBody = memo(function SidebarBody({
 }: {
   readonly displayName: string;
   readonly avatarUrl: string | null;
+  readonly organizationLogoUrl: string | null;
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;
@@ -256,21 +258,24 @@ const SidebarBody = memo(function SidebarBody({
           <Label htmlFor={selectOrgId} className="px-1 font-sans text-[11px] font-medium uppercase tracking-wider text-paper-faint">
             Organisasi
           </Label>
-          <div className="mt-1.5">
-            {organizations.length > 1 ? (
-              <OrganizationSwitcher
-                organizations={organizations}
-                activeOrganizationId={activeOrganization?.id ?? ''}
-                selectId={selectOrgId}
-                onSwitchRequested={onRequestOrganizationSwitch}
-                onSwitchCommitted={onOrganizationSwitchCommitted}
-                onSwitchFailed={onOrganizationSwitchFailed}
-              />
-            ) : (
-              <p className="truncate px-1 font-sans text-[13px] font-medium text-paper">
-                {activeOrganization?.name ?? 'Belum ada organisasi'}
-              </p>
-            )}
+          <div className="mt-1.5 flex items-center gap-2.5">
+            <DashboardAvatar displayName={activeOrganization?.name ?? 'Organisasi'} avatarRef={organizationLogoUrl} />
+            <div className="min-w-0 flex-1">
+              {organizations.length > 1 ? (
+                <OrganizationSwitcher
+                  organizations={organizations}
+                  activeOrganizationId={activeOrganization?.id ?? ''}
+                  selectId={selectOrgId}
+                  onSwitchRequested={onRequestOrganizationSwitch}
+                  onSwitchCommitted={onOrganizationSwitchCommitted}
+                  onSwitchFailed={onOrganizationSwitchFailed}
+                />
+              ) : (
+                <p className="truncate font-sans text-[13px] font-medium text-paper">
+                  {activeOrganization?.name ?? 'Belum ada organisasi'}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -333,6 +338,7 @@ const SidebarBody = memo(function SidebarBody({
 export function DashboardSidebar(props: {
   readonly displayName: string;
   readonly avatarUrl: string | null;
+  readonly organizationLogoUrl: string | null;
   readonly organizations: readonly OrganizationOption[];
   readonly activeOrganization: OrganizationOption | undefined;
   readonly permissions: ReadonlySet<string>;

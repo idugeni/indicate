@@ -260,4 +260,35 @@ describe('TenantBusinessService cross-organization editorial boundary', () => {
     expect(audits).toEqual([]);
   });
 
+
+  it('loads an organization-owned article through tenant execute rather than platform cross-org execution', async () => {
+    const organizationId = '10000000-0000-4000-8000-000000000001';
+    const articleId = '20000000-0000-4000-8000-000000000001';
+    const article = { id: articleId, organizationId, version: 1, slug: 'uji-edit', title: 'Uji edit', body: 'Isi artikel', regionId: null };
+    const transaction = {
+      state: { articles: [article], regions: [], publishers: [], categories: [], authors: [] },
+      refreshArticleContent: vi.fn(async () => false),
+    };
+    const execute = vi.fn(async (_actor: unknown, _permission: string, operation: (tx: unknown) => unknown) => operation(transaction));
+    const executeForOrganization = vi.fn(async () => { throw new Error('same-org reads must not use platform execution'); });
+    const service = serviceWithRepository({ execute, executeForOrganization });
+
+    const result = await service.readArticleForEdit(
+      actor({ organizationId, permissionSet: new Set(['article.manage']) }),
+      { id: articleId, ownerOrganizationId: organizationId },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected article to load');
+    expect(result.value.article).toMatchObject({ id: articleId, title: 'Uji edit' });
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId }),
+      'article.manage',
+      expect.any(Function),
+      ['articles', 'regions', 'publishers', 'categories', 'authors'],
+    );
+    expect(executeForOrganization).not.toHaveBeenCalled();
+    expect(transaction.refreshArticleContent).toHaveBeenCalledWith(articleId);
+  });
+
 });

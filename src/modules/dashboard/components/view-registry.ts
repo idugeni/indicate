@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
+import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import { INTEGRATIONS_PERMISSIONS } from '@/modules/integrations/permissions';
 
 export type IconComponent = ComponentType<{
@@ -132,7 +133,7 @@ export const VIEW_REGISTRY: Readonly<Record<View, ViewMetadata>> = {
   publishing: {
     label: 'Delivery', title: 'Distribution Control', eyebrow: 'Syndication Operations', group: 'publishing',
     description: 'Pantau queue, delivery, retry, dan hasil distribusi artikel.',
-    icon: Share2,
+    icon: Share2, requiredPermission: PUBLISHING_PERMISSIONS.publishingRead,
   },
   published: {
     label: 'Live Results', title: 'Live Results', eyebrow: 'Published Network', group: 'publishing',
@@ -220,7 +221,7 @@ export const PRIMARY_NAV_AREAS: readonly PrimaryNavArea[] = [
     scope: 'organization',
     defaultView: 'dashboard',
     navigationViews: ['dashboard'],
-    views: ['dashboard', 'analytics'],
+    views: ['dashboard', 'analytics', 'publishing'],
   },
   {
     id: 'articles',

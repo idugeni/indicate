@@ -73,4 +73,23 @@ describe('DashboardV2CommandCenter', () => {
     expect(screen.getByText('Penerbit tidak tersedia')).toBeTruthy();
     expect(screen.getByText('Wilayah tidak tersedia')).toBeTruthy();
   });
+  it('shows the delivery shortcut only when the current actor has publishing access', () => {
+    const onSelectView = vi.fn();
+    const dashboard = {
+      activeArticles: 0, draftArticles: 0, inReviewArticles: 0, scheduledArticles: 0, archivedArticles: 0,
+      jobsByState: { queued: 0, processing: 0, published: 0, failed: 0, retrying: 0, unpublished: 0 },
+      successfulSiteOutcomes: 0, failedSiteOutcomes: 0,
+    };
+    const { rerender } = render(
+      <DashboardV2CommandCenter displayName="Organisasi" dashboard={dashboard} analytics={null} onSelectView={onSelectView} canViewPublishing={false} />,
+    );
+    expect(screen.queryByRole('button', { name: 'Lihat distribusi' })).toBeNull();
+
+    rerender(
+      <DashboardV2CommandCenter displayName="Organisasi" dashboard={dashboard} analytics={null} onSelectView={onSelectView} canViewPublishing={true} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Lihat distribusi' }));
+    expect(onSelectView).toHaveBeenCalledWith('publishing');
+  });
+
 });
