@@ -16,15 +16,18 @@ import { createProductionIntegrations } from '@/modules/integrations/integration
 import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import {
   extractOfficialArticleText,
+  isOfficialNewsHost,
   isOfficialNewsUrl,
   jakartaDayKey,
   parseOfficialNewsFeed,
+  parseOfficialNewsIndex,
   type OfficialNewsStory,
 } from '@/modules/newsroom/official-feed';
 import { withApiAccess } from '@/core/observability/api-access';
 
 const NEWSROOM_ORGANIZATION_ID = '7e27727d-b59f-4d24-998e-1bee6eeb3fa0';
 const NEWSROOM_PUBLISHER_ID = 'b7e4c210-9a35-4d68-8f13-2c6d5a90e7b4';
+const OFFICIAL_INDEX_URL = 'https://www.ditjenpas.go.id/';
 const OFFICIAL_RSS_URL = 'https://www.ditjenpas.go.id/rss/posts';
 const MAX_STORY_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
 const LOCK_TTL_SECONDS = 600;
@@ -263,17 +266,50 @@ async function handleGET(request: Request) {
       return await ensurePublication(scopedSnapshot.todayArticle.id, scopedSnapshot.todayArticle.title);
     }
 
-    const feedResponse = await fetch(OFFICIAL_RSS_URL, {
-      headers: { Accept: 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!feedResponse.ok || !isOfficialNewsUrl(feedResponse.url)) {
-      logEvent('error', { event: 'newsroom.daily.feed_failed', requestId, context: { status: feedResponse.status, day: dayKey } });
-      return NextResponse.json({ ok: false, error: 'official_feed_unavailable' }, { status: 503, headers: NO_STORE_HEADERS });
+    // Ditjenpas's RSS/posts endpoint currently returns HTTP 500 because its
+    // upstream database query exhausts memory. Prefer the healthy official
+    // homepage index and use RSS only as a fallback if the index is unavailable.
+    let stories: readonly OfficialNewsStory[] = [];
+    let indexStatus = 0;
+    try {
+      const indexResponse = await fetch(OFFICIAL_INDEX_URL, {
+        headers: { Accept: 'text/html,application/xhtml+xml;q=0.9' },
+        redirect: 'error',
+        signal: AbortSignal.timeout(10_000),
+      });
+      indexStatus = indexResponse.status;
+      if (indexResponse.ok && isOfficialNewsHost(indexResponse.url)) {
+        const html = await indexResponse.text();
+        if (html.length <= 2_000_000) stories = parseOfficialNewsIndex(html).slice(0, 50);
+      }
+    } catch {
+      // The official RSS fallback below handles homepage network failures.
     }
-    const xml = await feedResponse.text();
-    const stories = parseOfficialNewsFeed(xml).slice(0, 50);
+
+    if (stories.length === 0) {
+      try {
+        const feedResponse = await fetch(OFFICIAL_RSS_URL, {
+          headers: { Accept: 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8' },
+          redirect: 'error',
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (feedResponse.ok && isOfficialNewsUrl(feedResponse.url)) {
+          const xml = await feedResponse.text();
+          stories = parseOfficialNewsFeed(xml).slice(0, 50);
+        }
+      } catch {
+        // Both sources are allowed to fail closed; the next scheduled tick retries.
+      }
+    }
+
+    if (stories.length === 0) {
+      logEvent('error', {
+        event: 'newsroom.daily.source_index_failed',
+        requestId,
+        context: { day: dayKey, homepageStatus: indexStatus },
+      });
+      return NextResponse.json({ ok: false, error: 'official_news_source_unavailable', day: dayKey }, { status: 503, headers: NO_STORE_HEADERS });
+    }
     const candidates = stories.filter((story) => story.publishedAt !== null
       && Date.parse(story.publishedAt) <= now.getTime() + 5 * 60 * 1_000
       && now.getTime() - Date.parse(story.publishedAt) <= MAX_STORY_AGE_MS);
