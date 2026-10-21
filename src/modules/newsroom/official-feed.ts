@@ -145,7 +145,7 @@ export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[]
 
 function extractDivClassContent(html: string, className: string): string | null {
   const openingPattern = new RegExp(
-    '<div\\b(?=[^>]*\\bclass="[^"]*\\b' + className + '(?:\\s|")[^"]*")[^>]*>',
+    '<div\\b(?=[^>]*\\bclass="[^"]*\\b' + className + '(?=\\s|")[^"]*")[^>]*>',
     'i',
   );
   const opening = openingPattern.exec(html);
@@ -172,7 +172,7 @@ function removeDivClassBlocks(html: string, className: string): string {
   let result = html;
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const openingPattern = new RegExp(
-      '<div\\b(?=[^>]*\\bclass="[^"]*\\b' + className + '(?:\\s|")[^"]*")[^>]*>',
+      '<div\\b(?=[^>]*\\bclass="[^"]*\\b' + className + '(?=\\s|")[^"]*")[^>]*>',
       'i',
     );
     const opening = openingPattern.exec(result);
