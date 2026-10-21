@@ -141,19 +141,45 @@ export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[]
   return parseNewsFeed(xml, isOfficialNewsUrl);
 }
 
-/** Extract the actual official article body; strip site chrome and interactive blocks. */
+function extractDivClassContent(html: string, className: string): string | null {
+  const openingPattern = new RegExp(
+    '<div\\b(?=[^>]*\\bclass=["\\'][^"\\']*\\b' + className + '(?:\\s|["\\'])[^"\\']*["\\'])[^>]*>',
+    'i',
+  );
+  const opening = openingPattern.exec(html);
+  if (opening === null) return null;
+
+  const contentStart = opening.index + opening[0].length;
+  const tags = /<\/?div\\b[^>]*>/gi;
+  tags.lastIndex = contentStart;
+  let depth = 1;
+  let match: RegExpExecArray | null;
+  while ((match = tags.exec(html)) !== null) {
+    const token = match[0];
+    if (token.startsWith('</')) {
+      depth -= 1;
+      if (depth === 0) return html.slice(contentStart, match.index);
+    } else if (!token.endsWith('/>')) {
+      depth += 1;
+    }
+  }
+  return null;
+}
+
+/** Extract the primary body from approved publisher templates, excluding site chrome. */
 export function extractOfficialArticleText(html: string): string {
   if (html.length === 0 || html.length > 2_000_000) return '';
-  const ditjenpasBody = /<div\b[^>]*class=["'][^"']*\bpost-text\b[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<div\b[^>]*class=["'][^"']*\bpost-tags\b/i.exec(html)?.[1];
-  const article = ditjenpasBody
-    ?? /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1]
-    ?? /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1]
+  const body = extractDivClassContent(html, 'post-text')
+    ?? extractDivClassContent(html, 'detail-body')
+    ?? extractDivClassContent(html, 'wrap__article-detail-content')
+    ?? /<article\\b[^>]*>([\\s\\S]*?)<\\/article>/i.exec(html)?.[1]
+    ?? /<main\\b[^>]*>([\\s\\S]*?)<\\/main>/i.exec(html)?.[1]
     ?? html;
   return cleanText(
-    article
-      .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\b[^>]*>[\s\S]*?<\/(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\s*>/gi, ' ')
-      .replace(/<br\s*\/?\s*>/gi, '\n')
-      .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
+    body
+      .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\\b[^>]*>[\\s\\S]*?<\\/(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\\s*>/gi, ' ')
+      .replace(/<br\\s*\\/?\\s*>/gi, '\\n')
+      .replace(/<\\/(?:p|div|li|h[1-6])\\s*>/gi, '\\n')
   ).slice(0, 12_000);
 }
 
