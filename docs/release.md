@@ -28,9 +28,10 @@ database, bucket, Redis, atau template kedua.
    non-nol memberi peringatan, tidak memblokir dalam mode longgar.
 2. Terapkan seluruh migrasi forward yang sudah ditinjau memakai kredensial
    migrasi langsung, sesuai urutan `src/data/migrations/meta/_journal.json`.
-   Gate skema membandingkan skema terpasang dengan
-   `migration_gate_events.required_version` saat inisialisasi
-   `registerServerRuntime`; selisih memberi peringatan, bukan blokir.
+   Gate skema membandingkan ledger production dengan versi minimum aplikasi
+   (`src/data/schema-version.ts`) dan `migration_gate_events.required_version` saat
+   runtime diinisialisasi; release ditolak bila ledger belum memenuhi versi yang
+   diwajibkan. Build production melaporkan mismatch tanpa menulis ke database.
 3. Konfigurasikan kredensial production hak akses minimum lewat env
    server-only. Sertakan kredensial management-plane Cloudflare (untuk
    memeriksa privasi R2) dan kredensial S3 R2 access-key/secret (untuk data
