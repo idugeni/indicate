@@ -39,12 +39,6 @@ const SYSTEM_PERMISSIONS = new Set<string>([
   PUBLISHING_PERMISSIONS.publishingRead,
 ]);
 
-interface DailyArticle {
-  readonly id: string;
-  readonly title: string;
-  readonly source: string;
-}
-
 async function redisCommand(url: string, token: string, command: readonly (string | number)[]): Promise<unknown> {
   const response = await fetch(url, {
     method: 'POST',
