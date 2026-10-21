@@ -220,7 +220,7 @@ describe('API identitas organisasi', () => {
     );
     mocks.authorizeDashboardOrganization.mockResolvedValue({
       ...ACTOR,
-      permissionSet: new Set(['role.manage', 'publisher.manage']),
+      permissionSet: new Set(['role.manage', 'publisher.manage', 'media.manage']),
     });
 
     const response = await POST(request('https://app.test/api/dashboard/organization', 'POST', {

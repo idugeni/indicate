@@ -13,6 +13,7 @@ import { DrizzleDashboardRepository } from '@/data/repos/dashboard';
 import { SOCIAL_ORDER } from '@/modules/site/company-contact';
 import { authenticateDashboardUser, authorizeDashboardOrganization } from '@/modules/auth/authenticate-dashboard';
 import { DASHBOARD_PERMISSIONS } from '@/modules/dashboard/permissions';
+import { PUBLISHING_PERMISSIONS } from '@/modules/publishing/permissions';
 import { DEFAULT_PUBLISHER_BIO } from '@/modules/delivery/models';
 
 const uuidSchema = z.uuid();
@@ -181,7 +182,7 @@ async function handleGET(request: Request) {
       return { row, publisherContacts: primaryPublisher?.contacts };
     });
     if (profile === null) return NextResponse.json(createNonDisclosingDenial(requestId), { status: 404 });
-    return NextResponse.json({ ...publicProfile(profile.row, profile.publisherContacts), canManage: actor.permissionSet.has(DASHBOARD_PERMISSIONS.roleManage) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage), canManageLogo: actor.permissionSet.has(DASHBOARD_PERMISSIONS.publisherManage) });
+    return NextResponse.json({ ...publicProfile(profile.row, profile.publisherContacts), canManage: actor.permissionSet.has(DASHBOARD_PERMISSIONS.roleManage) || actor.permissionSet.has(DASHBOARD_PERMISSIONS.membershipManage), canManageLogo: actor.permissionSet.has(DASHBOARD_PERMISSIONS.publisherManage) && actor.permissionSet.has(PUBLISHING_PERMISSIONS.mediaManage) });
   } catch {
     return NextResponse.json(createPublicError('DEPENDENCY_UNAVAILABLE', 'Profil organisasi tidak dapat dimuat.', requestId), { status: 503 });
   }
