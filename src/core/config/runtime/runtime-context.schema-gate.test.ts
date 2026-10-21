@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { assertSchemaGate } from '@/core/config/runtime/runtime-context';
+import { CURRENT_REQUIRED_SCHEMA_VERSION } from '@/data/schema-version';
 
 type GateClient = Parameters<typeof assertSchemaGate>[0];
 
@@ -20,43 +24,56 @@ function gateClient(responses: readonly (readonly unknown[])[], recorded?: Recor
 }
 
 describe('assertSchemaGate', () => {
-  it('melewatkan proses ketika gate tidak dipersenjaga', async () => {
-    await expect(assertSchemaGate(gateClient([[]]))).resolves.toBeUndefined();
+  it('keeps the code contract aligned with the migration journal', () => {
+    const journal = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'src/data/migrations/meta/_journal.json'), 'utf8'),
+    ) as { readonly entries: readonly unknown[] };
+    expect(CURRENT_REQUIRED_SCHEMA_VERSION).toBe(journal.entries.length);
   });
 
-  it('melewatkan proses ketika ledger sudah memenuhi versi wajib', async () => {
-    const client = gateClient([[{ required_version: 194 }], [{ applied_version: 194, applied_at: '2026-09-25T17:29:02.102670Z' }]]);
-    await expect(assertSchemaGate(client)).resolves.toBeUndefined();
-  });
-
-  it('menolak dan mencatat versi yang benar-benar terpasang', async () => {
+  it('enforces the code-required version even when the database gate has no row', async () => {
     const recorded: Recorded[] = [];
     const client = gateClient(
-      [[{ required_version: 194 }], [{ applied_version: 191, applied_at: '2026-09-25T17:00:00.000000Z' }]],
+      [[], [{ applied_version: 290, applied_at: '2026-10-17T13:10:00.000Z' }]],
       recorded,
     );
     await expect(assertSchemaGate(client)).rejects.toThrow(
-      'schema_gate_unsatisfied: applied=191 required=194 applied_at=2026-09-25T17:00:00.000000Z',
+      'schema_gate_unsatisfied: applied=290 required=292 applied_at=2026-10-17T13:10:00.000Z',
     );
     expect(recorded.filter((query) => query.sql.includes('INSERT INTO public.migration_gate_events'))).toHaveLength(1);
   });
 
-  it('tetap menolak meski bukti gagal ditulis', async () => {
-    let call = 0;
-    const fake = async <T>(): Promise<readonly T[]> => {
-      call += 1;
-      if (call === 1) return [{ required_version: 200 }] as unknown as readonly T[];
-      if (call === 2) return [{ applied_version: 194, applied_at: null }] as unknown as readonly T[];
-      throw new Error('evidence write denied');
-    };
-    await expect(assertSchemaGate(fake as unknown as GateClient)).rejects.toThrow(
-      'schema_gate_unsatisfied: applied=194 required=200',
+  it('passes without a database gate when the ledger satisfies this release', async () => {
+    const client = gateClient([[], [{ applied_version: 292, applied_at: '2026-10-20T13:18:26.127Z' }]]);
+    await expect(assertSchemaGate(client)).resolves.toBeUndefined();
+  });
+
+  it('honors a higher database-required version than the code minimum', async () => {
+    const client = gateClient([
+      [{ required_version: 300 }],
+      [{ applied_version: 299, applied_at: '2026-10-20T13:18:26.127Z' }],
+    ]);
+    await expect(assertSchemaGate(client)).rejects.toThrow(
+      'schema_gate_unsatisfied: applied=299 required=300 applied_at=2026-10-20T13:18:26.127Z',
     );
   });
 
-  it('menolak tanpa ledger sama sekali', async () => {
-    await expect(assertSchemaGate(gateClient([[{ required_version: 190 }], []]))).rejects.toThrow(
-      'schema_gate_unsatisfied: applied=0 required=190 applied_at=unknown',
+  it('does not mask refusal when failure evidence cannot be written', async () => {
+    let call = 0;
+    const fake = async <T>(): Promise<readonly T[]> => {
+      call += 1;
+      if (call === 1) return [{ required_version: 300 }] as unknown as readonly T[];
+      if (call === 2) return [{ applied_version: 299, applied_at: null }] as unknown as readonly T[];
+      throw new Error('evidence write denied');
+    };
+    await expect(assertSchemaGate(fake as unknown as GateClient)).rejects.toThrow(
+      'schema_gate_unsatisfied: applied=299 required=300 applied_at=unknown',
+    );
+  });
+
+  it('treats an empty ledger as version zero', async () => {
+    await expect(assertSchemaGate(gateClient([[], []]))).rejects.toThrow(
+      'schema_gate_unsatisfied: applied=0 required=292 applied_at=unknown',
     );
   });
 });
