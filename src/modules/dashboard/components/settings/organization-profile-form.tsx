@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState, type ChangeEvent, type FormEvent } from 'react';
 import Image from 'next/image';
-import { Building2, ImagePlus, Loader2, Save, Trash2, X } from 'lucide-react';
+import { Building2, Loader2, Save, Trash2, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -249,7 +249,9 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
         }) as OrganizationProfile;
         setProfile(saved);
         setName(saved.name);
-        setNotice('Identitas organisasi berhasil disimpan.');
+        setLogoDraftPreview(null);
+        setLogoUploadStatus(null);
+        setNotice('Identitas organisasi berhasil disimpan. Logo publisher dan metadata artikel ikut disinkronkan.');
       } catch (cause) {
         setError(cause instanceof Error && cause.message.includes('409') ? 'Data organisasi berubah di sesi lain. Muat ulang sebelum menyimpan.' : cause instanceof Error ? cause.message : 'Identitas organisasi gagal disimpan.');
       } finally {
@@ -283,12 +285,12 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor={nameId}>Nama organisasi</Label>
-              <Input id={nameId} value={name} onChange={(event) => setName(event.target.value)} maxLength={160} minLength={2} required disabled={busy || !profile.canManage} />
+              <Input id={nameId} value={name} onChange={(event) => setName(event.target.value)} maxLength={160} minLength={2} required disabled={busy || isLogoUploading || !profile.canManage} />
               <p className="m-0 text-xs text-paper-faint">Slug sistem: {profile.slug} (tidak berubah saat nama diperbarui).</p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor={descriptionId}>Deskripsi</Label>
-              <Textarea id={descriptionId} value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={4} disabled={busy || !profile.canManage} placeholder="Jelaskan organisasi dan fokus penerbitannya…" />
+              <Textarea id={descriptionId} value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={4} disabled={busy || isLogoUploading || !profile.canManage} placeholder="Jelaskan organisasi dan fokus penerbitannya…" />
               <p className="m-0 text-xs leading-5 text-paper-faint">Jika belum ada deskripsi khusus yang tersimpan, artikel dapat menampilkan bio publisher bawaan. Bio bawaan itu tidak disalin otomatis sebagai deskripsi resmi organisasi.</p>
             </div>
             <div className="space-y-2 sm:col-span-2">
