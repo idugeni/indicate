@@ -185,7 +185,7 @@ describe('API identitas organisasi', () => {
     const publisherId = '55555555-5555-4555-8555-555555555555';
     const previousLogo = 'https://cdn.contoh.id/logo-lama.png';
     const nextLogo = `/api/network/media/${mediaId}`;
-    const { tx } = setDatabase(
+    const { tx, updatedRows } = setDatabase(
       {
         ...CURRENT,
         identityData: {
@@ -218,6 +218,21 @@ describe('API identitas organisasi', () => {
         objectKey: `o/${ORG}/p/organization-asset/2026/10/logo.webp`,
       }],
     );
+    updatedRows.mockResolvedValue([{
+      id: ORG,
+      name: CURRENT.name,
+      slug: CURRENT.slug,
+      identityData: {
+        schemaVersion: 1,
+        description: 'Profil resmi',
+        logoUrl: nextLogo,
+        contactDetails: {},
+        visualIdentity: {},
+        socialLinks: {},
+      },
+      customerMetadata: {},
+      version: 5,
+    }]);
     mocks.authorizeDashboardOrganization.mockResolvedValue({
       ...ACTOR,
       permissionSet: new Set(['role.manage', 'publisher.manage', 'media.manage']),
