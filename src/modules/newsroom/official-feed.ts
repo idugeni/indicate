@@ -45,15 +45,24 @@ function readTag(block: string, tag: string): string {
   return expression.exec(block)?.[1] ?? '';
 }
 
-/** Only the explicitly approved official Ditjenpas host may become a generation source. */
-export function isOfficialNewsUrl(raw: string): boolean {
+/** Only HTTPS on the official Ditjenpas host is accepted as a network source. */
+export function isOfficialNewsHost(raw: string): boolean {
   try {
     const url = new URL(raw);
     return url.protocol === 'https:'
       && (url.hostname === 'ditjenpas.go.id' || url.hostname.endsWith('.ditjenpas.go.id'))
       && url.username === ''
-      && url.password === ''
-      && url.pathname.length > 1;
+      && url.password === '';
+  } catch {
+    return false;
+  }
+}
+
+/** A publishable story URL must also have a specific path, not just the homepage. */
+export function isOfficialNewsUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return isOfficialNewsHost(raw) && url.pathname.length > 1;
   } catch {
     return false;
   }
@@ -96,18 +105,68 @@ export function parseOfficialNewsFeed(xml: string): readonly OfficialNewsStory[]
   });
 }
 
-/** Extract readable article text while discarding script/style and page chrome. */
+/** Extract the actual official article body; strip site chrome and interactive blocks. */
 export function extractOfficialArticleText(html: string): string {
-  if (html.length === 0) return '';
-  const article = /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1]
+  if (html.length === 0 || html.length > 2_000_000) return '';
+  const ditjenpasBody = /<div\b[^>]*class=["'][^"']*\bpost-text\b[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<div\b[^>]*class=["'][^"']*\bpost-tags\b/i.exec(html)?.[1];
+  const article = ditjenpasBody
+    ?? /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1]
     ?? /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1]
     ?? html;
   return cleanText(
     article
-      .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript)\b[^>]*>[\s\S]*?<\/(?:nav|header|footer|aside|form|svg|script|style|noscript)\s*>/gi, ' ')
+      .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\b[^>]*>[\s\S]*?<\/(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\s*>/gi, ' ')
       .replace(/<br\s*\/?\s*>/gi, '\n')
       .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
   ).slice(0, 12_000);
+}
+
+/** Read news cards from the official homepage when the upstream RSS database query fails. */
+export function parseOfficialNewsIndex(html: string): readonly OfficialNewsStory[] {
+  if (html.length === 0 || html.length > 2_000_000) return [];
+  const blocks = html.match(/<div\b[^>]*class=["'][^"']*\bpost-item-horizontal\b[^"']*["'][^>]*>[\s\S]*?<!--\s*\/\.post item\s*-->/gi) ?? [];
+  const seen = new Set<string>();
+  const stories: OfficialNewsStory[] = [];
+  for (const block of blocks) {
+    const imageAlt = /<img\b[^>]*\balt=(["'])(.*?)\1/i.exec(block)?.[2] ?? '';
+    const titleAnchor = /<h[1-6]\b[^>]*class=["'][^"']*\btitle\b[^"']*["'][^>]*>[\s\S]*?<a\b[^>]*>([\s\S]*?)<\/a>/i.exec(block)?.[1] ?? '';
+    const title = cleanText(imageAlt || titleAnchor).slice(0, 300);
+    if (title.length < 8) continue;
+
+    const links = [...block.matchAll(/<a\b[^>]*\bhref=(["'])(.*?)\1[^>]*>/gi)]
+      .map((match) => match[2] ?? '');
+    const rawLink = links.find((href) => {
+      if (!isOfficialNewsUrl(href)) return false;
+      const pathname = new URL(href).pathname.toLowerCase();
+      return !pathname.startsWith('/category/')
+        && !pathname.startsWith('/profile/')
+        && !pathname.startsWith('/rss/')
+        && !pathname.startsWith('/login')
+        && !pathname.startsWith('/search');
+    });
+    if (rawLink === undefined) continue;
+    const normalized = new URL(rawLink);
+    normalized.hash = '';
+    normalized.search = '';
+    const url = normalized.toString();
+    if (seen.has(url)) continue;
+    seen.add(url);
+
+    const clock = /icon-clock[\s\S]{0,120}?<\/i>([\s\S]{0,80})/i.exec(block)?.[1] ?? '';
+    const rawDate = cleanText(clock.split('<')[0] ?? '');
+    const timestamp = rawDate === '' ? Number.NaN : Date.parse(rawDate);
+    stories.push({
+      title,
+      url,
+      description: '',
+      publishedAt: Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null,
+    });
+  }
+  return stories.sort((left, right) => {
+    const leftTime = left.publishedAt === null ? 0 : Date.parse(left.publishedAt);
+    const rightTime = right.publishedAt === null ? 0 : Date.parse(right.publishedAt);
+    return rightTime - leftTime;
+  });
 }
 
 /** Stable Indonesian calendar-day key (Asia/Jakarta, not the server's UTC day). */
