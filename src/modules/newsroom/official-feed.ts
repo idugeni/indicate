@@ -101,7 +101,7 @@ function parseNewsFeed(xml: string, acceptsUrl: (url: string) => boolean): reado
   if (xml.length === 0 || xml.length > MAX_FEED_LENGTH || /<!DOCTYPE|<!ENTITY/i.test(xml)) {
     return [];
   }
-  const blocks = xml.match(/<item\\b[^>]*>[\\s\\S]*?<\\/item>/gi) ?? [];
+  const blocks = xml.match(/<item\b[^>]*>[\s\S]*?<\/item>/gi) ?? [];
   const seen = new Set<string>();
   const stories: OfficialNewsStory[] = [];
   for (const block of blocks) {
