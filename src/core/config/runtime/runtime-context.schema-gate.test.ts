@@ -71,6 +71,25 @@ describe('assertSchemaGate', () => {
     );
   });
 
+  it('keeps production build schema validation read-only', async () => {
+    const previousPhase = process.env.NEXT_PHASE;
+    process.env.NEXT_PHASE = 'phase-production-build';
+    const recorded: Recorded[] = [];
+    try {
+      const client = gateClient(
+        [[], [{ applied_version: 290, applied_at: '2026-10-17T13:10:00.000Z' }]],
+        recorded,
+      );
+      await expect(assertSchemaGate(client)).rejects.toThrow(
+        'schema_gate_unsatisfied: applied=290 required=292 applied_at=2026-10-17T13:10:00.000Z',
+      );
+      expect(recorded.some((query) => query.sql.includes('INSERT INTO public.migration_gate_events'))).toBe(false);
+    } finally {
+      if (previousPhase === undefined) delete process.env.NEXT_PHASE;
+      else process.env.NEXT_PHASE = previousPhase;
+    }
+  });
+
   it('treats an empty ledger as version zero', async () => {
     await expect(assertSchemaGate(gateClient([[], []]))).rejects.toThrow(
       'schema_gate_unsatisfied: applied=0 required=292 applied_at=unknown',
