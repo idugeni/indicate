@@ -168,17 +168,51 @@ function extractDivClassContent(html: string, className: string): string | null 
   return null;
 }
 
-/** Extract the primary body from approved publisher templates, excluding site chrome. */
+function removeDivClassBlocks(html: string, className: string): string {
+  let result = html;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const openingPattern = new RegExp(
+      '<div\\b(?=[^>]*\\bclass="[^"]*\\b' + className + '(?:\\s|")[^"]*")[^>]*>',
+      'i',
+    );
+    const opening = openingPattern.exec(result);
+    if (opening === null) return result;
+    const contentStart = opening.index + opening[0].length;
+    const tags = /<\/?div\b[^>]*>/gi;
+    tags.lastIndex = contentStart;
+    let depth = 1;
+    let match: RegExpExecArray | null;
+    let end = -1;
+    while ((match = tags.exec(result)) !== null) {
+      if (match[0].startsWith('</')) {
+        depth -= 1;
+        if (depth === 0) {
+          end = tags.lastIndex;
+          break;
+        }
+      } else if (!match[0].endsWith('/>')) {
+        depth += 1;
+      }
+    }
+    if (end < 0) return result;
+    result = result.slice(0, opening.index) + ' ' + result.slice(end);
+  }
+  return result;
+}
+
+/** Extract article text from approved publishers without mixing in page chrome or related stories. */
 export function extractOfficialArticleText(html: string): string {
   if (html.length === 0 || html.length > 2_000_000) return '';
   const body = extractDivClassContent(html, 'post-text')
     ?? extractDivClassContent(html, 'detail-body')
     ?? extractDivClassContent(html, 'wrap__article-detail-content')
     ?? /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1]
-    ?? /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1]
-    ?? html;
+    ?? /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1];
+  if (body === undefined || body === null) return '';
+  const articleBody = ['widget-baca-juga', 'detail-share', 'audio-player', 'generate-ai-summary', 'post-tags', 'post-share', 'about-author']
+    .reduce((value, className) => removeDivClassBlocks(value, className), body);
   return cleanText(
-    body
+    articleBody
       .replace(/<(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\b[^>]*>[\s\S]*?<\/(?:nav|header|footer|aside|form|svg|script|style|noscript|iframe)\s*>/gi, ' ')
       .replace(/<br\s*\/?\s*>/gi, '\n')
       .replace(/<\/(?:p|div|li|h[1-6])\s*>/gi, '\n')
