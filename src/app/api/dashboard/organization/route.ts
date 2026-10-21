@@ -276,7 +276,7 @@ async function handlePOST(request: Request) {
         ? ''
         : safeLogoValue(currentIdentity.logoUrl) ?? safeLogoValue(publisherContactRecord.logoUrl) ?? '';
       const logoChanged = nextIdentity.logoUrl !== currentEffectiveLogo;
-      if (logoChanged && nextIdentity.logoUrl !== '') {
+      if ((logoChanged || publisherLogoChanged) && nextIdentity.logoUrl !== '') {
         const mediaReference = /^\/api\/network\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/iu.exec(nextIdentity.logoUrl);
         if (mediaReference !== null) {
           const asset = (await transaction.select({ id: media.id })

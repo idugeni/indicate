@@ -296,7 +296,9 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor={logoId}>Logo / gambar profil organisasi</Label>
               <Input id={logoId} type="text" inputMode="url" value={logoUrl} onChange={(event) => { setLogoUrl(event.target.value); setLogoDraftPreview(null); }} placeholder="Unggah gambar atau masukkan URL HTTPS" disabled={busy || isLogoUploading || !profile.canManageLogo} />
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={logoFileId}>Pilih gambar profil organisasi</Label>
+                <div className="flex flex-wrap items-center gap-2">
                 <Input
                   id={logoFileId}
                   type="file"
@@ -309,6 +311,7 @@ export function OrganizationProfileForm({ organizationId, organizationName, orga
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   Hapus logo
                 </Button>
+                </div>
               </div>
               <p className="m-0 text-xs leading-5 text-paper-faint">Gambar diunggah ke R2 melalui media organisasi dan disimpan sebagai referensi media stabil, bukan URL presigned. Simpan perubahan untuk memperbarui publisher, author box, serta cache metadata artikel.</p>
               {logoUploadStatus ? <FormNotice tone={logoUploadStatus.startsWith('Gagal') || logoUploadStatus.includes('tidak valid') || logoUploadStatus.includes('tidak didukung') ? 'error' : 'muted'}>{logoUploadStatus}</FormNotice> : null}

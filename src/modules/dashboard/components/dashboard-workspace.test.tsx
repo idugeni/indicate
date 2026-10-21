@@ -104,19 +104,23 @@ describe('Dashboard workspace login modes', () => {
     }
   });
 
-  it('shows the active organization logo in sidebar identity when the organization profile has one', async () => {
-    const logoUrl = '/api/network/media/00000000-0000-4000-8000-000000000001';
+  it('shows the active organization logo in sidebar identity through the stable dashboard media route', async () => {
+    const organizationId = '11111111-1111-4111-8111-111111111111';
+    const mediaId = '22222222-2222-4222-8222-222222222222';
+    const logoUrl = `/api/network/media/${mediaId}`;
+    const dashboardLogoUrl = `/api/dashboard/organization/logo?organizationId=${organizationId}&mediaId=${mediaId}`;
+    const tenantOrganization = [{ id: organizationId, name: 'Org Uji', role: 'admin', permissions: [DASHBOARD_PERMISSIONS.auditRead] }] as never;
     const fetchMock = vi.fn(async (url: unknown) => {
-      if (String(url).includes('/api/dashboard/organization?organizationId=org-1')) {
+      if (String(url).includes(`/api/dashboard/organization?organizationId=${organizationId}`)) {
         return { ok: true, json: async () => ({ logoUrl }) };
       }
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal('fetch', fetchMock);
-    const { container } = render(<DashboardWorkspace displayName="Redaktur Uji" organizations={ORGANIZATIONS} />);
+    const { container } = render(<DashboardWorkspace displayName="Redaktur Uji" organizations={tenantOrganization} />);
 
-    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/dashboard/organization?organizationId=org-1'))).toBe(true));
-    await waitFor(() => expect(Array.from(container.querySelectorAll('img')).some((image) => image.getAttribute('src') === logoUrl)).toBe(true));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes(`/api/dashboard/organization?organizationId=${organizationId}`))).toBe(true));
+    await waitFor(() => expect(Array.from(container.querySelectorAll('img')).some((image) => image.getAttribute('src') === dashboardLogoUrl)).toBe(true));
   });
 
   it('opens the Artikel submenu without navigating and exposes only Content Library, Compose, and Media', async () => {
