@@ -144,7 +144,8 @@ export function DashboardWorkspace({
   const initialOrgId = organizations[0]?.id ?? '';
 
   const [organizationId, setOrganizationId] = useState(initialOrgId);
-  const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string | null>(null);
+  const [organizationLogo, setOrganizationLogo] = useState<{ readonly organizationId: string; readonly url: string | null } | null>(null);
+  const organizationLogoUrl = organizationLogo?.organizationId === organizationId ? organizationLogo.url : null;
   const [generation, setGeneration] = useState(initialOrgId ? 1 : 0);
   const [view, setView] = useDashboardView(navigationMode === 'platform' ? 'customers' : 'dashboard');
   const [payload, setPayload] = useState<{ readonly key: string; readonly body: unknown } | null>(null);
@@ -161,10 +162,7 @@ export function DashboardWorkspace({
   );
 
   useEffect(() => {
-    if (organizationId === '') {
-      setOrganizationLogoUrl(null);
-      return;
-    }
+    if (organizationId === '') return;
     const controller = new AbortController();
     void fetch(`/api/dashboard/organization?organizationId=${encodeURIComponent(organizationId)}`, { signal: controller.signal })
       .then(async (response) => {
@@ -177,10 +175,10 @@ export function DashboardWorkspace({
           : `/api/dashboard/organization/logo?organizationId=${encodeURIComponent(organizationId)}&mediaId=${mediaReference[1]}`;
       })
       .then((logoUrl) => {
-        if (!controller.signal.aborted) setOrganizationLogoUrl(logoUrl);
+        if (!controller.signal.aborted) setOrganizationLogo({ organizationId, url: logoUrl });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setOrganizationLogoUrl(null);
+        if (!controller.signal.aborted) setOrganizationLogo({ organizationId, url: null });
       });
     return () => controller.abort();
   }, [organizationId]);
