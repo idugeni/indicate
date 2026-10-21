@@ -3,6 +3,8 @@ export interface OfficialNewsStory {
   readonly url: string;
   readonly description: string;
   readonly publishedAt: string | null;
+  readonly sourceName?: string;
+  readonly sourcePriority?: number;
 }
 
 const MAX_FEED_LENGTH = 1_000_000;
