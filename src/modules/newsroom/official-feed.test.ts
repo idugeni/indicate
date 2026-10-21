@@ -2,18 +2,49 @@ import { describe, expect, it } from 'vitest';
 
 import {
   extractOfficialArticleText,
+  isOfficialNewsHost,
   isOfficialNewsUrl,
   jakartaDayKey,
   parseOfficialNewsFeed,
+  parseOfficialNewsIndex,
 } from '@/modules/newsroom/official-feed';
 
 describe('official newsroom source feed', () => {
   it('accepts only HTTPS URLs on the official Ditjenpas domain', () => {
+    expect(isOfficialNewsHost('https://www.ditjenpas.go.id/')).toBe(true);
+    expect(isOfficialNewsHost('https://ditjenpas.go.id/rss/posts')).toBe(true);
+    expect(isOfficialNewsHost('http://www.ditjenpas.go.id/')).toBe(false);
+    expect(isOfficialNewsHost('https://ditjenpas.go.id.evil.example/berita')).toBe(false);
     expect(isOfficialNewsUrl('https://www.ditjenpas.go.id/berita-resmi')).toBe(true);
     expect(isOfficialNewsUrl('https://ditjenpas.go.id/berita-resmi')).toBe(true);
     expect(isOfficialNewsUrl('http://www.ditjenpas.go.id/berita-resmi')).toBe(false);
     expect(isOfficialNewsUrl('https://ditjenpas.go.id.evil.example/berita')).toBe(false);
     expect(isOfficialNewsUrl('https://user@www.ditjenpas.go.id/berita')).toBe(false);
+  });
+
+  it('parses current official homepage cards when the RSS endpoint is unavailable', () => {
+    const html = `
+      <div class="post-item-horizontal">
+        <a href="https://www.ditjenpas.go.id/category/kabar-rutan">KABAR RUTAN</a>
+        <a href="https://www.ditjenpas.go.id/berita-terbaru">
+          <img alt="Berita Terbaru Resmi tentang Pembinaan" src="/cover.jpg">
+        </a>
+        <h3 class="title"><a href="https://www.ditjenpas.go.id/berita-terbaru">Berita Terbaru Resmi...</a></h3>
+        <i class="icon-clock"></i>&nbsp;&nbsp;Oct 21, 2026
+        <!-- /.post item -->
+      </div>
+      <div class="post-item-horizontal">
+        <a href="https://www.ditjenpas.go.id/profile/redaksi">Redaksi</a>
+        <a href="https://ditjenpas.go.id.evil.example/berita-palsu">
+          <img alt="Berita Palsu" src="/cover.jpg">
+        </a>
+        <!-- /.post item -->
+      </div>`;
+    const stories = parseOfficialNewsIndex(html);
+    expect(stories).toHaveLength(1);
+    expect(stories[0]?.title).toBe('Berita Terbaru Resmi tentang Pembinaan');
+    expect(stories[0]?.url).toBe('https://www.ditjenpas.go.id/berita-terbaru');
+    expect(stories[0]?.publishedAt?.startsWith('2026-10-21')).toBe(true);
   });
 
   it('parses RSS items, cleans HTML, sorts newest-first, and rejects off-domain links', () => {
